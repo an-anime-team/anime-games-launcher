@@ -1,0 +1,28 @@
+[package]
+name = "anime-games-launcher"
+version = "1.0.0"
+description = "Anime Games Launcher"
+authors = ["Nikita Podvirnyy <suimin.tu.mu.ga.mi@gmail.com>"]
+homepage = "https://github.com/an-anime-team/anime-games-launcher"
+repository = "https://github.com/an-anime-team/anime-games-launcher"
+license = "GPL-3.0"
+edition = "2021"
+# build = "build.rs"
+
+[dependencies.relm4]
+version = "0.6.0"
+features = ["macros", "libadwaita"]
+
+[dependencies.gtk]
+package = "gtk4"
+version = "0.6"
+features = ["v4_10"]
+
+[dependencies.adw]
+package = "libadwaita"
+version = "0.4"
+features = ["v1_3"]
+
+[dependencies.anime-game-core]
+git = "https://github.com/an-anime-team/anime-game-core"
+branch = "v2.0.0-rewrite"
