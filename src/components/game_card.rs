@@ -1,6 +1,7 @@
 use relm4::prelude::*;
 use relm4::component::*;
 
+use gtk::prelude::*;
 use adw::prelude::*;
 
 use crate::windows::main::MainAppMsg;
@@ -35,22 +36,29 @@ pub struct GameCardComponent {
     pub width: i32,
     pub height: i32,
     pub variant: GameCardVariant,
-    pub installed: bool
+    pub installed: bool,
+    pub clickable: bool
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameCardComponentMsg {
+pub enum GameCardComponentInput {
     SetVariant(GameCardVariant),
     SetWidth(i32),
     SetHeight(i32),
-    SetInstalled(bool)
+    SetInstalled(bool),
+    SetClickable(bool)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameCardComponentOutput {
+    CardClicked(GameCardVariant)
 }
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for GameCardComponent {
     type Init = GameCardVariant;
-    type Input = GameCardComponentMsg;
-    type Output = ();
+    type Input = GameCardComponentInput;
+    type Output = GameCardComponentOutput;
 
     view! {
         #[root]
@@ -95,11 +103,23 @@ impl SimpleAsyncComponent for GameCardComponent {
                         set_content_fit: gtk::ContentFit::Cover
                     },
 
-                    // add_overlay = &gtk::Button {
-                    //     set_icon_name: "media-playback-start-symbolic",
-                    //     add_css_class: "flat",
+                    add_overlay = &gtk::Button {
+                        add_css_class: "flat",
 
-                    // }
+                        #[watch]
+                        set_visible: model.clickable,
+
+                        connect_clicked[sender] => move |_| {
+                            sender.output(GameCardComponentOutput::CardClicked(model.variant));
+                        }
+
+                        // #[watch]
+                        // set_icon_name: if model.installed {
+                        //     "media-playback-start-symbolic"
+                        // } else {
+                        //     "folder-download-symbolic"
+                        // }
+                    }
                 },
 
                 gtk::Label {
@@ -115,13 +135,14 @@ impl SimpleAsyncComponent for GameCardComponent {
     async fn init(
         init: Self::Init,
         root: Self::Root,
-        _sender: AsyncComponentSender<Self>,
+        sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             width: 260,
             height: 364, // 10:14
             variant: init,
-            installed: true
+            installed: true,
+            clickable: true
         };
 
         let widgets = view_output!();
@@ -131,10 +152,11 @@ impl SimpleAsyncComponent for GameCardComponent {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameCardComponentMsg::SetVariant(variant) => self.variant = variant,
-            GameCardComponentMsg::SetWidth(width) => self.width = width,
-            GameCardComponentMsg::SetHeight(height) => self.height = height,
-            GameCardComponentMsg::SetInstalled(installed) => self.installed = installed
+            GameCardComponentInput::SetVariant(variant) => self.variant = variant,
+            GameCardComponentInput::SetWidth(width) => self.width = width,
+            GameCardComponentInput::SetHeight(height) => self.height = height,
+            GameCardComponentInput::SetInstalled(installed) => self.installed = installed,
+            GameCardComponentInput::SetClickable(clickable) => self.clickable = clickable
         }
     }
 }
@@ -146,8 +168,8 @@ pub struct GameCardFactory {
 #[relm4::factory(pub)]
 impl FactoryComponent for GameCardFactory {
     type Init = GameCardVariant;
-    type Input = GameCardComponentMsg;
-    type Output = GameCardComponentMsg;
+    type Input = GameCardComponentInput;
+    type Output = GameCardComponentOutput;
     type CommandOutput = ();
     type ParentInput = MainAppMsg;
     type ParentWidget = gtk::FlowBox;
@@ -159,15 +181,17 @@ impl FactoryComponent for GameCardFactory {
     }
 
     fn forward_to_parent(output: Self::Output) -> Option<MainAppMsg> {
-        None
+        match output {
+            GameCardComponentOutput::CardClicked(variant) => Some(MainAppMsg::OpenDetails(variant))
+        }
     }
 
     #[inline]
-    fn init_model(init: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
+    fn init_model(init: Self::Init, _index: &DynamicIndex, sender: FactorySender<Self>) -> Self {
         Self {
             component: GameCardComponent::builder()
                 .launch(init)
-                .detach()
+                .forward(sender.output_sender(), std::convert::identity)
         }
     }
 

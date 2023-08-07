@@ -23,6 +23,10 @@ fn main() {
         .game-card:hover {
             transform: scale(1.03);
         }
+
+        .game-details--genshin {
+            background: radial-gradient(#f4cc99, #3b4b7c);
+        }
     ");
 
     // Create the app
