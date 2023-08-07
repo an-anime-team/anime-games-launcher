@@ -34,14 +34,16 @@ impl GameCardVariant {
 pub struct GameCardComponent {
     pub width: i32,
     pub height: i32,
-    pub variant: GameCardVariant
+    pub variant: GameCardVariant,
+    pub installed: bool
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameCardComponentMsg {
     SetVariant(GameCardVariant),
     SetWidth(i32),
-    SetHeight(i32)
+    SetHeight(i32),
+    SetInstalled(bool)
 }
 
 #[relm4::component(async, pub)]
@@ -70,8 +72,22 @@ impl SimpleAsyncComponent for GameCardComponent {
                         #[watch]
                         set_height_request: model.height,
 
+                        #[watch]
+                        set_opacity: if model.installed {
+                            1.0
+                        } else {
+                            0.4
+                        },
+
                         add_css_class: "card",
                         add_css_class: "game-card",
+
+                        // #[watch]
+                        // set_css_classes: if model.installed {
+                        //     &["card", "game-card"]
+                        // } else {
+                        //     &["card", "game-card", "game-card--not-installed"]
+                        // },
 
                         #[watch]
                         set_filename: Some(model.variant.get_image()),
@@ -102,9 +118,10 @@ impl SimpleAsyncComponent for GameCardComponent {
         _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            width: 200,
-            height: 280, // 10:14
-            variant: init
+            width: 260,
+            height: 364, // 10:14
+            variant: init,
+            installed: true
         };
 
         let widgets = view_output!();
@@ -116,7 +133,8 @@ impl SimpleAsyncComponent for GameCardComponent {
         match msg {
             GameCardComponentMsg::SetVariant(variant) => self.variant = variant,
             GameCardComponentMsg::SetWidth(width) => self.width = width,
-            GameCardComponentMsg::SetHeight(height) => self.height = height
+            GameCardComponentMsg::SetHeight(height) => self.height = height,
+            GameCardComponentMsg::SetInstalled(installed) => self.installed = installed
         }
     }
 }

@@ -199,6 +199,8 @@ impl SimpleComponent for MainApp {
 
         model.available_games.guard().push_back(GameCardVariant::StarRail);
 
+        model.available_games.broadcast(GameCardComponentMsg::SetInstalled(false));
+
         let toast_overlay = &model.toast_overlay;
 
         let installed_games_flow_box = model.installed_games.widget();
