@@ -17,10 +17,16 @@ use crate::components::game_details::{
     GameDetailsComponentOutput
 };
 
+use crate::tasks_queue::{
+    TasksQueue,
+    Task
+};
+
 use crate::games::GameVariant;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
+    flap: adw::Flap,
 
     main_toast_overlay: adw::ToastOverlay,
     game_details_toast_overlay: adw::ToastOverlay,
@@ -31,7 +37,8 @@ pub struct MainApp {
     installed_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
 
-    downloading_game: AsyncController<GameCardComponent>
+    tasks_queue: TasksQueue,
+    downloading_game: AsyncController<GameCardComponent>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,7 +48,13 @@ pub enum MainAppMsg {
         installed: bool
     },
 
-    HideDetails
+    HideDetails,
+
+    ShowTasksFlap,
+    HideTasksFlap,
+    ToggleTasksFlap,
+
+    AddTask(Task)
 }
 
 #[relm4::component(pub)]
@@ -63,117 +76,123 @@ impl SimpleComponent for MainApp {
                 append = main_toast_overlay -> adw::ToastOverlay {
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
-    
+
                         adw::HeaderBar {
                             add_css_class: "flat",
-    
-                            pack_start = &gtk::ToggleButton {
+
+                            pack_start = &gtk::Button {
                                 set_icon_name: "view-dual-symbolic",
-    
-                                #[chain(build())]
-                                bind_property: ("active", &flap, "reveal-flap"),
+
+                                connect_clicked => MainAppMsg::ToggleTasksFlap
                             }
                         },
-    
-                        gtk::ScrolledWindow {
-                            set_hexpand: true,
-                            set_vexpand: true,
-    
-                            #[name(flap)]
-                            adw::Flap {
-                                set_fold_policy: adw::FlapFoldPolicy::Always,
-    
-                                #[wrap(Some)]
-                                set_flap = &gtk::Box {
-                                    add_css_class: "background",
-    
-                                    gtk::Box {
-                                        set_orientation: gtk::Orientation::Vertical,
-    
-                                        set_margin_start: 24,
-                                        set_margin_end: 24,
-    
-                                        model.downloading_game.widget(),
-    
-                                        gtk::Label {
-                                            set_halign: gtk::Align::Start,
-    
-                                            set_margin_top: 24,
-    
-                                            add_css_class: "title-4",
-    
-                                            set_label: "Downloading Honkai: Star Rail..."
-                                        },
-        
-                                        gtk::ProgressBar {
-                                            set_margin_top: 16,
-                                            set_fraction: 0.7
-                                        },
-    
-                                        gtk::Label {
-                                            set_halign: gtk::Align::Start,
-    
-                                            set_margin_top: 16,
-    
-                                            set_label: "Download speed: 20 MB/s"
-                                        },
-    
-                                        gtk::Label {
-                                            set_halign: gtk::Align::Start,
-    
-                                            set_margin_top: 8,
-    
-                                            set_label: "ETA: 7 minutes"
-                                        }
-                                    }
-                                },
-    
-                                #[wrap(Some)]
-                                set_content = &gtk::Box {
+
+                        #[local_ref]
+                        flap -> adw::Flap {
+                            set_fold_policy: adw::FlapFoldPolicy::Always,
+                            set_transition_type: adw::FlapTransitionType::Slide,
+
+                            set_modal: false,
+
+                            #[wrap(Some)]
+                            set_flap = &gtk::Box {
+                                add_css_class: "background",
+
+                                gtk::Box {
                                     set_orientation: gtk::Orientation::Vertical,
-    
+
+                                    set_margin_start: 24,
+                                    set_margin_end: 24,
+
+                                    model.downloading_game.widget(),
+
                                     gtk::Label {
                                         set_halign: gtk::Align::Start,
-    
+
+                                        set_margin_top: 24,
+
+                                        add_css_class: "title-4",
+
+                                        #[watch]
+                                        set_label: &match model.tasks_queue.get_current() {
+                                            Some(task) => format!("Downloading {}", task.get_variant().get_title()),
+                                            None => String::from("Nothing to do")
+                                        }
+                                    },
+
+                                    gtk::ProgressBar {
+                                        set_margin_top: 16,
+                                        set_fraction: 0.7
+                                    },
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
+                                        set_margin_top: 16,
+
+                                        set_label: "Download speed: 20 MB/s"
+                                    },
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
+                                        set_margin_top: 8,
+
+                                        set_label: "ETA: 7 minutes"
+                                    }
+                                }
+                            },
+
+                            #[wrap(Some)]
+                            set_content = &gtk::ScrolledWindow {
+                                set_hexpand: true,
+                                set_vexpand: true,
+                                
+                                gtk::Box {
+                                    set_orientation: gtk::Orientation::Vertical,
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
                                         set_margin_start: 24,
                                         add_css_class: "title-4",
 
                                         #[watch]
                                         set_visible: !model.installed_games.is_empty(),
-    
+
                                         set_label: "Installed games"
                                     },
-    
+
                                     #[local_ref]
-                                    installed_games_flow_box ->gtk::FlowBox {
+                                    installed_games_flow_box -> gtk::FlowBox {
                                         set_row_spacing: 12,
                                         set_column_spacing: 12,
-    
+
                                         set_margin_all: 16,
-    
+
                                         set_homogeneous: true,
                                         set_selection_mode: gtk::SelectionMode::None
                                     },
-    
+
                                     gtk::Label {
                                         set_halign: gtk::Align::Start,
-    
+
                                         set_margin_start: 24,
                                         add_css_class: "title-4",
 
                                         #[watch]
                                         set_visible: !model.available_games.is_empty(),
-    
+
                                         set_label: "Available games"
                                     },
-    
+
                                     #[local_ref]
                                     available_games_flow_box -> gtk::FlowBox {
                                         set_row_spacing: 12,
                                         set_column_spacing: 12,
-    
+
                                         set_margin_all: 16,
-    
+
                                         set_homogeneous: true,
                                         set_selection_mode: gtk::SelectionMode::None
                                     }
@@ -217,18 +236,30 @@ impl SimpleComponent for MainApp {
     ) -> ComponentParts<Self> {
         let mut model = Self {
             leaflet: adw::Leaflet::new(),
+            flap: adw::Flap::new(),
 
             main_toast_overlay: adw::ToastOverlay::new(),
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
             game_details: GameDetailsComponent::builder()
                 .launch(GameVariant::Genshin)
-                .detach(),
+                .forward(sender.input_sender(), |message| match message {
+                    GameDetailsComponentOutput::DownloadGame { variant } => {
+                        MainAppMsg::AddTask(Task::DownloadGame {
+                            variant
+                        })
+                    }
+
+                    GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
+                    GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap
+                }),
 
             game_details_variant: GameVariant::Genshin,
 
             installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
+
+            tasks_queue: TasksQueue::new(),
 
             downloading_game: GameCardComponent::builder()
                 .launch(GameVariant::Genshin)
@@ -253,6 +284,8 @@ impl SimpleComponent for MainApp {
 
         model.downloading_game.emit(GameCardComponentInput::SetWidth(160));
         model.downloading_game.emit(GameCardComponentInput::SetHeight(224));
+        model.downloading_game.emit(GameCardComponentInput::SetClickable(false));
+        model.downloading_game.emit(GameCardComponentInput::SetDisplayTitle(false));
 
         for game in GameVariant::list() {
             let base_folder = game.get_base_installation_folder();
@@ -297,6 +330,7 @@ impl SimpleComponent for MainApp {
         model.available_games.broadcast(GameCardComponentInput::SetInstalled(false));
 
         let leaflet = &model.leaflet;
+        let flap = &model.flap;
 
         let main_toast_overlay = &model.main_toast_overlay;
         let game_details_toast_overlay = &model.game_details_toast_overlay;
@@ -322,6 +356,22 @@ impl SimpleComponent for MainApp {
 
             MainAppMsg::HideDetails => {
                 self.leaflet.navigate(adw::NavigationDirection::Back);
+            }
+
+            MainAppMsg::ShowTasksFlap => {
+                self.flap.set_reveal_flap(true);
+            }
+
+            MainAppMsg::HideTasksFlap => {
+                self.flap.set_reveal_flap(false);
+            }
+
+            MainAppMsg::ToggleTasksFlap => {
+                self.flap.set_reveal_flap(!self.flap.reveals_flap());
+            }
+
+            MainAppMsg::AddTask(task) => {
+                self.tasks_queue.push(task);
             }
         }
     }

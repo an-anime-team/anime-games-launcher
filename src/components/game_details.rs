@@ -24,12 +24,19 @@ pub struct GameDetailsComponent {
 pub enum GameDetailsComponentInput {
     SetVariant(GameVariant),
     SetInstalled(bool),
-    EditGameCard(GameCardComponentInput)
+    EditGameCard(GameCardComponentInput),
+
+    EmitDownloadGame
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameDetailsComponentOutput {
-    
+    DownloadGame {
+        variant: GameVariant
+    },
+
+    HideDetails,
+    ShowTasksFlap
 }
 
 #[relm4::component(async, pub)]
@@ -133,7 +140,9 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         adw::ButtonContent {
                             set_icon_name: "folder-download-symbolic",
                             set_label: "Download"
-                        }
+                        },
+
+                        connect_clicked => GameDetailsComponentInput::EmitDownloadGame
                     },
                 }
             }
@@ -162,7 +171,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             GameDetailsComponentInput::SetVariant(variant) => {
                 self.variant = variant;
@@ -176,7 +185,16 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 self.game_card.emit(GameCardComponentInput::SetInstalled(installed));
             }
 
-            GameDetailsComponentInput::EditGameCard(message) => self.game_card.emit(message)
+            GameDetailsComponentInput::EditGameCard(message) => self.game_card.emit(message),
+
+            GameDetailsComponentInput::EmitDownloadGame => {
+                sender.output(GameDetailsComponentOutput::DownloadGame {
+                    variant: self.variant
+                }).unwrap();
+
+                sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
+                sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
+            }
         }
     }
 }
