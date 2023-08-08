@@ -2,10 +2,7 @@ use relm4::prelude::*;
 use relm4::component::*;
 use relm4::factory::*;
 
-use gtk::glib::clone;
-
 use gtk::prelude::*;
-use adw::prelude::*;
 
 use crate::components::game_card::{
     GameCardComponent,
@@ -130,6 +127,9 @@ impl SimpleComponent for MainApp {
     
                                         set_margin_start: 24,
                                         add_css_class: "title-4",
+
+                                        #[watch]
+                                        set_visible: !model.installed_games.is_empty(),
     
                                         set_label: "Installed games"
                                     },
@@ -150,6 +150,9 @@ impl SimpleComponent for MainApp {
     
                                         set_margin_start: 24,
                                         add_css_class: "title-4",
+
+                                        #[watch]
+                                        set_visible: !model.available_games.is_empty(),
     
                                         set_label: "Available games"
                                     },
@@ -316,15 +319,45 @@ impl SimpleComponent for MainApp {
         model.downloading_game.emit(GameCardComponentInput::SetWidth(160));
         model.downloading_game.emit(GameCardComponentInput::SetHeight(224));
 
-        // for game in GameVariant::list() {
-        //     model.installed_games.guard().push_back(*game);
-        // }
+        for game in GameVariant::list() {
+            let base_folder = game.get_base_installation_folder();
 
-        model.installed_games.guard().push_back(GameVariant::Genshin);
-        model.installed_games.guard().push_back(GameVariant::Honkai);
-        model.installed_games.guard().push_back(GameVariant::PGR);
+            // match *game {
+            //     GameVariant::Genshin => base_folder.push(anime_game_core::game::genshin::Edition::Global.),
 
-        model.available_games.guard().push_back(GameVariant::StarRail);
+            //     _ => ()
+            // }
+
+            use anime_game_core::game::GameExt;
+
+            let installed = match *game {
+                GameVariant::Genshin => {
+                    let game = anime_game_core::game::genshin::Game::new(
+                        anime_game_core::filesystem::physical::Driver::new(base_folder),
+                        anime_game_core::game::genshin::Edition::Global
+                    );
+
+                    true
+                    // game.is_installed()
+                }
+
+                _ => false
+            };
+
+            if installed {
+                model.installed_games.guard().push_back(*game);
+            }
+
+            else {
+                model.available_games.guard().push_back(*game);
+            }
+        }
+
+        // model.installed_games.guard().push_back(GameVariant::Genshin);
+        // model.installed_games.guard().push_back(GameVariant::Honkai);
+        // model.installed_games.guard().push_back(GameVariant::PGR);
+
+        // model.available_games.guard().push_back(GameVariant::StarRail);
 
         model.available_games.broadcast(GameCardComponentInput::SetInstalled(false));
 

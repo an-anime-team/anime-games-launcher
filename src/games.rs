@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameVariant {
     Genshin,
@@ -29,7 +31,7 @@ impl GameVariant {
     pub fn get_title(&self) -> &'static str {
         match self {
             Self::Genshin  => "Genshin Impact",
-            Self::Honkai   => "Honkai Impact",
+            Self::Honkai   => "Honkai Impact 3rd",
             Self::StarRail => "Honkai: Star Rail",
             Self::PGR      => "Punishing: Gray Raven"
         }
@@ -42,6 +44,18 @@ impl GameVariant {
         }
     }
 
+    /// Get game code name
+    /// 
+    /// Example: `honkai-star-rail`
+    pub fn get_name(&self) -> &'static str {
+        match self {
+            Self::Genshin  => "genshin-impact",
+            Self::Honkai   => "honkai-impact-3rd",
+            Self::StarRail => "honkai-star-rail",
+            Self::PGR      => "punishing-gray-raven"
+        }
+    }
+
     pub fn get_details_style(&self) -> &'static str {
         match self {
             Self::Genshin  => "game-details--genshin",
@@ -49,5 +63,11 @@ impl GameVariant {
             Self::StarRail => "game-details--star-rail",
             Self::PGR      => "game-details--pgr"
         }
+    }
+
+    pub fn get_base_installation_folder(&self) -> PathBuf {
+        PathBuf::from(std::env::var("HOME").unwrap())
+            .join(".local/share/anime-games-launcher/games")
+            .join(self.get_name())
     }
 }
