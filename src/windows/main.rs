@@ -10,10 +10,11 @@ use adw::prelude::*;
 use crate::components::game_card::{
     GameCardComponent,
     GameCardFactory,
-    GameCardVariant,
     GameCardComponentInput,
     GameCardComponentOutput
 };
+
+use crate::games::GameVariant;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -22,6 +23,7 @@ pub struct MainApp {
     game_details_toast_overlay: adw::ToastOverlay,
 
     game_details_card: AsyncController<GameCardComponent>,
+    game_details_card_variant: GameVariant,
 
     installed_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
@@ -31,7 +33,7 @@ pub struct MainApp {
 
 #[derive(Debug, Clone)]
 pub enum MainAppMsg {
-    OpenDetails(GameCardVariant),
+    OpenDetails(GameVariant),
     HideDetails
 }
 
@@ -43,7 +45,7 @@ impl SimpleComponent for MainApp {
 
     view! {
         window = adw::ApplicationWindow {
-            set_default_size: (900, 600),
+            set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
 
             #[local_ref]
@@ -173,18 +175,93 @@ impl SimpleComponent for MainApp {
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
 
-                        add_css_class: "game-details--genshin",
+                        #[watch]
+                        set_css_classes: &[
+                            model.game_details_card_variant.get_details_style()
+                        ],
 
                         adw::HeaderBar {
-                            add_css_class: "flat"
+                            add_css_class: "flat",
+
+                            pack_start = &gtk::Button {
+                                set_icon_name: "go-previous-symbolic",
+
+                                connect_clicked => MainAppMsg::HideDetails
+                            }
                         },
 
                         gtk::Box {
-                            set_orientation: gtk::Orientation::Vertical,
+                            set_valign: gtk::Align::Center,
+                            set_halign: gtk::Align::Center,
 
-                            set_margin_top: 64,
+                            set_vexpand: true,
 
                             model.game_details_card.widget(),
+
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
+                                set_valign: gtk::Align::Center,
+
+                                set_margin_start: 64,
+
+                                gtk::Label {
+                                    set_halign: gtk::Align::Start,
+
+                                    add_css_class: "title-1",
+
+                                    #[watch]
+                                    set_label: model.game_details_card_variant.get_title()
+                                },
+
+                                gtk::Label {
+                                    set_halign: gtk::Align::Start,
+
+                                    set_margin_top: 8,
+
+                                    #[watch]
+                                    set_label: &format!("Publisher: {}", model.game_details_card_variant.get_publisher())
+                                },
+
+                                gtk::Label {
+                                    set_halign: gtk::Align::Start,
+
+                                    set_margin_top: 24,
+
+                                    set_label: "Played: 4,837 hours"
+                                },
+
+                                gtk::Label {
+                                    set_halign: gtk::Align::Start,
+
+                                    set_label: "Last played: yesterday"
+                                },
+
+                                gtk::Box {
+                                    set_valign: gtk::Align::Center,
+
+                                    set_margin_top: 48,
+                                    set_spacing: 8,
+
+                                    gtk::Button {
+                                        add_css_class: "pill",
+                                        add_css_class: "suggested-action",
+
+                                        adw::ButtonContent {
+                                            set_icon_name: "media-playback-start-symbolic",
+                                            set_label: "Play"
+                                        }
+                                    },
+
+                                    gtk::Button {
+                                        add_css_class: "pill",
+
+                                        adw::ButtonContent {
+                                            set_icon_name: "drive-harddisk-ieee1394-symbolic",
+                                            set_label: "Verify"
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -204,42 +281,50 @@ impl SimpleComponent for MainApp {
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
             game_details_card: GameCardComponent::builder()
-                .launch(GameCardVariant::Genshin)
+                .launch(GameVariant::Genshin)
                 .detach(),
+
+            game_details_card_variant: GameVariant::Genshin,
 
             installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
 
             downloading_game: GameCardComponent::builder()
-                .launch(GameCardVariant::Genshin)
+                .launch(GameVariant::Genshin)
                 .detach(),
 
             // installed_games: vec![
             //     GameCardComponent::builder()
-            //         .launch(GameCardVariant::Genshin)
+            //         .launch(GameVariant::Genshin)
             //         .detach(),
 
             //     GameCardComponent::builder()
-            //         .launch(GameCardVariant::Honkai)
+            //         .launch(GameVariant::Honkai)
             //         .detach()
             // ],
 
             // available_games: vec![
             //     GameCardComponent::builder()
-            //         .launch(GameCardVariant::StarRail)
+            //         .launch(GameVariant::StarRail)
             //         .detach()
             // ]
         };
 
         model.game_details_card.emit(GameCardComponentInput::SetClickable(false));
+        model.game_details_card.emit(GameCardComponentInput::SetDisplayTitle(false));
 
         model.downloading_game.emit(GameCardComponentInput::SetWidth(160));
         model.downloading_game.emit(GameCardComponentInput::SetHeight(224));
 
-        model.installed_games.guard().push_back(GameCardVariant::Genshin);
-        model.installed_games.guard().push_back(GameCardVariant::Honkai);
+        // for game in GameVariant::list() {
+        //     model.installed_games.guard().push_back(*game);
+        // }
 
-        model.available_games.guard().push_back(GameCardVariant::StarRail);
+        model.installed_games.guard().push_back(GameVariant::Genshin);
+        model.installed_games.guard().push_back(GameVariant::Honkai);
+        model.installed_games.guard().push_back(GameVariant::PGR);
+
+        model.available_games.guard().push_back(GameVariant::StarRail);
 
         model.available_games.broadcast(GameCardComponentInput::SetInstalled(false));
 
@@ -260,6 +345,7 @@ impl SimpleComponent for MainApp {
         match msg {
             MainAppMsg::OpenDetails(variant) => {
                 self.game_details_card.emit(GameCardComponentInput::SetVariant(variant));
+                self.game_details_card_variant = variant;
 
                 self.leaflet.navigate(adw::NavigationDirection::Forward);
             }

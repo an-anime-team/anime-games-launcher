@@ -5,58 +5,36 @@ use gtk::prelude::*;
 use adw::prelude::*;
 
 use crate::windows::main::MainAppMsg;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameCardVariant {
-    Genshin,
-    Honkai,
-    StarRail
-}
-
-impl GameCardVariant {
-    pub fn get_image(&self) -> &'static str {
-        match self {
-            Self::Genshin  => "images/genshin-cropped.jpg",
-            Self::Honkai   => "images/honkai-cropped.jpg",
-            Self::StarRail => "images/star-rail-cropped.jpg"
-        }
-    }
-
-    pub fn get_title(&self) -> &'static str {
-        match self {
-            Self::Genshin  => "Genshin Impact",
-            Self::Honkai   => "Honkai Impact",
-            Self::StarRail => "Honkai: Star Rail"
-        }
-    }
-}
+use crate::games::GameVariant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameCardComponent {
     pub width: i32,
     pub height: i32,
-    pub variant: GameCardVariant,
+    pub variant: GameVariant,
     pub installed: bool,
-    pub clickable: bool
+    pub clickable: bool,
+    pub display_title: bool
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameCardComponentInput {
-    SetVariant(GameCardVariant),
+    SetVariant(GameVariant),
     SetWidth(i32),
     SetHeight(i32),
     SetInstalled(bool),
-    SetClickable(bool)
+    SetClickable(bool),
+    SetDisplayTitle(bool)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameCardComponentOutput {
-    CardClicked(GameCardVariant)
+    CardClicked(GameVariant)
 }
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for GameCardComponent {
-    type Init = GameCardVariant;
+    type Init = GameVariant;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
 
@@ -126,6 +104,9 @@ impl SimpleAsyncComponent for GameCardComponent {
                     set_margin_all: 12,
 
                     #[watch]
+                    set_visible: model.display_title,
+
+                    #[watch]
                     set_label: model.variant.get_title()
                 }
             }
@@ -142,7 +123,8 @@ impl SimpleAsyncComponent for GameCardComponent {
             height: 364, // 10:14
             variant: init,
             installed: true,
-            clickable: true
+            clickable: true,
+            display_title: true
         };
 
         let widgets = view_output!();
@@ -156,7 +138,8 @@ impl SimpleAsyncComponent for GameCardComponent {
             GameCardComponentInput::SetWidth(width) => self.width = width,
             GameCardComponentInput::SetHeight(height) => self.height = height,
             GameCardComponentInput::SetInstalled(installed) => self.installed = installed,
-            GameCardComponentInput::SetClickable(clickable) => self.clickable = clickable
+            GameCardComponentInput::SetClickable(clickable) => self.clickable = clickable,
+            GameCardComponentInput::SetDisplayTitle(display_title) => self.display_title = display_title
         }
     }
 }
@@ -167,7 +150,7 @@ pub struct GameCardFactory {
 
 #[relm4::factory(pub)]
 impl FactoryComponent for GameCardFactory {
-    type Init = GameCardVariant;
+    type Init = GameVariant;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
     type CommandOutput = ();

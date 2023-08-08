@@ -2,6 +2,7 @@ use relm4::prelude::*;
 
 pub mod windows;
 pub mod components;
+pub mod games;
 
 use windows::main::MainApp;
 
@@ -26,6 +27,18 @@ fn main() {
 
         .game-details--genshin {
             background: radial-gradient(#f4cc99, #3b4b7c);
+        }
+
+        .game-details--honkai {
+            background: radial-gradient(#f8c2d0, #4078c5);
+        }
+
+        .game-details--star-rail {
+            background: radial-gradient(#c2fafb, #1c1328);
+        }
+
+        .game-details--pgr {
+            background: radial-gradient(#534232, #c6b297);
         }
     ");
 
