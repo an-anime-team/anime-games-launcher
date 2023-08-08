@@ -6,10 +6,11 @@ use gtk::prelude::*;
 
 use crate::components::game_card::{
     GameCardComponent,
-    GameCardFactory,
     GameCardComponentInput,
     GameCardComponentOutput
 };
+
+use crate::components::factory::game_card_main::GameCardFactory;
 
 use crate::components::game_details::{
     GameDetailsComponent,
@@ -17,8 +18,9 @@ use crate::components::game_details::{
     GameDetailsComponentOutput
 };
 
-use crate::tasks_queue::{
-    TasksQueue,
+use crate::components::tasks_queue::{
+    TasksQueueComponent,
+    TasksQueueComponentInput,
     Task
 };
 
@@ -37,8 +39,7 @@ pub struct MainApp {
     installed_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
 
-    tasks_queue: TasksQueue,
-    downloading_game: AsyncController<GameCardComponent>,
+    tasks_queue: AsyncController<TasksQueueComponent>
 }
 
 #[derive(Debug, Clone)]
@@ -98,49 +99,7 @@ impl SimpleComponent for MainApp {
                             set_flap = &gtk::Box {
                                 add_css_class: "background",
 
-                                gtk::Box {
-                                    set_orientation: gtk::Orientation::Vertical,
-
-                                    set_margin_start: 24,
-                                    set_margin_end: 24,
-
-                                    model.downloading_game.widget(),
-
-                                    gtk::Label {
-                                        set_halign: gtk::Align::Start,
-
-                                        set_margin_top: 24,
-
-                                        add_css_class: "title-4",
-
-                                        #[watch]
-                                        set_label: &match model.tasks_queue.get_current() {
-                                            Some(task) => format!("Downloading {}", task.get_variant().get_title()),
-                                            None => String::from("Nothing to do")
-                                        }
-                                    },
-
-                                    gtk::ProgressBar {
-                                        set_margin_top: 16,
-                                        set_fraction: 0.7
-                                    },
-
-                                    gtk::Label {
-                                        set_halign: gtk::Align::Start,
-
-                                        set_margin_top: 16,
-
-                                        set_label: "Download speed: 20 MB/s"
-                                    },
-
-                                    gtk::Label {
-                                        set_halign: gtk::Align::Start,
-
-                                        set_margin_top: 8,
-
-                                        set_label: "ETA: 7 minutes"
-                                    }
-                                }
+                                model.tasks_queue.widget(),
                             },
 
                             #[wrap(Some)]
@@ -259,9 +218,7 @@ impl SimpleComponent for MainApp {
             installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
 
-            tasks_queue: TasksQueue::new(),
-
-            downloading_game: GameCardComponent::builder()
+            tasks_queue: TasksQueueComponent::builder()
                 .launch(GameVariant::Genshin)
                 .detach(),
 
@@ -281,11 +238,6 @@ impl SimpleComponent for MainApp {
             //         .detach()
             // ]
         };
-
-        model.downloading_game.emit(GameCardComponentInput::SetWidth(160));
-        model.downloading_game.emit(GameCardComponentInput::SetHeight(224));
-        model.downloading_game.emit(GameCardComponentInput::SetClickable(false));
-        model.downloading_game.emit(GameCardComponentInput::SetDisplayTitle(false));
 
         for game in GameVariant::list() {
             let base_folder = game.get_base_installation_folder();
@@ -371,7 +323,7 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddTask(task) => {
-                self.tasks_queue.push(task);
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
             }
         }
     }

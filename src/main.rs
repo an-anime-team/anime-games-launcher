@@ -3,7 +3,6 @@ use relm4::prelude::*;
 pub mod windows;
 pub mod components;
 pub mod games;
-pub mod tasks_queue;
 
 use windows::main::MainApp;
 
