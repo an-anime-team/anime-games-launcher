@@ -11,10 +11,10 @@ use crate::components::game_card::{
     GameCardComponentOutput
 };
 
-use crate::components::game_details::GameDetailsComponentOutput;
 use crate::components::game_details::{
     GameDetailsComponent,
-    GameDetailsComponentInput
+    GameDetailsComponentInput,
+    GameDetailsComponentOutput
 };
 
 use crate::games::GameVariant;
@@ -36,7 +36,11 @@ pub struct MainApp {
 
 #[derive(Debug, Clone)]
 pub enum MainAppMsg {
-    OpenDetails(GameVariant),
+    OpenDetails {
+        variant: GameVariant,
+        installed: bool
+    },
+
     HideDetails
 }
 
@@ -247,9 +251,6 @@ impl SimpleComponent for MainApp {
             // ]
         };
 
-        model.game_details.emit(GameDetailsComponentInput::EditGameCard(GameCardComponentInput::SetClickable(false)));
-        model.game_details.emit(GameDetailsComponentInput::EditGameCard(GameCardComponentInput::SetDisplayTitle(false)));
-
         model.downloading_game.emit(GameCardComponentInput::SetWidth(160));
         model.downloading_game.emit(GameCardComponentInput::SetHeight(224));
 
@@ -310,10 +311,11 @@ impl SimpleComponent for MainApp {
 
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
-            MainAppMsg::OpenDetails(variant) => {
+            MainAppMsg::OpenDetails { variant, installed } => {
                 self.game_details_variant = variant;
 
                 self.game_details.emit(GameDetailsComponentInput::SetVariant(variant));
+                self.game_details.emit(GameDetailsComponentInput::SetInstalled(installed));
 
                 self.leaflet.navigate(adw::NavigationDirection::Forward);
             }

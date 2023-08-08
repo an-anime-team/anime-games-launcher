@@ -24,12 +24,17 @@ pub enum GameCardComponentInput {
     SetHeight(i32),
     SetInstalled(bool),
     SetClickable(bool),
-    SetDisplayTitle(bool)
+    SetDisplayTitle(bool),
+
+    EmitCardClick
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameCardComponentOutput {
-    CardClicked(GameVariant)
+    CardClicked {
+        variant: GameVariant,
+        installed: bool
+    }
 }
 
 #[relm4::component(async, pub)]
@@ -87,9 +92,7 @@ impl SimpleAsyncComponent for GameCardComponent {
                         #[watch]
                         set_visible: model.clickable,
 
-                        connect_clicked[sender] => move |_| {
-                            sender.output(GameCardComponentOutput::CardClicked(model.variant));
-                        }
+                        connect_clicked => GameCardComponentInput::EmitCardClick
 
                         // #[watch]
                         // set_icon_name: if model.installed {
@@ -132,14 +135,21 @@ impl SimpleAsyncComponent for GameCardComponent {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             GameCardComponentInput::SetVariant(variant) => self.variant = variant,
             GameCardComponentInput::SetWidth(width) => self.width = width,
             GameCardComponentInput::SetHeight(height) => self.height = height,
             GameCardComponentInput::SetInstalled(installed) => self.installed = installed,
             GameCardComponentInput::SetClickable(clickable) => self.clickable = clickable,
-            GameCardComponentInput::SetDisplayTitle(display_title) => self.display_title = display_title
+            GameCardComponentInput::SetDisplayTitle(display_title) => self.display_title = display_title,
+
+            GameCardComponentInput::EmitCardClick => {
+                sender.output(GameCardComponentOutput::CardClicked {
+                    variant: self.variant,
+                    installed: self.installed
+                }).unwrap()
+            }
         }
     }
 }
@@ -166,7 +176,8 @@ impl FactoryComponent for GameCardFactory {
 
     fn forward_to_parent(output: Self::Output) -> Option<MainAppMsg> {
         match output {
-            GameCardComponentOutput::CardClicked(variant) => Some(MainAppMsg::OpenDetails(variant))
+            GameCardComponentOutput::CardClicked { variant, installed }
+                => Some(MainAppMsg::OpenDetails { variant, installed })
         }
     }
 
