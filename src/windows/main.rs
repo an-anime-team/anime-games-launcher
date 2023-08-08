@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use relm4::prelude::*;
 use relm4::component::*;
 use relm4::factory::*;
@@ -32,7 +34,12 @@ pub struct MainApp {
     game_details_variant: GameVariant,
 
     installed_games: FactoryVecDeque<GameCardFactory>,
+    queued_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
+
+    installed_games_indexes: HashMap<GameVariant, DynamicIndex>,
+    queued_games_indexes: HashMap<GameVariant, DynamicIndex>,
+    available_games_indexes: HashMap<GameVariant, DynamicIndex>,
 
     tasks_queue: AsyncController<TasksQueueComponent>
 }
@@ -50,7 +57,7 @@ pub enum MainAppMsg {
     HideTasksFlap,
     ToggleTasksFlap,
 
-    AddTask(Task)
+    AddDownloadGameTask(GameVariant)
 }
 
 #[relm4::component(pub)]
@@ -135,6 +142,29 @@ impl SimpleComponent for MainApp {
                                         add_css_class: "title-4",
 
                                         #[watch]
+                                        set_visible: !model.queued_games.is_empty(),
+
+                                        set_label: "Queued games"
+                                    },
+
+                                    #[local_ref]
+                                    queued_games_flow_box -> gtk::FlowBox {
+                                        set_row_spacing: 12,
+                                        set_column_spacing: 12,
+
+                                        set_margin_all: 16,
+
+                                        set_homogeneous: true,
+                                        set_selection_mode: gtk::SelectionMode::None
+                                    },
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
+                                        set_margin_start: 24,
+                                        add_css_class: "title-4",
+
+                                        #[watch]
                                         set_visible: !model.available_games.is_empty(),
 
                                         set_label: "Available games"
@@ -199,9 +229,7 @@ impl SimpleComponent for MainApp {
                 .launch(GameVariant::Genshin)
                 .forward(sender.input_sender(), |message| match message {
                     GameDetailsComponentOutput::DownloadGame { variant } => {
-                        MainAppMsg::AddTask(Task::DownloadGame {
-                            variant
-                        })
+                        MainAppMsg::AddDownloadGameTask(variant)
                     }
 
                     GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
@@ -210,28 +238,17 @@ impl SimpleComponent for MainApp {
 
             game_details_variant: GameVariant::Genshin,
 
+            installed_games_indexes: HashMap::new(),
+            queued_games_indexes: HashMap::new(),
+            available_games_indexes: HashMap::new(),
+
             installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
+            queued_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
 
             tasks_queue: TasksQueueComponent::builder()
                 .launch(GameVariant::Genshin)
                 .detach(),
-
-            // installed_games: vec![
-            //     GameCardComponent::builder()
-            //         .launch(GameVariant::Genshin)
-            //         .detach(),
-
-            //     GameCardComponent::builder()
-            //         .launch(GameVariant::Honkai)
-            //         .detach()
-            // ],
-
-            // available_games: vec![
-            //     GameCardComponent::builder()
-            //         .launch(GameVariant::StarRail)
-            //         .detach()
-            // ]
         };
 
         for game in GameVariant::list() {
@@ -261,19 +278,13 @@ impl SimpleComponent for MainApp {
             };
 
             if installed {
-                model.installed_games.guard().push_back(*game);
+                model.installed_games_indexes.insert(*game, model.installed_games.guard().push_back(*game));
             }
 
             else {
-                model.available_games.guard().push_back(*game);
+                model.available_games_indexes.insert(*game, model.available_games.guard().push_back(*game));
             }
         }
-
-        // model.installed_games.guard().push_back(GameVariant::Genshin);
-        // model.installed_games.guard().push_back(GameVariant::Honkai);
-        // model.installed_games.guard().push_back(GameVariant::PGR);
-
-        // model.available_games.guard().push_back(GameVariant::StarRail);
 
         model.available_games.broadcast(GameCardComponentInput::SetInstalled(false));
 
@@ -284,6 +295,7 @@ impl SimpleComponent for MainApp {
         let game_details_toast_overlay = &model.game_details_toast_overlay;
 
         let installed_games_flow_box = model.installed_games.widget();
+        let queued_games_flow_box = model.queued_games.widget();
         let available_games_flow_box = model.available_games.widget();
 
         let widgets = view_output!();
@@ -318,8 +330,21 @@ impl SimpleComponent for MainApp {
                 self.flap.set_reveal_flap(!self.flap.reveals_flap());
             }
 
-            MainAppMsg::AddTask(task) => {
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+            MainAppMsg::AddDownloadGameTask(variant) => {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Task::DownloadGame {
+                    variant
+                }));
+
+                if let Some(index) = self.available_games_indexes.get(&variant) {
+                    self.available_games.guard().remove(index.current_index());
+
+                    self.available_games_indexes.remove(&variant);
+
+                    #[allow(clippy::map_entry)]
+                    if !self.queued_games_indexes.contains_key(&variant) {
+                        self.queued_games_indexes.insert(variant, self.queued_games.guard().push_back(variant));
+                    }
+                }
             }
         }
     }
