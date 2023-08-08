@@ -144,6 +144,7 @@ impl SimpleAsyncComponent for GameCardComponent {
     }
 }
 
+#[derive(Debug)]
 pub struct GameCardFactory {
     pub component: AsyncController<GameCardComponent>
 }

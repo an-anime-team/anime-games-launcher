@@ -11,6 +11,12 @@ use crate::components::game_card::{
     GameCardComponentOutput
 };
 
+use crate::components::game_details::GameDetailsComponentOutput;
+use crate::components::game_details::{
+    GameDetailsComponent,
+    GameDetailsComponentInput
+};
+
 use crate::games::GameVariant;
 
 pub struct MainApp {
@@ -19,8 +25,8 @@ pub struct MainApp {
     main_toast_overlay: adw::ToastOverlay,
     game_details_toast_overlay: adw::ToastOverlay,
 
-    game_details_card: AsyncController<GameCardComponent>,
-    game_details_card_variant: GameVariant,
+    game_details: AsyncController<GameDetailsComponent>,
+    game_details_variant: GameVariant,
 
     installed_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
@@ -180,7 +186,7 @@ impl SimpleComponent for MainApp {
 
                         #[watch]
                         set_css_classes: &[
-                            model.game_details_card_variant.get_details_style()
+                            model.game_details_variant.get_details_style()
                         ],
 
                         adw::HeaderBar {
@@ -193,79 +199,7 @@ impl SimpleComponent for MainApp {
                             }
                         },
 
-                        gtk::Box {
-                            set_valign: gtk::Align::Center,
-                            set_halign: gtk::Align::Center,
-
-                            set_vexpand: true,
-
-                            model.game_details_card.widget(),
-
-                            gtk::Box {
-                                set_orientation: gtk::Orientation::Vertical,
-                                set_valign: gtk::Align::Center,
-
-                                set_margin_start: 64,
-
-                                gtk::Label {
-                                    set_halign: gtk::Align::Start,
-
-                                    add_css_class: "title-1",
-
-                                    #[watch]
-                                    set_label: model.game_details_card_variant.get_title()
-                                },
-
-                                gtk::Label {
-                                    set_halign: gtk::Align::Start,
-
-                                    set_margin_top: 8,
-
-                                    #[watch]
-                                    set_label: &format!("Publisher: {}", model.game_details_card_variant.get_publisher())
-                                },
-
-                                gtk::Label {
-                                    set_halign: gtk::Align::Start,
-
-                                    set_margin_top: 24,
-
-                                    set_label: "Played: 4,837 hours"
-                                },
-
-                                gtk::Label {
-                                    set_halign: gtk::Align::Start,
-
-                                    set_label: "Last played: yesterday"
-                                },
-
-                                gtk::Box {
-                                    set_valign: gtk::Align::Center,
-
-                                    set_margin_top: 48,
-                                    set_spacing: 8,
-
-                                    gtk::Button {
-                                        add_css_class: "pill",
-                                        add_css_class: "suggested-action",
-
-                                        adw::ButtonContent {
-                                            set_icon_name: "media-playback-start-symbolic",
-                                            set_label: "Play"
-                                        }
-                                    },
-
-                                    gtk::Button {
-                                        add_css_class: "pill",
-
-                                        adw::ButtonContent {
-                                            set_icon_name: "drive-harddisk-ieee1394-symbolic",
-                                            set_label: "Verify"
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        model.game_details.widget(),
                     }
                 }
             }
@@ -283,11 +217,11 @@ impl SimpleComponent for MainApp {
             main_toast_overlay: adw::ToastOverlay::new(),
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
-            game_details_card: GameCardComponent::builder()
+            game_details: GameDetailsComponent::builder()
                 .launch(GameVariant::Genshin)
                 .detach(),
 
-            game_details_card_variant: GameVariant::Genshin,
+            game_details_variant: GameVariant::Genshin,
 
             installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
@@ -313,8 +247,8 @@ impl SimpleComponent for MainApp {
             // ]
         };
 
-        model.game_details_card.emit(GameCardComponentInput::SetClickable(false));
-        model.game_details_card.emit(GameCardComponentInput::SetDisplayTitle(false));
+        model.game_details.emit(GameDetailsComponentInput::EditGameCard(GameCardComponentInput::SetClickable(false)));
+        model.game_details.emit(GameDetailsComponentInput::EditGameCard(GameCardComponentInput::SetDisplayTitle(false)));
 
         model.downloading_game.emit(GameCardComponentInput::SetWidth(160));
         model.downloading_game.emit(GameCardComponentInput::SetHeight(224));
@@ -377,8 +311,9 @@ impl SimpleComponent for MainApp {
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             MainAppMsg::OpenDetails(variant) => {
-                self.game_details_card.emit(GameCardComponentInput::SetVariant(variant));
-                self.game_details_card_variant = variant;
+                self.game_details_variant = variant;
+
+                self.game_details.emit(GameDetailsComponentInput::SetVariant(variant));
 
                 self.leaflet.navigate(adw::NavigationDirection::Forward);
             }
