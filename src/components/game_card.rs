@@ -2,9 +2,7 @@ use relm4::prelude::*;
 use relm4::component::*;
 
 use gtk::prelude::*;
-use adw::prelude::*;
 
-use crate::windows::main::MainAppMsg;
 use crate::games::GameVariant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,8 +120,10 @@ impl SimpleAsyncComponent for GameCardComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            width: 260,
-            height: 364, // 10:14
+            // 10:14
+            width: 240, // 260,
+            height: 336, // 364,
+
             variant: init,
             installed: true,
             clickable: true,

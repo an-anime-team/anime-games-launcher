@@ -4,12 +4,7 @@ use relm4::factory::*;
 
 use gtk::prelude::*;
 
-use crate::components::game_card::{
-    GameCardComponent,
-    GameCardComponentInput,
-    GameCardComponentOutput
-};
-
+use crate::components::game_card::GameCardComponentInput;
 use crate::components::factory::game_card_main::GameCardFactory;
 
 use crate::components::game_details::{
@@ -240,7 +235,7 @@ impl SimpleComponent for MainApp {
         };
 
         for game in GameVariant::list() {
-            let base_folder = game.get_base_installation_folder();
+            // let base_folder = game.get_base_installation_folder();
 
             // match *game {
             //     GameVariant::Genshin => base_folder.push(anime_game_core::game::genshin::Edition::Global.),
@@ -248,17 +243,18 @@ impl SimpleComponent for MainApp {
             //     _ => ()
             // }
 
-            use anime_game_core::game::GameExt;
+            // use anime_game_core::game::GameExt;
 
             let installed = match *game {
                 GameVariant::Genshin => {
-                    let game = anime_game_core::game::genshin::Game::new(
-                        anime_game_core::filesystem::physical::Driver::new(base_folder),
-                        anime_game_core::game::genshin::Edition::Global
-                    );
+                    // let game = anime_game_core::game::genshin::Game::new(
+                    //     anime_game_core::filesystem::physical::Driver::new(base_folder),
+                    //     anime_game_core::game::genshin::Edition::Global
+                    // );
+
+                    // game.is_installed()
 
                     true
-                    // game.is_installed()
                 }
 
                 _ => false
@@ -295,7 +291,7 @@ impl SimpleComponent for MainApp {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             MainAppMsg::OpenDetails { variant, installed } => {
                 self.game_details_variant = variant;

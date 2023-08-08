@@ -2,14 +2,12 @@ use relm4::prelude::*;
 use relm4::component::*;
 
 use gtk::prelude::*;
-use adw::prelude::*;
 
 use crate::components::game_card::{
     GameCardComponent,
     GameCardComponentInput
 };
 
-use crate::windows::main::MainAppMsg;
 use crate::games::GameVariant;
 
 #[derive(Debug)]

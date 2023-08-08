@@ -30,7 +30,7 @@ impl FactoryComponent for GameCardFactory {
         }
     }
 
-    fn forward_to_parent(output: Self::Output) -> Option<TasksQueueComponentInput> {
+    fn forward_to_parent(_output: Self::Output) -> Option<TasksQueueComponentInput> {
         None
     }
 
