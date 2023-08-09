@@ -6,6 +6,8 @@ use relm4::factory::*;
 
 use gtk::prelude::*;
 
+use anime_game_core::game::GameExt;
+
 use crate::components::game_card::GameCardComponentInput;
 use crate::components::factory::game_card_main::GameCardFactory;
 
@@ -22,6 +24,7 @@ use crate::components::tasks_queue::{
 };
 
 use crate::games::GameVariant;
+use crate::config;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -255,26 +258,14 @@ impl SimpleComponent for MainApp {
         };
 
         for game in GameVariant::list() {
-            // let base_folder = game.get_base_installation_folder();
-
-            // match *game {
-            //     GameVariant::Genshin => base_folder.push(anime_game_core::game::genshin::Edition::Global.),
-
-            //     _ => ()
-            // }
-
-            // use anime_game_core::game::GameExt;
-
             let installed = match *game {
                 GameVariant::Genshin => {
-                    // let game = anime_game_core::game::genshin::Game::new(
-                    //     anime_game_core::filesystem::physical::Driver::new(base_folder),
-                    //     anime_game_core::game::genshin::Edition::Global
-                    // );
+                    let game = anime_game_core::game::genshin::Game::new(
+                        anime_game_core::filesystem::physical::Driver::new(game.get_folder()),
+                        config::get().games.genshin.edition
+                    );
 
-                    // game.is_installed()
-
-                    true
+                    game.is_installed()
                 }
 
                 _ => false

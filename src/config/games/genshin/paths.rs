@@ -1,8 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Serialize, Deserialize};
 
 use serde_json::Value as Json;
+
+use anime_game_core::game::genshin::Edition;
 
 use crate::LAUNCHER_FOLDER;
 
@@ -18,6 +20,16 @@ impl Default for Paths {
         Self {
             global: LAUNCHER_FOLDER.join("games/genshin-impact/global"),
             china: LAUNCHER_FOLDER.join("games/genshin-impact/china")
+        }
+    }
+}
+
+impl Paths {
+    #[inline]
+    pub fn for_edition(&self, edition: Edition) -> &Path {
+        match edition {
+            Edition::Global => self.global.as_path(),
+            Edition::China  => self.china.as_path()
         }
     }
 }

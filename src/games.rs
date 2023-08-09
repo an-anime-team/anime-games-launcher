@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::config;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameVariant {
     Genshin,
@@ -19,6 +21,7 @@ impl GameVariant {
         ]
     }
 
+    #[inline]
     pub fn get_image(&self) -> &'static str {
         match self {
             Self::Genshin  => "images/genshin-cropped.jpg",
@@ -28,6 +31,7 @@ impl GameVariant {
         }
     }
 
+    #[inline]
     pub fn get_title(&self) -> &'static str {
         match self {
             Self::Genshin  => "Genshin Impact",
@@ -37,6 +41,7 @@ impl GameVariant {
         }
     }
 
+    #[inline]
     pub fn get_publisher(&self) -> &'static str {
         match self {
             Self::Genshin | Self::Honkai | Self::StarRail => "Hoyoverse",
@@ -44,6 +49,7 @@ impl GameVariant {
         }
     }
 
+    #[inline]
     /// Get game code name
     /// 
     /// Example: `honkai-star-rail`
@@ -56,6 +62,7 @@ impl GameVariant {
         }
     }
 
+    #[inline]
     pub fn get_details_style(&self) -> &'static str {
         match self {
             Self::Genshin  => "game-details--genshin",
@@ -65,9 +72,12 @@ impl GameVariant {
         }
     }
 
-    pub fn get_base_installation_folder(&self) -> PathBuf {
-        PathBuf::from(std::env::var("HOME").unwrap())
-            .join(".local/share/anime-games-launcher/games")
-            .join(self.get_name())
+    #[inline]
+    pub fn get_folder(&self) -> PathBuf {
+        let config = config::get();
+
+        config.games.genshin.paths
+            .for_edition(config.games.genshin.edition)
+            .to_path_buf()
     }
 }
