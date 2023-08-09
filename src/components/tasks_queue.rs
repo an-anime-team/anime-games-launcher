@@ -6,6 +6,14 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
+use anime_game_core::updater::UpdaterExt;
+
+use anime_game_core::game::genshin::diff::{
+    Updater as GenshinDiffUpdater,
+    Status as GenshinDiffStatus,
+    Error as GenshinDiffError
+};
+
 use crate::components::game_card::{
     GameCardComponent,
     GameCardComponentInput
@@ -14,20 +22,17 @@ use crate::components::game_card::{
 use crate::components::factory::game_card_tasks::GameCardFactory;
 use crate::games::GameVariant;
 
-#[derive(Clone)]
 pub enum Task {
-    DownloadGame {
-        variant: GameVariant,
-        // diff: Rc<Box<dyn DiffExt>>
+    DownloadGenshinDiff {
+        updater: GenshinDiffUpdater
     }
 }
 
 impl std::fmt::Debug for Task {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DownloadGame { variant, .. } => {
-                f.debug_struct("DownloadGame")
-                    .field("variant", variant)
+            Self::DownloadGenshinDiff { .. } => {
+                f.debug_struct("DownloadGenshinDiff")
                     .finish()
             }
         }
@@ -37,13 +42,15 @@ impl std::fmt::Debug for Task {
 impl Task {
     pub fn get_variant(&self) -> GameVariant {
         match self {
-            Self::DownloadGame { variant, .. } => *variant
+            Self::DownloadGenshinDiff { .. } => GameVariant::Genshin
         }
     }
 
     /// Get task completion progress
     pub fn get_progress(&self) -> f64 {
-        0.7
+        match self {
+            Self::DownloadGenshinDiff { updater } => updater.progress()
+        }
     }
 }
 
@@ -53,10 +60,12 @@ pub struct TasksQueueComponent {
     pub current_task: Option<Task>,
 
     pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
-    pub queued_tasks: VecDeque<Task>
+    pub queued_tasks: VecDeque<Task>,
+
+    pub progress_bar: gtk::ProgressBar
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum TasksQueueComponentInput {
     AddTask(Task)
 }
@@ -113,9 +122,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 }
             },
 
-            gtk::ProgressBar {
+            #[local_ref]
+            progress_bar -> gtk::ProgressBar {
                 set_margin_top: 16,
-                set_fraction: 0.7,
 
                 #[watch]
                 set_visible: model.current_task.is_some(),
@@ -172,13 +181,17 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             current_task: None,
 
             queued_tasks_factory: FactoryVecDeque::new(flow_box, sender.input_sender()),
-            queued_tasks: VecDeque::new()
+            queued_tasks: VecDeque::new(),
+
+            progress_bar: gtk::ProgressBar::new(),
         };
 
         model.current_task_card.emit(GameCardComponentInput::SetWidth(160));
         model.current_task_card.emit(GameCardComponentInput::SetHeight(224));
         model.current_task_card.emit(GameCardComponentInput::SetClickable(false));
         model.current_task_card.emit(GameCardComponentInput::SetDisplayTitle(false));
+
+        let progress_bar = &model.progress_bar;
 
         let widgets = view_output!();
 

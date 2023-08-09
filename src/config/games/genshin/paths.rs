@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use serde::{Serialize, Deserialize};
 
 use serde_json::Value as Json;
@@ -8,28 +6,39 @@ use anime_game_core::game::genshin::Edition;
 
 use crate::LAUNCHER_FOLDER;
 
+use crate::config::driver::Driver;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Paths {
-    pub global: PathBuf,
-    pub china: PathBuf
+    pub global: Driver,
+    pub china: Driver
 }
 
 impl Default for Paths {
     #[inline]
     fn default() -> Self {
+        let game_folder = LAUNCHER_FOLDER
+            .join("games")
+            .join(concat!("Gen", "shin Im", "pact"));
+
         Self {
-            global: LAUNCHER_FOLDER.join("games/genshin-impact/global"),
-            china: LAUNCHER_FOLDER.join("games/genshin-impact/china")
+            global: Driver::PhysicalFsDriver {
+                base_folder: game_folder.join("global")
+            },
+
+            china: Driver::PhysicalFsDriver {
+                base_folder: game_folder.join("china")
+            }
         }
     }
 }
 
 impl Paths {
     #[inline]
-    pub fn for_edition(&self, edition: Edition) -> &Path {
+    pub fn for_edition(&self, edition: Edition) -> &Driver {
         match edition {
-            Edition::Global => self.global.as_path(),
-            Edition::China  => self.china.as_path()
+            Edition::Global => &self.global,
+            Edition::China  => &self.china
         }
     }
 }
@@ -41,13 +50,11 @@ impl From<&Json> for Paths {
 
         Self {
             global: value.get("global")
-                .and_then(Json::as_str)
-                .map(PathBuf::from)
+                .and_then(|value| Driver::try_from(value).ok())
                 .unwrap_or(default.global),
 
             china: value.get("china")
-                .and_then(Json::as_str)
-                .map(PathBuf::from)
+                .and_then(|value| Driver::try_from(value).ok())
                 .unwrap_or(default.china),
         }
     }

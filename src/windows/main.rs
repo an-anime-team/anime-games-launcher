@@ -7,6 +7,8 @@ use relm4::factory::*;
 use gtk::prelude::*;
 
 use anime_game_core::game::GameExt;
+use anime_game_core::game::diff::GetDiffExt;
+use anime_game_core::game::diff::DiffExt;
 
 use crate::components::game_card::GameCardComponentInput;
 use crate::components::factory::game_card_main::GameCardFactory;
@@ -257,16 +259,11 @@ impl SimpleComponent for MainApp {
                 .detach(),
         };
 
+        let config = config::get();
+
         for game in GameVariant::list() {
             let installed = match *game {
-                GameVariant::Genshin => {
-                    let game = anime_game_core::game::genshin::Game::new(
-                        anime_game_core::filesystem::physical::Driver::new(game.get_folder()),
-                        config::get().games.genshin.edition
-                    );
-
-                    game.is_installed()
-                }
+                GameVariant::Genshin => config.games.genshin.to_game().is_installed(),
 
                 _ => false
             };
@@ -325,9 +322,24 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddDownloadGameTask(variant) => {
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Task::DownloadGame {
-                    variant
-                }));
+                let config = config::get();
+
+                let task = match variant {
+                    GameVariant::Genshin => {
+                        Task::DownloadGenshinDiff {
+                            updater: config.games.genshin
+                                .to_game()
+                                .get_diff()
+                                .unwrap() // FIXME
+                                .install()
+                                .unwrap() // FIXME
+                        }
+                    },
+
+                    _ => unimplemented!()
+                };
+
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
                 if let Some(index) = self.available_games_indexes.get(&variant) {
                     self.available_games.guard().remove(index.current_index());

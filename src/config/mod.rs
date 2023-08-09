@@ -3,6 +3,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
 pub mod games;
+pub mod driver;
 
 use crate::CONFIG_FILE;
 
