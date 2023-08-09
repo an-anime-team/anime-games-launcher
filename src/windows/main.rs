@@ -346,6 +346,9 @@ impl SimpleComponent for MainApp {
                     #[allow(clippy::map_entry)]
                     if !self.queued_games_indexes.contains_key(&variant) {
                         self.queued_games_indexes.insert(variant, self.queued_games.guard().push_back(variant));
+
+                        self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
+                        self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
                     }
                 }
             }
