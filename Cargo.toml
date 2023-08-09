@@ -32,3 +32,10 @@ path = "../anime-game-core"
 # version = "0.11"
 # features = ["xdg-portal"]
 # default-features = false
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+anyhow = { version = "1.0", features = ["backtrace"] }
+lazy_static = "1.4.0"

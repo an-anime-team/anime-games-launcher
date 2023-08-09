@@ -1,12 +1,38 @@
+use std::path::PathBuf;
+
 use relm4::prelude::*;
 
 pub mod windows;
 pub mod components;
 pub mod games;
+pub mod config;
 
 use windows::main::MainApp;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
+
+lazy_static::lazy_static! {
+    /// Path to the launcher's data folder
+    /// 
+    /// Resolution order:
+    /// 
+    /// - `$LAUNCHER_FOLDER`
+    /// - `$XDG_DATA_HOME/anime-games-launcher`
+    /// - `$HOME/.local/share/anime-games-launcher`
+    pub static ref LAUNCHER_FOLDER: PathBuf = {
+        std::env::var("LAUNCHER_FOLDER")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| std::env::var("XDG_DATA_HOME")
+                .map(|data| PathBuf::from(data).join("anime-games-launcher"))
+                .unwrap_or_else(|_| std::env::var("HOME")
+                    .map(|home| PathBuf::from(home).join(".local/share/anime-games-launcher"))
+                    .expect("Failed to locate launcher data folder")
+                ))
+    };
+
+    /// Path to the launcher's config file
+    pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
+}
 
 fn main() {
     adw::init().expect("Libadwaita initialization failed");

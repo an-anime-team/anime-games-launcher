@@ -33,9 +33,13 @@ name = "anime-games-launcher"
 version = "1.0.0"
 dependencies = [
  "anime-game-core",
+ "anyhow",
  "gtk4",
+ "lazy_static",
  "libadwaita",
  "relm4",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -43,6 +47,9 @@ name = "anyhow"
 version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
+dependencies = [
+ "backtrace",
+]
 
 [[package]]
 name = "async-trait"
