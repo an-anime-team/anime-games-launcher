@@ -105,6 +105,9 @@ impl SimpleComponent for MainApp {
                             },
 
                             #[wrap(Some)]
+                            set_separator = &gtk::Separator,
+
+                            #[wrap(Some)]
                             set_content = &gtk::ScrolledWindow {
                                 set_hexpand: true,
                                 set_vexpand: true,

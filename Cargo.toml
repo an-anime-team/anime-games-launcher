@@ -27,3 +27,8 @@ features = ["v1_3"]
 # git = "https://github.com/an-anime-team/anime-game-core"
 # branch = "v2.0.0-rewrite"
 path = "../anime-game-core"
+
+# [dependencies.rfd]
+# version = "0.11"
+# features = ["xdg-portal"]
+# default-features = false
