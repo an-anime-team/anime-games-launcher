@@ -10,20 +10,20 @@ use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
 
-use crate::components::game_card::{
+use crate::ui::components::game_card::{
     GameCardComponentInput,
     CardVariant
 };
 
-use crate::components::factory::game_card_main::GameCardFactory;
+use crate::ui::components::factory::game_card_main::GameCardFactory;
 
-use crate::components::game_details::{
+use crate::ui::components::game_details::{
     GameDetailsComponent,
     GameDetailsComponentInput,
     GameDetailsComponentOutput
 };
 
-use crate::components::tasks_queue::{
+use crate::ui::components::tasks_queue::{
     TasksQueueComponent,
     TasksQueueComponentInput,
     TasksQueueComponentOutput,

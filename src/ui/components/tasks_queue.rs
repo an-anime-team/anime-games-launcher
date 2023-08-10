@@ -15,13 +15,13 @@ use anime_game_core::game::genshin::diff::{
     Error as GenshinDiffError
 };
 
-use crate::components::game_card::{
+use crate::ui::components::game_card::{
     GameCardComponent,
     GameCardComponentInput,
     CardVariant
 };
 
-use crate::components::factory::game_card_tasks::GameCardFactory;
+use crate::ui::components::factory::game_card_tasks::GameCardFactory;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// All the possible tasks statuses in one enum

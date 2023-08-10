@@ -3,7 +3,7 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
-use crate::components::game_card::{
+use crate::ui::components::game_card::{
     GameCardComponent,
     GameCardComponentInput,
     CardVariant

@@ -2,11 +2,10 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
-pub mod windows;
-pub mod components;
+pub mod ui;
 pub mod config;
 
-use windows::main::MainApp;
+use ui::windows::main::MainApp;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 

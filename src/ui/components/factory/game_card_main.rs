@@ -1,9 +1,9 @@
 use relm4::prelude::*;
 use relm4::component::*;
 
-use crate::windows::main::MainAppMsg;
+use crate::ui::windows::main::MainAppMsg;
 
-use crate::components::game_card::{
+use crate::ui::components::game_card::{
     GameCardComponent,
     GameCardComponentInput,
     GameCardComponentOutput,
