@@ -2,12 +2,12 @@ use relm4::prelude::*;
 use relm4::component::*;
 
 use crate::windows::main::MainAppMsg;
-use crate::games::GameVariant;
 
 use crate::components::game_card::{
     GameCardComponent,
     GameCardComponentInput,
-    GameCardComponentOutput
+    GameCardComponentOutput,
+    CardVariant
 };
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct GameCardFactory {
 
 #[relm4::factory(pub)]
 impl FactoryComponent for GameCardFactory {
-    type Init = GameVariant;
+    type Init = CardVariant;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
     type CommandOutput = ();

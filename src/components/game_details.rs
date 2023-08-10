@@ -5,22 +5,21 @@ use gtk::prelude::*;
 
 use crate::components::game_card::{
     GameCardComponent,
-    GameCardComponentInput
+    GameCardComponentInput,
+    CardVariant
 };
-
-use crate::games::GameVariant;
 
 #[derive(Debug)]
 pub struct GameDetailsComponent {
     pub game_card: AsyncController<GameCardComponent>,
 
-    pub variant: GameVariant,
+    pub variant: CardVariant,
     pub installed: bool
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameDetailsComponentInput {
-    SetVariant(GameVariant),
+    SetVariant(CardVariant),
     SetInstalled(bool),
     EditGameCard(GameCardComponentInput),
 
@@ -30,7 +29,7 @@ pub enum GameDetailsComponentInput {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameDetailsComponentOutput {
     DownloadGame {
-        variant: GameVariant
+        variant: CardVariant
     },
 
     HideDetails,
@@ -39,7 +38,7 @@ pub enum GameDetailsComponentOutput {
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for GameDetailsComponent {
-    type Init = GameVariant;
+    type Init = CardVariant;
     type Input = GameDetailsComponentInput;
     type Output = GameDetailsComponentOutput;
 
@@ -74,7 +73,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     set_margin_top: 8,
 
                     #[watch]
-                    set_label: &format!("Publisher: {}", model.variant.get_publisher())
+                    set_label: &format!("Developer: {}", model.variant.get_author())
                 },
 
                 gtk::Label {

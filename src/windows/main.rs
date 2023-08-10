@@ -10,7 +10,11 @@ use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
 
-use crate::components::game_card::GameCardComponentInput;
+use crate::components::game_card::{
+    GameCardComponentInput,
+    CardVariant
+};
+
 use crate::components::factory::game_card_main::GameCardFactory;
 
 use crate::components::game_details::{
@@ -26,7 +30,6 @@ use crate::components::tasks_queue::{
     Task
 };
 
-use crate::games::GameVariant;
 use crate::config;
 
 pub struct MainApp {
@@ -37,15 +40,15 @@ pub struct MainApp {
     game_details_toast_overlay: adw::ToastOverlay,
 
     game_details: AsyncController<GameDetailsComponent>,
-    game_details_variant: GameVariant,
+    game_details_variant: CardVariant,
 
     installed_games: FactoryVecDeque<GameCardFactory>,
     queued_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
 
-    installed_games_indexes: HashMap<GameVariant, DynamicIndex>,
-    queued_games_indexes: HashMap<GameVariant, DynamicIndex>,
-    available_games_indexes: HashMap<GameVariant, DynamicIndex>,
+    installed_games_indexes: HashMap<CardVariant, DynamicIndex>,
+    queued_games_indexes: HashMap<CardVariant, DynamicIndex>,
+    available_games_indexes: HashMap<CardVariant, DynamicIndex>,
 
     tasks_queue: AsyncController<TasksQueueComponent>
 }
@@ -53,7 +56,7 @@ pub struct MainApp {
 #[derive(Debug, Clone)]
 pub enum MainAppMsg {
     OpenDetails {
-        variant: GameVariant,
+        variant: CardVariant,
         installed: bool
     },
 
@@ -63,7 +66,7 @@ pub enum MainAppMsg {
     HideTasksFlap,
     ToggleTasksFlap,
 
-    AddDownloadGameTask(GameVariant),
+    AddDownloadGameTask(CardVariant),
 
     ShowTitle {
         title: String,
@@ -240,7 +243,7 @@ impl SimpleComponent for MainApp {
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
             game_details: GameDetailsComponent::builder()
-                .launch(GameVariant::Genshin)
+                .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |message| match message {
                     GameDetailsComponentOutput::DownloadGame { variant } => {
                         MainAppMsg::AddDownloadGameTask(variant)
@@ -250,7 +253,7 @@ impl SimpleComponent for MainApp {
                     GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap
                 }),
 
-            game_details_variant: GameVariant::Genshin,
+            game_details_variant: CardVariant::Genshin,
 
             installed_games_indexes: HashMap::new(),
             queued_games_indexes: HashMap::new(),
@@ -261,7 +264,7 @@ impl SimpleComponent for MainApp {
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
 
             tasks_queue: TasksQueueComponent::builder()
-                .launch(GameVariant::Genshin)
+                .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |output| match output {
                     TasksQueueComponentOutput::ShowToast { title, message } => MainAppMsg::ShowTitle { title, message }
                 }),
@@ -269,9 +272,9 @@ impl SimpleComponent for MainApp {
 
         let config = config::get();
 
-        for game in GameVariant::list() {
+        for game in CardVariant::games() {
             let installed = match *game {
-                GameVariant::Genshin => config.games.genshin.to_game().is_installed(),
+                CardVariant::Genshin => config.games.genshin.to_game().is_installed(),
 
                 _ => false
             };
@@ -333,7 +336,7 @@ impl SimpleComponent for MainApp {
                 let config = config::get();
 
                 let task = match variant {
-                    GameVariant::Genshin => {
+                    CardVariant::Genshin => {
                         Task::DownloadGenshinDiff {
                             updater: config.games.genshin
                                 .to_game()

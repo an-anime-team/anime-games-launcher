@@ -17,11 +17,11 @@ use anime_game_core::game::genshin::diff::{
 
 use crate::components::game_card::{
     GameCardComponent,
-    GameCardComponentInput
+    GameCardComponentInput,
+    CardVariant
 };
 
 use crate::components::factory::game_card_tasks::GameCardFactory;
-use crate::games::GameVariant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// All the possible tasks statuses in one enum
@@ -53,9 +53,9 @@ impl std::fmt::Debug for Task {
 }
 
 impl Task {
-    pub fn get_variant(&self) -> GameVariant {
+    pub fn get_variant(&self) -> CardVariant {
         match self {
-            Self::DownloadGenshinDiff { .. } => GameVariant::Genshin
+            Self::DownloadGenshinDiff { .. } => CardVariant::Genshin
         }
     }
 
@@ -127,7 +127,7 @@ pub enum TasksQueueComponentOutput {
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for TasksQueueComponent {
-    type Init = GameVariant;
+    type Init = CardVariant;
     type Input = TasksQueueComponentInput;
     type Output = TasksQueueComponentOutput;
 

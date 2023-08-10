@@ -1,14 +1,19 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GameVariant {
+pub enum CardVariant {
     Genshin,
     Honkai,
     StarRail,
-    PGR
+    PGR,
+
+    Component {
+        title: &'static str,
+        author: &'static str
+    }
 }
 
-impl GameVariant {
+impl CardVariant {
     #[inline]
-    pub fn list() -> &'static [Self] {
+    pub fn games() -> &'static [Self] {
         &[
             Self::Genshin,
             Self::Honkai,
@@ -23,7 +28,9 @@ impl GameVariant {
             Self::Genshin  => "images/genshin-cropped.jpg",
             Self::Honkai   => "images/honkai-cropped.jpg",
             Self::StarRail => "images/star-rail-cropped.jpg",
-            Self::PGR      => "images/pgr-cropped.jpg"
+            Self::PGR      => "images/pgr-cropped.jpg",
+
+            Self::Component { .. } => "images/component.png"
         }
     }
 
@@ -33,15 +40,22 @@ impl GameVariant {
             Self::Genshin  => "Genshin Impact",
             Self::Honkai   => "Honkai Impact 3rd",
             Self::StarRail => "Honkai: Star Rail",
-            Self::PGR      => "Punishing: Gray Raven"
+            Self::PGR      => "Punishing: Gray Raven",
+
+            Self::Component { title, .. } => title
         }
     }
 
     #[inline]
-    pub fn get_publisher(&self) -> &'static str {
+    pub fn get_author(&self) -> &'static str {
         match self {
-            Self::Genshin | Self::Honkai | Self::StarRail => "Hoyoverse",
-            Self::PGR => "Kuro Game"
+            Self::Genshin |
+            Self::Honkai |
+            Self::StarRail => "Hoyoverse",
+
+            Self::PGR => "Kuro Game",
+
+            Self::Component { author, .. } => author
         }
     }
 
@@ -51,7 +65,9 @@ impl GameVariant {
             Self::Genshin  => "game-details--genshin",
             Self::Honkai   => "game-details--honkai",
             Self::StarRail => "game-details--star-rail",
-            Self::PGR      => "game-details--pgr"
+            Self::PGR      => "game-details--pgr",
+
+            Self::Component { .. } => ""
         }
     }
 }

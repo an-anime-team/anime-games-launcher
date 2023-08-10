@@ -4,7 +4,6 @@ use relm4::prelude::*;
 
 pub mod windows;
 pub mod components;
-pub mod games;
 pub mod config;
 
 use windows::main::MainApp;

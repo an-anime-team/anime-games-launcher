@@ -3,13 +3,15 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
-use crate::games::GameVariant;
+mod variants;
+
+pub use variants::CardVariant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameCardComponent {
     pub width: i32,
     pub height: i32,
-    pub variant: GameVariant,
+    pub variant: CardVariant,
     pub installed: bool,
     pub clickable: bool,
     pub display_title: bool
@@ -17,7 +19,7 @@ pub struct GameCardComponent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameCardComponentInput {
-    SetVariant(GameVariant),
+    SetVariant(CardVariant),
     SetWidth(i32),
     SetHeight(i32),
     SetInstalled(bool),
@@ -30,14 +32,14 @@ pub enum GameCardComponentInput {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameCardComponentOutput {
     CardClicked {
-        variant: GameVariant,
+        variant: CardVariant,
         installed: bool
     }
 }
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for GameCardComponent {
-    type Init = GameVariant;
+    type Init = CardVariant;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
 
