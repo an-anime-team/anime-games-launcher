@@ -31,7 +31,8 @@ pub enum UnifiedTaskStatus {
     Unpacking,
     FinishingTransition,
     ApplyingHdiffPatches,
-    DeletingObsoleteFiles
+    DeletingObsoleteFiles,
+    Finished
 }
 
 pub enum Task {
@@ -58,6 +59,13 @@ impl Task {
         }
     }
 
+    /// Check if the task is finished
+    pub fn is_finished(&mut self) -> bool {
+        match self {
+            Self::DownloadGenshinDiff { updater } => updater.is_finished()
+        }
+    }
+
     /// Get task completion progress
     pub fn get_progress(&self) -> f64 {
         match self {
@@ -70,20 +78,15 @@ impl Task {
         match self {
             Self::DownloadGenshinDiff { updater } => {
                 match updater.status() {
-                    Ok(status) => {
-                        let status = match status {
-                            GenshinDiffStatus::PreparingTransition   => UnifiedTaskStatus::PreparingTransition,
-                            GenshinDiffStatus::Downloading           => UnifiedTaskStatus::Downloading,
-                            GenshinDiffStatus::Unpacking             => UnifiedTaskStatus::Unpacking,
-                            GenshinDiffStatus::FinishingTransition   => UnifiedTaskStatus::FinishingTransition,
-                            GenshinDiffStatus::ApplyingHdiffPatches  => UnifiedTaskStatus::ApplyingHdiffPatches,
-                            GenshinDiffStatus::DeletingObsoleteFiles => UnifiedTaskStatus::DeletingObsoleteFiles
-                        };
-
-                        dbg!(&status);
-
-                        Ok(status)
-                    }
+                    Ok(status) => Ok(match status {
+                        GenshinDiffStatus::PreparingTransition   => UnifiedTaskStatus::PreparingTransition,
+                        GenshinDiffStatus::Downloading           => UnifiedTaskStatus::Downloading,
+                        GenshinDiffStatus::Unpacking             => UnifiedTaskStatus::Unpacking,
+                        GenshinDiffStatus::FinishingTransition   => UnifiedTaskStatus::FinishingTransition,
+                        GenshinDiffStatus::ApplyingHdiffPatches  => UnifiedTaskStatus::ApplyingHdiffPatches,
+                        GenshinDiffStatus::DeletingObsoleteFiles => UnifiedTaskStatus::DeletingObsoleteFiles,
+                        GenshinDiffStatus::Finished              => UnifiedTaskStatus::Finished
+                    }),
 
                     Err(err) => anyhow::bail!(err.to_string())
                 }
@@ -103,13 +106,15 @@ pub struct TasksQueueComponent {
 
     pub progress_bar: gtk::ProgressBar,
 
-    pub updater: JoinHandle<()>
+    pub updater: Option<JoinHandle<()>>
 }
 
 #[derive(Debug)]
 pub enum TasksQueueComponentInput {
     AddTask(Task),
-    UpdateCurrentTask
+    UpdateCurrentTask,
+    StartUpdater,
+    StopUpdater
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,13 +248,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
             progress_bar: gtk::ProgressBar::new(),
 
-            updater: std::thread::spawn(move || {
-                loop {
-                    sender.input(TasksQueueComponentInput::UpdateCurrentTask);
-
-                    std::thread::sleep(std::time::Duration::from_millis(250));
-                }
-            })
+            updater: None
         };
 
         model.current_task_card.emit(GameCardComponentInput::SetWidth(160));
@@ -278,36 +277,64 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                     self.queued_tasks.push_back(task);
                 }
+
+                sender.input(TasksQueueComponentInput::StartUpdater);
             }
 
             TasksQueueComponentInput::UpdateCurrentTask => {
                 if let Some(task) = &mut self.current_task {
-                    self.progress_bar.set_fraction(task.get_progress());
+                    if task.is_finished() {
+                        self.current_task = None;
 
-                    match task.get_unified_status() {
-                        Ok(status) => {
-                            let title = match status {
-                                UnifiedTaskStatus::PreparingTransition   => String::from("Preparing transition..."),
-                                UnifiedTaskStatus::Downloading           => String::from("Downloading..."),
-                                UnifiedTaskStatus::Unpacking             => String::from("Unpacking..."),
-                                UnifiedTaskStatus::FinishingTransition   => String::from("Finishing transition..."),
-                                UnifiedTaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
-                                UnifiedTaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files...")
-                            };
-    
-                            self.current_task_status = title;
-                        }
+                        // clear() won't emit relm4's #[watch]
+                        self.current_task_status = String::new();
 
-                        Err(err) => {
-                            sender.output(TasksQueueComponentOutput::ShowToast {
-                                title: String::from("Failed to update current tasks's status"),
-                                message: Some(err.to_string())
-                            }).unwrap();
+                        sender.input(TasksQueueComponentInput::StopUpdater);
+                    }
 
-                            // todo: remove current task
+                    else {
+                        self.progress_bar.set_fraction(task.get_progress());
+
+                        match task.get_unified_status() {
+                            Ok(status) => {
+                                let title = match status {
+                                    UnifiedTaskStatus::PreparingTransition   => String::from("Preparing transition..."),
+                                    UnifiedTaskStatus::Downloading           => String::from("Downloading..."),
+                                    UnifiedTaskStatus::Unpacking             => String::from("Unpacking..."),
+                                    UnifiedTaskStatus::FinishingTransition   => String::from("Finishing transition..."),
+                                    UnifiedTaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
+                                    UnifiedTaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files..."),
+                                    UnifiedTaskStatus::Finished              => String::from("Finished")
+                                };
+
+                                self.current_task_status = title;
+                            }
+
+                            Err(err) => {
+                                sender.output(TasksQueueComponentOutput::ShowToast {
+                                    title: String::from("Failed to update current tasks's status"),
+                                    message: Some(err.to_string())
+                                }).unwrap();
+
+                                // todo: remove current task
+                            }
                         }
                     }
                 }
+            }
+
+            TasksQueueComponentInput::StartUpdater => {
+                self.updater = Some(std::thread::spawn(move || {
+                    loop {
+                        sender.input(TasksQueueComponentInput::UpdateCurrentTask);
+    
+                        std::thread::sleep(std::time::Duration::from_millis(20));
+                    }
+                }));
+            }
+
+            TasksQueueComponentInput::StopUpdater => {
+                self.updater = None;
             }
         }
     }
