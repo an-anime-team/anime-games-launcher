@@ -22,6 +22,7 @@ use crate::components::game_details::{
 use crate::components::tasks_queue::{
     TasksQueueComponent,
     TasksQueueComponentInput,
+    TasksQueueComponentOutput,
     Task
 };
 
@@ -62,7 +63,12 @@ pub enum MainAppMsg {
     HideTasksFlap,
     ToggleTasksFlap,
 
-    AddDownloadGameTask(GameVariant)
+    AddDownloadGameTask(GameVariant),
+
+    ShowTitle {
+        title: String,
+        message: Option<String>
+    }
 }
 
 #[relm4::component(pub)]
@@ -256,7 +262,9 @@ impl SimpleComponent for MainApp {
 
             tasks_queue: TasksQueueComponent::builder()
                 .launch(GameVariant::Genshin)
-                .detach(),
+                .forward(sender.input_sender(), |output| match output {
+                    TasksQueueComponentOutput::ShowToast { title, message } => MainAppMsg::ShowTitle { title, message }
+                }),
         };
 
         let config = config::get();
@@ -354,6 +362,14 @@ impl SimpleComponent for MainApp {
                         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
                     }
                 }
+            }
+
+            MainAppMsg::ShowTitle { title, message } => {
+                let toast = adw::Toast::new(&title);
+
+                // toast.set_timeout(7);
+
+                self.main_toast_overlay.add_toast(toast);
             }
         }
     }
