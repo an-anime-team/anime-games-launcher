@@ -4,6 +4,7 @@ use relm4::prelude::*;
 
 pub mod ui;
 pub mod config;
+pub mod components;
 
 use ui::windows::main::MainApp;
 

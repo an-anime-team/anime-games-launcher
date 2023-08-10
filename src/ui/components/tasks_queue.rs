@@ -284,6 +284,15 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             TasksQueueComponentInput::UpdateCurrentTask => {
                 if let Some(task) = &mut self.current_task {
                     if task.is_finished() {
+                        if let Err(err) = task.get_unified_status() {
+                            sender.output(TasksQueueComponentOutput::ShowToast {
+                                title: format!("Failed to download {}", task.get_variant().get_title()),
+                                message: Some(err.to_string())
+                            }).unwrap();
+
+                            // todo: remove current task
+                        }
+
                         self.current_task = None;
                         self.current_task_status.clear();
 
@@ -293,29 +302,18 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     else {
                         self.progress_bar.set_fraction(task.get_progress());
 
-                        match task.get_unified_status() {
-                            Ok(status) => {
-                                let title = match status {
-                                    UnifiedTaskStatus::PreparingTransition   => String::from("Preparing transition..."),
-                                    UnifiedTaskStatus::Downloading           => String::from("Downloading..."),
-                                    UnifiedTaskStatus::Unpacking             => String::from("Unpacking..."),
-                                    UnifiedTaskStatus::FinishingTransition   => String::from("Finishing transition..."),
-                                    UnifiedTaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
-                                    UnifiedTaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files..."),
-                                    UnifiedTaskStatus::Finished              => String::from("Finished")
-                                };
+                        if let Ok(status) = task.get_unified_status() {
+                            let title = match status {
+                                UnifiedTaskStatus::PreparingTransition   => String::from("Preparing transition..."),
+                                UnifiedTaskStatus::Downloading           => String::from("Downloading..."),
+                                UnifiedTaskStatus::Unpacking             => String::from("Unpacking..."),
+                                UnifiedTaskStatus::FinishingTransition   => String::from("Finishing transition..."),
+                                UnifiedTaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
+                                UnifiedTaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files..."),
+                                UnifiedTaskStatus::Finished              => String::from("Finished")
+                            };
 
-                                self.current_task_status = title;
-                            }
-
-                            Err(err) => {
-                                sender.output(TasksQueueComponentOutput::ShowToast {
-                                    title: String::from("Failed to update current tasks's status"),
-                                    message: Some(err.to_string())
-                                }).unwrap();
-
-                                // todo: remove current task
-                            }
+                            self.current_task_status = title;
                         }
                     }
                 }

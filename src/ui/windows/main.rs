@@ -5,6 +5,7 @@ use relm4::component::*;
 use relm4::factory::*;
 
 use gtk::prelude::*;
+use adw::prelude::*;
 
 use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
@@ -31,6 +32,8 @@ use crate::ui::components::tasks_queue::{
 };
 
 use crate::config;
+
+static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -81,7 +84,7 @@ impl SimpleComponent for MainApp {
     type Output = ();
 
     view! {
-        window = adw::ApplicationWindow {
+        main_window = adw::ApplicationWindow {
             set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
 
@@ -302,6 +305,10 @@ impl SimpleComponent for MainApp {
 
         let widgets = view_output!();
 
+        unsafe {
+            MAIN_WINDOW = Some(widgets.main_window.clone());
+        }
+
         ComponentParts { model, widgets }
     }
 
@@ -371,6 +378,31 @@ impl SimpleComponent for MainApp {
                 let toast = adw::Toast::new(&title);
 
                 // toast.set_timeout(7);
+
+                if let Some(message) = message {
+                    toast.set_button_label(Some("Details"));
+
+                    let dialog = adw::MessageDialog::new(
+                        Some(unsafe { MAIN_WINDOW.as_ref().unwrap_unchecked() }),
+                        Some(&title),
+                        Some(&message)
+                    );
+
+                    dialog.add_response("close", "Close");
+                    // dialog.add_response("save", &tr!("save"));
+
+                    // dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+
+                    // dialog.connect_response(Some("save"), |_, _| {
+                    //     if let Err(err) = open::that(crate::DEBUG_FILE.as_os_str()) {
+                    //         tracing::error!("Failed to open debug file: {err}");
+                    //     }
+                    // });
+
+                    toast.connect_button_clicked(move |_| {
+                        dialog.present();
+                    });
+                }
 
                 self.main_toast_overlay.add_toast(toast);
             }
