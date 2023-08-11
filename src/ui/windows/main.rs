@@ -33,7 +33,7 @@ use crate::ui::components::tasks_queue::{
 
 use crate::config;
 
-static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
+static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -84,7 +84,7 @@ impl SimpleComponent for MainApp {
     type Output = ();
 
     view! {
-        main_window = adw::ApplicationWindow {
+        window = adw::ApplicationWindow {
             set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
 
@@ -306,7 +306,7 @@ impl SimpleComponent for MainApp {
         let widgets = view_output!();
 
         unsafe {
-            MAIN_WINDOW = Some(widgets.main_window.clone());
+            WINDOW = Some(widgets.window.clone());
         }
 
         ComponentParts { model, widgets }
@@ -375,6 +375,10 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::ShowTitle { title, message } => {
+                let window = unsafe {
+                    WINDOW.as_ref().unwrap_unchecked()
+                };
+
                 let toast = adw::Toast::new(&title);
 
                 // toast.set_timeout(7);
@@ -383,7 +387,7 @@ impl SimpleComponent for MainApp {
                     toast.set_button_label(Some("Details"));
 
                     let dialog = adw::MessageDialog::new(
-                        Some(unsafe { MAIN_WINDOW.as_ref().unwrap_unchecked() }),
+                        Some(window),
                         Some(&title),
                         Some(&message)
                     );
