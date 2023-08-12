@@ -143,7 +143,7 @@ pub enum TasksQueueComponentOutput {
     }
 }
 
-#[relm4::component(async, pub)]
+#[relm4::component(pub, async)]
 impl SimpleAsyncComponent for TasksQueueComponent {
     type Init = CardVariant;
     type Input = TasksQueueComponentInput;

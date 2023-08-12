@@ -37,7 +37,7 @@ pub enum GameDetailsComponentOutput {
     ShowTasksFlap
 }
 
-#[relm4::component(async, pub)]
+#[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameDetailsComponent {
     type Init = CardVariant;
     type Input = GameDetailsComponentInput;
