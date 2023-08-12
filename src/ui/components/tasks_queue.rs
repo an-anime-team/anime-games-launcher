@@ -176,6 +176,8 @@ pub enum TasksQueueComponentInput {
 pub enum TasksQueueComponentOutput {
     GameDownloaded(CardVariant),
 
+    HideTasksFlap,
+
     ShowToast {
         title: String,
         message: Option<String>
@@ -383,6 +385,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                             self.current_task = None;
 
                             sender.input(TasksQueueComponentInput::StopUpdater);
+                            sender.output(TasksQueueComponentOutput::HideTasksFlap).unwrap();
                         }
 
                         self.current_task_status.clear();

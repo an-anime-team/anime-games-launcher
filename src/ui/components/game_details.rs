@@ -2,7 +2,6 @@ use relm4::prelude::*;
 use relm4::component::*;
 
 use gtk::prelude::*;
-use adw::prelude::*;
 
 use crate::ui::components::game_card::{
     GameCardComponent,

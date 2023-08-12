@@ -10,10 +10,10 @@ use adw::prelude::*;
 use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
-use anime_game_core::updater::UpdaterExt;
 
 use crate::components::Updater as ComponentUpdater;
 use crate::components::wine::Wine;
+use crate::components::dxvk::Dxvk;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
@@ -294,6 +294,9 @@ impl SimpleComponent for MainApp {
                     TasksQueueComponentOutput::GameDownloaded(variant) =>
                         MainAppMsg::FinishDownloadGameTask(variant),
 
+                    TasksQueueComponentOutput::HideTasksFlap =>
+                        MainAppMsg::HideTasksFlap,
+
                     TasksQueueComponentOutput::ShowToast { title, message } =>
                         MainAppMsg::ShowTitle { title, message }
                 }),
@@ -340,6 +343,8 @@ impl SimpleComponent for MainApp {
         }
 
         std::thread::spawn(move || {
+            // Update wine component
+
             match Wine::from_config() {
                 Ok(wine) => {
                     if !wine.is_downloaded() {
@@ -367,6 +372,40 @@ impl SimpleComponent for MainApp {
                 Err(err) => {
                     sender.input(MainAppMsg::ShowTitle {
                         title: String::from("Failed to get wine version"),
+                        message: Some(err.to_string())
+                    });
+                }
+            }
+
+            // Update dxvk component
+
+            match Dxvk::from_config() {
+                Ok(dxvk) => {
+                    if !dxvk.is_downloaded() {
+                        match dxvk.download() {
+                            Ok(updater) => {
+                                sender.input(MainAppMsg::AddDownloadComponentTask {
+                                    title: dxvk.title,
+                                    author: String::new(),
+                                    updater
+                                });
+
+                                sender.input(MainAppMsg::ShowTasksFlap);
+                            }
+
+                            Err(err) => {
+                                sender.input(MainAppMsg::ShowTitle {
+                                    title: String::from("Failed to download dxvk version"),
+                                    message: Some(err.to_string())
+                                });
+                            }
+                        }
+                    }
+                }
+
+                Err(err) => {
+                    sender.input(MainAppMsg::ShowTitle {
+                        title: String::from("Failed to get dxvk version"),
                         message: Some(err.to_string())
                     });
                 }

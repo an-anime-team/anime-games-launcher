@@ -4,6 +4,7 @@ use std::thread::JoinHandle;
 use anime_game_core::updater::UpdaterExt;
 
 pub mod wine;
+pub mod dxvk;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
