@@ -118,7 +118,7 @@ impl ResolvedTask {
     }
 
     /// Get task status
-    pub fn get_unified_status(&mut self) -> anyhow::Result<TaskStatus> {
+    pub fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
         match self {
             Self::DownloadGenshinDiff { updater } => {
                 match updater.status() {

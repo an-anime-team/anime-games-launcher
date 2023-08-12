@@ -223,7 +223,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                             sender.output(TasksQueueComponentOutput::ShowToast {
                                 title: String::from("Failed to resolve queued task"),
                                 message: Some(err.to_string())
-                            });
+                            }).unwrap();
                         }
                     }
                 }
@@ -240,7 +240,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             TasksQueueComponentInput::UpdateCurrentTask => {
                 if let Some(task) = &mut self.current_task {
                     if task.is_finished() {
-                        if let Err(err) = task.get_unified_status() {
+                        if let Err(err) = task.get_status() {
                             sender.output(TasksQueueComponentOutput::ShowToast {
                                 title: format!("Failed to download {}", task.get_variant().get_title()),
                                 message: Some(err.to_string())
@@ -275,7 +275,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                     sender.output(TasksQueueComponentOutput::ShowToast {
                                         title: String::from("Failed to resolve queued task"),
                                         message: Some(err.to_string())
-                                    });
+                                    }).unwrap();
                                 }
                             }
                         }
@@ -293,7 +293,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     else {
                         self.progress_bar.set_fraction(task.get_progress());
 
-                        if let Ok(status) = task.get_unified_status() {
+                        if let Ok(status) = task.get_status() {
                             let title = match status {
                                 TaskStatus::PreparingTransition   => String::from("Preparing transition..."),
                                 TaskStatus::Downloading           => String::from("Downloading..."),
