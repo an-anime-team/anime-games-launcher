@@ -11,6 +11,8 @@ use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
 
+use crate::ui::windows::preferences::PreferencesApp;
+
 use crate::ui::components::game_card::{
     GameCardComponentInput,
     CardVariant
@@ -41,6 +43,8 @@ pub struct MainApp {
 
     main_toast_overlay: adw::ToastOverlay,
     game_details_toast_overlay: adw::ToastOverlay,
+
+    // preferences: PreferencesApp,
 
     game_details: AsyncController<GameDetailsComponent>,
     game_details_variant: CardVariant,
@@ -241,6 +245,10 @@ impl SimpleComponent for MainApp {
         let mut model = Self {
             leaflet: adw::Leaflet::new(),
             flap: adw::Flap::new(),
+
+            // preferences: PreferencesApp::builder()
+            //     .launch()
+            //     .emit(),
 
             main_toast_overlay: adw::ToastOverlay::new(),
             game_details_toast_overlay: adw::ToastOverlay::new(),

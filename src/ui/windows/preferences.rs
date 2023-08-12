@@ -20,38 +20,44 @@ pub enum PreferencesAppMsg {
     }
 }
 
-#[relm4::component(pub)]
-impl SimpleComponent for PreferencesApp {
-    type Init = ();
+#[relm4::component(async, pub)]
+impl SimpleAsyncComponent for PreferencesApp {
+    type Init = adw::ApplicationWindow;
     type Input = PreferencesAppMsg;
     type Output = ();
 
     view! {
         window = adw::PreferencesWindow {
-            set_default_size: (1200, 800),
-            set_title: Some("Preferences")
+            set_default_size: (700, 560),
+            set_title: Some("Preferences"),
+
+            set_hide_on_close: true,
+            set_modal: true,
+            set_search_enabled: true,
         }
     }
 
-    fn init(
-        _parent: Self::Init,
-        root: &Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
+    async fn init(
+        parent: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
 
         };
 
         let widgets = view_output!();
 
+        widgets.window.set_transient_for(Some(&parent));
+
         unsafe {
             WINDOW = Some(widgets.window.clone());
         }
 
-        ComponentParts { model, widgets }
+        AsyncComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             PreferencesAppMsg::ShowTitle { title, message } => {
                 let window = unsafe {
