@@ -34,7 +34,7 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponent,
     TasksQueueComponentInput,
     TasksQueueComponentOutput,
-    Task
+    QueuedTask
 };
 
 use crate::config;
@@ -81,10 +81,16 @@ pub enum MainAppMsg {
     AddDownloadGameTask(CardVariant),
     FinishDownloadGameTask(CardVariant),
 
-    AddDownloadComponentTask {
+    AddDownloadWineTask {
         title: String,
         author: String,
-        updater: ComponentUpdater
+        version: Wine
+    },
+
+    AddDownloadDxvkTask {
+        title: String,
+        author: String,
+        version: Dxvk
     },
 
     ShowTitle {
@@ -348,24 +354,13 @@ impl SimpleComponent for MainApp {
             match Wine::from_config() {
                 Ok(wine) => {
                     if !wine.is_downloaded() {
-                        match wine.download() {
-                            Ok(updater) => {
-                                sender.input(MainAppMsg::AddDownloadComponentTask {
-                                    title: wine.title,
-                                    author: String::new(),
-                                    updater
-                                });
+                        sender.input(MainAppMsg::AddDownloadWineTask {
+                            title: wine.title.clone(),
+                            author: String::new(),
+                            version: wine
+                        });
 
-                                sender.input(MainAppMsg::ShowTasksFlap);
-                            }
-
-                            Err(err) => {
-                                sender.input(MainAppMsg::ShowTitle {
-                                    title: String::from("Failed to download wine version"),
-                                    message: Some(err.to_string())
-                                });
-                            }
-                        }
+                        sender.input(MainAppMsg::ShowTasksFlap);
                     }
                 }
 
@@ -382,24 +377,13 @@ impl SimpleComponent for MainApp {
             match Dxvk::from_config() {
                 Ok(dxvk) => {
                     if !dxvk.is_downloaded() {
-                        match dxvk.download() {
-                            Ok(updater) => {
-                                sender.input(MainAppMsg::AddDownloadComponentTask {
-                                    title: dxvk.title,
-                                    author: String::new(),
-                                    updater
-                                });
+                        sender.input(MainAppMsg::AddDownloadDxvkTask {
+                            title: dxvk.name.clone(), // name > title in case of dxvks
+                            author: String::new(),
+                            version: dxvk
+                        });
 
-                                sender.input(MainAppMsg::ShowTasksFlap);
-                            }
-
-                            Err(err) => {
-                                sender.input(MainAppMsg::ShowTitle {
-                                    title: String::from("Failed to download dxvk version"),
-                                    message: Some(err.to_string())
-                                });
-                            }
-                        }
+                        sender.input(MainAppMsg::ShowTasksFlap);
                     }
                 }
 
@@ -454,12 +438,10 @@ impl SimpleComponent for MainApp {
 
                 let task = match variant {
                     CardVariant::Genshin => {
-                        Task::DownloadGenshinDiff {
-                            updater: config.games.genshin
+                        QueuedTask::DownloadGenshinDiff {
+                            diff: config.games.genshin
                                 .to_game()
                                 .get_diff()
-                                .unwrap() // FIXME
-                                .install()
                                 .unwrap() // FIXME
                         }
                     },
@@ -497,11 +479,19 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::AddDownloadComponentTask { title, author, updater } => {
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Task::DownloadComponent {
+            MainAppMsg::AddDownloadWineTask { title, author, version } => {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(QueuedTask::DownloadWine {
                     title,
                     author,
-                    updater
+                    version
+                }));
+            }
+
+            MainAppMsg::AddDownloadDxvkTask { title, author, version } => {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(QueuedTask::DownloadDxvk {
+                    title,
+                    author,
+                    version
                 }));
             }
 

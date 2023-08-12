@@ -53,6 +53,9 @@ impl SimpleAsyncComponent for GameCardComponent {
                 set_orientation: gtk::Orientation::Vertical,
 
                 gtk::Overlay {
+                    #[watch]
+                    set_tooltip: model.variant.get_title(),
+
                     gtk::Picture {
                         set_valign: gtk::Align::Start,
                         set_halign: gtk::Align::Start,

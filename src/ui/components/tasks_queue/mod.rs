@@ -8,19 +8,6 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
-use anime_game_core::updater::UpdaterExt;
-
-use anime_game_core::game::genshin::diff::{
-    Updater as GenshinDiffUpdater,
-    Status as GenshinDiffStatus,
-    Error as GenshinDiffError
-};
-
-use crate::components::{
-    Updater as ComponentUpdater,
-    Status as ComponentStatus
-};
-
 use crate::ui::components::game_card::{
     GameCardComponent,
     GameCardComponentInput,
@@ -29,135 +16,25 @@ use crate::ui::components::game_card::{
 
 use crate::ui::components::factory::game_card_tasks::GameCardFactory;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// All the possible tasks statuses in one enum
-pub enum UnifiedTaskStatus {
-    PreparingTransition,
-    Downloading,
-    Unpacking,
-    FinishingTransition,
-    ApplyingHdiffPatches,
-    DeletingObsoleteFiles,
-    Finished
-}
+pub mod queued_task;
+pub mod resolved_task;
 
-pub enum Task {
-    DownloadGenshinDiff {
-        updater: GenshinDiffUpdater
-    },
+pub use queued_task::QueuedTask;
 
-    DownloadComponent {
-        title: String,
-        author: String,
-        updater: ComponentUpdater
-    }
-}
-
-impl std::fmt::Debug for Task {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::DownloadGenshinDiff { .. } => {
-                f.debug_struct("DownloadGenshinDiff")
-                    .finish()
-            }
-
-            Self::DownloadComponent { title, author, .. } => {
-                f.debug_struct("DownloadGenshinDiff")
-                    .field("title", title)
-                    .field("author", author)
-                    .finish()
-            }
-        }
-    }
-}
-
-impl Task {
-    pub fn get_variant(&self) -> CardVariant {
-        match self {
-            Self::DownloadGenshinDiff { .. } => CardVariant::Genshin,
-
-            Self::DownloadComponent { title, author, .. } => CardVariant::Component {
-                title: title.clone(),
-                author: author.clone()
-            }
-        }
-    }
-
-    /// Check if the task is finished
-    pub fn is_finished(&mut self) -> bool {
-        match self {
-            Self::DownloadGenshinDiff { updater } => updater.is_finished(),
-            Self::DownloadComponent { updater, .. } => updater.is_finished()
-        }
-    }
-
-    /// Get current task progress
-    pub fn get_current(&self) -> usize {
-        match self {
-            Self::DownloadGenshinDiff { updater } => updater.current(),
-            Self::DownloadComponent { updater, .. } => updater.current()
-        }
-    }
-
-    /// Get total task progress
-    pub fn get_total(&self) -> usize {
-        match self {
-            Self::DownloadGenshinDiff { updater } => updater.total(),
-            Self::DownloadComponent { updater, .. } => updater.total()
-        }
-    }
-
-    /// Get task completion progress
-    pub fn get_progress(&self) -> f64 {
-        match self {
-            Self::DownloadGenshinDiff { updater } => updater.progress(),
-            Self::DownloadComponent { updater, .. } => updater.progress()
-        }
-    }
-
-    /// Get task status
-    pub fn get_unified_status(&mut self) -> anyhow::Result<UnifiedTaskStatus> {
-        match self {
-            Self::DownloadGenshinDiff { updater } => {
-                match updater.status() {
-                    Ok(status) => Ok(match status {
-                        GenshinDiffStatus::PreparingTransition   => UnifiedTaskStatus::PreparingTransition,
-                        GenshinDiffStatus::Downloading           => UnifiedTaskStatus::Downloading,
-                        GenshinDiffStatus::Unpacking             => UnifiedTaskStatus::Unpacking,
-                        GenshinDiffStatus::FinishingTransition   => UnifiedTaskStatus::FinishingTransition,
-                        GenshinDiffStatus::ApplyingHdiffPatches  => UnifiedTaskStatus::ApplyingHdiffPatches,
-                        GenshinDiffStatus::DeletingObsoleteFiles => UnifiedTaskStatus::DeletingObsoleteFiles,
-                        GenshinDiffStatus::Finished              => UnifiedTaskStatus::Finished
-                    }),
-
-                    Err(err) => anyhow::bail!(err.to_string())
-                }
-            }
-
-            Self::DownloadComponent { updater, .. } => {
-                match updater.status() {
-                    Ok(status) => Ok(match status {
-                        ComponentStatus::Downloading => UnifiedTaskStatus::Downloading,
-                        ComponentStatus::Unpacking   => UnifiedTaskStatus::Unpacking,
-                        ComponentStatus::Finished    => UnifiedTaskStatus::Finished
-                    }),
-
-                    Err(err) => anyhow::bail!(err.to_string())
-                }
-            }
-        }
-    }
-}
+pub use resolved_task::{
+    ResolvedTask,
+    TaskStatus
+};
 
 #[derive(Debug)]
 pub struct TasksQueueComponent {
     pub current_task_card: AsyncController<GameCardComponent>,
     pub current_task_status: String,
     pub current_task_progress_start: Instant,
-    pub current_task: Option<Task>,
+    pub current_task: Option<ResolvedTask>,
 
     pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
-    pub queued_tasks: VecDeque<Task>,
+    pub queued_tasks: VecDeque<QueuedTask>,
 
     pub progress_bar: gtk::ProgressBar,
 
@@ -166,7 +43,7 @@ pub struct TasksQueueComponent {
 
 #[derive(Debug)]
 pub enum TasksQueueComponentInput {
-    AddTask(Task),
+    AddTask(QueuedTask),
     UpdateCurrentTask,
     StartUpdater,
     StopUpdater
@@ -226,7 +103,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                 #[watch]
                 set_label: &match &model.current_task {
-                    Some(task) => format!("Downloading {}", task.get_variant().get_title()),
+                    Some(task) => format!("Downloading {}", task.get_title()),
                     None => String::from("Nothing to do")
                 }
             },
@@ -334,10 +211,21 @@ impl SimpleAsyncComponent for TasksQueueComponent {
         match msg {
             TasksQueueComponentInput::AddTask(task) => {
                 if self.current_task.is_none() {
-                    self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant()));
+                    match task.resolve() {
+                        Ok(task) => {
+                            self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant()));
 
-                    self.current_task = Some(task);
-                    self.current_task_progress_start = Instant::now();
+                            self.current_task = Some(task);
+                            self.current_task_progress_start = Instant::now();
+                        }
+
+                        Err(err) => {
+                            sender.output(TasksQueueComponentOutput::ShowToast {
+                                title: String::from("Failed to resolve queued task"),
+                                message: Some(err.to_string())
+                            });
+                        }
+                    }
                 }
 
                 else {
@@ -376,9 +264,20 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         if let Some(queued_task) = self.queued_tasks.pop_front() {
                             self.queued_tasks_factory.guard().pop_front();
 
-                            self.current_task_card.emit(GameCardComponentInput::SetVariant(queued_task.get_variant()));
+                            match queued_task.resolve() {
+                                Ok(task) => {
+                                    self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant()));
 
-                            self.current_task = Some(queued_task);
+                                    self.current_task = Some(task);
+                                }
+
+                                Err(err) => {
+                                    sender.output(TasksQueueComponentOutput::ShowToast {
+                                        title: String::from("Failed to resolve queued task"),
+                                        message: Some(err.to_string())
+                                    });
+                                }
+                            }
                         }
 
                         else {
@@ -396,13 +295,13 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                         if let Ok(status) = task.get_unified_status() {
                             let title = match status {
-                                UnifiedTaskStatus::PreparingTransition   => String::from("Preparing transition..."),
-                                UnifiedTaskStatus::Downloading           => String::from("Downloading..."),
-                                UnifiedTaskStatus::Unpacking             => String::from("Unpacking..."),
-                                UnifiedTaskStatus::FinishingTransition   => String::from("Finishing transition..."),
-                                UnifiedTaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
-                                UnifiedTaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files..."),
-                                UnifiedTaskStatus::Finished              => String::from("Finished")
+                                TaskStatus::PreparingTransition   => String::from("Preparing transition..."),
+                                TaskStatus::Downloading           => String::from("Downloading..."),
+                                TaskStatus::Unpacking             => String::from("Unpacking..."),
+                                TaskStatus::FinishingTransition   => String::from("Finishing transition..."),
+                                TaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
+                                TaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files..."),
+                                TaskStatus::Finished              => String::from("Finished")
                             };
 
                             self.current_task_status = title;
