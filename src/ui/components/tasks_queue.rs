@@ -289,14 +289,23 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 title: format!("Failed to download {}", task.get_variant().get_title()),
                                 message: Some(err.to_string())
                             }).unwrap();
-
-                            // todo: remove current task
                         }
 
-                        self.current_task = None;
-                        self.current_task_status.clear();
+                        if let Some(queued_task) = self.queued_tasks.pop_front() {
+                            self.queued_tasks_factory.guard().pop_front();
 
-                        sender.input(TasksQueueComponentInput::StopUpdater);
+                            self.current_task_card.emit(GameCardComponentInput::SetVariant(queued_task.get_variant()));
+
+                            self.current_task = Some(queued_task);
+                        }
+
+                        else {
+                            self.current_task = None;
+
+                            sender.input(TasksQueueComponentInput::StopUpdater);
+                        }
+
+                        self.current_task_status.clear();
                     }
 
                     else {
