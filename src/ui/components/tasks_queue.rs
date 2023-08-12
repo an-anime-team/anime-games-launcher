@@ -119,6 +119,8 @@ pub enum TasksQueueComponentInput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TasksQueueComponentOutput {
+    GameDownloaded(CardVariant),
+
     ShowToast {
         title: String,
         message: Option<String>
@@ -289,6 +291,20 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 title: format!("Failed to download {}", task.get_variant().get_title()),
                                 message: Some(err.to_string())
                             }).unwrap();
+                        }
+
+                        let mut is_task_queued = false;
+
+                        for queued_task in &self.queued_tasks {
+                            if queued_task.get_variant() == task.get_variant() {
+                                is_task_queued = true;
+
+                                break;
+                            }
+                        }
+
+                        if !is_task_queued {
+                            sender.output(TasksQueueComponentOutput::GameDownloaded(task.get_variant())).unwrap();
                         }
 
                         if let Some(queued_task) = self.queued_tasks.pop_front() {

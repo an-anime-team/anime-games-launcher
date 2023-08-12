@@ -75,6 +75,7 @@ pub enum MainAppMsg {
     ToggleTasksFlap,
 
     AddDownloadGameTask(CardVariant),
+    FinishDownloadGameTask(CardVariant),
 
     ShowTitle {
         title: String,
@@ -280,7 +281,11 @@ impl SimpleComponent for MainApp {
             tasks_queue: TasksQueueComponent::builder()
                 .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |output| match output {
-                    TasksQueueComponentOutput::ShowToast { title, message } => MainAppMsg::ShowTitle { title, message }
+                    TasksQueueComponentOutput::GameDownloaded(variant) =>
+                        MainAppMsg::FinishDownloadGameTask(variant),
+
+                    TasksQueueComponentOutput::ShowToast { title, message } =>
+                        MainAppMsg::ShowTitle { title, message }
                 }),
         };
 
@@ -392,6 +397,19 @@ impl SimpleComponent for MainApp {
 
                         self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
                         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
+                    }
+                }
+            }
+
+            MainAppMsg::FinishDownloadGameTask(variant) => {
+                if let Some(index) = self.queued_games_indexes.get(&variant) {
+                    self.queued_games.guard().remove(index.current_index());
+
+                    self.queued_games_indexes.remove(&variant);
+
+                    #[allow(clippy::map_entry)]
+                    if !self.installed_games_indexes.contains_key(&variant) {
+                        self.installed_games_indexes.insert(variant, self.installed_games.guard().push_back(variant));
                     }
                 }
             }
