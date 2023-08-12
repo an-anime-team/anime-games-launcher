@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CardVariant {
     Genshin,
     Honkai,
@@ -6,8 +6,8 @@ pub enum CardVariant {
     PGR,
 
     Component {
-        title: &'static str,
-        author: &'static str
+        title: String,
+        author: String
     }
 }
 
@@ -23,7 +23,7 @@ impl CardVariant {
     }
 
     #[inline]
-    pub fn get_image(&self) -> &'static str {
+    pub fn get_image(&self) -> &str {
         match self {
             Self::Genshin  => "images/genshin-cropped.jpg",
             Self::Honkai   => "images/honkai-cropped.jpg",
@@ -35,7 +35,7 @@ impl CardVariant {
     }
 
     #[inline]
-    pub fn get_title(&self) -> &'static str {
+    pub fn get_title(&self) -> &str {
         match self {
             Self::Genshin  => "Genshin Impact",
             Self::Honkai   => "Honkai Impact 3rd",
@@ -47,7 +47,7 @@ impl CardVariant {
     }
 
     #[inline]
-    pub fn get_author(&self) -> &'static str {
+    pub fn get_author(&self) -> &str {
         match self {
             Self::Genshin |
             Self::Honkai |
@@ -60,7 +60,7 @@ impl CardVariant {
     }
 
     #[inline]
-    pub fn get_details_style(&self) -> &'static str {
+    pub fn get_details_style(&self) -> &str {
         match self {
             Self::Genshin  => "game-details--genshin",
             Self::Honkai   => "game-details--honkai",

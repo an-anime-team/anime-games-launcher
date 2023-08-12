@@ -10,6 +10,10 @@ use adw::prelude::*;
 use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
+use anime_game_core::updater::UpdaterExt;
+
+use crate::components::Updater as ComponentUpdater;
+use crate::components::wine::Wine;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
@@ -59,7 +63,7 @@ pub struct MainApp {
     tasks_queue: AsyncController<TasksQueueComponent>
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum MainAppMsg {
     OpenDetails {
         variant: CardVariant,
@@ -76,6 +80,12 @@ pub enum MainAppMsg {
 
     AddDownloadGameTask(CardVariant),
     FinishDownloadGameTask(CardVariant),
+
+    AddDownloadComponentTask {
+        title: String,
+        author: String,
+        updater: ComponentUpdater
+    },
 
     ShowTitle {
         title: String,
@@ -292,18 +302,18 @@ impl SimpleComponent for MainApp {
         let config = config::get();
 
         for game in CardVariant::games() {
-            let installed = match *game {
+            let installed = match game {
                 CardVariant::Genshin => config.games.genshin.to_game().is_installed(),
 
                 _ => false
             };
 
             if installed {
-                model.installed_games_indexes.insert(*game, model.installed_games.guard().push_back(*game));
+                model.installed_games_indexes.insert(game.to_owned(), model.installed_games.guard().push_back(game.to_owned()));
             }
 
             else {
-                model.available_games_indexes.insert(*game, model.available_games.guard().push_back(*game));
+                model.available_games_indexes.insert(game.to_owned(), model.available_games.guard().push_back(game.to_owned()));
             }
         }
 
@@ -329,13 +339,47 @@ impl SimpleComponent for MainApp {
                 .detach());
         }
 
+        std::thread::spawn(move || {
+            match Wine::from_config() {
+                Ok(wine) => {
+                    if !wine.is_downloaded() {
+                        match wine.download() {
+                            Ok(updater) => {
+                                sender.input(MainAppMsg::AddDownloadComponentTask {
+                                    title: wine.title,
+                                    author: String::new(),
+                                    updater
+                                });
+
+                                sender.input(MainAppMsg::ShowTasksFlap);
+                            }
+
+                            Err(err) => {
+                                sender.input(MainAppMsg::ShowTitle {
+                                    title: String::from("Failed to download wine version"),
+                                    message: Some(err.to_string())
+                                });
+                            }
+                        }
+                    }
+                }
+
+                Err(err) => {
+                    sender.input(MainAppMsg::ShowTitle {
+                        title: String::from("Failed to get wine version"),
+                        message: Some(err.to_string())
+                    });
+                }
+            }
+        });
+
         ComponentParts { model, widgets }
     }
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             MainAppMsg::OpenDetails { variant, installed } => {
-                self.game_details_variant = variant;
+                self.game_details_variant = variant.clone();
 
                 self.game_details.emit(GameDetailsComponentInput::SetVariant(variant));
                 self.game_details.emit(GameDetailsComponentInput::SetInstalled(installed));
@@ -393,7 +437,7 @@ impl SimpleComponent for MainApp {
 
                     #[allow(clippy::map_entry)]
                     if !self.queued_games_indexes.contains_key(&variant) {
-                        self.queued_games_indexes.insert(variant, self.queued_games.guard().push_back(variant));
+                        self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant));
 
                         self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
                         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
@@ -409,9 +453,17 @@ impl SimpleComponent for MainApp {
 
                     #[allow(clippy::map_entry)]
                     if !self.installed_games_indexes.contains_key(&variant) {
-                        self.installed_games_indexes.insert(variant, self.installed_games.guard().push_back(variant));
+                        self.installed_games_indexes.insert(variant.clone(), self.installed_games.guard().push_back(variant));
                     }
                 }
+            }
+
+            MainAppMsg::AddDownloadComponentTask { title, author, updater } => {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Task::DownloadComponent {
+                    title,
+                    author,
+                    updater
+                }));
             }
 
             MainAppMsg::ShowTitle { title, message } => {

@@ -18,7 +18,7 @@ pub struct GameDetailsComponent {
     pub installed: bool
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentInput {
     SetVariant(CardVariant),
     SetInstalled(bool),
@@ -27,7 +27,7 @@ pub enum GameDetailsComponentInput {
     EmitDownloadGame
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentOutput {
     DownloadGame {
         variant: CardVariant
@@ -175,7 +175,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             game_card: GameCardComponent::builder()
-                .launch(init)
+                .launch(init.clone())
                 .detach(),
 
             variant: init,
@@ -193,7 +193,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             GameDetailsComponentInput::SetVariant(variant) => {
-                self.variant = variant;
+                self.variant = variant.clone();
 
                 self.game_card.emit(GameCardComponentInput::SetVariant(variant));
             }
@@ -208,7 +208,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
             GameDetailsComponentInput::EmitDownloadGame => {
                 sender.output(GameDetailsComponentOutput::DownloadGame {
-                    variant: self.variant
+                    variant: self.variant.clone()
                 }).unwrap();
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();

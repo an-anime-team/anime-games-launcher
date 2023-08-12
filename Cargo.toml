@@ -39,3 +39,4 @@ serde_json = "1.0"
 
 anyhow = { version = "1.0", features = ["backtrace"] }
 lazy_static = "1.4.0"
+flume = "0.10"

@@ -7,7 +7,7 @@ mod variants;
 
 pub use variants::CardVariant;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameCardComponent {
     pub width: i32,
     pub height: i32,
@@ -17,7 +17,7 @@ pub struct GameCardComponent {
     pub display_title: bool
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameCardComponentInput {
     SetVariant(CardVariant),
     SetWidth(i32),
@@ -29,7 +29,7 @@ pub enum GameCardComponentInput {
     EmitCardClick
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameCardComponentOutput {
     CardClicked {
         variant: CardVariant,
@@ -148,7 +148,7 @@ impl SimpleAsyncComponent for GameCardComponent {
 
             GameCardComponentInput::EmitCardClick => {
                 sender.output(GameCardComponentOutput::CardClicked {
-                    variant: self.variant,
+                    variant: self.variant.clone(),
                     installed: self.installed
                 }).unwrap()
             }

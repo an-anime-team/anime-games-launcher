@@ -35,6 +35,7 @@ version = "1.0.0"
 dependencies = [
  "anime-game-core",
  "anyhow",
+ "flume",
  "gtk4",
  "lazy_static",
  "libadwaita",

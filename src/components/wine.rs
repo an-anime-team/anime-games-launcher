@@ -1,9 +1,24 @@
+use std::cell::Cell;
+
 use anime_game_core::network::minreq;
+use anime_game_core::archive;
+
+use anime_game_core::network::downloader::DownloaderExt;
+use anime_game_core::network::downloader::basic::Downloader;
+
 use anime_game_core::updater::UpdaterExt;
 
 use serde_json::Value as Json;
 
-use crate::config;
+use crate::{
+    config,
+    COMPONENTS_FOLDER
+};
+
+use crate::components::{
+    Updater,
+    Status
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Wine {
@@ -13,6 +28,7 @@ pub struct Wine {
 }
 
 impl Wine {
+    /// Resolve component version from the config file
     pub fn from_config() -> anyhow::Result<Self> {
         let components = config::get().components;
 
@@ -38,34 +54,69 @@ impl Wine {
 
         anyhow::bail!("No appropriate wine version found")
     }
-}
 
-pub struct Updater {
-
-}
-
-impl UpdaterExt for Updater {
-    type Status = ();
-    type Error = ();
-    type Result = ();
-
-    fn status(&mut self) -> Result<Self::Status, &Self::Error> {
-        todo!()
+    #[inline]
+    /// Check if the component is downloaded
+    pub fn is_downloaded(&self) -> bool {
+        COMPONENTS_FOLDER.join("wine")
+            .join(&self.name)
+            .exists()
     }
 
-    fn wait(self) -> Result<Self::Result, Self::Error> {
-        todo!()
-    }
+    /// Download component
+    pub fn download(&self) -> anyhow::Result<Updater> {
+        let (sender, receiver) = flume::unbounded();
 
-    fn is_finished(&mut self) -> bool {
-        todo!()
-    }
+        let download_uri = self.uri.clone();
 
-    fn current(&self) -> usize {
-        todo!()
-    }
+        Ok(Updater {
+            status: Cell::new(Status::Downloading),
+            current: Cell::new(0),
+            total: Cell::new(1), // To prevent division by 0
 
-    fn total(&self) -> usize {
-        todo!()
+            worker_result: None,
+            updater: receiver,
+
+            worker: Some(std::thread::spawn(move || -> anyhow::Result<()> {
+                let downloader = Downloader::new(download_uri);
+
+                let path = COMPONENTS_FOLDER.join("wine");
+                let archive = path.join(downloader.file_name());
+
+                // Download update archive
+
+                let mut updater = downloader.download(&archive)?;
+
+                while let Ok(false) = updater.status() {
+                    sender.send((
+                        Status::Downloading,
+                        updater.current(),
+                        updater.total()
+                    ))?;
+                }
+
+                // Extract archive
+
+                let Some(mut updater) = archive::extract(&archive, &path) else {
+                    anyhow::bail!("Unable to extract archive: {:?}", archive);
+                };
+
+                while let Ok(false) = updater.status() {
+                    sender.send((
+                        Status::Unpacking,
+                        updater.current(),
+                        updater.total()
+                    ))?;
+                }
+
+                std::fs::remove_file(archive)?;
+
+                // Finish downloading
+
+                sender.send((Status::Finished, 0, 1))?;
+
+                Ok(())
+            }))
+        })
     }
 }
