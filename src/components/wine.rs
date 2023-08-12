@@ -83,6 +83,10 @@ impl Wine {
                 let path = COMPONENTS_FOLDER.join("wine");
                 let archive = path.join(downloader.file_name());
 
+                // Create wine dir if needed
+
+                std::fs::create_dir_all(&path)?;
+
                 // Download update archive
 
                 let mut updater = downloader.download(&archive)?;

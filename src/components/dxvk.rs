@@ -83,6 +83,10 @@ impl Dxvk {
                 let path = COMPONENTS_FOLDER.join("dxvk");
                 let archive = path.join(downloader.file_name());
 
+                // Create dxvk dir if needed
+
+                std::fs::create_dir_all(&path)?;
+
                 // Download update archive
 
                 let mut updater = downloader.download(&archive)?;

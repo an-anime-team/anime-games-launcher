@@ -50,11 +50,11 @@ impl From<&Json> for Paths {
 
         Self {
             global: value.get("global")
-                .and_then(|value| Driver::try_from(value).ok())
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
                 .unwrap_or(default.global),
 
             china: value.get("china")
-                .and_then(|value| Driver::try_from(value).ok())
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
                 .unwrap_or(default.china),
         }
     }

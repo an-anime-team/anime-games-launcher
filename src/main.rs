@@ -36,7 +36,16 @@ lazy_static::lazy_static! {
     pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
+    if !LAUNCHER_FOLDER.exists() {
+        std::fs::create_dir_all(LAUNCHER_FOLDER.as_path())?;
+
+        std::fs::create_dir_all(COMPONENTS_FOLDER.join("wine"))?;
+        std::fs::create_dir_all(COMPONENTS_FOLDER.join("dxvk"))?;
+
+        config::update(&config::get())?;
+    }
+
     adw::init().expect("Libadwaita initialization failed");
 
     // Set application's title
@@ -75,4 +84,6 @@ fn main() {
 
     // Show first run window
     app.run::<MainApp>(());
+
+    Ok(())
 }

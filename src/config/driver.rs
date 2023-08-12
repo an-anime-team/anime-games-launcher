@@ -2,8 +2,6 @@ use std::path::PathBuf;
 
 use serde::{Serialize, Deserialize};
 
-use serde_json::Value as Json;
-
 use anime_game_core::filesystem::DriverExt;
 use anime_game_core::filesystem::physical::Driver as PhysicalFsDriver;
 
@@ -24,30 +22,32 @@ impl Driver {
     }
 }
 
-impl TryFrom<&Json> for Driver {
-    type Error = anyhow::Error;
+// TODO: proper Serialize / Deserialize implementation
 
-    fn try_from(value: &Json) -> Result<Self, Self::Error> {
-        let Some(driver) = value.get("driver").and_then(Json::as_str) else {
-            anyhow::bail!("Wrong driver description: no 'driver' name given");
-        };
+// impl TryFrom<&Json> for Driver {
+//     type Error = anyhow::Error;
 
-        let Some(params) = value.get("params") else {
-            anyhow::bail!("Wrong driver description: no 'params' given");
-        };
+//     fn try_from(value: &Json) -> Result<Self, Self::Error> {
+//         let Some(driver) = value.get("driver").and_then(Json::as_str) else {
+//             anyhow::bail!("Wrong driver description: no 'driver' name given");
+//         };
 
-        match driver {
-            "physical_filesystem_driver" => {
-                let Some(base_folder) = params.get("base_folder").and_then(Json::as_str) else {
-                    anyhow::bail!("Wrong driver params description: no 'base_folder' given");
-                };
+//         let Some(params) = value.get("params") else {
+//             anyhow::bail!("Wrong driver description: no 'params' given");
+//         };
 
-                Ok(Driver::PhysicalFsDriver {
-                    base_folder: PathBuf::from(base_folder)
-                })
-            },
+//         match driver {
+//             "physical_filesystem_driver" => {
+//                 let Some(base_folder) = params.get("base_folder").and_then(Json::as_str) else {
+//                     anyhow::bail!("Wrong driver params description: no 'base_folder' given");
+//                 };
 
-            driver => anyhow::bail!("Unsupported driver used: '{driver}'")
-        }
-    }
-}
+//                 Ok(Driver::PhysicalFsDriver {
+//                     base_folder: PathBuf::from(base_folder)
+//                 })
+//             },
+
+//             driver => anyhow::bail!("Unsupported driver used: '{driver}'")
+//         }
+//     }
+// }
