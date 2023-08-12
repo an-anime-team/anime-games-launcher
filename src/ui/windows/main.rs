@@ -35,7 +35,8 @@ use crate::ui::components::tasks_queue::{
 
 use crate::config;
 
-static mut WINDOW: Option<adw::ApplicationWindow> = None;
+static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
+static mut PREFERENCES_WINDOW: Option<AsyncController<PreferencesApp>> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -43,8 +44,6 @@ pub struct MainApp {
 
     main_toast_overlay: adw::ToastOverlay,
     game_details_toast_overlay: adw::ToastOverlay,
-
-    // preferences: PreferencesApp,
 
     game_details: AsyncController<GameDetailsComponent>,
     game_details_variant: CardVariant,
@@ -68,6 +67,8 @@ pub enum MainAppMsg {
     },
 
     HideDetails,
+
+    OpenPreferences,
 
     ShowTasksFlap,
     HideTasksFlap,
@@ -108,6 +109,12 @@ impl SimpleComponent for MainApp {
                                 set_icon_name: "view-dual-symbolic",
 
                                 connect_clicked => MainAppMsg::ToggleTasksFlap
+                            },
+
+                            pack_end = &gtk::Button {
+                                set_icon_name: "emblem-system-symbolic",
+
+                                connect_clicked => MainAppMsg::OpenPreferences
                             }
                         },
 
@@ -246,10 +253,6 @@ impl SimpleComponent for MainApp {
             leaflet: adw::Leaflet::new(),
             flap: adw::Flap::new(),
 
-            // preferences: PreferencesApp::builder()
-            //     .launch()
-            //     .emit(),
-
             main_toast_overlay: adw::ToastOverlay::new(),
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
@@ -314,7 +317,11 @@ impl SimpleComponent for MainApp {
         let widgets = view_output!();
 
         unsafe {
-            WINDOW = Some(widgets.window.clone());
+            MAIN_WINDOW = Some(widgets.window.clone());
+
+            PREFERENCES_WINDOW = Some(PreferencesApp::builder()
+                .launch(widgets.window.clone())
+                .detach());
         }
 
         ComponentParts { model, widgets }
@@ -333,6 +340,13 @@ impl SimpleComponent for MainApp {
 
             MainAppMsg::HideDetails => {
                 self.leaflet.navigate(adw::NavigationDirection::Back);
+            }
+
+            MainAppMsg::OpenPreferences => unsafe {
+                PREFERENCES_WINDOW.as_ref()
+                    .unwrap_unchecked()
+                    .widget()
+                    .present();
             }
 
             MainAppMsg::ShowTasksFlap => {
@@ -384,7 +398,7 @@ impl SimpleComponent for MainApp {
 
             MainAppMsg::ShowTitle { title, message } => {
                 let window = unsafe {
-                    WINDOW.as_ref().unwrap_unchecked()
+                    MAIN_WINDOW.as_ref().unwrap_unchecked()
                 };
 
                 let toast = adw::Toast::new(&title);
