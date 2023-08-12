@@ -34,6 +34,26 @@ impl SimpleAsyncComponent for PreferencesApp {
             set_hide_on_close: true,
             set_modal: true,
             set_search_enabled: true,
+
+            add = &adw::PreferencesPage {
+                add = &adw::PreferencesGroup {
+                    adw::ComboRow {
+                        set_title: "Wine version",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "latest"
+                        ]))
+                    },
+
+                    adw::ComboRow {
+                        set_title: "DXVK version",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "latest"
+                        ]))
+                    }
+                }
+            }
         }
     }
 
