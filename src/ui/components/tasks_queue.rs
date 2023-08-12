@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 use relm4::factory::FactoryVecDeque;
 use relm4::prelude::*;
@@ -66,6 +67,20 @@ impl Task {
         }
     }
 
+    /// Get current task progress
+    pub fn get_current(&self) -> usize {
+        match self {
+            Self::DownloadGenshinDiff { updater } => updater.current()
+        }
+    }
+
+    /// Get total task progress
+    pub fn get_total(&self) -> usize {
+        match self {
+            Self::DownloadGenshinDiff { updater } => updater.total()
+        }
+    }
+
     /// Get task completion progress
     pub fn get_progress(&self) -> f64 {
         match self {
@@ -99,6 +114,7 @@ impl Task {
 pub struct TasksQueueComponent {
     pub current_task_card: AsyncController<GameCardComponent>,
     pub current_task_status: String,
+    pub current_task_progress_start: Instant,
     pub current_task: Option<Task>,
 
     pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
@@ -203,6 +219,12 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 set_visible: model.current_task.is_some(),
 
                 set_label: "Download speed: 20 MB/s"
+
+                // #[watch]
+                // set_label: &match &model.current_task {
+                //     Some(task) => format!("Download speed: {} bytes/s", (task.get_current() as f64 / (Instant::now() - model.current_task_progress_start).as_secs_f64()).ceil()),
+                //     None => String::new()
+                // }
             },
 
             gtk::Label {
@@ -243,6 +265,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 .detach(),
 
             current_task_status: String::new(),
+            current_task_progress_start: Instant::now(),
             current_task: None,
 
             queued_tasks_factory: FactoryVecDeque::new(flow_box, sender.input_sender()),
@@ -255,6 +278,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
         model.current_task_card.emit(GameCardComponentInput::SetWidth(160));
         model.current_task_card.emit(GameCardComponentInput::SetHeight(224));
+
         model.current_task_card.emit(GameCardComponentInput::SetClickable(false));
         model.current_task_card.emit(GameCardComponentInput::SetDisplayTitle(false));
 
@@ -272,6 +296,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant()));
 
                     self.current_task = Some(task);
+                    self.current_task_progress_start = Instant::now();
                 }
 
                 else {

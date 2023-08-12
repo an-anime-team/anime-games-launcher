@@ -2,6 +2,7 @@ use relm4::prelude::*;
 use relm4::component::*;
 
 use gtk::prelude::*;
+use adw::prelude::*;
 
 use crate::ui::components::game_card::{
     GameCardComponent,
@@ -76,71 +77,92 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     set_label: &format!("Developer: {}", model.variant.get_author())
                 },
 
-                gtk::Label {
-                    set_halign: gtk::Align::Start,
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
 
-                    set_margin_top: 24,
-
-                    #[watch]
-                    set_visible: model.installed,
-
-                    set_label: "Played: 4,837 hours"
-                },
-
-                gtk::Label {
-                    set_halign: gtk::Align::Start,
+                    set_margin_top: 36,
 
                     #[watch]
                     set_visible: model.installed,
 
-                    set_label: "Last played: yesterday"
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
+    
+                        set_label: "Played: 4,837 hours"
+                    },
+    
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
+    
+                        set_label: "Last played: yesterday"
+                    },
+
+                    gtk::Box {
+                        set_valign: gtk::Align::Center,
+    
+                        set_margin_top: 36,
+                        set_spacing: 8,
+    
+                        gtk::Button {
+                            add_css_class: "pill",
+                            add_css_class: "suggested-action",
+    
+                            #[watch]
+                            set_visible: model.installed,
+    
+                            adw::ButtonContent {
+                                set_icon_name: "media-playback-start-symbolic",
+                                set_label: "Play"
+                            }
+                        },
+    
+                        gtk::Button {
+                            add_css_class: "pill",
+    
+                            #[watch]
+                            set_visible: model.installed,
+    
+                            adw::ButtonContent {
+                                set_icon_name: "drive-harddisk-ieee1394-symbolic",
+                                set_label: "Verify"
+                            }
+                        }
+                    }
                 },
 
                 gtk::Box {
-                    set_valign: gtk::Align::Center,
+                    set_orientation: gtk::Orientation::Vertical,
 
-                    set_margin_top: 48,
-                    set_spacing: 8,
+                    set_margin_top: 36,
 
-                    gtk::Button {
-                        add_css_class: "pill",
-                        add_css_class: "suggested-action",
+                    #[watch]
+                    set_visible: !model.installed,
 
-                        #[watch]
-                        set_visible: model.installed,
-
-                        adw::ButtonContent {
-                            set_icon_name: "media-playback-start-symbolic",
-                            set_label: "Play"
-                        }
+                    gtk::DropDown {
+                        set_model: Some(&gtk::StringList::new(&[
+                            "Global",
+                            "China"
+                        ]))
                     },
 
-                    gtk::Button {
-                        add_css_class: "pill",
+                    gtk::Box {
+                        set_valign: gtk::Align::Center,
 
-                        #[watch]
-                        set_visible: model.installed,
+                        set_margin_top: 36,
+                        set_spacing: 8,
 
-                        adw::ButtonContent {
-                            set_icon_name: "drive-harddisk-ieee1394-symbolic",
-                            set_label: "Verify"
-                        }
-                    },
+                        gtk::Button {
+                            add_css_class: "pill",
+                            add_css_class: "suggested-action",
 
-                    gtk::Button {
-                        add_css_class: "pill",
-                        add_css_class: "suggested-action",
+                            adw::ButtonContent {
+                                set_icon_name: "folder-download-symbolic",
+                                set_label: "Download"
+                            },
 
-                        #[watch]
-                        set_visible: !model.installed,
-
-                        adw::ButtonContent {
-                            set_icon_name: "folder-download-symbolic",
-                            set_label: "Download"
+                            connect_clicked => GameDetailsComponentInput::EmitDownloadGame
                         },
-
-                        connect_clicked => GameDetailsComponentInput::EmitDownloadGame
-                    },
+                    }
                 }
             }
         }

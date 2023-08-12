@@ -29,6 +29,9 @@ lazy_static::lazy_static! {
                 ))
     };
 
+    /// Launcher components folder
+    pub static ref COMPONENTS_FOLDER: PathBuf = LAUNCHER_FOLDER.join("components");
+
     /// Path to the launcher's config file
     pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
 }
