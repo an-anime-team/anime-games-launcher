@@ -12,11 +12,17 @@ use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
 
-use crate::config;
+use crate::{
+    config,
+    STARTUP_CONFIG
+};
 
 use crate::components::Updater as ComponentUpdater;
 use crate::components::wine::Wine;
 use crate::components::dxvk::Dxvk;
+
+use crate::games::RunGameExt;
+use crate::games::genshin::Genshin;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
@@ -144,9 +150,9 @@ impl SimpleComponent for MainApp {
                         #[local_ref]
                         flap -> adw::Flap {
                             set_fold_policy: adw::FlapFoldPolicy::Always,
-                            set_transition_type: adw::FlapTransitionType::Slide,
+                            // set_transition_type: adw::FlapTransitionType::Slide,
 
-                            set_modal: false,
+                            // set_modal: false,
 
                             #[wrap(Some)]
                             set_flap = &adw::Clamp {
@@ -317,11 +323,9 @@ impl SimpleComponent for MainApp {
                 }),
         };
 
-        let config = config::get();
-
         for game in CardVariant::games() {
             let installed = match game {
-                CardVariant::Genshin => config.games.genshin.to_game().is_installed(),
+                CardVariant::Genshin => STARTUP_CONFIG.games.genshin.to_game().is_installed(),
 
                 _ => false
             };
@@ -406,11 +410,11 @@ impl SimpleComponent for MainApp {
 
             // Create wine prefix
 
-            let prefix = config::get().components.wine.prefix;
+            let prefix = &STARTUP_CONFIG.components.wine.prefix;
 
             if !prefix.path.exists() {
                 sender.input(MainAppMsg::AddCreatePrefixTask {
-                    path: prefix.path,
+                    path: prefix.path.clone(),
                     install_corefonts: prefix.install_corefonts
                 });
 

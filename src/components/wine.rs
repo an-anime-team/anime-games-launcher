@@ -65,17 +65,23 @@ impl Wine {
     }
 
     #[inline]
-    /// Get wine component path
-    pub fn get_path(&self) -> PathBuf {
+    /// Get wine component folder path
+    pub fn get_folder(&self) -> PathBuf {
         COMPONENTS_FOLDER
             .join("wine")
             .join(&self.name)
     }
 
     #[inline]
+    /// Get path to the wine executable
+    pub fn get_executable(&self) -> PathBuf {
+        self.get_folder().join("bin/wine64")
+    }
+
+    #[inline]
     /// Check if the component is downloaded
     pub fn is_downloaded(&self) -> bool {
-        self.get_path().exists()
+        self.get_folder().exists()
     }
 
     /// Download component
@@ -146,7 +152,7 @@ impl Wine {
             return None;
         }
 
-        let wine = WincompatlibWine::from_binary(self.get_path().join("bin/wine64"))
+        let wine = WincompatlibWine::from_binary(self.get_executable())
             .with_arch(WincompatlibWineArch::Win64)
             .with_loader(WincompatlibWineLoader::Current);
 

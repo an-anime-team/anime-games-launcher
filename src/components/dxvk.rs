@@ -57,8 +57,8 @@ impl Dxvk {
     }
 
     #[inline]
-    /// Get dxvk component path
-    pub fn get_path(&self) -> PathBuf {
+    /// Get dxvk component folder path
+    pub fn get_folder(&self) -> PathBuf {
         COMPONENTS_FOLDER
             .join("dxvk")
             .join(&self.name)
@@ -67,7 +67,7 @@ impl Dxvk {
     #[inline]
     /// Check if the component is downloaded
     pub fn is_downloaded(&self) -> bool {
-        self.get_path().exists()
+        self.get_folder().exists()
     }
 
     /// Download component

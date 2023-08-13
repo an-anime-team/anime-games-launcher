@@ -5,6 +5,7 @@ use relm4::prelude::*;
 pub mod ui;
 pub mod config;
 pub mod components;
+pub mod games;
 
 use ui::windows::main::MainApp;
 
@@ -34,6 +35,9 @@ lazy_static::lazy_static! {
 
     /// Path to the launcher's config file
     pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
+
+    /// Unmodified config variant
+    pub static ref STARTUP_CONFIG: config::Config = config::get();
 }
 
 fn main() -> anyhow::Result<()> {
@@ -43,7 +47,7 @@ fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(COMPONENTS_FOLDER.join("wine"))?;
         std::fs::create_dir_all(COMPONENTS_FOLDER.join("dxvk"))?;
 
-        config::update(&config::get())?;
+        config::update(&STARTUP_CONFIG)?;
     }
 
     adw::init().expect("Libadwaita initialization failed");

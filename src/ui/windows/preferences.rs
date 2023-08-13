@@ -4,7 +4,10 @@ use relm4::component::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::config;
+use crate::{
+    config,
+    STARTUP_CONFIG
+};
 
 static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
@@ -14,7 +17,7 @@ pub struct PreferencesApp {
 
 #[derive(Debug, Clone)]
 pub enum PreferencesAppMsg {
-    ShowTitle {
+    ShowToast {
         title: String,
         message: Option<String>
     }
@@ -36,6 +39,29 @@ impl SimpleAsyncComponent for PreferencesApp {
             set_search_enabled: true,
 
             add = &adw::PreferencesPage {
+                add = &adw::PreferencesGroup {
+                    set_title: "Wine prefix",
+
+                    adw::ActionRow {
+                        set_title: "Install corefonts",
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center,
+
+                            set_active: STARTUP_CONFIG.components.wine.prefix.install_corefonts,
+
+                            connect_state_notify[sender] => move |switch| {
+                                if let Err(err) = config::set("components.wine.prefix.install_corefonts", switch.is_active()) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: String::from("Failed to update property"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
+                        }
+                    }
+                },
+
                 add = &adw::PreferencesGroup {
                     adw::ComboRow {
                         set_title: "Wine version",
@@ -79,7 +105,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            PreferencesAppMsg::ShowTitle { title, message } => {
+            PreferencesAppMsg::ShowToast { title, message } => {
                 let window = unsafe {
                     WINDOW.as_ref().unwrap_unchecked()
                 };
