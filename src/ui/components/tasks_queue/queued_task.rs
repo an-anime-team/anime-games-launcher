@@ -173,6 +173,8 @@ impl QueuedTask {
                                 wine.init_prefix(Some(&path))?;
                             }
 
+                            // TODO: apply DXVK
+
                             // Install fonts
 
                             if install_corefonts {

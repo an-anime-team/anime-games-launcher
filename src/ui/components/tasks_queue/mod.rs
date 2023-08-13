@@ -1,9 +1,8 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use relm4::factory::FactoryVecDeque;
 use relm4::prelude::*;
@@ -30,10 +29,18 @@ pub use resolved_task::{
     TaskStatus
 };
 
+pub const UPDATER_TIMEOUT: Duration = Duration::from_millis(20);
+
 #[derive(Debug)]
 pub struct TasksQueueProgressUpdater {
     pub thread: JoinHandle<()>,
     pub running: Arc<AtomicBool>
+}
+
+impl Drop for TasksQueueProgressUpdater {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+    }
 }
 
 #[derive(Debug)]
@@ -69,12 +76,6 @@ pub enum TasksQueueComponentOutput {
     ShowToast {
         title: String,
         message: Option<String>
-    }
-}
-
-impl Drop for TasksQueueProgressUpdater {
-    fn drop(&mut self) {
-        self.running.store(false, Ordering::Relaxed);
     }
 }
 
@@ -144,7 +145,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 #[watch]
                 set_visible: model.current_task.is_some(),
 
-                set_pulse_step: 0.0125
+                set_pulse_step: 0.25 / UPDATER_TIMEOUT.as_millis() as f64 // 0.0125
             },
 
             gtk::Label {
@@ -349,16 +350,17 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             TasksQueueComponentInput::StartUpdater => {
                 let running = Arc::new(AtomicBool::new(true));
 
-                let running_copy = running.clone();
-                let thread = std::thread::spawn(move || {
-                    while running_copy.load(Ordering::Relaxed) {
-                        sender.input(TasksQueueComponentInput::UpdateCurrentTask);
-    
-                        std::thread::sleep(std::time::Duration::from_millis(20));
-                    }
-                });
+                self.updater = Some(TasksQueueProgressUpdater {
+                    running: running.clone(),
 
-                self.updater = Some(TasksQueueProgressUpdater { thread, running });
+                    thread: std::thread::spawn(move || {
+                        while running.load(Ordering::Relaxed) {
+                            sender.input(TasksQueueComponentInput::UpdateCurrentTask);
+
+                            std::thread::sleep(UPDATER_TIMEOUT);
+                        }
+                    })
+                });
             }
 
             TasksQueueComponentInput::StopUpdater => {

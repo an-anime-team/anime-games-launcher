@@ -149,8 +149,11 @@ impl SimpleComponent for MainApp {
                             set_modal: false,
 
                             #[wrap(Some)]
-                            set_flap = &gtk::Box {
+                            set_flap = &adw::Clamp {
                                 add_css_class: "background",
+
+                                set_maximum_size: 240,
+                                set_tightening_threshold: 180,
 
                                 model.tasks_queue.widget(),
                             },

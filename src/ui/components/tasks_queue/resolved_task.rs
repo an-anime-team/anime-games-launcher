@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anime_game_core::updater::UpdaterExt;
 
 use anime_game_core::game::genshin::diff::{
