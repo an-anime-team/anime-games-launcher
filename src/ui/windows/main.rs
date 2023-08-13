@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::collections::HashMap;
 
 use relm4::prelude::*;
@@ -10,6 +11,8 @@ use adw::prelude::*;
 use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
 use anime_game_core::game::diff::DiffExt;
+
+use crate::config;
 
 use crate::components::Updater as ComponentUpdater;
 use crate::components::wine::Wine;
@@ -36,8 +39,6 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponentOutput,
     QueuedTask
 };
-
-use crate::config;
 
 static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_WINDOW: Option<AsyncController<PreferencesApp>> = None;
@@ -91,6 +92,11 @@ pub enum MainAppMsg {
         title: String,
         author: String,
         version: Dxvk
+    },
+
+    AddCreatePrefixTask {
+        path: PathBuf,
+        install_corefonts: bool
     },
 
     ShowTitle {
@@ -394,6 +400,19 @@ impl SimpleComponent for MainApp {
                     });
                 }
             }
+
+            // Create wine prefix
+
+            let prefix = config::get().components.wine.prefix;
+
+            if !prefix.path.exists() {
+                sender.input(MainAppMsg::AddCreatePrefixTask {
+                    path: prefix.path,
+                    install_corefonts: prefix.install_corefonts
+                });
+
+                sender.input(MainAppMsg::ShowTasksFlap);
+            }
         });
 
         ComponentParts { model, widgets }
@@ -492,6 +511,13 @@ impl SimpleComponent for MainApp {
                     title,
                     author,
                     version
+                }));
+            }
+
+            MainAppMsg::AddCreatePrefixTask { path, install_corefonts } => {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(QueuedTask::CreatePrefix {
+                    path,
+                    install_corefonts
                 }));
             }
 

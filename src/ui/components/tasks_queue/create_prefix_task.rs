@@ -3,13 +3,12 @@ use std::thread::JoinHandle;
 
 use anime_game_core::updater::UpdaterExt;
 
-pub mod wine;
-pub mod dxvk;
+use wincompatlib::wine::ext::Font;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
-    Downloading,
-    Unpacking,
+    CreatingPrefix,
+    InstallingFont(Font),
     Finished
 }
 
@@ -49,7 +48,7 @@ impl UpdaterExt for Updater {
                 return Ok(self.status.get());
             }
 
-            self.worker_result = Some(worker.join().expect("Failed to join component downloader thread"));
+            self.worker_result = Some(worker.join().expect("Failed to join prefix creation thread"));
         }
 
         match &self.worker_result {
@@ -62,7 +61,7 @@ impl UpdaterExt for Updater {
 
     fn wait(mut self) -> Result<Self::Result, Self::Error> {
         if let Some(worker) = self.worker.take() {
-            return worker.join().expect("Failed to join component downloader thread");
+            return worker.join().expect("Failed to join prefix creation thread");
         }
 
         else if let Some(result) = self.worker_result.take() {

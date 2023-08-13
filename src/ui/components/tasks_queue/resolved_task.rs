@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anime_game_core::updater::UpdaterExt;
 
 use anime_game_core::game::genshin::diff::{
@@ -5,12 +7,19 @@ use anime_game_core::game::genshin::diff::{
     Status as GenshinDiffStatus
 };
 
+use wincompatlib::wine::ext::Font;
+
 use crate::components::{
     Updater as ComponentUpdater,
     Status as ComponentStatus
 };
 
 use crate::ui::components::game_card::CardVariant;
+
+use super::create_prefix_task::{
+    Updater as CreatePrefixUpdater,
+    Status as CreatePrefixStatus
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// All the possible tasks statuses in one enum
@@ -21,6 +30,8 @@ pub enum TaskStatus {
     FinishingTransition,
     ApplyingHdiffPatches,
     DeletingObsoleteFiles,
+    CreatingPrefix,
+    InstallingFont(Font),
     Finished
 }
 
@@ -33,6 +44,10 @@ pub enum ResolvedTask {
         title: String,
         author: String,
         updater: ComponentUpdater
+    },
+
+    CreatePrefix {
+        updater: CreatePrefixUpdater
     }
 }
 
@@ -50,6 +65,11 @@ impl std::fmt::Debug for ResolvedTask {
                     .field("author", author)
                     .finish()
             }
+
+            Self::CreatePrefix { .. } => {
+                f.debug_struct("CreatePrefix")
+                    .finish()
+            }
         }
     }
 }
@@ -63,6 +83,11 @@ impl ResolvedTask {
             Self::DownloadComponent { title, author, .. } => CardVariant::Component {
                 title: title.clone(),
                 author: author.clone()
+            },
+
+            Self::CreatePrefix { .. } => CardVariant::Component {
+                title: String::from("Wine prefix"),
+                author: String::new()
             }
         }
     }
@@ -90,6 +115,7 @@ impl ResolvedTask {
         match self {
             Self::DownloadGenshinDiff { updater, .. } => updater.is_finished(),
             Self::DownloadComponent { updater, .. } => updater.is_finished(),
+            Self::CreatePrefix { updater } => updater.is_finished()
         }
     }
 
@@ -98,6 +124,7 @@ impl ResolvedTask {
         match self {
             Self::DownloadGenshinDiff { updater, .. } => updater.current(),
             Self::DownloadComponent { updater, .. } => updater.current(),
+            Self::CreatePrefix { updater } => updater.current()
         }
     }
 
@@ -105,7 +132,8 @@ impl ResolvedTask {
     pub fn get_total(&self) -> u64 {
         match self {
             Self::DownloadGenshinDiff { updater } => updater.total(),
-            Self::DownloadComponent { updater, .. } => updater.total()
+            Self::DownloadComponent { updater, .. } => updater.total(),
+            Self::CreatePrefix { updater } => updater.total()
         }
     }
 
@@ -113,7 +141,8 @@ impl ResolvedTask {
     pub fn get_progress(&self) -> f64 {
         match self {
             Self::DownloadGenshinDiff { updater } => updater.progress(),
-            Self::DownloadComponent { updater, .. } => updater.progress()
+            Self::DownloadComponent { updater, .. } => updater.progress(),
+            Self::CreatePrefix { updater } => updater.progress()
         }
     }
 
@@ -142,6 +171,19 @@ impl ResolvedTask {
                         ComponentStatus::Downloading => TaskStatus::Downloading,
                         ComponentStatus::Unpacking   => TaskStatus::Unpacking,
                         ComponentStatus::Finished    => TaskStatus::Finished
+                    }),
+
+                    Err(err) => anyhow::bail!(err.to_string())
+                }
+            }
+
+            Self::CreatePrefix { updater } => {
+                match updater.status() {
+                    Ok(status) => Ok(match status {
+                        CreatePrefixStatus::InstallingFont(font) => TaskStatus::InstallingFont(font),
+
+                        CreatePrefixStatus::CreatingPrefix => TaskStatus::CreatingPrefix,
+                        CreatePrefixStatus::Finished       => TaskStatus::Finished
                     }),
 
                     Err(err) => anyhow::bail!(err.to_string())

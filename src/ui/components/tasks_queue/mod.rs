@@ -18,6 +18,7 @@ use crate::ui::components::factory::game_card_tasks::GameCardFactory;
 
 pub mod queued_task;
 pub mod resolved_task;
+pub mod create_prefix_task;
 
 pub use queued_task::QueuedTask;
 
@@ -28,10 +29,11 @@ pub use resolved_task::{
 
 #[derive(Debug)]
 pub struct TasksQueueComponent {
+    pub current_task: Option<ResolvedTask>,
     pub current_task_card: AsyncController<GameCardComponent>,
     pub current_task_status: String,
     pub current_task_progress_start: Instant,
-    pub current_task: Option<ResolvedTask>,
+    pub current_task_progress_pulse: bool,
 
     pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
     pub queued_tasks: VecDeque<QueuedTask>,
@@ -103,7 +105,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                 #[watch]
                 set_label: &match &model.current_task {
-                    Some(task) => format!("Downloading {}", task.get_title()),
+                    Some(task) => task.get_title(),
                     None => String::from("Nothing to do")
                 }
             },
@@ -178,13 +180,15 @@ impl SimpleAsyncComponent for TasksQueueComponent {
         flow_box.set_homogeneous(true);
 
         let model = Self {
+            current_task: None,
+
             current_task_card: GameCardComponent::builder()
                 .launch(init)
                 .detach(),
 
             current_task_status: String::new(),
             current_task_progress_start: Instant::now(),
-            current_task: None,
+            current_task_progress_pulse: false,
 
             queued_tasks_factory: FactoryVecDeque::new(flow_box, sender.input_sender()),
             queued_tasks: VecDeque::new(),
@@ -291,19 +295,32 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     }
 
                     else {
-                        self.progress_bar.set_fraction(task.get_progress());
+                        if self.current_task_progress_pulse {
+                            self.progress_bar.pulse();
+                        }
+
+                        else {
+                            self.progress_bar.set_fraction(task.get_progress());
+                        }
 
                         if let Ok(status) = task.get_status() {
-                            let title = match status {
-                                TaskStatus::PreparingTransition   => String::from("Preparing transition..."),
-                                TaskStatus::Downloading           => String::from("Downloading..."),
-                                TaskStatus::Unpacking             => String::from("Unpacking..."),
-                                TaskStatus::FinishingTransition   => String::from("Finishing transition..."),
-                                TaskStatus::ApplyingHdiffPatches  => String::from("Applying hdiff patches..."),
-                                TaskStatus::DeletingObsoleteFiles => String::from("Deleting obsolete files..."),
-                                TaskStatus::Finished              => String::from("Finished")
+                            let (pulse, title) = match status {
+                                TaskStatus::PreparingTransition => (true, String::from("Preparing transition...")),
+                                TaskStatus::FinishingTransition => (true, String::from("Finishing transition...")),
+
+                                TaskStatus::Downloading => (false, String::from("Downloading...")),
+                                TaskStatus::Unpacking   => (false, String::from("Unpacking...")),
+
+                                TaskStatus::ApplyingHdiffPatches  => (false, String::from("Applying hdiff patches...")),
+                                TaskStatus::DeletingObsoleteFiles => (false, String::from("Deleting obsolete files...")),
+
+                                TaskStatus::CreatingPrefix             => (true, String::from("Creating prefix...")),
+                                TaskStatus::InstallingFont(font) => (false, format!("Installing font: {}...", font.name())),
+
+                                TaskStatus::Finished => (true, String::from("Finished"))
                             };
 
+                            self.current_task_progress_pulse = pulse;
                             self.current_task_status = title;
                         }
                     }
