@@ -94,7 +94,7 @@ impl ResolvedTask {
     }
 
     /// Get current task progress
-    pub fn get_current(&self) -> usize {
+    pub fn get_current(&self) -> u64 {
         match self {
             Self::DownloadGenshinDiff { updater, .. } => updater.current(),
             Self::DownloadComponent { updater, .. } => updater.current(),
@@ -102,7 +102,7 @@ impl ResolvedTask {
     }
 
     /// Get total task progress
-    pub fn get_total(&self) -> usize {
+    pub fn get_total(&self) -> u64 {
         match self {
             Self::DownloadGenshinDiff { updater } => updater.total(),
             Self::DownloadComponent { updater, .. } => updater.total()

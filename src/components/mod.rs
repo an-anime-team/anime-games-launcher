@@ -16,12 +16,12 @@ pub enum Status {
 #[derive(Debug)]
 pub struct Updater {
     status: Cell<Status>,
-    current: Cell<usize>,
-    total: Cell<usize>,
+    current: Cell<u64>,
+    total: Cell<u64>,
 
     worker: Option<JoinHandle<Result<(), anyhow::Error>>>,
     worker_result: Option<Result<(), anyhow::Error>>,
-    updater: flume::Receiver<(Status, usize, usize)>
+    updater: flume::Receiver<(Status, u64, u64)>
 }
 
 impl Updater {
@@ -78,14 +78,14 @@ impl UpdaterExt for Updater {
     }
 
     #[inline]
-    fn current(&self) -> usize {
+    fn current(&self) -> u64 {
         self.update();
 
         self.current.get()
     }
 
     #[inline]
-    fn total(&self) -> usize {
+    fn total(&self) -> u64 {
         self.update();
 
         self.total.get()
