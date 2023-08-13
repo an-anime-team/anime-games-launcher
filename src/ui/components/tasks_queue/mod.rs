@@ -54,6 +54,7 @@ pub struct TasksQueueComponent {
     pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
     pub queued_tasks: VecDeque<QueuedTask>,
 
+    pub progress_label: gtk::Label,
     pub progress_bar: gtk::ProgressBar,
 
     pub updater: Option<TasksQueueProgressUpdater>
@@ -126,16 +127,26 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 }
             },
 
-            gtk::Label {
-                set_halign: gtk::Align::Start,
-
+            gtk::CenterBox {
                 set_margin_top: 8,
 
                 #[watch]
                 set_visible: model.current_task.is_some(),
 
-                #[watch]
-                set_label: &model.current_task_status
+                #[wrap(Some)]
+                set_start_widget = &gtk::Label {
+                    #[watch]
+                    set_label: &model.current_task_status
+                },
+
+                #[wrap(Some)]
+                #[local_ref]
+                set_end_widget = progress_label -> gtk::Label {
+                    set_margin_start: 16,
+
+                    #[watch]
+                    set_visible: !&model.current_task_progress_pulse
+                }
             },
 
             #[local_ref]
@@ -211,6 +222,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             queued_tasks_factory: FactoryVecDeque::new(flow_box, sender.input_sender()),
             queued_tasks: VecDeque::new(),
 
+            progress_label: gtk::Label::new(None),
             progress_bar: gtk::ProgressBar::new(),
 
             updater: None
@@ -222,6 +234,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
         model.current_task_card.emit(GameCardComponentInput::SetClickable(false));
         model.current_task_card.emit(GameCardComponentInput::SetDisplayTitle(false));
 
+        let progress_label = &model.progress_label;
         let progress_bar = &model.progress_bar;
 
         let widgets = view_output!();
@@ -320,7 +333,10 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         }
 
                         else {
-                            self.progress_bar.set_fraction(task.get_progress());
+                            let progress = task.get_progress();
+
+                            self.progress_label.set_text(&format!("{:.1}%", progress * 100.0));
+                            self.progress_bar.set_fraction(progress);
                         }
 
                         if let Ok(status) = task.get_status() {
@@ -335,7 +351,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::DeletingObsoleteFiles => (false, String::from("Deleting obsolete files...")),
 
                                 TaskStatus::CreatingPrefix             => (true, String::from("Creating prefix...")),
-                                TaskStatus::InstallingFont(font) => (false, format!("Installing font: {}...", font.name())),
+                                TaskStatus::InstallingFont(font) => (false, format!("Installing {}...", font.name())),
 
                                 TaskStatus::Finished => (true, String::from("Finished"))
                             };
