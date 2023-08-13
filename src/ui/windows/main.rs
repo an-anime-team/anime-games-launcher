@@ -291,12 +291,14 @@ impl SimpleComponent for MainApp {
             game_details: GameDetailsComponent::builder()
                 .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |message| match message {
-                    GameDetailsComponentOutput::DownloadGame { variant } => {
-                        MainAppMsg::AddDownloadGameTask(variant)
-                    }
+                    GameDetailsComponentOutput::DownloadGame { variant }
+                        => MainAppMsg::AddDownloadGameTask(variant),
 
                     GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
-                    GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap
+                    GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap,
+
+                    GameDetailsComponentOutput::ShowToast { title, message }
+                        => MainAppMsg::ShowTitle { title, message }
                 }),
 
             game_details_variant: CardVariant::Genshin,
@@ -312,14 +314,14 @@ impl SimpleComponent for MainApp {
             tasks_queue: TasksQueueComponent::builder()
                 .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |output| match output {
-                    TasksQueueComponentOutput::GameDownloaded(variant) =>
-                        MainAppMsg::FinishDownloadGameTask(variant),
+                    TasksQueueComponentOutput::GameDownloaded(variant)
+                        => MainAppMsg::FinishDownloadGameTask(variant),
 
-                    TasksQueueComponentOutput::HideTasksFlap =>
-                        MainAppMsg::HideTasksFlap,
+                    TasksQueueComponentOutput::HideTasksFlap
+                        => MainAppMsg::HideTasksFlap,
 
-                    TasksQueueComponentOutput::ShowToast { title, message } =>
-                        MainAppMsg::ShowTitle { title, message }
+                    TasksQueueComponentOutput::ShowToast { title, message }
+                        => MainAppMsg::ShowTitle { title, message }
                 }),
         };
 

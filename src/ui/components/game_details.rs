@@ -3,6 +3,11 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
+use crate::config;
+
+use crate::games::RunGameExt;
+use crate::games::genshin::Genshin;
+
 use crate::ui::components::game_card::{
     GameCardComponent,
     GameCardComponentInput,
@@ -23,7 +28,9 @@ pub enum GameDetailsComponentInput {
     SetInstalled(bool),
     EditGameCard(GameCardComponentInput),
 
-    EmitDownloadGame
+    EmitDownloadGame,
+
+    LaunchGame
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,7 +40,12 @@ pub enum GameDetailsComponentOutput {
     },
 
     HideDetails,
-    ShowTasksFlap
+    ShowTasksFlap,
+
+    ShowToast {
+        title: String,
+        message: Option<String>
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -112,7 +124,9 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                             adw::ButtonContent {
                                 set_icon_name: "media-playback-start-symbolic",
                                 set_label: "Play"
-                            }
+                            },
+
+                            connect_clicked => GameDetailsComponentInput::LaunchGame
                         },
     
                         gtk::Button {
@@ -212,6 +226,25 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
                 sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
+            }
+
+            GameDetailsComponentInput::LaunchGame => {
+                match &self.variant {
+                    CardVariant::Genshin => {
+                        std::thread::spawn(move || {
+                            let genshin = Genshin::from(&config::get().games.genshin.to_game());
+
+                            if let Err(err) = genshin.run() {
+                                sender.output(GameDetailsComponentOutput::ShowToast {
+                                    title: String::from("Failed to launch the game"),
+                                    message: Some(err.to_string())
+                                }).unwrap();
+                            }
+                        });
+                    }
+
+                    _ => unimplemented!()
+                }
             }
         }
     }
