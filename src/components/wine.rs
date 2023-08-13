@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::path::PathBuf;
 
 use anime_game_core::network::minreq;
 use anime_game_core::archive;
@@ -9,6 +10,14 @@ use anime_game_core::network::downloader::basic::Downloader;
 use anime_game_core::updater::UpdaterExt;
 
 use serde_json::Value as Json;
+
+use wincompatlib::wine::ext::WineWithExt;
+
+use wincompatlib::wine::{
+    Wine as WincompatlibWine,
+    WineArch as WincompatlibWineArch,
+    WineLoader as WincompatlibWineLoader
+};
 
 use crate::{
     config,
@@ -56,11 +65,17 @@ impl Wine {
     }
 
     #[inline]
+    /// Get wine component path
+    pub fn get_path(&self) -> PathBuf {
+        COMPONENTS_FOLDER
+            .join("wine")
+            .join(&self.name)
+    }
+
+    #[inline]
     /// Check if the component is downloaded
     pub fn is_downloaded(&self) -> bool {
-        COMPONENTS_FOLDER.join("wine")
-            .join(&self.name)
-            .exists()
+        self.get_path().exists()
     }
 
     /// Download component
@@ -122,5 +137,19 @@ impl Wine {
                 Ok(())
             }))
         })
+    }
+
+    /// Get wincompatlib descriptor of the current wine version
+    /// if it is already installed, and `None` otherwise
+    pub fn to_wincompatlib(&self) -> Option<WincompatlibWine> {
+        if !self.is_downloaded() {
+            return None;
+        }
+
+        let wine = WincompatlibWine::from_binary(self.get_path().join("bin/wine64"))
+            .with_arch(WincompatlibWineArch::Win64)
+            .with_loader(WincompatlibWineLoader::Current);
+
+        Some(wine)
     }
 }

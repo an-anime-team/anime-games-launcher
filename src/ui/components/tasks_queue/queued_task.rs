@@ -24,7 +24,11 @@ pub enum QueuedTask {
         title: String,
         author: String,
         version: Dxvk
-    }
+    },
+
+    // CreatePrefix {
+
+    // }
 }
 
 impl std::fmt::Debug for QueuedTask {

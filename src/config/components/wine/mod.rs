@@ -2,10 +2,13 @@ use serde::{Serialize, Deserialize};
 
 use serde_json::Value as Json;
 
+pub mod prefix;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Wine {
     pub build: String,
-    pub version: String
+    pub version: String,
+    pub prefix: prefix::Prefix
 }
 
 impl Default for Wine {
@@ -13,7 +16,8 @@ impl Default for Wine {
     fn default() -> Self {
         Self {
             build: String::from("wine-ge-proton"),
-            version: String::from("latest")
+            version: String::from("latest"),
+            prefix: prefix::Prefix::default()
         }
     }
 }
@@ -32,7 +36,11 @@ impl From<&Json> for Wine {
             version: value.get("version")
                 .and_then(Json::as_str)
                 .map(String::from)
-                .unwrap_or(default.version)
+                .unwrap_or(default.version),
+
+            prefix: value.get("prefix")
+                .map(prefix::Prefix::from)
+                .unwrap_or(default.prefix)
         }
     }
 }

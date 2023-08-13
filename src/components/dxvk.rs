@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::path::PathBuf;
 
 use anime_game_core::network::minreq;
 use anime_game_core::archive;
@@ -56,11 +57,17 @@ impl Dxvk {
     }
 
     #[inline]
+    /// Get dxvk component path
+    pub fn get_path(&self) -> PathBuf {
+        COMPONENTS_FOLDER
+            .join("dxvk")
+            .join(&self.name)
+    }
+
+    #[inline]
     /// Check if the component is downloaded
     pub fn is_downloaded(&self) -> bool {
-        COMPONENTS_FOLDER.join("dxvk")
-            .join(&self.name)
-            .exists()
+        self.get_path().exists()
     }
 
     /// Download component
