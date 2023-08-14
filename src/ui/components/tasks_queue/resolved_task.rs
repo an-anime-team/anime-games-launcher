@@ -5,8 +5,6 @@ use anime_game_core::game::genshin::diff::{
     Status as GenshinDiffStatus
 };
 
-use wincompatlib::wine::ext::Font;
-
 use crate::components::{
     Updater as ComponentUpdater,
     Status as ComponentStatus
@@ -29,7 +27,7 @@ pub enum TaskStatus {
     ApplyingHdiffPatches,
     DeletingObsoleteFiles,
     CreatingPrefix,
-    InstallingFont(Font),
+    InstallingFonts,
     Finished
 }
 
@@ -178,7 +176,7 @@ impl ResolvedTask {
             Self::CreatePrefix { updater } => {
                 match updater.status() {
                     Ok(status) => Ok(match status {
-                        CreatePrefixStatus::InstallingFont(font) => TaskStatus::InstallingFont(font),
+                        CreatePrefixStatus::InstallingFonts => TaskStatus::InstallingFonts,
 
                         CreatePrefixStatus::CreatingPrefix => TaskStatus::CreatingPrefix,
                         CreatePrefixStatus::Finished       => TaskStatus::Finished

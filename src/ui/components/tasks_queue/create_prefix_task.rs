@@ -3,12 +3,10 @@ use std::thread::JoinHandle;
 
 use anime_game_core::updater::UpdaterExt;
 
-use wincompatlib::wine::ext::Font;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     CreatingPrefix,
-    InstallingFont(Font),
+    InstallingFonts,
     Finished
 }
 

@@ -1,5 +1,7 @@
 use std::cell::Cell;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use anime_game_core::game::diff::DiffExt;
 
@@ -178,14 +180,51 @@ impl QueuedTask {
                             // Install fonts
 
                             if install_corefonts {
+                                let wine_arc = Arc::new(wine);
+                                let path_arc = Arc::new(path);
+
                                 let total_fonts = Font::iterator().into_iter().count() as u64;
+                                let font_queue = Arc::new(Mutex::new(Font::iterator().into_iter().collect::<Vec<Font>>()));
+                                let installed_fonts = Arc::new(AtomicU64::new(0));
 
-                                for (i, font) in Font::iterator().into_iter().enumerate() {
-                                    if !font.is_installed(&path) {
-                                        wine.install_font(font)?;
-                                    }
+                                let thread_count = 8; // TODO: determine thread count using something better than a magic number
+                                let mut threads = Vec::with_capacity(thread_count);
 
-                                    sender.send((CreatePrefixStatus::InstallingFont(font), i as u64 + 1, total_fonts))?;
+                                sender.send((CreatePrefixStatus::InstallingFonts, 0, total_fonts))?;
+
+                                for _ in 0..thread_count {
+                                    let wine_arc_copy = wine_arc.clone();
+                                    let path_arc_copy = path_arc.clone();
+                                    let font_queue_copy = font_queue.clone();
+                                    let installed_fonts_copy = installed_fonts.clone();
+
+                                    let sender_copy = sender.clone();
+
+                                    threads.push(std::thread::spawn(move || -> anyhow::Result<()> {
+                                        // Using "while let" here will lead to the first thread locking the queue
+                                        // for it's entire lifetime, making parallelization useless
+                                        loop {
+                                            let Some(font) = font_queue_copy.lock().unwrap().pop() else {
+                                                break;
+                                            };
+                                            
+                                            if !font.is_installed(path_arc_copy.as_ref()) {
+                                                wine_arc_copy.as_ref().install_font(font)?;
+                                            }
+
+                                            sender_copy.send((
+                                                CreatePrefixStatus::InstallingFonts, 
+                                                installed_fonts_copy.fetch_add(1, Ordering::Relaxed) + 1, 
+                                                total_fonts
+                                            ))?;
+                                        }
+
+                                        Ok(())
+                                    }));
+                                }
+
+                                for thread in threads {
+                                    thread.join().unwrap()?;
                                 }
                             }
 
