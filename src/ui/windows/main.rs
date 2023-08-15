@@ -42,9 +42,13 @@ use crate::ui::components::game_details::{
 use crate::ui::components::tasks_queue::{
     TasksQueueComponent,
     TasksQueueComponentInput,
-    TasksQueueComponentOutput,
-    QueuedTask
+    TasksQueueComponentOutput
 };
+
+use crate::games::genshin::DownloadDiffQueuedTask as DownloadGenshinDiffQueuedTask;
+use crate::components::wine::DownloadWineQueuedTask;
+use crate::components::dxvk::DownloadDxvkQueuedTask;
+use crate::ui::components::tasks_queue::create_prefix_task::CreatePrefixQueuedTask;
 
 static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_WINDOW: Option<AsyncController<PreferencesApp>> = None;
@@ -466,12 +470,12 @@ impl SimpleComponent for MainApp {
 
                 let task = match variant {
                     CardVariant::Genshin => {
-                        QueuedTask::DownloadGenshinDiff {
+                        Box::new(DownloadGenshinDiffQueuedTask {
                             diff: config.games.genshin
                                 .to_game()
                                 .get_diff()
                                 .unwrap() // FIXME
-                        }
+                        })
                     },
 
                     _ => unimplemented!()
@@ -508,26 +512,26 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddDownloadWineTask { title, author, version } => {
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(QueuedTask::DownloadWine {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadWineQueuedTask {
                     title,
                     author,
                     version
-                }));
+                })));
             }
 
             MainAppMsg::AddDownloadDxvkTask { title, author, version } => {
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(QueuedTask::DownloadDxvk {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadDxvkQueuedTask {
                     title,
                     author,
                     version
-                }));
+                })));
             }
 
             MainAppMsg::AddCreatePrefixTask { path, install_corefonts } => {
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(QueuedTask::CreatePrefix {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(CreatePrefixQueuedTask {
                     path,
                     install_corefonts
-                }));
+                })));
             }
 
             MainAppMsg::ShowTitle { title, message } => {

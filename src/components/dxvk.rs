@@ -11,6 +11,8 @@ use anime_game_core::updater::UpdaterExt;
 
 use serde_json::Value as Json;
 
+use crate::ui::components::game_card::CardVariant;
+use crate::ui::components::tasks_queue::{QueuedTask, ResolvedTask};
 use crate::{
     config,
     COMPONENTS_FOLDER
@@ -20,6 +22,8 @@ use crate::components::{
     Updater,
     Status
 };
+
+use super::DownloadComponentResolvedTask;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dxvk {
@@ -129,5 +133,37 @@ impl Dxvk {
                 Ok(())
             }))
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct DownloadDxvkQueuedTask {
+    pub title: String,
+    pub author: String,
+    pub version: Dxvk
+}
+
+impl QueuedTask for DownloadDxvkQueuedTask {
+    fn get_variant(&self) -> CardVariant {
+        CardVariant::Component { 
+            title: self.title.to_owned(), 
+            author: self.author.to_owned() 
+        }
+    }
+
+    fn get_title(&self) -> String {
+        self.title.to_owned()
+    }
+
+    fn get_author(&self) -> String {
+        self.author.to_owned()
+    }
+
+    fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
+        Ok(Box::new(DownloadComponentResolvedTask {
+            title: self.title,
+            author: self.author,
+            updater: self.version.download()?
+        }))
     }
 }

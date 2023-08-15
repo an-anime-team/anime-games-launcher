@@ -18,16 +18,10 @@ use crate::ui::components::game_card::{
 
 use crate::ui::components::factory::game_card_tasks::GameCardFactory;
 
-pub mod queued_task;
-pub mod resolved_task;
+pub mod task;
 pub mod create_prefix_task;
 
-pub use queued_task::QueuedTask;
-
-pub use resolved_task::{
-    ResolvedTask,
-    TaskStatus
-};
+pub use task::*;
 
 pub const UPDATER_TIMEOUT: Duration = Duration::from_millis(20);
 
@@ -45,14 +39,14 @@ impl Drop for TasksQueueProgressUpdater {
 
 #[derive(Debug)]
 pub struct TasksQueueComponent {
-    pub current_task: Option<ResolvedTask>,
+    pub current_task: Option<Box<dyn ResolvedTask>>,
     pub current_task_card: AsyncController<GameCardComponent>,
     pub current_task_status: String,
     pub current_task_progress_start: Instant,
     pub current_task_progress_pulse: bool,
 
     pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
-    pub queued_tasks: VecDeque<QueuedTask>,
+    pub queued_tasks: VecDeque<Box<dyn QueuedTask>>,
 
     pub progress_label: gtk::Label,
     pub progress_bar: gtk::ProgressBar,
@@ -62,7 +56,7 @@ pub struct TasksQueueComponent {
 
 #[derive(Debug)]
 pub enum TasksQueueComponentInput {
-    AddTask(QueuedTask),
+    AddTask(Box<dyn QueuedTask>),
     UpdateCurrentTask,
     StartUpdater,
     StopUpdater

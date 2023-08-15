@@ -19,6 +19,9 @@ use wincompatlib::wine::{
     WineLoader as WincompatlibWineLoader
 };
 
+use crate::ui::components::game_card::CardVariant;
+use crate::ui::components::tasks_queue::{QueuedTask, ResolvedTask};
+
 use crate::{
     config,
     COMPONENTS_FOLDER
@@ -28,6 +31,8 @@ use crate::components::{
     Updater,
     Status
 };
+
+use super::DownloadComponentResolvedTask;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Wine {
@@ -157,5 +162,37 @@ impl Wine {
             .with_loader(WincompatlibWineLoader::Current);
 
         Some(wine)
+    }
+}
+
+#[derive(Debug)]
+pub struct DownloadWineQueuedTask {
+    pub title: String,
+    pub author: String,
+    pub version: Wine
+}
+
+impl QueuedTask for DownloadWineQueuedTask {
+    fn get_variant(&self) -> CardVariant {
+        CardVariant::Component { 
+            title: self.title.to_owned(), 
+            author: self.author.to_owned() 
+        }
+    }
+
+    fn get_title(&self) -> String {
+        self.title.to_owned()
+    }
+
+    fn get_author(&self) -> String {
+        self.author.to_owned()
+    }
+
+    fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
+        Ok(Box::new(DownloadComponentResolvedTask {
+            title: self.title,
+            author: self.author,
+            updater: self.version.download()?
+        }))
     }
 }

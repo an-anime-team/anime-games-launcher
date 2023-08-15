@@ -1,7 +1,15 @@
-use std::cell::Cell;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::{cell::Cell, sync::Arc};
+use std::path::PathBuf;
 use std::thread::JoinHandle;
 
 use anime_game_core::updater::UpdaterExt;
+use wincompatlib::prelude::{WineBootExt, Font, WineFontsExt};
+
+use crate::{ui::components::game_card::CardVariant, components::wine::Wine};
+
+use super::{QueuedTask, ResolvedTask, TaskStatus};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
@@ -86,5 +94,150 @@ impl UpdaterExt for Updater {
         self.update();
 
         self.total.get()
+    }
+}
+
+#[derive(Debug)]
+pub struct CreatePrefixQueuedTask {
+    pub path: PathBuf,
+    pub install_corefonts: bool
+}
+
+impl QueuedTask for CreatePrefixQueuedTask {
+    fn get_variant(&self) -> CardVariant {
+        CardVariant::Component {
+            title: String::from("Wine prefix"),
+            author: String::new()
+        }
+    }
+
+    fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
+        let (sender, receiver) = flume::unbounded();
+
+        let Some(wine) = Wine::from_config()?.to_wincompatlib() else {
+            anyhow::bail!("Failed to resolve wincompatlib wine descriptor");
+        };
+
+        Ok(Box::new(CreatePrefixResolvedTask {
+            updater: Updater {
+                status: Cell::new(Status::CreatingPrefix),
+                current: Cell::new(0),
+                total: Cell::new(1), // To prevent division by 0
+
+                worker_result: None,
+                updater: receiver,
+
+                worker: Some(std::thread::spawn(move || -> anyhow::Result<()> {
+                    // Create wine prefix
+
+                    if self.path.exists() {
+                        wine.update_prefix(Some(&self.path))?;
+                    } else {
+                        wine.init_prefix(Some(&self.path))?;
+                    }
+
+                    // TODO: apply DXVK
+
+                    // Install fonts
+
+                    if self.install_corefonts {
+                        let wine_arc = Arc::new(wine);
+                        let path_arc = Arc::new(self.path);
+
+                        let total_fonts = Font::iterator().into_iter().count() as u64;
+                        let font_queue = Arc::new(Mutex::new(Font::iterator().into_iter().collect::<Vec<Font>>()));
+                        let installed_fonts = Arc::new(AtomicU64::new(0));
+
+                        let thread_count = 8; // TODO: determine thread count using something better than a magic number
+                        let mut threads = Vec::with_capacity(thread_count);
+
+                        sender.send((Status::InstallingFonts, 0, total_fonts))?;
+
+                        for _ in 0..thread_count {
+                            let wine_arc_copy = wine_arc.clone();
+                            let path_arc_copy = path_arc.clone();
+                            let font_queue_copy = font_queue.clone();
+                            let installed_fonts_copy = installed_fonts.clone();
+
+                            let sender_copy = sender.clone();
+
+                            threads.push(std::thread::spawn(move || -> anyhow::Result<()> {
+                                // Using "while let" here will lead to the first thread locking the queue
+                                // for it's entire lifetime, making parallelization useless
+                                loop {
+                                    let Some(font) = font_queue_copy.lock().unwrap().pop() else {
+                                        break;
+                                    };
+                                    
+                                    if !font.is_installed(path_arc_copy.as_ref()) {
+                                        wine_arc_copy.as_ref().install_font(font)?;
+                                    }
+
+                                    sender_copy.send((
+                                        Status::InstallingFonts, 
+                                        installed_fonts_copy.fetch_add(1, Ordering::Relaxed) + 1, 
+                                        total_fonts
+                                    ))?;
+                                }
+
+                                Ok(())
+                            }));
+                        }
+
+                        for thread in threads {
+                            thread.join().unwrap()?;
+                        }
+                    }
+
+                    // Finish downloading
+
+                    sender.send((Status::Finished, 0, 1))?;
+
+                    Ok(())
+                }))
+            }
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub struct CreatePrefixResolvedTask {
+    pub updater: Updater
+}
+
+impl ResolvedTask for CreatePrefixResolvedTask {
+    fn get_variant(&self) -> CardVariant {
+        CardVariant::Component {
+            title: String::from("Wine prefix"),
+            author: String::new()
+        }
+    }
+
+    fn is_finished(&mut self) -> bool {
+        self.updater.is_finished()
+    }
+
+    fn get_current(&self) -> u64 {
+        self.updater.current()
+    }
+
+    fn get_total(&self) -> u64 {
+        self.updater.total()
+    }
+
+    fn get_progress(&self) -> f64 {
+        self.updater.progress()
+    }
+
+    fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
+        match self.updater.status() {
+            Ok(status) => Ok(match status {
+                Status::InstallingFonts => TaskStatus::InstallingFonts,
+                Status::CreatingPrefix  => TaskStatus::CreatingPrefix,
+                Status::Finished        => TaskStatus::Finished
+            }),
+
+            Err(err) => anyhow::bail!(err.to_string())
+        }
     }
 }

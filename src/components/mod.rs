@@ -3,6 +3,8 @@ use std::thread::JoinHandle;
 
 use anime_game_core::updater::UpdaterExt;
 
+use crate::ui::components::{tasks_queue::{ResolvedTask, TaskStatus}, game_card::CardVariant};
+
 pub mod wine;
 pub mod dxvk;
 
@@ -89,5 +91,57 @@ impl UpdaterExt for Updater {
         self.update();
 
         self.total.get()
+    }
+}
+
+#[derive(Debug)]
+pub struct DownloadComponentResolvedTask {
+    pub title: String,
+    pub author: String,
+    pub updater: Updater
+}
+
+impl ResolvedTask for DownloadComponentResolvedTask {
+    fn get_variant(&self) -> CardVariant {
+        CardVariant::Component { 
+            title: self.title.to_owned(), 
+            author: self.author.to_owned() 
+        }
+    }
+
+    fn get_title(&self) -> String {
+        self.title.to_owned()
+    }
+
+    fn get_author(&self) -> String {
+        self.author.to_owned()
+    }
+
+    fn is_finished(&mut self) -> bool {
+        self.updater.is_finished()
+    }
+
+    fn get_current(&self) -> u64 {
+        self.updater.current()
+    }
+
+    fn get_total(&self) -> u64 {
+        self.updater.total()
+    }
+
+    fn get_progress(&self) -> f64 {
+        self.updater.progress()
+    }
+
+    fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
+        match self.updater.status() {
+            Ok(status) => Ok(match status {
+                Status::Downloading => TaskStatus::Downloading,
+                Status::Unpacking   => TaskStatus::Unpacking,
+                Status::Finished    => TaskStatus::Finished
+            }),
+
+            Err(err) => anyhow::bail!(err.to_string())
+        }
     }
 }
