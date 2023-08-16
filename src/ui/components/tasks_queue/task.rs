@@ -10,6 +10,7 @@ pub enum TaskStatus {
     ApplyingHdiffPatches,
     DeletingObsoleteFiles,
     CreatingPrefix,
+    InstallingDxvk,
     InstallingFonts,
     Finished
 }

@@ -4,11 +4,18 @@ use std::{cell::Cell, sync::Arc};
 use std::path::PathBuf;
 use std::thread::JoinHandle;
 
-use wincompatlib::prelude::*;
+use wincompatlib::prelude::{
+    WineBootExt,
+    WineFontsExt,
+    Font,
+    InstallParams
+};
 
 use anime_game_core::updater::UpdaterExt;
 
 use crate::components::wine::Wine;
+use crate::components::dxvk::Dxvk;
+
 use crate::ui::components::game_card::CardVariant;
 
 use super::{QueuedTask, ResolvedTask, TaskStatus};
@@ -16,6 +23,7 @@ use super::{QueuedTask, ResolvedTask, TaskStatus};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     CreatingPrefix,
+    InstallingDxvk,
     InstallingFonts,
     Finished
 }
@@ -148,7 +156,16 @@ impl QueuedTask for CreatePrefixQueuedTask {
                         wine.init_prefix(Some(&self.path))?;
                     }
 
-                    // TODO: apply DXVK
+                    // Apply DXVK
+
+                    sender.send((Status::InstallingDxvk, 0, 1))?;
+
+                    let dxvk = Dxvk::from_config()?;
+
+                    wine.install_dxvk(dxvk.get_folder(), InstallParams {
+                        repair_dlls: false,
+                        ..InstallParams::default()
+                    })?;
 
                     // Install fonts
 
@@ -262,8 +279,9 @@ impl ResolvedTask for CreatePrefixResolvedTask {
     fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
         match self.updater.status() {
             Ok(status) => Ok(match status {
-                Status::InstallingFonts => TaskStatus::InstallingFonts,
                 Status::CreatingPrefix  => TaskStatus::CreatingPrefix,
+                Status::InstallingDxvk  => TaskStatus::InstallingDxvk,
+                Status::InstallingFonts => TaskStatus::InstallingFonts,
                 Status::Finished        => TaskStatus::Finished
             }),
 

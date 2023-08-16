@@ -345,6 +345,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::DeletingObsoleteFiles => (false, String::from("Deleting obsolete files...")),
 
                                 TaskStatus::CreatingPrefix  => (true, String::from("Creating prefix...")),
+                                TaskStatus::InstallingDxvk  => (true, String::from("Installing DXVK...")),
                                 TaskStatus::InstallingFonts => (false, String::from("Installing fonts...")),
 
                                 TaskStatus::Finished => (true, String::from("Finished"))
