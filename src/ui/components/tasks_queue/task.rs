@@ -19,14 +19,10 @@ pub trait QueuedTask: Send + std::fmt::Debug {
     fn get_variant(&self) -> CardVariant;
 
     /// Get tasked component title
-    fn get_title(&self) -> String {
-        self.get_variant().get_title().to_owned()
-    }
+    fn get_title(&self) -> &str;
 
     /// Get tasked component author
-    fn get_author(&self) -> String {
-        self.get_variant().get_author().to_owned()
-    }
+    fn get_author(&self) -> &str;
 
     /// Resolve queued task and start downloading stuff
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>>;
@@ -37,14 +33,10 @@ pub trait ResolvedTask: Send + std::fmt::Debug {
     fn get_variant(&self) -> CardVariant;
 
     /// Get tasked component title
-    fn get_title(&self) -> String {
-        self.get_variant().get_title().to_owned()
-    }
+    fn get_title(&self) -> &str;
 
     /// Get tasked component author
-    fn get_author(&self) -> String {
-        self.get_variant().get_author().to_owned()
-    }
+    fn get_author(&self) -> &str;
 
     /// Check if the task is finished
     fn is_finished(&mut self) -> bool;

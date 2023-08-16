@@ -113,6 +113,16 @@ impl QueuedTask for CreatePrefixQueuedTask {
         }
     }
 
+    #[inline]
+    fn get_title(&self) -> &str {
+        "Wine prefix"
+    }
+
+    #[inline]
+    fn get_author(&self) -> &str {
+        ""
+    }
+
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
         let (sender, receiver) = flume::unbounded();
 
@@ -217,6 +227,16 @@ impl ResolvedTask for CreatePrefixResolvedTask {
             title: String::from("Wine prefix"),
             author: String::new()
         }
+    }
+
+    #[inline]
+    fn get_title(&self) -> &str {
+        "Wine prefix"
+    }
+
+    #[inline]
+    fn get_author(&self) -> &str {
+        ""
     }
 
     #[inline]

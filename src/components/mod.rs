@@ -102,33 +102,40 @@ pub struct DownloadComponentResolvedTask {
 }
 
 impl ResolvedTask for DownloadComponentResolvedTask {
+    #[inline]
     fn get_variant(&self) -> CardVariant {
         CardVariant::Component { 
-            title: self.title.to_owned(), 
-            author: self.author.to_owned() 
+            title: self.title.clone(), 
+            author: self.author.clone() 
         }
     }
 
-    fn get_title(&self) -> String {
-        self.title.to_owned()
+    #[inline]
+    fn get_title(&self) -> &str {
+        self.title.as_str()
     }
 
-    fn get_author(&self) -> String {
-        self.author.to_owned()
+    #[inline]
+    fn get_author(&self) -> &str {
+        self.author.as_str()
     }
 
+    #[inline]
     fn is_finished(&mut self) -> bool {
         self.updater.is_finished()
     }
 
+    #[inline]
     fn get_current(&self) -> u64 {
         self.updater.current()
     }
 
+    #[inline]
     fn get_total(&self) -> u64 {
         self.updater.total()
     }
 
+    #[inline]
     fn get_progress(&self) -> f64 {
         self.updater.progress()
     }

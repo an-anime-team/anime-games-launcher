@@ -10,19 +10,16 @@ use adw::prelude::*;
 
 use anime_game_core::game::GameExt;
 use anime_game_core::game::diff::GetDiffExt;
-use anime_game_core::game::diff::DiffExt;
 
 use crate::{
     config,
     STARTUP_CONFIG
 };
 
-use crate::components::Updater as ComponentUpdater;
-use crate::components::wine::Wine;
-use crate::components::dxvk::Dxvk;
+use crate::components::wine::*;
+use crate::components::dxvk::*;
 
-use crate::games::RunGameExt;
-use crate::games::genshin::Genshin;
+use crate::games::genshin::DownloadDiffQueuedTask as DownloadGenshinDiffQueuedTask;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
@@ -42,13 +39,9 @@ use crate::ui::components::game_details::{
 use crate::ui::components::tasks_queue::{
     TasksQueueComponent,
     TasksQueueComponentInput,
-    TasksQueueComponentOutput
+    TasksQueueComponentOutput,
+    create_prefix_task::CreatePrefixQueuedTask
 };
-
-use crate::games::genshin::DownloadDiffQueuedTask as DownloadGenshinDiffQueuedTask;
-use crate::components::wine::DownloadWineQueuedTask;
-use crate::components::dxvk::DownloadDxvkQueuedTask;
-use crate::ui::components::tasks_queue::create_prefix_task::CreatePrefixQueuedTask;
 
 static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_WINDOW: Option<AsyncController<PreferencesApp>> = None;

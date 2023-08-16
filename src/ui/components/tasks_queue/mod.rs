@@ -115,9 +115,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 add_css_class: "title-4",
 
                 #[watch]
-                set_label: &match &model.current_task {
+                set_label: match &model.current_task {
                     Some(task) => task.get_title(),
-                    None => String::from("Nothing to do")
+                    None => "Nothing to do"
                 }
             },
 

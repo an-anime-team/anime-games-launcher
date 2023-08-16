@@ -1,14 +1,6 @@
 use std::cell::Cell;
 use std::path::PathBuf;
 
-use anime_game_core::network::minreq;
-use anime_game_core::archive;
-
-use anime_game_core::network::downloader::DownloaderExt;
-use anime_game_core::network::downloader::basic::Downloader;
-
-use anime_game_core::updater::UpdaterExt;
-
 use serde_json::Value as Json;
 
 use wincompatlib::wine::ext::WineWithExt;
@@ -18,6 +10,14 @@ use wincompatlib::wine::{
     WineArch as WincompatlibWineArch,
     WineLoader as WincompatlibWineLoader
 };
+
+use anime_game_core::network::minreq;
+use anime_game_core::archive;
+
+use anime_game_core::network::downloader::DownloaderExt;
+use anime_game_core::network::downloader::basic::Downloader;
+
+use anime_game_core::updater::UpdaterExt;
 
 use crate::ui::components::game_card::CardVariant;
 use crate::ui::components::tasks_queue::{QueuedTask, ResolvedTask};
@@ -173,19 +173,22 @@ pub struct DownloadWineQueuedTask {
 }
 
 impl QueuedTask for DownloadWineQueuedTask {
+    #[inline]
     fn get_variant(&self) -> CardVariant {
         CardVariant::Component { 
-            title: self.title.to_owned(), 
-            author: self.author.to_owned() 
+            title: self.title.clone(), 
+            author: self.author.clone() 
         }
     }
 
-    fn get_title(&self) -> String {
-        self.title.to_owned()
+    #[inline]
+    fn get_title(&self) -> &str {
+        self.title.as_str()
     }
 
-    fn get_author(&self) -> String {
-        self.author.to_owned()
+    #[inline]
+    fn get_author(&self) -> &str {
+        self.author.as_str()
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {

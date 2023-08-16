@@ -60,14 +60,26 @@ pub struct DownloadDiffQueuedTask {
 }
 
 impl std::fmt::Debug for DownloadDiffQueuedTask {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DownloadDiffQueuedTask").finish()
     }
 }
 
 impl QueuedTask for DownloadDiffQueuedTask {
+    #[inline]
     fn get_variant(&self) -> CardVariant {
         CardVariant::Genshin
+    }
+
+    #[inline]
+    fn get_title(&self) -> &str {
+        CardVariant::Genshin.get_title()
+    }
+
+    #[inline]
+    fn get_author(&self) -> &str {
+        CardVariant::Genshin.get_author()
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
@@ -92,22 +104,37 @@ impl std::fmt::Debug for DownloadDiffResolvedTask {
 }
 
 impl ResolvedTask for DownloadDiffResolvedTask {
+    #[inline]
     fn get_variant(&self) -> CardVariant {
         CardVariant::Genshin
     }
 
+    #[inline]
+    fn get_title(&self) -> &str {
+        CardVariant::Genshin.get_title()
+    }
+
+    #[inline]
+    fn get_author(&self) -> &str {
+        CardVariant::Genshin.get_author()
+    }
+
+    #[inline]
     fn is_finished(&mut self) -> bool {
         self.updater.is_finished()
     }
 
+    #[inline]
     fn get_current(&self) -> u64 {
         self.updater.current()
     }
 
+    #[inline]
     fn get_total(&self) -> u64 {
         self.updater.total()
     }
 
+    #[inline]
     fn get_progress(&self) -> f64 {
         self.updater.progress()
     }
