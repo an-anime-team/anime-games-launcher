@@ -4,10 +4,12 @@ use std::{cell::Cell, sync::Arc};
 use std::path::PathBuf;
 use std::thread::JoinHandle;
 
-use anime_game_core::updater::UpdaterExt;
-use wincompatlib::prelude::{WineBootExt, Font, WineFontsExt};
+use wincompatlib::prelude::*;
 
-use crate::{ui::components::game_card::CardVariant, components::wine::Wine};
+use anime_game_core::updater::UpdaterExt;
+
+use crate::components::wine::Wine;
+use crate::ui::components::game_card::CardVariant;
 
 use super::{QueuedTask, ResolvedTask, TaskStatus};
 
@@ -142,20 +144,23 @@ impl QueuedTask for CreatePrefixQueuedTask {
 
                     if self.install_corefonts {
                         let wine_arc = Arc::new(wine);
-                        let path_arc = Arc::new(self.path);
 
-                        let total_fonts = Font::iterator().into_iter().count() as u64;
-                        let font_queue = Arc::new(Mutex::new(Font::iterator().into_iter().collect::<Vec<Font>>()));
+                        let fonts = Font::iterator().into_iter().collect::<Vec<Font>>();
+                        let total_fonts = fonts.len() as u64;
+
+                        let font_queue = Arc::new(Mutex::new(fonts));
                         let installed_fonts = Arc::new(AtomicU64::new(0));
 
-                        let thread_count = 8; // TODO: determine thread count using something better than a magic number
-                        let mut threads = Vec::with_capacity(thread_count);
+                        // Spawn maximum 8 threads to install all the fonts
+                        let threads_count = std::cmp::min(total_fonts, 8);
+                        let mut threads = Vec::with_capacity(threads_count as usize);
 
                         sender.send((Status::InstallingFonts, 0, total_fonts))?;
 
-                        for _ in 0..thread_count {
+                        for _ in 0..threads_count {
+                            let path = self.path.clone();
+
                             let wine_arc_copy = wine_arc.clone();
-                            let path_arc_copy = path_arc.clone();
                             let font_queue_copy = font_queue.clone();
                             let installed_fonts_copy = installed_fonts.clone();
 
@@ -168,8 +173,8 @@ impl QueuedTask for CreatePrefixQueuedTask {
                                     let Some(font) = font_queue_copy.lock().unwrap().pop() else {
                                         break;
                                     };
-                                    
-                                    if !font.is_installed(path_arc_copy.as_ref()) {
+
+                                    if !font.is_installed(&path) {
                                         wine_arc_copy.as_ref().install_font(font)?;
                                     }
 
@@ -185,7 +190,7 @@ impl QueuedTask for CreatePrefixQueuedTask {
                         }
 
                         for thread in threads {
-                            thread.join().unwrap()?;
+                            thread.join().expect("Failed to join font installing thread")?;
                         }
                     }
 
@@ -206,6 +211,7 @@ pub struct CreatePrefixResolvedTask {
 }
 
 impl ResolvedTask for CreatePrefixResolvedTask {
+    #[inline]
     fn get_variant(&self) -> CardVariant {
         CardVariant::Component {
             title: String::from("Wine prefix"),
@@ -213,18 +219,22 @@ impl ResolvedTask for CreatePrefixResolvedTask {
         }
     }
 
+    #[inline]
     fn is_finished(&mut self) -> bool {
         self.updater.is_finished()
     }
 
+    #[inline]
     fn get_current(&self) -> u64 {
         self.updater.current()
     }
 
+    #[inline]
     fn get_total(&self) -> u64 {
         self.updater.total()
     }
 
+    #[inline]
     fn get_progress(&self) -> f64 {
         self.updater.progress()
     }
