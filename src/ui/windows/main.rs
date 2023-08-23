@@ -54,28 +54,49 @@ impl SimpleComponent for MainApp {
 
                     gtk::Box {
                         set_halign: gtk::Align::Center,
+                        set_spacing: 8,
 
                         gtk::ToggleButton {
+                            add_css_class: "flat",
+
                             gtk::Image {
-                                set_from_resource: crate::resource!("images/games/genshin/icon")
+                                set_width_request: 48,
+                                set_height_request: 48,
+
+                                set_from_resource: Some(&crate::resource!("images/games/genshin/icon"))
                             }
                         },
 
                         gtk::ToggleButton {
+                            add_css_class: "flat",
+
                             gtk::Image {
-                                set_from_resource: crate::resource!("images/games/honkai/icon")
+                                set_width_request: 48,
+                                set_height_request: 48,
+
+                                set_from_resource: Some(&crate::resource!("images/games/honkai/icon"))
                             }
                         },
 
                         gtk::ToggleButton {
+                            add_css_class: "flat",
+
                             gtk::Image {
-                                set_from_resource: crate::resource!("images/games/star-rail/icon")
+                                set_width_request: 48,
+                                set_height_request: 48,
+
+                                set_from_resource: Some(&crate::resource!("images/games/star-rail/icon"))
                             }
                         },
 
                         gtk::ToggleButton {
+                            add_css_class: "flat",
+
                             gtk::Image {
-                                set_from_resource: crate::resource!("images/games/pgr/icon")
+                                set_width_request: 48,
+                                set_height_request: 48,
+
+                                set_from_resource: Some(&crate::resource!("images/games/pgr/icon"))
                             }
                         },
                     }

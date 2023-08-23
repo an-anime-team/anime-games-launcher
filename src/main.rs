@@ -16,7 +16,7 @@ pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
 #[macro_export]
 macro_rules! resource {
     ($name:expr) => {
-        Some(&format!("{}/{}", $crate::APP_RESOURCE_PREFIX, $name))
+        format!("{}/{}", $crate::APP_RESOURCE_PREFIX, $name)
     };
 }
 
