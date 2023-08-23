@@ -48,6 +48,7 @@
     <file preprocess="xml-stripblanks" alias="applications-graphics-symbolic.svg">images/icons/applications-graphics-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="go-next-symbolic.svg">images/icons/go-next-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="dialog-information-symbolic.svg">images/icons/dialog-information-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="grid-large-symbolic.svg">images/icons/grid-large-symbolic.svg</file>
 
     <!-- Additional icons icons -->
 

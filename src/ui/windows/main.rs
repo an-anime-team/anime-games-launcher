@@ -99,6 +99,19 @@ impl SimpleComponent for MainApp {
                                 set_from_resource: Some(&crate::resource!("images/games/pgr/icon"))
                             }
                         },
+
+                        gtk::Button {
+                            set_valign: gtk::Align::Center,
+
+                            add_css_class: "flat",
+
+                            gtk::Image {
+                                set_width_request: 48,
+                                set_height_request: 48,
+
+                                set_icon_name: Some("grid-large-symbolic")
+                            }
+                        }
                     }
                 }
             }
