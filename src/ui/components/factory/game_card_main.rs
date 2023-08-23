@@ -1,7 +1,7 @@
 use relm4::prelude::*;
 use relm4::component::*;
 
-use crate::ui::windows::main::MainAppMsg;
+use crate::ui::windows::games_manager::GamesManagerAppMsg;
 
 use crate::ui::components::game_card::{
     GameCardComponent,
@@ -21,7 +21,7 @@ impl FactoryComponent for GameCardFactory {
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
     type CommandOutput = ();
-    type ParentInput = MainAppMsg;
+    type ParentInput = GamesManagerAppMsg;
     type ParentWidget = gtk::FlowBox;
 
     view! {
@@ -30,10 +30,10 @@ impl FactoryComponent for GameCardFactory {
         }
     }
 
-    fn forward_to_parent(output: Self::Output) -> Option<MainAppMsg> {
+    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
         match output {
             GameCardComponentOutput::CardClicked { variant, installed }
-                => Some(MainAppMsg::OpenDetails { variant, installed })
+                => Some(Self::ParentInput::OpenDetails { variant, installed })
         }
     }
 

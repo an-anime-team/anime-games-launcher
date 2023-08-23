@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
+pub mod controller;
 pub mod ui;
 pub mod config;
 pub mod components;
@@ -10,6 +11,14 @@ pub mod games;
 use ui::windows::main::MainApp;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
+pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
+
+#[macro_export]
+macro_rules! resource {
+    ($name:expr) => {
+        Some(&format!("{}/{}", $crate::APP_RESOURCE_PREFIX, $name))
+    };
+}
 
 lazy_static::lazy_static! {
     /// Path to the launcher's data folder
@@ -51,6 +60,14 @@ fn main() -> anyhow::Result<()> {
     }
 
     adw::init().expect("Libadwaita initialization failed");
+
+    // Register and include resources
+    gtk::gio::resources_register_include!("resources.gresource")
+        .expect("Failed to register resources");
+
+    // Set icons search path
+    gtk::IconTheme::for_display(&gtk::gdk::Display::default().unwrap())
+        .add_resource_path(&format!("{APP_RESOURCE_PREFIX}/icons"));
 
     // Set application's title
     gtk::glib::set_application_name("Anime Games Launcher");

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Anime Games Launcher
+Icon=icon
+Exec=AppRun
+Type=Application
+Categories=Game
+Terminal=false

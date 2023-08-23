@@ -7,7 +7,15 @@ homepage = "https://github.com/an-anime-team/anime-games-launcher"
 repository = "https://github.com/an-anime-team/anime-games-launcher"
 license = "GPL-3.0"
 edition = "2021"
-# build = "build.rs"
+build = "build.rs"
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "s"
+
+[build-dependencies]
+glib-build-tools = "0.18"
 
 [dependencies.relm4]
 version = "0.6.1"
@@ -39,6 +47,6 @@ serde_json = "1.0"
 
 anyhow = { version = "1.0", features = ["backtrace"] }
 lazy_static = "1.4.0"
-flume = "0.10"
+flume = "0.11"
 
 wincompatlib = { version = "0.7.3", features = ["all"] }
