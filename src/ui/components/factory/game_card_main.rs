@@ -1,7 +1,7 @@
 use relm4::prelude::*;
 use relm4::component::*;
 
-use crate::ui::windows::games_manager::GamesManagerAppMsg;
+use crate::ui::windows::main::MainAppMsg;
 
 use crate::ui::components::game_card::{
     GameCardComponent,
@@ -21,7 +21,7 @@ impl FactoryComponent for GameCardFactory {
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
     type CommandOutput = ();
-    type ParentInput = GamesManagerAppMsg;
+    type ParentInput = MainAppMsg;
     type ParentWidget = gtk::FlowBox;
 
     view! {

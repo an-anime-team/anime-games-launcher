@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
-pub mod controller;
 pub mod ui;
 pub mod config;
 pub mod components;
