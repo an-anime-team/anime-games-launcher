@@ -89,7 +89,7 @@ impl SimpleAsyncComponent for PreferencesApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-
+            // todo
         };
 
         let widgets = view_output!();

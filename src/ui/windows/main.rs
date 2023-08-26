@@ -5,10 +5,15 @@ use gtk::prelude::*;
 use adw::prelude::*;
 
 use crate::controller::Controller;
-use crate::ui::windows::preferences::PreferencesApp;
+
+use crate::ui::windows::{
+    games_manager::GamesManagerApp,
+    preferences::PreferencesApp
+};
 
 static mut MAIN_WINDOW: Option<adw::ApplicationWindow> = None;
-static mut PREFERENCES_WINDOW: Option<AsyncController<PreferencesApp>> = None;
+static mut GAMES_MANAGER_APP: Option<AsyncController<GamesManagerApp>> = None;
+static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
 
 pub struct MainApp {
     toast_overlay: adw::ToastOverlay
@@ -17,6 +22,7 @@ pub struct MainApp {
 #[derive(Debug)]
 pub enum MainAppMsg {
     OpenPreferences,
+    OpenGamesManager,
 
     ShowToast {
         title: String,
@@ -39,77 +45,52 @@ impl SimpleComponent for MainApp {
 
             #[local_ref]
             toast_overlay -> adw::ToastOverlay {
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
+                gtk::Overlay {
+                    #[wrap(Some)]
+                    set_child = &gtk::Picture {
+                        set_content_fit: gtk::ContentFit::Cover,
 
-                    adw::HeaderBar {
-                        add_css_class: "flat",
-
-                        pack_end = &gtk::Button {
-                            set_icon_name: "emblem-system-symbolic",
-
-                            connect_clicked => MainAppMsg::OpenPreferences
-                        }
+                        set_filename: Some("/var/home/observer/Pictures/cgho9x2rf8341.jpg")
                     },
 
-                    gtk::Box {
-                        set_halign: gtk::Align::Center,
-                        set_spacing: 8,
+                    add_overlay = &gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
 
-                        gtk::ToggleButton {
+                        adw::HeaderBar {
                             add_css_class: "flat",
 
-                            gtk::Image {
-                                set_width_request: 48,
-                                set_height_request: 48,
+                            #[wrap(Some)]
+                            set_title_widget = &gtk::Box {
+                                set_halign: gtk::Align::Center,
 
-                                set_from_resource: Some(&crate::resource!("images/games/genshin/icon"))
-                            }
-                        },
+                                set_spacing: 4,
 
-                        gtk::ToggleButton {
-                            add_css_class: "flat",
+                                gtk::DropDown {
+                                    set_model: Some(&gtk::StringList::new(&[
+                                        "Genshin Impact",
+                                        "Honkai Impact 3rd",
+                                        "Honkai: Star Rail",
+                                        "Punishing: Gray Raven"
+                                    ]))
+                                },
 
-                            gtk::Image {
-                                set_width_request: 48,
-                                set_height_request: 48,
+                                gtk::Button {
+                                    set_valign: gtk::Align::Center,
 
-                                set_from_resource: Some(&crate::resource!("images/games/honkai/icon"))
-                            }
-                        },
+                                    add_css_class: "flat",
 
-                        gtk::ToggleButton {
-                            add_css_class: "flat",
+                                    gtk::Image {
+                                        set_icon_name: Some("grid-large-symbolic")
+                                    },
 
-                            gtk::Image {
-                                set_width_request: 48,
-                                set_height_request: 48,
+                                    connect_clicked => MainAppMsg::OpenGamesManager
+                                }
+                            },
 
-                                set_from_resource: Some(&crate::resource!("images/games/star-rail/icon"))
-                            }
-                        },
+                            pack_end = &gtk::Button {
+                                set_icon_name: "emblem-system-symbolic",
 
-                        gtk::ToggleButton {
-                            add_css_class: "flat",
-
-                            gtk::Image {
-                                set_width_request: 48,
-                                set_height_request: 48,
-
-                                set_from_resource: Some(&crate::resource!("images/games/pgr/icon"))
-                            }
-                        },
-
-                        gtk::Button {
-                            set_valign: gtk::Align::Center,
-
-                            add_css_class: "flat",
-
-                            gtk::Image {
-                                set_width_request: 48,
-                                set_height_request: 48,
-
-                                set_icon_name: Some("grid-large-symbolic")
+                                connect_clicked => MainAppMsg::OpenPreferences
                             }
                         }
                     }
@@ -134,7 +115,11 @@ impl SimpleComponent for MainApp {
         unsafe {
             MAIN_WINDOW = Some(widgets.window.clone());
 
-            PREFERENCES_WINDOW = Some(PreferencesApp::builder()
+            GAMES_MANAGER_APP = Some(GamesManagerApp::builder()
+                .launch(widgets.window.clone())
+                .detach());
+
+            PREFERENCES_APP = Some(PreferencesApp::builder()
                 .launch(widgets.window.clone())
                 .detach());
         }
@@ -147,7 +132,14 @@ impl SimpleComponent for MainApp {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             MainAppMsg::OpenPreferences => unsafe {
-                PREFERENCES_WINDOW.as_ref()
+                PREFERENCES_APP.as_ref()
+                    .unwrap_unchecked()
+                    .widget()
+                    .present();
+            }
+
+            MainAppMsg::OpenGamesManager => unsafe {
+                GAMES_MANAGER_APP.as_ref()
                     .unwrap_unchecked()
                     .widget()
                     .present();

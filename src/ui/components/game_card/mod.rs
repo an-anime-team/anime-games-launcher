@@ -84,7 +84,7 @@ impl SimpleAsyncComponent for GameCardComponent {
                         // },
 
                         #[watch]
-                        set_filename: Some(model.variant.get_image()),
+                        set_resource: Some(&model.variant.get_image()),
 
                         set_content_fit: gtk::ContentFit::Cover
                     },

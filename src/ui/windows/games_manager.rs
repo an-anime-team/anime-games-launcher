@@ -45,7 +45,7 @@ use crate::ui::components::tasks_queue::{
     create_prefix_task::CreatePrefixQueuedTask
 };
 
-static mut GAMES_MANAGER_WINDOW: Option<adw::ApplicationWindow> = None;
+static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
 pub struct GamesManagerApp {
     leaflet: adw::Leaflet,
@@ -107,9 +107,9 @@ pub enum GamesManagerAppMsg {
     }
 }
 
-#[relm4::component(pub)]
-impl SimpleComponent for GamesManagerApp {
-    type Init = ();
+#[relm4::component(pub, async)]
+impl SimpleAsyncComponent for GamesManagerApp {
+    type Init = adw::ApplicationWindow;
     type Input = GamesManagerAppMsg;
     type Output = ();
 
@@ -117,6 +117,9 @@ impl SimpleComponent for GamesManagerApp {
         window = adw::ApplicationWindow {
             set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
+
+            set_hide_on_close: true,
+            set_modal: true,
 
             #[local_ref]
             leaflet -> adw::Leaflet {
@@ -266,11 +269,11 @@ impl SimpleComponent for GamesManagerApp {
         }
     }
 
-    fn init(
-        _parent: Self::Init,
-        root: &Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
+    async fn init(
+        parent: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let mut model = Self {
             leaflet: adw::Leaflet::new(),
             flap: adw::Flap::new(),
@@ -345,8 +348,10 @@ impl SimpleComponent for GamesManagerApp {
 
         let widgets = view_output!();
 
+        widgets.window.set_transient_for(Some(&parent));
+
         unsafe {
-            GAMES_MANAGER_WINDOW = Some(widgets.window.clone());
+            WINDOW = Some(widgets.window.clone());
         }
 
         Controller::register_games_manager_sender(sender.input_sender().clone());
@@ -412,10 +417,10 @@ impl SimpleComponent for GamesManagerApp {
             }
         });
 
-        ComponentParts { model, widgets }
+        AsyncComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             GamesManagerAppMsg::OpenDetails { variant, installed } => {
                 self.game_details_variant = variant.clone();
@@ -513,7 +518,7 @@ impl SimpleComponent for GamesManagerApp {
 
             GamesManagerAppMsg::ShowToast { title, message } => {
                 let window = unsafe {
-                    GAMES_MANAGER_WINDOW.as_ref().unwrap_unchecked()
+                    WINDOW.as_ref().unwrap_unchecked()
                 };
 
                 let toast = adw::Toast::new(&title);

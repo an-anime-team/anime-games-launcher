@@ -1,3 +1,5 @@
+use crate::resource;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CardVariant {
     Genshin,
@@ -23,14 +25,14 @@ impl CardVariant {
     }
 
     #[inline]
-    pub fn get_image(&self) -> &str {
+    pub fn get_image(&self) -> String {
         match self {
-            Self::Genshin  => "images/genshin-cropped.jpg",
-            Self::Honkai   => "images/honkai-cropped.jpg",
-            Self::StarRail => "images/star-rail-cropped.jpg",
-            Self::PGR      => "images/pgr-cropped.jpg",
+            Self::Genshin  => resource!("images/games/genshin/card"),
+            Self::Honkai   => resource!("images/games/honkai/card"),
+            Self::StarRail => resource!("images/games/star-rail/card"),
+            Self::PGR      => resource!("images/games/pgr/card"),
 
-            Self::Component { .. } => "images/component.png"
+            Self::Component { .. } => resource!("images/component.png")
         }
     }
 
