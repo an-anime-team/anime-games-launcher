@@ -19,7 +19,7 @@ use crate::{
 use crate::components::wine::*;
 use crate::components::dxvk::*;
 
-use crate::games::genshin::DownloadDiffQueuedTask as DownloadGenshinDiffQueuedTask;
+use crate::games::DownloadDiffQueuedTask;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
@@ -84,6 +84,9 @@ pub enum MainAppMsg {
 
     AddDownloadGameTask(CardVariant),
     FinishDownloadGameTask(CardVariant),
+
+    AddVerifyGameTask(CardVariant),
+    FinishVerifyGameTask(CardVariant),
 
     AddDownloadWineTask {
         title: String,
@@ -274,7 +277,7 @@ impl SimpleComponent for MainApp {
     }
 
     fn init(
-        parent: Self::Init,
+        _parent: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -288,11 +291,14 @@ impl SimpleComponent for MainApp {
             game_details: GameDetailsComponent::builder()
                 .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |message| match message {
-                    GameDetailsComponentOutput::DownloadGame { variant }
-                        => MainAppMsg::AddDownloadGameTask(variant),
-
                     GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
                     GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap,
+
+                    GameDetailsComponentOutput::DownloadGame(variant)
+                        => MainAppMsg::AddDownloadGameTask(variant),
+
+                    GameDetailsComponentOutput::VerifyGame(variant)
+                        => MainAppMsg::AddVerifyGameTask(variant),
 
                     GameDetailsComponentOutput::ShowToast { title, message }
                         => MainAppMsg::ShowToast { title, message }
@@ -330,11 +336,17 @@ impl SimpleComponent for MainApp {
             };
 
             if installed {
-                model.installed_games_indexes.insert(game.to_owned(), model.installed_games.guard().push_back(game.to_owned()));
+                model.installed_games_indexes.insert(
+                    game.to_owned(),
+                    model.installed_games.guard().push_back(game.to_owned())
+                );
             }
 
             else {
-                model.available_games_indexes.insert(game.to_owned(), model.available_games.guard().push_back(game.to_owned()));
+                model.available_games_indexes.insert(
+                    game.to_owned(),
+                    model.available_games.guard().push_back(game.to_owned())
+                );
             }
         }
 
@@ -463,12 +475,10 @@ impl SimpleComponent for MainApp {
 
                 let task = match variant {
                     CardVariant::Genshin => {
-                        Box::new(DownloadGenshinDiffQueuedTask {
-                            diff: config.games.genshin
-                                .to_game()
-                                .get_diff()
-                                .unwrap() // FIXME
-                        })
+                        Box::new(DownloadDiffQueuedTask::from(config.games.genshin
+                            .to_game()
+                            .get_diff()
+                            .unwrap()))
                     },
 
                     _ => unimplemented!()
@@ -492,6 +502,50 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::FinishDownloadGameTask(variant) => {
+                if let Some(index) = self.queued_games_indexes.get(&variant) {
+                    self.queued_games.guard().remove(index.current_index());
+
+                    self.queued_games_indexes.remove(&variant);
+
+                    #[allow(clippy::map_entry)]
+                    if !self.installed_games_indexes.contains_key(&variant) {
+                        self.installed_games_indexes.insert(variant.clone(), self.installed_games.guard().push_back(variant));
+                    }
+                }
+            }
+
+            MainAppMsg::AddVerifyGameTask(variant) => {
+                let config = config::get();
+
+                let task = match variant {
+                    CardVariant::Genshin => {
+                        Box::new(DownloadDiffQueuedTask::from(config.games.genshin
+                            .to_game()
+                            .get_diff()
+                            .unwrap()))
+                    },
+
+                    _ => unimplemented!()
+                };
+
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+
+                if let Some(index) = self.available_games_indexes.get(&variant) {
+                    self.available_games.guard().remove(index.current_index());
+
+                    self.available_games_indexes.remove(&variant);
+
+                    #[allow(clippy::map_entry)]
+                    if !self.queued_games_indexes.contains_key(&variant) {
+                        self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant));
+
+                        self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
+                        self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
+                    }
+                }
+            }
+
+            MainAppMsg::FinishVerifyGameTask(variant) => {
                 if let Some(index) = self.queued_games_indexes.get(&variant) {
                     self.queued_games.guard().remove(index.current_index());
 

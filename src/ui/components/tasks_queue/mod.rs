@@ -242,7 +242,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 if self.current_task.is_none() {
                     match task.resolve() {
                         Ok(task) => {
-                            self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant()));
+                            self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant().to_owned()));
 
                             self.current_task = Some(task);
                             self.current_task_progress_start = Instant::now();
@@ -258,7 +258,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 }
 
                 else {
-                    self.queued_tasks_factory.guard().push_back(task.get_variant());
+                    self.queued_tasks_factory.guard().push_back(task.get_variant().to_owned());
 
                     self.queued_tasks.push_back(task);
                 }
@@ -289,7 +289,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         }
 
                         if !is_task_queued {
-                            sender.output(TasksQueueComponentOutput::GameDownloaded(task.get_variant())).unwrap();
+                            sender.output(TasksQueueComponentOutput::GameDownloaded(task.get_variant().to_owned())).unwrap();
                         }
 
                         if let Some(queued_task) = self.queued_tasks.pop_front() {
@@ -297,7 +297,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                             match queued_task.resolve() {
                                 Ok(task) => {
-                                    self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant()));
+                                    self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant().to_owned()));
 
                                     self.current_task = Some(task);
                                 }

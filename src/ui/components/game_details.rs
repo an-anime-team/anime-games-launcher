@@ -29,18 +29,18 @@ pub enum GameDetailsComponentInput {
     EditGameCard(GameCardComponentInput),
 
     EmitDownloadGame,
+    EmitVerifyGame,
 
     LaunchGame
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentOutput {
-    DownloadGame {
-        variant: CardVariant
-    },
-
     HideDetails,
     ShowTasksFlap,
+
+    DownloadGame(CardVariant),
+    VerifyGame(CardVariant),
 
     ShowToast {
         title: String,
@@ -220,9 +220,14 @@ impl SimpleAsyncComponent for GameDetailsComponent {
             GameDetailsComponentInput::EditGameCard(message) => self.game_card.emit(message),
 
             GameDetailsComponentInput::EmitDownloadGame => {
-                sender.output(GameDetailsComponentOutput::DownloadGame {
-                    variant: self.variant.clone()
-                }).unwrap();
+                sender.output(GameDetailsComponentOutput::DownloadGame(self.variant.clone())).unwrap();
+
+                sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
+                sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
+            }
+
+            GameDetailsComponentInput::EmitVerifyGame => {
+                sender.output(GameDetailsComponentOutput::VerifyGame(self.variant.clone())).unwrap();
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
                 sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
