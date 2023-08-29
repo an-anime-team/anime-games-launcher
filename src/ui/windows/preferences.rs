@@ -40,7 +40,116 @@ impl SimpleAsyncComponent for PreferencesApp {
 
             add = &adw::PreferencesPage {
                 add = &adw::PreferencesGroup {
-                    set_title: "Wine prefix",
+                    set_title: "General",
+
+                    adw::ComboRow {
+                        set_title: "Launcher language",
+                        set_subtitle: "Changes after restart",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "English"
+                        ]))
+                    },
+
+                    adw::ActionRow {
+                        set_title: "Verify games",
+                        set_subtitle: "Verify games installations after installation or updating",
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center
+                        }
+                    }
+                },
+
+                add = &adw::PreferencesGroup {
+                    set_title: "Wine",
+
+                    adw::ComboRow {
+                        set_title: "Language",
+                        set_subtitle: "Language used in the wine environment. Can fix keyboard layout issues",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "English"
+                        ]))
+                    },
+
+                    adw::ComboRow {
+                        set_title: "Synchronization",
+                        set_subtitle: "Technology used to synchronize inner wine events",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "None",
+                            "ESync",
+                            "FSync"
+                        ]))
+                    },
+
+                    adw::ActionRow {
+                        set_title: "Borderless window",
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center
+                        }
+                    }
+                },
+
+                add = &adw::PreferencesGroup {
+                    set_title: "Gaming",
+
+                    adw::ComboRow {
+                        set_title: "HUD",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "None",
+                            "DXVK",
+                            "MangoHUD"
+                        ]))
+                    },
+
+                    adw::ComboRow {
+                        set_title: "FSR",
+                        set_subtitle: "Upscales game to your monitor size. To use select lower resolution in the game's settings and press Alt+Enter",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "Ultra quality",
+                            "Quality",
+                            "Balanced",
+                            "Performance"
+                        ])),
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center
+                        }
+                    },
+
+                    adw::ActionRow {
+                        set_title: "Gamemode",
+                        set_subtitle: "Prioritize the game over the rest of the processes",
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center
+                        }
+                    }
+                },
+
+                add = &adw::PreferencesGroup {
+                    set_title: "Components",
+
+                    adw::ComboRow {
+                        set_title: "Wine version",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "latest"
+                        ]))
+                    },
+
+                    adw::ComboRow {
+                        set_title: "DXVK version",
+
+                        set_model: Some(&gtk::StringList::new(&[
+                            "latest"
+                        ]))
+                    },
 
                     adw::ActionRow {
                         set_title: "Install corefonts",
@@ -59,24 +168,6 @@ impl SimpleAsyncComponent for PreferencesApp {
                                 }
                             }
                         }
-                    }
-                },
-
-                add = &adw::PreferencesGroup {
-                    adw::ComboRow {
-                        set_title: "Wine version",
-
-                        set_model: Some(&gtk::StringList::new(&[
-                            "latest"
-                        ]))
-                    },
-
-                    adw::ComboRow {
-                        set_title: "DXVK version",
-
-                        set_model: Some(&gtk::StringList::new(&[
-                            "latest"
-                        ]))
                     }
                 }
             }
