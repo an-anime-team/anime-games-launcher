@@ -1,6 +1,6 @@
 use crate::ui::components::game_card::CardVariant;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// All the possible tasks statuses in one enum
 pub enum TaskStatus {
     PreparingTransition,
@@ -12,6 +12,8 @@ pub enum TaskStatus {
     CreatingPrefix,
     InstallingDxvk,
     InstallingFonts,
+    VerifyingFiles,
+    RepairingFiles,
     Finished
 }
 

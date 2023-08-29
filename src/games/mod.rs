@@ -5,12 +5,6 @@ use std::path::PathBuf;
 use anime_game_core::game::diff::DiffExt;
 use anime_game_core::updater::UpdaterExt;
 
-use anime_game_core::game::integrity::{
-    VerifyIntegrityExt,
-    BasicUpdater
-};
-
-use crate::config;
 use crate::components::wine::Wine;
 
 use crate::ui::components::game_card::CardVariant;
@@ -164,108 +158,5 @@ impl<Updater: UpdaterExt + Send> ResolvedTask for DownloadDiffResolvedTask<Updat
     #[inline]
     fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
         (self.get_status)(self.updater.status())
-    }
-}
-
-pub struct VerifyIntegrityQueuedTask {
-    pub variant: CardVariant
-}
-
-impl std::fmt::Debug for VerifyIntegrityQueuedTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("VerifyIntegrityQueuedTask")
-            .field("variant", &self.variant.get_title())
-            .finish()
-    }
-}
-
-impl QueuedTask for VerifyIntegrityQueuedTask {
-    #[inline]
-    fn get_variant(&self) -> CardVariant {
-        self.variant.clone()
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        self.variant.get_title()
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        self.variant.get_author()
-    }
-
-    fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
-        let config = config::get();
-
-        let game = match &self.variant {
-            CardVariant::Genshin => config.games.genshin.to_game(),
-
-            _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
-        };
-
-        Ok(Box::new(VerifyIntegrityResolvedTask {
-            variant: self.variant,
-            updater: game.verify_files()?
-        }))
-    }
-}
-
-pub struct VerifyIntegrityResolvedTask {
-    pub variant: CardVariant,
-    pub updater: BasicUpdater
-}
-
-impl std::fmt::Debug for VerifyIntegrityResolvedTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("VerifyIntegrityResolvedTask")
-            .field("variant", &self.variant.get_title())
-            .finish()
-    }
-}
-
-impl ResolvedTask for VerifyIntegrityResolvedTask {
-    #[inline]
-    fn get_variant(&self) -> CardVariant {
-        self.variant.clone()
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        self.variant.get_title()
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        self.variant.get_author()
-    }
-
-    #[inline]
-    fn is_finished(&mut self) -> bool {
-        self.updater.is_finished()
-    }
-
-    #[inline]
-    fn get_current(&self) -> u64 {
-        self.updater.current()
-    }
-
-    #[inline]
-    fn get_total(&self) -> u64 {
-        self.updater.total()
-    }
-
-    #[inline]
-    fn get_progress(&self) -> f64 {
-        self.updater.progress()
-    }
-
-    #[inline]
-    fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
-        match self.updater.status() {
-            Ok(status) => todo!(), // todo: wait for updater to finish scanning files and then replace it by another updater which will download broken files
-
-            Err(err) => anyhow::bail!(err.to_string())
-        }
     }
 }

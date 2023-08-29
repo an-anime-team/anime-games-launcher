@@ -20,6 +20,7 @@ use crate::ui::components::factory::game_card_tasks::GameCardFactory;
 
 pub mod task;
 pub mod create_prefix_task;
+pub mod verify_integrity_task;
 
 pub use task::*;
 
@@ -347,6 +348,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::CreatingPrefix  => (true, String::from("Creating prefix...")),
                                 TaskStatus::InstallingDxvk  => (true, String::from("Installing DXVK...")),
                                 TaskStatus::InstallingFonts => (false, String::from("Installing fonts...")),
+
+                                TaskStatus::VerifyingFiles => (false, String::from("Verifying files...")),
+                                TaskStatus::RepairingFiles => (false, String::from("Repairing files...")),
 
                                 TaskStatus::Finished => (true, String::from("Finished"))
                             };
