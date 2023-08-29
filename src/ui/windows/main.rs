@@ -40,7 +40,9 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponent,
     TasksQueueComponentInput,
     TasksQueueComponentOutput,
-    create_prefix_task::CreatePrefixQueuedTask
+
+    create_prefix_task::CreatePrefixQueuedTask,
+    verify_integrity_task::VerifyIntegrityQueuedTask
 };
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
@@ -515,18 +517,9 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddVerifyGameTask(variant) => {
-                let config = config::get();
-
-                let task = match variant {
-                    CardVariant::Genshin => {
-                        Box::new(DownloadDiffQueuedTask::from(config.games.genshin
-                            .to_game()
-                            .get_diff()
-                            .unwrap()))
-                    },
-
-                    _ => unimplemented!()
-                };
+                let task = Box::new(VerifyIntegrityQueuedTask {
+                    variant: variant.clone()
+                });
 
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 

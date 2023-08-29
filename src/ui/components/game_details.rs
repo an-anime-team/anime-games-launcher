@@ -138,7 +138,9 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                             adw::ButtonContent {
                                 set_icon_name: "drive-harddisk-ieee1394-symbolic",
                                 set_label: "Verify"
-                            }
+                            },
+
+                            connect_clicked => GameDetailsComponentInput::EmitVerifyGame
                         }
                     }
                 },
@@ -174,7 +176,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                             },
 
                             connect_clicked => GameDetailsComponentInput::EmitDownloadGame
-                        },
+                        }
                     }
                 }
             }
