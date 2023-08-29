@@ -104,7 +104,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 set_visible: model.current_task.is_none(),
 
                 gtk::Picture {
-                    set_filename: Some("images/raiden.png")
+                    set_resource: Some(&crate::resource!(format!("icons/hicolor/scalable/apps/{}.png", crate::APP_ID)))
                 }
             },
 
