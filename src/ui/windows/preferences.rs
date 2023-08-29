@@ -56,7 +56,18 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_subtitle: "Verify games installations after installation or updating",
 
                         add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center
+                            set_valign: gtk::Align::Center,
+
+                            set_active: STARTUP_CONFIG.general.verify_games,
+
+                            connect_state_notify[sender] => move |switch| {
+                                if let Err(err) = config::set("general.verify_games", switch.is_active()) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: String::from("Failed to update property"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
                         }
                     }
                 },

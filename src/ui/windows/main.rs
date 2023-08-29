@@ -85,10 +85,8 @@ pub enum MainAppMsg {
     ToggleTasksFlap,
 
     AddDownloadGameTask(CardVariant),
-    FinishDownloadGameTask(CardVariant),
-
     AddVerifyGameTask(CardVariant),
-    FinishVerifyGameTask(CardVariant),
+    FinishQueuedTask(CardVariant),
 
     AddDownloadWineTask {
         title: String,
@@ -319,8 +317,8 @@ impl SimpleComponent for MainApp {
             tasks_queue: TasksQueueComponent::builder()
                 .launch(CardVariant::Genshin)
                 .forward(sender.input_sender(), |output| match output {
-                    TasksQueueComponentOutput::GameDownloaded(variant)
-                        => MainAppMsg::FinishDownloadGameTask(variant),
+                    TasksQueueComponentOutput::TaskFinished(variant)
+                        => MainAppMsg::FinishQueuedTask(variant),
 
                     TasksQueueComponentOutput::HideTasksFlap
                         => MainAppMsg::HideTasksFlap,
@@ -438,7 +436,7 @@ impl SimpleComponent for MainApp {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             MainAppMsg::OpenDetails { variant, installed } => {
                 self.game_details_variant = variant.clone();
@@ -495,24 +493,15 @@ impl SimpleComponent for MainApp {
 
                     #[allow(clippy::map_entry)]
                     if !self.queued_games_indexes.contains_key(&variant) {
-                        self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant));
+                        self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant.clone()));
 
                         self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
                         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
                     }
                 }
-            }
 
-            MainAppMsg::FinishDownloadGameTask(variant) => {
-                if let Some(index) = self.queued_games_indexes.get(&variant) {
-                    self.queued_games.guard().remove(index.current_index());
-
-                    self.queued_games_indexes.remove(&variant);
-
-                    #[allow(clippy::map_entry)]
-                    if !self.installed_games_indexes.contains_key(&variant) {
-                        self.installed_games_indexes.insert(variant.clone(), self.installed_games.guard().push_back(variant));
-                    }
+                if config.general.verify_games {
+                    sender.input(MainAppMsg::AddVerifyGameTask(variant));
                 }
             }
 
@@ -538,7 +527,7 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::FinishVerifyGameTask(variant) => {
+            MainAppMsg::FinishQueuedTask(variant) => {
                 if let Some(index) = self.queued_games_indexes.get(&variant) {
                     self.queued_games.guard().remove(index.current_index());
 

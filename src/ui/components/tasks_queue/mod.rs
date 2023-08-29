@@ -65,7 +65,7 @@ pub enum TasksQueueComponentInput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TasksQueueComponentOutput {
-    GameDownloaded(CardVariant),
+    TaskFinished(CardVariant),
 
     HideTasksFlap,
 
@@ -290,7 +290,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         }
 
                         if !is_task_queued {
-                            sender.output(TasksQueueComponentOutput::GameDownloaded(task.get_variant().to_owned())).unwrap();
+                            sender.output(TasksQueueComponentOutput::TaskFinished(task.get_variant().to_owned())).unwrap();
                         }
 
                         if let Some(queued_task) = self.queued_tasks.pop_front() {

@@ -2,6 +2,7 @@ use serde::{Serialize, Deserialize};
 
 use serde_json::Value as Json;
 
+pub mod general;
 pub mod components;
 pub mod games;
 pub mod driver;
@@ -10,6 +11,7 @@ use crate::CONFIG_FILE;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
+    pub general: general::General,
     pub components: components::Components,
     pub games: games::Games
 }
@@ -20,6 +22,10 @@ impl From<&Json> for Config {
         let default = Self::default();
 
         Self {
+            general: value.get("general")
+                .map(general::General::from)
+                .unwrap_or(default.general),
+
             components: value.get("components")
                 .map(components::Components::from)
                 .unwrap_or(default.components),
