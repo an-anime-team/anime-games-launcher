@@ -69,6 +69,24 @@ impl SimpleAsyncComponent for PreferencesApp {
                                 }
                             }
                         }
+                    },
+
+                    adw::ActionRow {
+                        set_title: "Update games",
+                        set_subtitle: "Download updates for installed games when they become available",
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center
+                        }
+                    },
+
+                    adw::ActionRow {
+                        set_title: "Pre-download updates",
+                        set_subtitle: "Pre-download updates for installed games when they become available",
+
+                        add_suffix = &gtk::Switch {
+                            set_valign: gtk::Align::Center
+                        }
                     }
                 },
 

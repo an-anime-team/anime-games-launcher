@@ -22,6 +22,7 @@ name = "anime-game-core"
 version = "2.0.0"
 dependencies = [
  "flume 0.11.0",
+ "kinda-virtual-fs",
  "lazy_static",
  "md-5",
  "minreq",
@@ -684,6 +685,12 @@ checksum = "c5f195fe497f702db0f318b07fdd68edb16955aed830df8363d837542f8f935a"
 dependencies = [
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "kinda-virtual-fs"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca9325aac17917b5650f25d477ce2909f2e9539688227fdee3ceb5093f666c9e"
 
 [[package]]
 name = "lazy_static"
