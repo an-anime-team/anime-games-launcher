@@ -345,6 +345,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::ApplyingHdiffPatches  => (false, String::from("Applying hdiff patches...")),
                                 TaskStatus::DeletingObsoleteFiles => (false, String::from("Deleting obsolete files...")),
 
+                                TaskStatus::RunTransitionCode => (false, String::from("Starting transition code...")),
+                                TaskStatus::RunPostTransitionCode => (false, String::from("Starting post-transition code...")),
+
                                 TaskStatus::CreatingPrefix  => (true, String::from("Creating prefix...")),
                                 TaskStatus::InstallingDxvk  => (true, String::from("Installing DXVK...")),
                                 TaskStatus::InstallingFonts => (false, String::from("Installing fonts...")),

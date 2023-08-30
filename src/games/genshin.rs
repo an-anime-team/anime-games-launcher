@@ -71,9 +71,11 @@ impl From<Diff> for DownloadDiffQueuedTask<Diff, Updater> {
                     Status::PreparingTransition   => TaskStatus::PreparingTransition,
                     Status::Downloading           => TaskStatus::Downloading,
                     Status::Unpacking             => TaskStatus::Unpacking,
+                    Status::RunTransitionCode     => TaskStatus::RunTransitionCode,
                     Status::FinishingTransition   => TaskStatus::FinishingTransition,
                     Status::ApplyingHdiffPatches  => TaskStatus::ApplyingHdiffPatches,
                     Status::DeletingObsoleteFiles => TaskStatus::DeletingObsoleteFiles,
+                    Status::RunPostTransitionCode => TaskStatus::RunPostTransitionCode,
                     Status::Finished              => TaskStatus::Finished
                 }),
 
