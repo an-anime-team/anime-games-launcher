@@ -123,7 +123,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             },
 
             gtk::CenterBox {
-                set_margin_top: 8,
+                set_margin_top: 16,
 
                 #[watch]
                 set_visible: model.current_task.is_some(),
