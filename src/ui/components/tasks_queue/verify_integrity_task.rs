@@ -1,5 +1,15 @@
 use anime_game_core::game::integrity::*;
-use anime_game_core::updater::UpdaterExt;
+
+use anime_game_core::game::genshin::integrity::{
+    RepairerStatus,
+    VerifyUpdater,
+    RepairUpdater
+};
+
+use anime_game_core::updater::{
+    UpdaterExt,
+    Status
+};
 
 use crate::config;
 
@@ -11,14 +21,16 @@ use super::{
     TaskStatus
 };
 
-impl From<BasicRepairerUpdaterStatus> for TaskStatus {
+impl From<Status<RepairerStatus>> for TaskStatus {
     #[inline]
-    fn from(value: BasicRepairerUpdaterStatus) -> Self {
+    fn from(value: Status<RepairerStatus>) -> Self {
         match value {
-            BasicRepairerUpdaterStatus::PreparingTransition => Self::PreparingTransition,
-            BasicRepairerUpdaterStatus::FinishingTransition => Self::FinishingTransition,
-            BasicRepairerUpdaterStatus::RepairingFiles => Self::RepairingFiles,
-            BasicRepairerUpdaterStatus::Finished => Self::Finished
+            Status::Pending  => Self::PreparingTransition,
+            Status::Finished => Self::Finished,
+
+            Status::Working(RepairerStatus::PreparingTransition) => Self::PreparingTransition,
+            Status::Working(RepairerStatus::FinishingTransition) => Self::FinishingTransition,
+            Status::Working(RepairerStatus::RepairingFiles) => Self::RepairingFiles
         }
     }
 }
@@ -70,8 +82,8 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
 
 pub struct VerifyIntegrityResolvedTask {
     pub variant: CardVariant,
-    pub verifier: Option<BasicVerifierUpdater>,
-    pub repairer: Option<BasicRepairerUpdater>
+    pub verifier: Option<VerifyUpdater>,
+    pub repairer: Option<RepairUpdater>
 }
 
 impl std::fmt::Debug for VerifyIntegrityResolvedTask {
@@ -162,10 +174,10 @@ impl ResolvedTask for VerifyIntegrityResolvedTask {
         if let Some(mut verifier) = self.verifier.take() {
             if !verifier.is_finished() {
                 let status = verifier.status()
-                    .map(|status| if !status {
-                        TaskStatus::VerifyingFiles
-                    } else {
+                    .map(|status| if status.is_finished() {
                         TaskStatus::Finished
+                    } else {
+                        TaskStatus::VerifyingFiles
                     })
                     .map_err(|err| anyhow::anyhow!(err.to_string()));
 

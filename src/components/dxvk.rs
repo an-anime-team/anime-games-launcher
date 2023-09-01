@@ -103,7 +103,7 @@ impl Dxvk {
 
                 let mut updater = downloader.download(&archive)?;
 
-                while let Ok(false) = updater.status() {
+                while !updater.is_finished() {
                     sender.send((
                         Status::Downloading,
                         updater.current(),

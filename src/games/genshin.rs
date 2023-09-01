@@ -2,13 +2,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anime_game_core::updater::Status;
+
+use anime_game_core::game::diff::DiffExt;
 use anime_game_core::game::GameExt;
 use anime_game_core::game::genshin::{Game, Edition};
 
 use anime_game_core::game::genshin::diff::{
     Diff,
-    Updater,
-    Status
+    Status as DiffStatus
 };
 
 use anime_game_core::filesystem::DriverExt;
@@ -61,22 +63,26 @@ impl RunGameExt for Genshin {
     }
 }
 
-impl From<Diff> for DownloadDiffQueuedTask<Diff, Updater> {
+impl From<Diff> for DownloadDiffQueuedTask<Diff, <Diff as DiffExt>::Updater> {
     fn from(diff: Diff) -> Self {
         Self {
             variant: CardVariant::Genshin,
             diff,
             get_status: Box::new(|status| match status {
                 Ok(status) => Ok(match status {
-                    Status::PreparingTransition   => TaskStatus::PreparingTransition,
-                    Status::Downloading           => TaskStatus::Downloading,
-                    Status::Unpacking             => TaskStatus::Unpacking,
-                    Status::RunTransitionCode     => TaskStatus::RunTransitionCode,
-                    Status::FinishingTransition   => TaskStatus::FinishingTransition,
-                    Status::ApplyingHdiffPatches  => TaskStatus::ApplyingHdiffPatches,
-                    Status::DeletingObsoleteFiles => TaskStatus::DeletingObsoleteFiles,
-                    Status::RunPostTransitionCode => TaskStatus::RunPostTransitionCode,
-                    Status::Finished              => TaskStatus::Finished
+                    Status::Pending  => TaskStatus::PreparingTransition,
+                    Status::Finished => TaskStatus::Finished,
+
+                    Status::Working(status) => match status {
+                        DiffStatus::PreparingTransition   => TaskStatus::PreparingTransition,
+                        DiffStatus::Downloading           => TaskStatus::Downloading,
+                        DiffStatus::Unpacking             => TaskStatus::Unpacking,
+                        DiffStatus::RunTransitionCode     => TaskStatus::RunTransitionCode,
+                        DiffStatus::FinishingTransition   => TaskStatus::FinishingTransition,
+                        DiffStatus::ApplyingHdiffPatches  => TaskStatus::ApplyingHdiffPatches,
+                        DiffStatus::DeletingObsoleteFiles => TaskStatus::DeletingObsoleteFiles,
+                        DiffStatus::RunPostTransitionCode => TaskStatus::RunPostTransitionCode,
+                    }
                 }),
 
                 Err(err) => anyhow::bail!(err.to_string())
