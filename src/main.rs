@@ -99,6 +99,21 @@ fn main() -> anyhow::Result<()> {
         }
     ");
 
+    // Test
+
+    let game = games::integrations::Game::new(LAUNCHER_FOLDER.join("integrations/genshin/manifest.json"))?;
+
+    const PATH: &str = "/var/home/observer/.var/app/moe.launcher.an-anime-game-launcher/data/anime-game-launcher/Genshin Impact";
+
+    // dbg!(game.get_info("/var/home/observer/.var/app/moe.launcher.an-anime-game-launcher/data/anime-game-launcher/Genshin Impact")?);
+    // dbg!(game.get_game_editions_list()?);
+
+    let diff = game.get_game_diff(PATH)?;
+
+    dbg!(&diff);
+
+    panic!();
+
     // Create the app
     let app = RelmApp::new(APP_ID);
 

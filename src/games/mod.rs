@@ -15,6 +15,7 @@ use crate::ui::components::tasks_queue::{
     TaskStatus
 };
 
+pub mod integrations;
 pub mod genshin;
 
 pub trait RunGameExt {

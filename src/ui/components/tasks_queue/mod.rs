@@ -330,7 +330,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         else {
                             let progress = task.get_progress();
 
-                            self.progress_label.set_text(&format!("{:.1}%", progress * 100.0));
+                            self.progress_label.set_text(&format!("{:.2}%", progress * 100.0));
                             self.progress_bar.set_fraction(progress);
                         }
 
