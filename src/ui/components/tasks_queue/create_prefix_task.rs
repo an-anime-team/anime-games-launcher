@@ -214,7 +214,7 @@ impl QueuedTask for CreatePrefixQueuedTask {
 
                     // Finish downloading
 
-                    sender.send((Status::Finished, 0, 1))?;
+                    sender.send((Status::Finished, 1, 1))?;
 
                     Ok(())
                 }))

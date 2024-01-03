@@ -19,6 +19,7 @@ use crate::ui::components::game_card::{
 use crate::ui::components::factory::game_card_tasks::CardFactory;
 
 pub mod task;
+pub mod download_diff_task;
 pub mod create_prefix_task;
 pub mod verify_integrity_task;
 
@@ -336,6 +337,8 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                         if let Ok(status) = task.get_status() {
                             let (pulse, title) = match status {
+                                TaskStatus::Pending => (true, String::from("Pending")),
+
                                 TaskStatus::PreparingTransition => (true, String::from("Preparing transition...")),
                                 TaskStatus::FinishingTransition => (true, String::from("Finishing transition...")),
 

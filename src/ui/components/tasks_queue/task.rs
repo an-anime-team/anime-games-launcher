@@ -3,6 +3,7 @@ use crate::ui::components::game_card::CardInfo;
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// All the possible tasks statuses in one enum
 pub enum TaskStatus {
+    Pending,
     PreparingTransition,
     Downloading,
     Unpacking,

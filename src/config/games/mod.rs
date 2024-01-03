@@ -56,7 +56,6 @@ impl From<&Json> for Games {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameSettings {
-    pub edition: String,
     pub paths: HashMap<String, Driver>
 }
 
@@ -65,7 +64,6 @@ impl GameSettings {
         let editions = game.get_game_editions_list()?;
 
         Ok(Self {
-            edition: editions[0].name.clone(),
             paths: editions.into_iter().map(|edition| {
                 (edition.name, Driver::PhysicalFsDriver {
                     base_folder: LAUNCHER_FOLDER
@@ -82,11 +80,6 @@ impl From<&Json> for GameSettings {
     #[inline]
     fn from(value: &Json) -> Self {
         Self {
-            edition: value.get("edition")
-                .and_then(Json::as_str)
-                .map(String::from)
-                .unwrap(),
-
             paths: match value.get("paths").and_then(Json::as_object) {
                 Some(values) => {
                     let mut paths = HashMap::new();

@@ -148,13 +148,6 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     #[watch]
                     set_visible: !model.installed,
 
-                    gtk::DropDown {
-                        set_model: Some(&gtk::StringList::new(&[
-                            "Global",
-                            "China"
-                        ]))
-                    },
-
                     gtk::Box {
                         set_valign: gtk::Align::Center,
 

@@ -9,7 +9,8 @@ pub enum CardInfo {
         name: String,
         title: String,
         developer: String,
-        uri: String
+        edition: String,
+        picture_uri: String
     },
     Component {
         name: String,
@@ -55,9 +56,17 @@ impl CardInfo {
     }
 
     #[inline]
-    pub fn get_uri(&self) -> &str {
+    pub fn get_edition(&self) -> &str {
         match self {
-            Self::Game { uri, .. } => uri,
+            Self::Game { edition, .. } => edition,
+            Self::Component { .. } => ""
+        }
+    }
+
+    #[inline]
+    pub fn get_picture_uri(&self) -> &str {
+        match self {
+            Self::Game { picture_uri, .. } => picture_uri,
             Self::Component { .. } => "/moe/launcher/anime-games-launcher/images/component.png"
         }
     }
@@ -144,7 +153,7 @@ impl SimpleAsyncComponent for CardComponent {
                         // },
 
                         #[watch]
-                        set_filename: Some(model.info.get_uri()),
+                        set_filename: Some(model.info.get_picture_uri()),
 
                         set_content_fit: gtk::ContentFit::Cover
                     },
@@ -173,7 +182,7 @@ impl SimpleAsyncComponent for CardComponent {
                     set_visible: model.display_title,
 
                     #[watch]
-                    set_label: model.info.get_title()
+                    set_label: &format!("{}  •  {}", model.info.get_title(), model.info.get_edition())
                 }
             }
         }

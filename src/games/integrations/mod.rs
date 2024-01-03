@@ -140,6 +140,14 @@ impl Game {
         }
     }
 
+    pub fn is_game_installed(&self, path: impl AsRef<str>) -> anyhow::Result<bool> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_game_is_installed")?
+                .call::<_, bool>(path.as_ref())?)
+        }
+    }
+
     pub fn get_game_info(&self, path: impl AsRef<str>) -> anyhow::Result<Option<standards::game::GameInfo>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
@@ -151,6 +159,18 @@ impl Game {
                     Some(info) => Ok(Some(standards::game::GameInfo::from_table(info, self.script_standard)?)),
                     None => Ok(None)
                 }
+            }
+        }
+    }
+
+    pub fn get_game_download(&self, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Download> {
+        match self.script_standard {
+            IntegrationStandard::V1 => {
+                let download = self.lua.globals()
+                    .get::<_, LuaFunction>("v1_game_get_download")?
+                    .call::<_, LuaTable>(edition.as_ref())?;
+
+                standards::game::Download::from_table(download, self.script_standard)
             }
         }
     }

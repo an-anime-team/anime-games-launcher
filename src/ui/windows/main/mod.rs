@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use relm4::prelude::*;
 use relm4::component::*;
@@ -39,6 +40,7 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponentInput,
     TasksQueueComponentOutput,
 
+    download_diff_task::DownloadDiffQueuedTask,
     create_prefix_task::CreatePrefixQueuedTask,
     verify_integrity_task::VerifyIntegrityQueuedTask
 };
@@ -294,11 +296,11 @@ impl SimpleComponent for MainApp {
                     GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
                     GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap,
 
-                    GameDetailsComponentOutput::DownloadGame(variant)
-                        => MainAppMsg::AddDownloadGameTask(variant),
+                    GameDetailsComponentOutput::DownloadGame(info)
+                        => MainAppMsg::AddDownloadGameTask(info),
 
-                    GameDetailsComponentOutput::VerifyGame(variant)
-                        => MainAppMsg::AddVerifyGameTask(variant),
+                    GameDetailsComponentOutput::VerifyGame(info)
+                        => MainAppMsg::AddVerifyGameTask(info),
 
                     GameDetailsComponentOutput::ShowToast { title, message }
                         => MainAppMsg::ShowToast { title, message }
@@ -317,8 +319,8 @@ impl SimpleComponent for MainApp {
             tasks_queue: TasksQueueComponent::builder()
                 .launch(CardInfo::default())
                 .forward(sender.input_sender(), |output| match output {
-                    TasksQueueComponentOutput::TaskFinished(variant)
-                        => MainAppMsg::FinishQueuedTask(variant),
+                    TasksQueueComponentOutput::TaskFinished(info)
+                        => MainAppMsg::FinishQueuedTask(info),
 
                     TasksQueueComponentOutput::HideTasksFlap
                         => MainAppMsg::HideTasksFlap,
@@ -331,91 +333,107 @@ impl SimpleComponent for MainApp {
         match games::list() {
             Ok(games) => {
                 for (name, game) in games {
-                    let card = CardInfo::Game {
-                        name: game.game_name.clone(),
-                        title: game.game_title.clone(),
-                        developer: game.game_developer.clone(),
+                    match game.get_game_editions_list() {
+                        Ok(editions) => {
+                            for edition in editions {
+                                let card = CardInfo::Game {
+                                    name: game.game_name.clone(),
+                                    title: game.game_title.clone(),
+                                    developer: game.game_developer.clone(),
+                                    edition: edition.name.clone(),
 
-                        uri: match game.get_card_picture() {
-                            Ok(uri) => uri,
-                            Err(err) => {
-                                sender.input(MainAppMsg::ShowToast {
-                                    title: format!("Failed to get card picture for game '{name}'"),
-                                    message: Some(err.to_string())
-                                });
-    
-                                continue;
-                            }
-                        }
-                    };
-
-                    let game_settings = STARTUP_CONFIG.games.settings.get(name).cloned()
-                        .unwrap_or_else(|| config::games::GameSettings::default_for_game(game).unwrap());
-
-                    let installed = match game_settings.paths.get(&game_settings.edition) {
-                        Some(driver) => {
-                            let driver = driver.to_dyn_trait();
-
-                            match driver.deploy() {
-                                Ok(path) => {
-                                    match game.get_game_info(path.to_string_lossy()) {
-                                        Ok(info) => {
-                                            if let Err(err) = driver.dismantle() {
-                                                sender.input(MainAppMsg::ShowToast {
-                                                    title: format!("Failed to deploy folder for game '{name}' with '{}' edition", game_settings.edition),
-                                                    message: Some(err.to_string())
-                                                });
-                    
-                                                continue;
-                                            }
-
-                                            info.is_none()
-                                        }
-
+                                    picture_uri: match game.get_card_picture() {
+                                        Ok(uri) => uri,
                                         Err(err) => {
                                             sender.input(MainAppMsg::ShowToast {
-                                                title: format!("Failed to get game '{name}' info with '{}' edition", game_settings.edition),
+                                                title: format!("Failed to get card picture for game '{name}'"),
                                                 message: Some(err.to_string())
                                             });
-                
+
                                             continue;
                                         }
                                     }
+                                };
+
+                                let game_settings = STARTUP_CONFIG.games.settings.get(name).cloned()
+                                    .unwrap_or_else(|| config::games::GameSettings::default_for_game(game).unwrap());
+
+                                let installed = match game_settings.paths.get(&edition.name) {
+                                    Some(driver) => {
+                                        let driver = driver.to_dyn_trait();
+
+                                        match driver.deploy() {
+                                            Ok(path) => {
+                                                match game.is_game_installed(path.to_string_lossy()) {
+                                                    Ok(installed) => {
+                                                        if let Err(err) = driver.dismantle() {
+                                                            sender.input(MainAppMsg::ShowToast {
+                                                                title: format!("Failed to deploy folder for game '{name}' with '{}' edition", edition.name),
+                                                                message: Some(err.to_string())
+                                                            });
+
+                                                            continue;
+                                                        }
+
+                                                        installed
+                                                    }
+
+                                                    Err(err) => {
+                                                        sender.input(MainAppMsg::ShowToast {
+                                                            title: format!("Failed to get game '{name}' info with '{}' edition", edition.name),
+                                                            message: Some(err.to_string())
+                                                        });
+
+                                                        continue;
+                                                    }
+                                                }
+                                            }
+
+                                            Err(err) => {
+                                                sender.input(MainAppMsg::ShowToast {
+                                                    title: format!("Failed to deploy folder for game '{name}' with '{}' edition", edition.name),
+                                                    message: Some(err.to_string())
+                                                });
+
+                                                continue;
+                                            }
+                                        }
+                                    }
+
+                                    None => {
+                                        sender.input(MainAppMsg::ShowToast {
+                                            title: format!("No path given for game '{name}' with '{}' edition", edition.name),
+                                            message: None
+                                        });
+
+                                        continue;
+                                    }
+                                };
+
+                                if installed {
+                                    model.installed_games_indexes.insert(
+                                        card.to_owned(),
+                                        model.installed_games.guard().push_back(card.to_owned())
+                                    );
                                 }
 
-                                Err(err) => {
-                                    sender.input(MainAppMsg::ShowToast {
-                                        title: format!("Failed to deploy folder for game '{name}' with '{}' edition", game_settings.edition),
-                                        message: Some(err.to_string())
-                                    });
-        
-                                    continue;
+                                else {
+                                    model.available_games_indexes.insert(
+                                        card.to_owned(),
+                                        model.available_games.guard().push_back(card.to_owned())
+                                    );
                                 }
                             }
                         }
 
-                        None => {
+                        Err(err) => {
                             sender.input(MainAppMsg::ShowToast {
-                                title: format!("No path given for game '{name}' with '{}' edition", game_settings.edition),
-                                message: None
+                                title: format!("Failed to get {name} editions list"),
+                                message: Some(err.to_string())
                             });
 
                             continue;
                         }
-                    };
-
-                    if installed {
-                        model.installed_games_indexes.insert(
-                            card.to_owned(),
-                            model.installed_games.guard().push_back(card.to_owned())
-                        );
-                    }
-
-                    else {
-                        model.available_games_indexes.insert(
-                            card.to_owned(),
-                            model.available_games.guard().push_back(card.to_owned())
-                        );
                     }
                 }
             }
@@ -551,38 +569,128 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddDownloadGameTask(info) => {
-                // let config = config::get();
+                let config = config::get();
 
-                // let task = match variant {
-                //     CardVariant::Genshin => {
-                //         Box::new(DownloadDiffQueuedTask::from(config.games.genshin
-                //             .to_game()
-                //             .get_diff()
-                //             .unwrap()))
-                //     },
+                let Some(settings) = config.games.settings.get(info.get_name()) else {
+                    sender.input(MainAppMsg::ShowToast {
+                        title: format!("Unable to find {} settings", info.get_title()),
+                        message: None
+                    });
 
-                //     _ => unimplemented!()
-                // };
+                    return;
+                };
 
-                // self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                let Some(driver) = settings.paths.get(info.get_edition()) else {
+                    sender.input(MainAppMsg::ShowToast {
+                        title: format!("Unable to find {} installation path", info.get_title()),
+                        message: None
+                    });
 
-                // if let Some(index) = self.available_games_indexes.get(&variant) {
-                //     self.available_games.guard().remove(index.current_index());
+                    return;
+                };
 
-                //     self.available_games_indexes.remove(&variant);
+                match games::get(info.get_name()) {
+                    Ok(Some(game)) => {
+                        let driver = Arc::new(driver.to_dyn_trait());
 
-                //     #[allow(clippy::map_entry)]
-                //     if !self.queued_games_indexes.contains_key(&variant) {
-                //         self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant.clone()));
+                        // FIXME handle error
+                        let path = driver.deploy().unwrap();
 
-                //         self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
-                //         self.queued_games.broadcast(CardComponentInput::SetClickable(false));
-                //     }
-                // }
+                        let diff_info = match game.is_game_installed(path.to_string_lossy()) {
+                            Ok(true) => {
+                                match game.get_game_diff(path.to_string_lossy()) {
+                                    Ok(Some(diff)) => diff.diff,
 
-                // if config.general.verify_games {
-                //     sender.input(MainAppMsg::AddVerifyGameTask(variant));
-                // }
+                                    Ok(None) => {
+                                        sender.input(MainAppMsg::ShowToast {
+                                            title: format!("{} is not installed", info.get_title()),
+                                            message: None
+                                        });
+
+                                        return;
+                                    }
+
+                                    Err(err) => {
+                                        sender.input(MainAppMsg::ShowToast {
+                                            title: format!("Unable to find {} version diff", info.get_title()),
+                                            message: Some(err.to_string())
+                                        });
+
+                                        return;
+                                    }
+                                }
+                            }
+
+                            Ok(false) => {
+                                match game.get_game_download(info.get_edition()) {
+                                    Ok(download) => Some(download.download),
+                                    Err(err) => {
+                                        sender.input(MainAppMsg::ShowToast {
+                                            title: format!("Unable to find {} version diff", info.get_title()),
+                                            message: Some(err.to_string())
+                                        });
+    
+                                        return;
+                                    }
+                                }
+                            }
+
+                            Err(err) => {
+                                sender.input(MainAppMsg::ShowToast {
+                                    title: format!("Unable to find {} version diff", info.get_title()),
+                                    message: Some(err.to_string())
+                                });
+
+                                return;
+                            }
+                        };
+
+                        if let Some(diff_info) = diff_info {
+                            let task = Box::new(DownloadDiffQueuedTask {
+                                driver: driver.clone(),
+                                card_info: info.clone(),
+                                diff_info
+                            });
+
+                            // FIXME handle error
+                            driver.dismantle().unwrap();
+
+                            self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+
+                            if let Some(index) = self.available_games_indexes.get(&info) {
+                                self.available_games.guard().remove(index.current_index());
+
+                                self.available_games_indexes.remove(&info);
+
+                                #[allow(clippy::map_entry)]
+                                if !self.queued_games_indexes.contains_key(&info) {
+                                    self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info.clone()));
+
+                                    self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                                    self.queued_games.broadcast(CardComponentInput::SetClickable(false));
+                                }
+                            }
+
+                            if config.general.verify_games {
+                                sender.input(MainAppMsg::AddVerifyGameTask(info));
+                            }
+                        }
+                    }
+
+                    Ok(None) => {
+                        sender.input(MainAppMsg::ShowToast {
+                            title: format!("Unable to find {} integration script", info.get_title()),
+                            message: None
+                        });
+                    }
+
+                    Err(err) => {
+                        sender.input(MainAppMsg::ShowToast {
+                            title: format!("Unable to find {} integration script", info.get_title()),
+                            message: Some(err.to_string())
+                        });
+                    }
+                }
             }
 
             MainAppMsg::AddVerifyGameTask(info) => {
