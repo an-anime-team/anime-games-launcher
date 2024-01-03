@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use serde_json::Value as Json;
 use mlua::prelude::*;
 
+use anime_game_core::filesystem::DriverExt;
+
 pub mod standards;
 
 use standards::IntegrationStandard;
@@ -19,8 +21,8 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(manifest_path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let manifest = serde_json::from_slice::<Json>(&std::fs::read(manifest_path.as_ref())?)?;
+    pub fn new(driver: &impl DriverExt, manifest_path: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let manifest = serde_json::from_slice::<Json>(&driver.read(manifest_path.as_ref().as_os_str())?)?;
 
         match manifest.get("manifest_version").and_then(Json::as_str) {
             Some("1") => {
@@ -47,7 +49,7 @@ impl Game {
                         .unwrap_or(script_path)
                 };
 
-                let script = std::fs::read_to_string(&script_path)?;
+                let script = driver.read_to_string(script_path.as_os_str())?;
 
                 let game = Self {
                     game_name: match game_manifest.get("name").and_then(Json::as_str) {

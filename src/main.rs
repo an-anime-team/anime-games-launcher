@@ -101,7 +101,7 @@ fn main() -> anyhow::Result<()> {
 
     // Test
 
-    let game = games::integrations::Game::new(LAUNCHER_FOLDER.join("integrations/genshin/manifest.json"))?;
+    let game = games::get("genshin")?.unwrap();
 
     const PATH: &str = "/var/home/observer/.var/app/moe.launcher.an-anime-game-launcher/data/anime-game-launcher/Genshin Impact";
 

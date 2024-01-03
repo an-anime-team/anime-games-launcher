@@ -142,11 +142,11 @@ impl SimpleAsyncComponent for GameCardComponent {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            GameCardComponentInput::SetVariant(variant) => self.variant = variant,
-            GameCardComponentInput::SetWidth(width) => self.width = width,
-            GameCardComponentInput::SetHeight(height) => self.height = height,
-            GameCardComponentInput::SetInstalled(installed) => self.installed = installed,
-            GameCardComponentInput::SetClickable(clickable) => self.clickable = clickable,
+            GameCardComponentInput::SetVariant(variant)     => self.variant = variant,
+            GameCardComponentInput::SetWidth(width)                 => self.width = width,
+            GameCardComponentInput::SetHeight(height)               => self.height = height,
+            GameCardComponentInput::SetInstalled(installed)        => self.installed = installed,
+            GameCardComponentInput::SetClickable(clickable)        => self.clickable = clickable,
             GameCardComponentInput::SetDisplayTitle(display_title) => self.display_title = display_title,
 
             GameCardComponentInput::EmitCardClick => {
