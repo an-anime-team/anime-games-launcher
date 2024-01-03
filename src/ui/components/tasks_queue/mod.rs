@@ -18,6 +18,11 @@ use crate::ui::components::game_card::{
 
 use crate::ui::components::factory::game_card_tasks::CardFactory;
 
+use crate::utils::{
+    pretty_bytes,
+    pretty_seconds
+};
+
 pub mod task;
 pub mod download_diff_task;
 pub mod create_prefix_task;
@@ -163,13 +168,19 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 #[watch]
                 set_visible: model.current_task.is_some(),
 
-                set_label: "Download speed: 20 MB/s"
+                // TODO: update avg-s with some timeout
 
-                // #[watch]
-                // set_label: &match &model.current_task {
-                //     Some(task) => format!("Download speed: {} bytes/s", (task.get_current() as f64 / (Instant::now() - model.current_task_progress_start).as_secs_f64()).ceil()),
-                //     None => String::new()
-                // }
+                #[watch]
+                set_label: &match &model.current_task {
+                    Some(task) => {
+                        let elapsed_time  = (Instant::now() - model.current_task_progress_start).as_secs_f64();
+                        let average_speed = (task.get_current() as f64 / elapsed_time).ceil() as u64;
+
+                        format!("Avg download speed: {}/s", pretty_bytes(average_speed))
+                    }
+
+                    None => String::new()
+                }
             },
 
             gtk::Label {
@@ -180,7 +191,19 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 #[watch]
                 set_visible: model.current_task.is_some(),
 
-                set_label: "ETA: 7 minutes"
+                #[watch]
+                set_label: &match &model.current_task {
+                    Some(task) => {
+                        let elapsed_time = (Instant::now() - model.current_task_progress_start).as_secs_f64();
+                        let progress = task.get_progress();
+
+                        let expected_total_time = (elapsed_time / progress).ceil() as u64;
+
+                        format!("Avg ETA: {}", pretty_seconds(expected_total_time - elapsed_time as u64))
+                    }
+
+                    None => String::new()
+                }
             },
 
             gtk::ScrolledWindow {

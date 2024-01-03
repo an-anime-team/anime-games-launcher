@@ -117,7 +117,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                             // Delete archive
 
-                            std::fs::remove_file(archive)?;
+                            // std::fs::remove_file(archive)?;
                         }
 
                         DiffInfo::Segments { size, segments } => {
@@ -167,9 +167,9 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                             // Delete segments
 
-                            for archive in archives {
-                                std::fs::remove_file(archive)?;
-                            }
+                            // for archive in archives {
+                            //     std::fs::remove_file(archive)?;
+                            // }
                         }
 
                         DiffInfo::Files { size, files } => {
@@ -209,7 +209,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     sender.send((Status::FinishingTransition, 0, 1))?;
 
-                    driver.finish_transition(&transition_name)?;
+                    // driver.finish_transition(&transition_name)?;
 
                     sender.send((Status::FinishingTransition, 1, 1))?;
 

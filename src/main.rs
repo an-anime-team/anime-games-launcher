@@ -6,6 +6,7 @@ pub mod ui;
 pub mod config;
 pub mod components;
 pub mod games;
+pub mod utils;
 
 use ui::windows::main::MainApp;
 
