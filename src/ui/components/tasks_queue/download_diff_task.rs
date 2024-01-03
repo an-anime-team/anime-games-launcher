@@ -64,6 +64,8 @@ impl QueuedTask for DownloadDiffQueuedTask {
         let diff_info = self.diff_info.clone();
 
         Ok(Box::new(DownloadDiffResolvedTask {
+            card_info: self.card_info.clone(),
+
             updater: BasicUpdater::spawn(move |sender| {
                 Box::new(move || -> Result<(), anyhow::Error> {
                     // Create transition
@@ -249,16 +251,14 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
 #[derive(Debug)]
 pub struct DownloadDiffResolvedTask {
-    pub updater: BasicUpdater<Status, (), anyhow::Error>
+    pub updater: BasicUpdater<Status, (), anyhow::Error>,
+    pub card_info: CardInfo
 }
 
 impl ResolvedTask for DownloadDiffResolvedTask {
+    #[inline]
     fn get_info(&self) -> CardInfo {
-        CardInfo::Component {
-            name: String::from("wine-prefix"),
-            title: String::from("Wine prefix"),
-            developer: String::new()
-        }
+        self.card_info.clone()
     }
 
     #[inline]
