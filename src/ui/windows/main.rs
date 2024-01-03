@@ -8,9 +8,6 @@ use relm4::factory::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use anime_game_core::game::GameExt;
-use anime_game_core::game::diff::GetDiffExt;
-
 use crate::{
     config,
     STARTUP_CONFIG
@@ -19,13 +16,11 @@ use crate::{
 use crate::components::wine::*;
 use crate::components::dxvk::*;
 
-use crate::games::DownloadDiffQueuedTask;
-
 use crate::ui::windows::preferences::PreferencesApp;
 
 use crate::ui::components::game_card::{
-    GameCardComponentInput,
-    CardVariant
+    GameCardInfo,
+    GameCardComponentInput
 };
 
 use crate::ui::components::factory::game_card_main::GameCardFactory;
@@ -56,15 +51,15 @@ pub struct MainApp {
     game_details_toast_overlay: adw::ToastOverlay,
 
     game_details: AsyncController<GameDetailsComponent>,
-    game_details_variant: CardVariant,
+    game_details_info: GameCardInfo,
 
     installed_games: FactoryVecDeque<GameCardFactory>,
     queued_games: FactoryVecDeque<GameCardFactory>,
     available_games: FactoryVecDeque<GameCardFactory>,
 
-    installed_games_indexes: HashMap<CardVariant, DynamicIndex>,
-    queued_games_indexes: HashMap<CardVariant, DynamicIndex>,
-    available_games_indexes: HashMap<CardVariant, DynamicIndex>,
+    installed_games_indexes: HashMap<GameCardInfo, DynamicIndex>,
+    queued_games_indexes: HashMap<GameCardInfo, DynamicIndex>,
+    available_games_indexes: HashMap<GameCardInfo, DynamicIndex>,
 
     tasks_queue: AsyncController<TasksQueueComponent>
 }
@@ -72,7 +67,7 @@ pub struct MainApp {
 #[derive(Debug)]
 pub enum MainAppMsg {
     OpenDetails {
-        variant: CardVariant,
+        info: GameCardInfo,
         installed: bool
     },
 
@@ -84,19 +79,21 @@ pub enum MainAppMsg {
     HideTasksFlap,
     ToggleTasksFlap,
 
-    AddDownloadGameTask(CardVariant),
-    AddVerifyGameTask(CardVariant),
-    FinishQueuedTask(CardVariant),
+    AddDownloadGameTask(GameCardInfo),
+    AddVerifyGameTask(GameCardInfo),
+    FinishQueuedTask(GameCardInfo),
 
     AddDownloadWineTask {
+        name: String,
         title: String,
-        author: String,
+        developer: String,
         version: Wine
     },
 
     AddDownloadDxvkTask {
+        name: String,
         title: String,
-        author: String,
+        developer: String,
         version: Dxvk
     },
 
@@ -254,10 +251,10 @@ impl SimpleComponent for MainApp {
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
 
-                        #[watch]
-                        set_css_classes: &[
-                            model.game_details_variant.get_details_style()
-                        ],
+                        // #[watch]
+                        // set_css_classes: &[
+                        //     model.game_details_info.get_details_style()
+                        // ],
 
                         adw::HeaderBar {
                             add_css_class: "flat",
@@ -289,7 +286,7 @@ impl SimpleComponent for MainApp {
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
             game_details: GameDetailsComponent::builder()
-                .launch(CardVariant::Genshin)
+                .launch(())
                 .forward(sender.input_sender(), |message| match message {
                     GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
                     GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap,
@@ -304,7 +301,7 @@ impl SimpleComponent for MainApp {
                         => MainAppMsg::ShowToast { title, message }
                 }),
 
-            game_details_variant: CardVariant::Genshin,
+            game_details_info: GameCardInfo::default(),
 
             installed_games_indexes: HashMap::new(),
             queued_games_indexes: HashMap::new(),
@@ -315,7 +312,7 @@ impl SimpleComponent for MainApp {
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
 
             tasks_queue: TasksQueueComponent::builder()
-                .launch(CardVariant::Genshin)
+                .launch(())
                 .forward(sender.input_sender(), |output| match output {
                     TasksQueueComponentOutput::TaskFinished(variant)
                         => MainAppMsg::FinishQueuedTask(variant),
@@ -328,27 +325,27 @@ impl SimpleComponent for MainApp {
                 }),
         };
 
-        for game in CardVariant::games() {
-            let installed = match game {
-                CardVariant::Genshin => STARTUP_CONFIG.games.genshin.to_game().is_installed(),
+        // for game in CardVariant::games() {
+        //     let installed = match game {
+        //         CardVariant::Genshin => STARTUP_CONFIG.games.genshin.to_game().is_installed(),
 
-                _ => false
-            };
+        //         _ => false
+        //     };
 
-            if installed {
-                model.installed_games_indexes.insert(
-                    game.to_owned(),
-                    model.installed_games.guard().push_back(game.to_owned())
-                );
-            }
+        //     if installed {
+        //         model.installed_games_indexes.insert(
+        //             game.to_owned(),
+        //             model.installed_games.guard().push_back(game.to_owned())
+        //         );
+        //     }
 
-            else {
-                model.available_games_indexes.insert(
-                    game.to_owned(),
-                    model.available_games.guard().push_back(game.to_owned())
-                );
-            }
-        }
+        //     else {
+        //         model.available_games_indexes.insert(
+        //             game.to_owned(),
+        //             model.available_games.guard().push_back(game.to_owned())
+        //         );
+        //     }
+        // }
 
         model.available_games.broadcast(GameCardComponentInput::SetInstalled(false));
 
@@ -379,8 +376,9 @@ impl SimpleComponent for MainApp {
                 Ok(wine) => {
                     if !wine.is_downloaded() {
                         sender.input(MainAppMsg::AddDownloadWineTask {
+                            name: wine.name.clone(),
                             title: wine.title.clone(),
-                            author: String::new(),
+                            developer: String::new(),
                             version: wine
                         });
 
@@ -402,8 +400,9 @@ impl SimpleComponent for MainApp {
                 Ok(dxvk) => {
                     if !dxvk.is_downloaded() {
                         sender.input(MainAppMsg::AddDownloadDxvkTask {
+                            name: dxvk.name.clone(),
                             title: dxvk.name.clone(), // name > title in case of dxvks
-                            author: String::new(),
+                            developer: String::new(),
                             version: dxvk
                         });
 
@@ -438,10 +437,10 @@ impl SimpleComponent for MainApp {
 
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
-            MainAppMsg::OpenDetails { variant, installed } => {
-                self.game_details_variant = variant.clone();
+            MainAppMsg::OpenDetails { info, installed } => {
+                self.game_details_info = info.clone();
 
-                self.game_details.emit(GameDetailsComponentInput::SetVariant(variant));
+                self.game_details.emit(GameDetailsComponentInput::SetInfo(info));
                 self.game_details.emit(GameDetailsComponentInput::SetInstalled(installed));
 
                 self.leaflet.navigate(adw::NavigationDirection::Forward);
@@ -471,55 +470,55 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddDownloadGameTask(variant) => {
-                let config = config::get();
+                // let config = config::get();
 
-                let task = match variant {
-                    CardVariant::Genshin => {
-                        Box::new(DownloadDiffQueuedTask::from(config.games.genshin
-                            .to_game()
-                            .get_diff()
-                            .unwrap()))
-                    },
+                // let task = match variant {
+                //     CardVariant::Genshin => {
+                //         Box::new(DownloadDiffQueuedTask::from(config.games.genshin
+                //             .to_game()
+                //             .get_diff()
+                //             .unwrap()))
+                //     },
 
-                    _ => unimplemented!()
-                };
+                //     _ => unimplemented!()
+                // };
 
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                // self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                if let Some(index) = self.available_games_indexes.get(&variant) {
-                    self.available_games.guard().remove(index.current_index());
+                // if let Some(index) = self.available_games_indexes.get(&variant) {
+                //     self.available_games.guard().remove(index.current_index());
 
-                    self.available_games_indexes.remove(&variant);
+                //     self.available_games_indexes.remove(&variant);
 
-                    #[allow(clippy::map_entry)]
-                    if !self.queued_games_indexes.contains_key(&variant) {
-                        self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant.clone()));
+                //     #[allow(clippy::map_entry)]
+                //     if !self.queued_games_indexes.contains_key(&variant) {
+                //         self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant.clone()));
 
-                        self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
-                        self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
-                    }
-                }
+                //         self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
+                //         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
+                //     }
+                // }
 
-                if config.general.verify_games {
-                    sender.input(MainAppMsg::AddVerifyGameTask(variant));
-                }
+                // if config.general.verify_games {
+                //     sender.input(MainAppMsg::AddVerifyGameTask(variant));
+                // }
             }
 
-            MainAppMsg::AddVerifyGameTask(variant) => {
+            MainAppMsg::AddVerifyGameTask(info) => {
                 let task = Box::new(VerifyIntegrityQueuedTask {
-                    variant: variant.clone()
+                    info: info.clone()
                 });
 
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                if let Some(index) = self.available_games_indexes.get(&variant) {
+                if let Some(index) = self.available_games_indexes.get(&info) {
                     self.available_games.guard().remove(index.current_index());
 
-                    self.available_games_indexes.remove(&variant);
+                    self.available_games_indexes.remove(&info);
 
                     #[allow(clippy::map_entry)]
-                    if !self.queued_games_indexes.contains_key(&variant) {
-                        self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant));
+                    if !self.queued_games_indexes.contains_key(&info) {
+                        self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info));
 
                         self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
                         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
@@ -540,18 +539,20 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::AddDownloadWineTask { title, author, version } => {
+            MainAppMsg::AddDownloadWineTask { name, title, developer, version } => {
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadWineQueuedTask {
+                    name,
                     title,
-                    author,
+                    developer,
                     version
                 })));
             }
 
-            MainAppMsg::AddDownloadDxvkTask { title, author, version } => {
+            MainAppMsg::AddDownloadDxvkTask { name, title, developer, version } => {
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadDxvkQueuedTask {
+                    name,
                     title,
-                    author,
+                    developer,
                     version
                 })));
             }

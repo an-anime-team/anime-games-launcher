@@ -4,10 +4,10 @@ use relm4::component::*;
 use crate::ui::components::tasks_queue::TasksQueueComponentInput;
 
 use crate::ui::components::game_card::{
+    GameCardInfo,
     GameCardComponent,
     GameCardComponentInput,
-    GameCardComponentOutput,
-    CardVariant
+    GameCardComponentOutput
 };
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct GameCardFactory {
 
 #[relm4::factory(pub)]
 impl FactoryComponent for GameCardFactory {
-    type Init = CardVariant;
+    type Init = GameCardInfo;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
     type CommandOutput = ();

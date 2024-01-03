@@ -3,7 +3,8 @@ use std::thread::JoinHandle;
 
 use anime_game_core::updater::UpdaterExt;
 
-use crate::ui::components::{tasks_queue::{ResolvedTask, TaskStatus}, game_card::CardVariant};
+use crate::ui::components::tasks_queue::{ResolvedTask, TaskStatus};
+use crate::ui::components::game_card::GameCardInfo;
 
 pub mod wine;
 pub mod dxvk;
@@ -96,28 +97,20 @@ impl UpdaterExt for Updater {
 
 #[derive(Debug)]
 pub struct DownloadComponentResolvedTask {
+    pub name: String,
     pub title: String,
-    pub author: String,
+    pub developer: String,
     pub updater: Updater
 }
 
 impl ResolvedTask for DownloadComponentResolvedTask {
     #[inline]
-    fn get_variant(&self) -> CardVariant {
-        CardVariant::Component { 
+    fn get_info(&self) -> GameCardInfo {
+        GameCardInfo {
+            name: self.name.clone(),
             title: self.title.clone(), 
-            author: self.author.clone() 
+            developer: self.developer.clone() 
         }
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        self.title.as_str()
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        self.author.as_str()
     }
 
     #[inline]

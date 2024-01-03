@@ -11,9 +11,9 @@ use relm4::component::*;
 use gtk::prelude::*;
 
 use crate::ui::components::game_card::{
+    GameCardInfo,
     GameCardComponent,
-    GameCardComponentInput,
-    CardVariant
+    GameCardComponentInput
 };
 
 use crate::ui::components::factory::game_card_tasks::GameCardFactory;
@@ -65,7 +65,7 @@ pub enum TasksQueueComponentInput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TasksQueueComponentOutput {
-    TaskFinished(CardVariant),
+    TaskFinished(GameCardInfo),
 
     HideTasksFlap,
 
@@ -77,7 +77,7 @@ pub enum TasksQueueComponentOutput {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for TasksQueueComponent {
-    type Init = CardVariant;
+    type Init = ();
     type Input = TasksQueueComponentInput;
     type Output = TasksQueueComponentOutput;
 
@@ -116,9 +116,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 add_css_class: "title-4",
 
                 #[watch]
-                set_label: match &model.current_task {
-                    Some(task) => task.get_title(),
-                    None => "Nothing to do"
+                set_label: &match &model.current_task {
+                    Some(task) => task.get_info().title,
+                    None => String::from("Nothing to do")
                 }
             },
 
@@ -191,7 +191,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
     }
 
     async fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
@@ -207,7 +207,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             current_task: None,
 
             current_task_card: GameCardComponent::builder()
-                .launch(init)
+                .launch(GameCardInfo::default())
                 .detach(),
 
             current_task_status: String::new(),
@@ -243,7 +243,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 if self.current_task.is_none() {
                     match task.resolve() {
                         Ok(task) => {
-                            self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant().to_owned()));
+                            self.current_task_card.emit(GameCardComponentInput::SetInfo(task.get_info()));
 
                             self.current_task = Some(task);
                             self.current_task_progress_start = Instant::now();
@@ -259,7 +259,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 }
 
                 else {
-                    self.queued_tasks_factory.guard().push_back(task.get_variant().to_owned());
+                    self.queued_tasks_factory.guard().push_back(task.get_info().to_owned());
 
                     self.queued_tasks.push_back(task);
                 }
@@ -274,7 +274,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     if task.is_finished() {
                         if let Err(err) = task.get_status() {
                             sender.output(TasksQueueComponentOutput::ShowToast {
-                                title: format!("Failed to download {}", task.get_variant().get_title()),
+                                title: format!("Failed to download {}", task.get_info().title),
                                 message: Some(err.to_string())
                             }).unwrap();
                         }
@@ -282,7 +282,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         let mut is_task_queued = false;
 
                         for queued_task in &self.queued_tasks {
-                            if queued_task.get_variant() == task.get_variant() {
+                            if queued_task.get_info() == task.get_info() {
                                 is_task_queued = true;
 
                                 break;
@@ -290,7 +290,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         }
 
                         if !is_task_queued {
-                            sender.output(TasksQueueComponentOutput::TaskFinished(task.get_variant().to_owned())).unwrap();
+                            sender.output(TasksQueueComponentOutput::TaskFinished(task.get_info().to_owned())).unwrap();
                         }
 
                         if let Some(queued_task) = self.queued_tasks.pop_front() {
@@ -298,7 +298,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                             match queued_task.resolve() {
                                 Ok(task) => {
-                                    self.current_task_card.emit(GameCardComponentInput::SetVariant(task.get_variant().to_owned()));
+                                    self.current_task_card.emit(GameCardComponentInput::SetInfo(task.get_info().to_owned()));
 
                                     self.current_task = Some(task);
                                 }
@@ -345,7 +345,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::ApplyingHdiffPatches  => (false, String::from("Applying hdiff patches...")),
                                 TaskStatus::DeletingObsoleteFiles => (false, String::from("Deleting obsolete files...")),
 
-                                TaskStatus::RunTransitionCode => (false, String::from("Starting transition code...")),
+                                TaskStatus::RunTransitionCode     => (false, String::from("Starting transition code...")),
                                 TaskStatus::RunPostTransitionCode => (false, String::from("Starting post-transition code...")),
 
                                 TaskStatus::CreatingPrefix  => (true, String::from("Creating prefix...")),

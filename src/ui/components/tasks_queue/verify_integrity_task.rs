@@ -13,7 +13,7 @@ use anime_game_core::updater::{
 
 use crate::config;
 
-use crate::ui::components::game_card::CardVariant;
+use crate::ui::components::game_card::GameCardInfo;
 
 use super::{
     QueuedTask,
@@ -36,52 +36,44 @@ impl From<Status<RepairerStatus>> for TaskStatus {
 }
 
 pub struct VerifyIntegrityQueuedTask {
-    pub variant: CardVariant
+    pub info: GameCardInfo
 }
 
 impl std::fmt::Debug for VerifyIntegrityQueuedTask {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VerifyIntegrityQueuedTask")
-            .field("variant", &self.variant.get_title())
+            .field("info", &self.info)
             .finish()
     }
 }
 
 impl QueuedTask for VerifyIntegrityQueuedTask {
     #[inline]
-    fn get_variant(&self) -> CardVariant {
-        self.variant.clone()
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        self.variant.get_title()
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        self.variant.get_author()
+    fn get_info(&self) -> GameCardInfo {
+        self.info.clone()
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
         let config = config::get();
 
-        let game = match &self.variant {
-            CardVariant::Genshin => config.games.genshin.to_game(),
+        todo!()
 
-            _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
-        };
+        // let game = match &self.info {
+        //     CardVariant::Genshin => config.games.genshin.to_game(),
 
-        Ok(Box::new(VerifyIntegrityResolvedTask {
-            variant: self.variant,
-            verifier: Some(game.verify_files()?),
-            repairer: None
-        }))
+        //     _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
+        // };
+
+        // Ok(Box::new(VerifyIntegrityResolvedTask {
+        //     variant: self.variant,
+        //     verifier: Some(game.verify_files()?),
+        //     repairer: None
+        // }))
     }
 }
 
 pub struct VerifyIntegrityResolvedTask {
-    pub variant: CardVariant,
+    pub info: GameCardInfo,
     pub verifier: Option<VerifyUpdater>,
     pub repairer: Option<RepairUpdater>
 }
@@ -89,25 +81,15 @@ pub struct VerifyIntegrityResolvedTask {
 impl std::fmt::Debug for VerifyIntegrityResolvedTask {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("VerifyIntegrityResolvedTask")
-            .field("variant", &self.variant.get_title())
+            .field("info", &self.info)
             .finish()
     }
 }
 
 impl ResolvedTask for VerifyIntegrityResolvedTask {
     #[inline]
-    fn get_variant(&self) -> CardVariant {
-        self.variant.clone()
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        self.variant.get_title()
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        self.variant.get_author()
+    fn get_info(&self) -> GameCardInfo {
+        self.info.clone()
     }
 
     fn is_finished(&mut self) -> bool {
@@ -189,15 +171,17 @@ impl ResolvedTask for VerifyIntegrityResolvedTask {
             else {
                 let config = config::get();
 
-                let game = match &self.variant {
-                    CardVariant::Genshin => config.games.genshin.to_game(),
+                todo!()
 
-                    _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
-                };
+                // let game = match &self.info {
+                //     CardVariant::Genshin => config.games.genshin.to_game(),
 
-                self.repairer = Some(game.repair_files(verifier.wait()?)?);
+                //     _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
+                // };
 
-                Ok(TaskStatus::PreparingTransition)
+                // self.repairer = Some(game.repair_files(verifier.wait()?)?);
+
+                // Ok(TaskStatus::PreparingTransition)
             }
         }
 

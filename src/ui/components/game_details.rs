@@ -3,28 +3,23 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
-use crate::config;
-
-use crate::games::RunGameExt;
-use crate::games::genshin::Genshin;
-
 use crate::ui::components::game_card::{
+    GameCardInfo,
     GameCardComponent,
-    GameCardComponentInput,
-    CardVariant
+    GameCardComponentInput
 };
 
 #[derive(Debug)]
 pub struct GameDetailsComponent {
     pub game_card: AsyncController<GameCardComponent>,
 
-    pub variant: CardVariant,
+    pub info: GameCardInfo,
     pub installed: bool
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentInput {
-    SetVariant(CardVariant),
+    SetInfo(GameCardInfo),
     SetInstalled(bool),
     EditGameCard(GameCardComponentInput),
 
@@ -39,8 +34,8 @@ pub enum GameDetailsComponentOutput {
     HideDetails,
     ShowTasksFlap,
 
-    DownloadGame(CardVariant),
-    VerifyGame(CardVariant),
+    DownloadGame(GameCardInfo),
+    VerifyGame(GameCardInfo),
 
     ShowToast {
         title: String,
@@ -50,7 +45,7 @@ pub enum GameDetailsComponentOutput {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameDetailsComponent {
-    type Init = CardVariant;
+    type Init = ();
     type Input = GameDetailsComponentInput;
     type Output = GameDetailsComponentOutput;
 
@@ -76,7 +71,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     add_css_class: "title-1",
 
                     #[watch]
-                    set_label: model.variant.get_title()
+                    set_label: &model.info.title
                 },
 
                 gtk::Label {
@@ -85,7 +80,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     set_margin_top: 8,
 
                     #[watch]
-                    set_label: &format!("Developer: {}", model.variant.get_author())
+                    set_label: &format!("Developer: {}", model.info.developer)
                 },
 
                 gtk::Box {
@@ -190,10 +185,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             game_card: GameCardComponent::builder()
-                .launch(init.clone())
+                .launch(GameCardInfo::default())
                 .detach(),
 
-            variant: init,
+            info: GameCardInfo::default(),
             installed: false
         };
 
@@ -207,10 +202,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            GameDetailsComponentInput::SetVariant(variant) => {
-                self.variant = variant.clone();
+            GameDetailsComponentInput::SetInfo(info) => {
+                self.info = info.clone();
 
-                self.game_card.emit(GameCardComponentInput::SetVariant(variant));
+                self.game_card.emit(GameCardComponentInput::SetInfo(info));
             }
 
             GameDetailsComponentInput::SetInstalled(installed) => {
@@ -222,36 +217,36 @@ impl SimpleAsyncComponent for GameDetailsComponent {
             GameDetailsComponentInput::EditGameCard(message) => self.game_card.emit(message),
 
             GameDetailsComponentInput::EmitDownloadGame => {
-                sender.output(GameDetailsComponentOutput::DownloadGame(self.variant.clone())).unwrap();
+                sender.output(GameDetailsComponentOutput::DownloadGame(self.info.clone())).unwrap();
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
                 sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
             }
 
             GameDetailsComponentInput::EmitVerifyGame => {
-                sender.output(GameDetailsComponentOutput::VerifyGame(self.variant.clone())).unwrap();
+                sender.output(GameDetailsComponentOutput::VerifyGame(self.info.clone())).unwrap();
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
                 sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
             }
 
             GameDetailsComponentInput::LaunchGame => {
-                match &self.variant {
-                    CardVariant::Genshin => {
-                        std::thread::spawn(move || {
-                            let genshin = Genshin::from(&config::get().games.genshin.to_game());
+                // match &self.variant {
+                //     CardVariant::Genshin => {
+                //         std::thread::spawn(move || {
+                //             let genshin = Genshin::from(&config::get().games.genshin.to_game());
 
-                            if let Err(err) = genshin.run() {
-                                sender.output(GameDetailsComponentOutput::ShowToast {
-                                    title: String::from("Failed to launch the game"),
-                                    message: Some(err.to_string())
-                                }).unwrap();
-                            }
-                        });
-                    }
+                //             if let Err(err) = genshin.run() {
+                //                 sender.output(GameDetailsComponentOutput::ShowToast {
+                //                     title: String::from("Failed to launch the game"),
+                //                     message: Some(err.to_string())
+                //                 }).unwrap();
+                //             }
+                //         });
+                //     }
 
-                    _ => unimplemented!()
-                }
+                //     _ => unimplemented!()
+                // }
             }
         }
     }

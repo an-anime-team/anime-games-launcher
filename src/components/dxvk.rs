@@ -21,7 +21,7 @@ use crate::components::{
     Status
 };
 
-use crate::ui::components::game_card::CardVariant;
+use crate::ui::components::game_card::GameCardInfo;
 use crate::ui::components::tasks_queue::{QueuedTask, ResolvedTask};
 
 use super::DownloadComponentResolvedTask;
@@ -129,7 +129,7 @@ impl Dxvk {
 
                 // Finish downloading
 
-                sender.send((Status::Finished, 0, 1))?;
+                sender.send((Status::Finished, 1, 1))?;
 
                 Ok(())
             }))
@@ -139,34 +139,27 @@ impl Dxvk {
 
 #[derive(Debug)]
 pub struct DownloadDxvkQueuedTask {
+    pub name: String,
     pub title: String,
-    pub author: String,
+    pub developer: String,
     pub version: Dxvk
 }
 
 impl QueuedTask for DownloadDxvkQueuedTask {
     #[inline]
-    fn get_variant(&self) -> CardVariant {
-        CardVariant::Component { 
-            title: self.title.clone(), 
-            author: self.author.clone() 
+    fn get_info(&self) -> GameCardInfo {
+        GameCardInfo {
+            name: self.name.clone(),
+            title: self.title.clone(),
+            developer: self.developer.clone()
         }
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        self.title.as_str()
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        self.author.as_str()
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
         Ok(Box::new(DownloadComponentResolvedTask {
+            name: self.name,
             title: self.title,
-            author: self.author,
+            developer: self.developer,
             updater: self.version.download()?
         }))
     }

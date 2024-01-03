@@ -16,7 +16,7 @@ use anime_game_core::updater::UpdaterExt;
 use crate::components::wine::Wine;
 use crate::components::dxvk::Dxvk;
 
-use crate::ui::components::game_card::CardVariant;
+use crate::ui::components::game_card::GameCardInfo;
 
 use super::{QueuedTask, ResolvedTask, TaskStatus};
 
@@ -114,21 +114,12 @@ pub struct CreatePrefixQueuedTask {
 }
 
 impl QueuedTask for CreatePrefixQueuedTask {
-    fn get_variant(&self) -> CardVariant {
-        CardVariant::Component {
+    fn get_info(&self) -> GameCardInfo {
+        GameCardInfo {
+            name: String::from("wine-prefix"),
             title: String::from("Wine prefix"),
-            author: String::new()
+            developer: String::new()
         }
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        "Wine prefix"
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        ""
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
@@ -238,22 +229,12 @@ pub struct CreatePrefixResolvedTask {
 }
 
 impl ResolvedTask for CreatePrefixResolvedTask {
-    #[inline]
-    fn get_variant(&self) -> CardVariant {
-        CardVariant::Component {
+    fn get_info(&self) -> GameCardInfo {
+        GameCardInfo {
+            name: String::from("wine-prefix"),
             title: String::from("Wine prefix"),
-            author: String::new()
+            developer: String::new()
         }
-    }
-
-    #[inline]
-    fn get_title(&self) -> &str {
-        "Wine prefix"
-    }
-
-    #[inline]
-    fn get_author(&self) -> &str {
-        ""
     }
 
     #[inline]

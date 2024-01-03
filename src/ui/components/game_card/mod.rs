@@ -3,15 +3,20 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
-mod variants;
-
-pub use variants::CardVariant;
+#[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct GameCardInfo {
+    pub name: String,
+    pub title: String,
+    pub developer: String
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameCardComponent {
+    pub info: GameCardInfo,
+
     pub width: i32,
     pub height: i32,
-    pub variant: CardVariant,
+
     pub installed: bool,
     pub clickable: bool,
     pub display_title: bool
@@ -19,9 +24,11 @@ pub struct GameCardComponent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameCardComponentInput {
-    SetVariant(CardVariant),
+    SetInfo(GameCardInfo),
+
     SetWidth(i32),
     SetHeight(i32),
+
     SetInstalled(bool),
     SetClickable(bool),
     SetDisplayTitle(bool),
@@ -32,14 +39,14 @@ pub enum GameCardComponentInput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameCardComponentOutput {
     CardClicked {
-        variant: CardVariant,
+        info: GameCardInfo,
         installed: bool
     }
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameCardComponent {
-    type Init = CardVariant;
+    type Init = GameCardInfo;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
 
@@ -54,7 +61,7 @@ impl SimpleAsyncComponent for GameCardComponent {
 
                 gtk::Overlay {
                     #[watch]
-                    set_tooltip: model.variant.get_title(),
+                    set_tooltip: &model.info.title,
 
                     gtk::Picture {
                         set_valign: gtk::Align::Start,
@@ -83,8 +90,8 @@ impl SimpleAsyncComponent for GameCardComponent {
                         //     &["card", "game-card", "game-card--not-installed"]
                         // },
 
-                        #[watch]
-                        set_resource: Some(&model.variant.get_image()),
+                        // #[watch]
+                        // set_resource: Some(&model.variant.get_image()),
 
                         set_content_fit: gtk::ContentFit::Cover
                     },
@@ -113,7 +120,7 @@ impl SimpleAsyncComponent for GameCardComponent {
                     set_visible: model.display_title,
 
                     #[watch]
-                    set_label: model.variant.get_title()
+                    set_label: &model.info.title
                 }
             }
         }
@@ -125,11 +132,12 @@ impl SimpleAsyncComponent for GameCardComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
+            info: init,
+
             // 10:14
             width: 240, // 260,
             height: 336, // 364,
 
-            variant: init,
             installed: true,
             clickable: true,
             display_title: true
@@ -142,7 +150,7 @@ impl SimpleAsyncComponent for GameCardComponent {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            GameCardComponentInput::SetVariant(variant)     => self.variant = variant,
+            GameCardComponentInput::SetInfo(info)          => self.info = info,
             GameCardComponentInput::SetWidth(width)                 => self.width = width,
             GameCardComponentInput::SetHeight(height)               => self.height = height,
             GameCardComponentInput::SetInstalled(installed)        => self.installed = installed,
@@ -151,7 +159,7 @@ impl SimpleAsyncComponent for GameCardComponent {
 
             GameCardComponentInput::EmitCardClick => {
                 sender.output(GameCardComponentOutput::CardClicked {
-                    variant: self.variant.clone(),
+                    info: self.info.clone(),
                     installed: self.installed
                 }).unwrap()
             }

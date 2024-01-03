@@ -1,4 +1,4 @@
-use crate::ui::components::game_card::CardVariant;
+use crate::ui::components::game_card::GameCardInfo;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// All the possible tasks statuses in one enum
@@ -20,28 +20,16 @@ pub enum TaskStatus {
 }
 
 pub trait QueuedTask: Send + std::fmt::Debug {
-    /// Get component variant
-    fn get_variant(&self) -> CardVariant;
-
-    /// Get tasked component title
-    fn get_title(&self) -> &str;
-
-    /// Get tasked component author
-    fn get_author(&self) -> &str;
+    /// Get component info
+    fn get_info(&self) -> GameCardInfo;
 
     /// Resolve queued task and start downloading stuff
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>>;
 }
 
 pub trait ResolvedTask: Send + std::fmt::Debug {
-    /// Get component variant
-    fn get_variant(&self) -> CardVariant;
-
-    /// Get tasked component title
-    fn get_title(&self) -> &str;
-
-    /// Get tasked component author
-    fn get_author(&self) -> &str;
+    /// Get component info
+    fn get_info(&self) -> GameCardInfo;
 
     /// Check if the task is finished
     fn is_finished(&mut self) -> bool;

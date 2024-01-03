@@ -4,10 +4,10 @@ use relm4::component::*;
 use crate::ui::windows::main::MainAppMsg;
 
 use crate::ui::components::game_card::{
+    GameCardInfo,
     GameCardComponent,
     GameCardComponentInput,
-    GameCardComponentOutput,
-    CardVariant
+    GameCardComponentOutput
 };
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct GameCardFactory {
 
 #[relm4::factory(pub)]
 impl FactoryComponent for GameCardFactory {
-    type Init = CardVariant;
+    type Init = GameCardInfo;
     type Input = GameCardComponentInput;
     type Output = GameCardComponentOutput;
     type CommandOutput = ();
@@ -32,8 +32,8 @@ impl FactoryComponent for GameCardFactory {
 
     fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
         match output {
-            GameCardComponentOutput::CardClicked { variant, installed }
-                => Some(Self::ParentInput::OpenDetails { variant, installed })
+            GameCardComponentOutput::CardClicked { info, installed }
+                => Some(Self::ParentInput::OpenDetails { info, installed })
         }
     }
 
