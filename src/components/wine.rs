@@ -19,7 +19,7 @@ use anime_game_core::network::downloader::basic::Downloader;
 
 use anime_game_core::updater::UpdaterExt;
 
-use crate::ui::components::game_card::GameCardInfo;
+use crate::ui::components::game_card::CardInfo;
 use crate::ui::components::tasks_queue::{QueuedTask, ResolvedTask};
 
 use crate::{
@@ -175,8 +175,8 @@ pub struct DownloadWineQueuedTask {
 
 impl QueuedTask for DownloadWineQueuedTask {
     #[inline]
-    fn get_info(&self) -> GameCardInfo {
-        GameCardInfo {
+    fn get_info(&self) -> CardInfo {
+        CardInfo::Component {
             name: self.name.clone(),
             title: self.title.clone(),
             developer: self.developer.clone()

@@ -11,12 +11,12 @@ use relm4::component::*;
 use gtk::prelude::*;
 
 use crate::ui::components::game_card::{
-    GameCardInfo,
-    GameCardComponent,
-    GameCardComponentInput
+    CardInfo,
+    CardComponent,
+    CardComponentInput
 };
 
-use crate::ui::components::factory::game_card_tasks::GameCardFactory;
+use crate::ui::components::factory::game_card_tasks::CardFactory;
 
 pub mod task;
 pub mod create_prefix_task;
@@ -41,12 +41,12 @@ impl Drop for TasksQueueProgressUpdater {
 #[derive(Debug)]
 pub struct TasksQueueComponent {
     pub current_task: Option<Box<dyn ResolvedTask>>,
-    pub current_task_card: AsyncController<GameCardComponent>,
+    pub current_task_card: AsyncController<CardComponent>,
     pub current_task_status: String,
     pub current_task_progress_start: Instant,
     pub current_task_progress_pulse: bool,
 
-    pub queued_tasks_factory: FactoryVecDeque<GameCardFactory>,
+    pub queued_tasks_factory: FactoryVecDeque<CardFactory>,
     pub queued_tasks: VecDeque<Box<dyn QueuedTask>>,
 
     pub progress_label: gtk::Label,
@@ -65,7 +65,7 @@ pub enum TasksQueueComponentInput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TasksQueueComponentOutput {
-    TaskFinished(GameCardInfo),
+    TaskFinished(CardInfo),
 
     HideTasksFlap,
 
@@ -77,7 +77,7 @@ pub enum TasksQueueComponentOutput {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for TasksQueueComponent {
-    type Init = ();
+    type Init = CardInfo;
     type Input = TasksQueueComponentInput;
     type Output = TasksQueueComponentOutput;
 
@@ -117,7 +117,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                 #[watch]
                 set_label: &match &model.current_task {
-                    Some(task) => task.get_info().title,
+                    Some(task) => task.get_info().get_title().to_string(),
                     None => String::from("Nothing to do")
                 }
             },
@@ -191,7 +191,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
     }
 
     async fn init(
-        _init: Self::Init,
+        init: Self::Init,
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
@@ -206,8 +206,8 @@ impl SimpleAsyncComponent for TasksQueueComponent {
         let model = Self {
             current_task: None,
 
-            current_task_card: GameCardComponent::builder()
-                .launch(GameCardInfo::default())
+            current_task_card: CardComponent::builder()
+                .launch(init)
                 .detach(),
 
             current_task_status: String::new(),
@@ -223,11 +223,11 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             updater: None
         };
 
-        model.current_task_card.emit(GameCardComponentInput::SetWidth(160));
-        model.current_task_card.emit(GameCardComponentInput::SetHeight(224));
+        model.current_task_card.emit(CardComponentInput::SetWidth(160));
+        model.current_task_card.emit(CardComponentInput::SetHeight(224));
 
-        model.current_task_card.emit(GameCardComponentInput::SetClickable(false));
-        model.current_task_card.emit(GameCardComponentInput::SetDisplayTitle(false));
+        model.current_task_card.emit(CardComponentInput::SetClickable(false));
+        model.current_task_card.emit(CardComponentInput::SetDisplayTitle(false));
 
         let progress_label = &model.progress_label;
         let progress_bar = &model.progress_bar;
@@ -243,7 +243,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 if self.current_task.is_none() {
                     match task.resolve() {
                         Ok(task) => {
-                            self.current_task_card.emit(GameCardComponentInput::SetInfo(task.get_info()));
+                            self.current_task_card.emit(CardComponentInput::SetInfo(task.get_info()));
 
                             self.current_task = Some(task);
                             self.current_task_progress_start = Instant::now();
@@ -274,7 +274,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     if task.is_finished() {
                         if let Err(err) = task.get_status() {
                             sender.output(TasksQueueComponentOutput::ShowToast {
-                                title: format!("Failed to download {}", task.get_info().title),
+                                title: format!("Failed to download {}", task.get_info().get_title()),
                                 message: Some(err.to_string())
                             }).unwrap();
                         }
@@ -298,7 +298,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                             match queued_task.resolve() {
                                 Ok(task) => {
-                                    self.current_task_card.emit(GameCardComponentInput::SetInfo(task.get_info().to_owned()));
+                                    self.current_task_card.emit(CardComponentInput::SetInfo(task.get_info().to_owned()));
 
                                     self.current_task = Some(task);
                                 }

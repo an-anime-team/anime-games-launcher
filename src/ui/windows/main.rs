@@ -8,8 +8,11 @@ use relm4::factory::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
+use anime_game_core::filesystem::DriverExt;
+
 use crate::{
     config,
+    games,
     STARTUP_CONFIG
 };
 
@@ -19,11 +22,11 @@ use crate::components::dxvk::*;
 use crate::ui::windows::preferences::PreferencesApp;
 
 use crate::ui::components::game_card::{
-    GameCardInfo,
-    GameCardComponentInput
+    CardInfo,
+    CardComponentInput
 };
 
-use crate::ui::components::factory::game_card_main::GameCardFactory;
+use crate::ui::components::factory::game_card_main::CardFactory;
 
 use crate::ui::components::game_details::{
     GameDetailsComponent,
@@ -51,15 +54,15 @@ pub struct MainApp {
     game_details_toast_overlay: adw::ToastOverlay,
 
     game_details: AsyncController<GameDetailsComponent>,
-    game_details_info: GameCardInfo,
+    game_details_info: CardInfo,
 
-    installed_games: FactoryVecDeque<GameCardFactory>,
-    queued_games: FactoryVecDeque<GameCardFactory>,
-    available_games: FactoryVecDeque<GameCardFactory>,
+    installed_games: FactoryVecDeque<CardFactory>,
+    queued_games: FactoryVecDeque<CardFactory>,
+    available_games: FactoryVecDeque<CardFactory>,
 
-    installed_games_indexes: HashMap<GameCardInfo, DynamicIndex>,
-    queued_games_indexes: HashMap<GameCardInfo, DynamicIndex>,
-    available_games_indexes: HashMap<GameCardInfo, DynamicIndex>,
+    installed_games_indexes: HashMap<CardInfo, DynamicIndex>,
+    queued_games_indexes: HashMap<CardInfo, DynamicIndex>,
+    available_games_indexes: HashMap<CardInfo, DynamicIndex>,
 
     tasks_queue: AsyncController<TasksQueueComponent>
 }
@@ -67,7 +70,7 @@ pub struct MainApp {
 #[derive(Debug)]
 pub enum MainAppMsg {
     OpenDetails {
-        info: GameCardInfo,
+        info: CardInfo,
         installed: bool
     },
 
@@ -79,9 +82,9 @@ pub enum MainAppMsg {
     HideTasksFlap,
     ToggleTasksFlap,
 
-    AddDownloadGameTask(GameCardInfo),
-    AddVerifyGameTask(GameCardInfo),
-    FinishQueuedTask(GameCardInfo),
+    AddDownloadGameTask(CardInfo),
+    AddVerifyGameTask(CardInfo),
+    FinishQueuedTask(CardInfo),
 
     AddDownloadWineTask {
         name: String,
@@ -286,7 +289,7 @@ impl SimpleComponent for MainApp {
             game_details_toast_overlay: adw::ToastOverlay::new(),
 
             game_details: GameDetailsComponent::builder()
-                .launch(())
+                .launch(CardInfo::default())
                 .forward(sender.input_sender(), |message| match message {
                     GameDetailsComponentOutput::HideDetails => MainAppMsg::HideDetails,
                     GameDetailsComponentOutput::ShowTasksFlap => MainAppMsg::ShowTasksFlap,
@@ -301,7 +304,7 @@ impl SimpleComponent for MainApp {
                         => MainAppMsg::ShowToast { title, message }
                 }),
 
-            game_details_info: GameCardInfo::default(),
+            game_details_info: CardInfo::default(),
 
             installed_games_indexes: HashMap::new(),
             queued_games_indexes: HashMap::new(),
@@ -312,7 +315,7 @@ impl SimpleComponent for MainApp {
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
 
             tasks_queue: TasksQueueComponent::builder()
-                .launch(())
+                .launch(CardInfo::default())
                 .forward(sender.input_sender(), |output| match output {
                     TasksQueueComponentOutput::TaskFinished(variant)
                         => MainAppMsg::FinishQueuedTask(variant),
@@ -325,29 +328,107 @@ impl SimpleComponent for MainApp {
                 }),
         };
 
-        // for game in CardVariant::games() {
-        //     let installed = match game {
-        //         CardVariant::Genshin => STARTUP_CONFIG.games.genshin.to_game().is_installed(),
+        match games::list() {
+            Ok(games) => {
+                for (name, game) in games {
+                    let card = CardInfo::Game {
+                        name: game.game_name.clone(),
+                        title: game.game_title.clone(),
+                        developer: game.game_developer.clone(),
 
-        //         _ => false
-        //     };
+                        uri: match game.get_card_picture() {
+                            Ok(uri) => uri,
+                            Err(err) => {
+                                sender.input(MainAppMsg::ShowToast {
+                                    title: format!("Failed to get card picture for game '{name}'"),
+                                    message: Some(err.to_string())
+                                });
+    
+                                continue;
+                            }
+                        }
+                    };
 
-        //     if installed {
-        //         model.installed_games_indexes.insert(
-        //             game.to_owned(),
-        //             model.installed_games.guard().push_back(game.to_owned())
-        //         );
-        //     }
+                    let game_settings = STARTUP_CONFIG.games.settings.get(name).cloned()
+                        .unwrap_or_else(|| config::games::GameSettings::default_for_game(game).unwrap());
 
-        //     else {
-        //         model.available_games_indexes.insert(
-        //             game.to_owned(),
-        //             model.available_games.guard().push_back(game.to_owned())
-        //         );
-        //     }
-        // }
+                    let installed = match game_settings.paths.get(&game_settings.edition) {
+                        Some(driver) => {
+                            let driver = driver.to_dyn_trait();
 
-        model.available_games.broadcast(GameCardComponentInput::SetInstalled(false));
+                            match driver.deploy() {
+                                Ok(path) => {
+                                    match game.get_game_info(path.to_string_lossy()) {
+                                        Ok(info) => {
+                                            if let Err(err) = driver.dismantle() {
+                                                sender.input(MainAppMsg::ShowToast {
+                                                    title: format!("Failed to deploy folder for game '{name}' with '{}' edition", game_settings.edition),
+                                                    message: Some(err.to_string())
+                                                });
+                    
+                                                continue;
+                                            }
+
+                                            info.is_none()
+                                        }
+
+                                        Err(err) => {
+                                            sender.input(MainAppMsg::ShowToast {
+                                                title: format!("Failed to get game '{name}' info with '{}' edition", game_settings.edition),
+                                                message: Some(err.to_string())
+                                            });
+                
+                                            continue;
+                                        }
+                                    }
+                                }
+
+                                Err(err) => {
+                                    sender.input(MainAppMsg::ShowToast {
+                                        title: format!("Failed to deploy folder for game '{name}' with '{}' edition", game_settings.edition),
+                                        message: Some(err.to_string())
+                                    });
+        
+                                    continue;
+                                }
+                            }
+                        }
+
+                        None => {
+                            sender.input(MainAppMsg::ShowToast {
+                                title: format!("No path given for game '{name}' with '{}' edition", game_settings.edition),
+                                message: None
+                            });
+
+                            continue;
+                        }
+                    };
+
+                    if installed {
+                        model.installed_games_indexes.insert(
+                            card.to_owned(),
+                            model.installed_games.guard().push_back(card.to_owned())
+                        );
+                    }
+
+                    else {
+                        model.available_games_indexes.insert(
+                            card.to_owned(),
+                            model.available_games.guard().push_back(card.to_owned())
+                        );
+                    }
+                }
+            }
+
+            Err(err) => {
+                sender.input(MainAppMsg::ShowToast {
+                    title: String::from("Failed to list games integrations scripts"),
+                    message: Some(err.to_string())
+                });
+            }
+        }
+
+        model.available_games.broadcast(CardComponentInput::SetInstalled(false));
 
         let leaflet = &model.leaflet;
         let flap = &model.flap;
@@ -469,7 +550,7 @@ impl SimpleComponent for MainApp {
                 self.flap.set_reveal_flap(!self.flap.reveals_flap());
             }
 
-            MainAppMsg::AddDownloadGameTask(variant) => {
+            MainAppMsg::AddDownloadGameTask(info) => {
                 // let config = config::get();
 
                 // let task = match variant {
@@ -494,8 +575,8 @@ impl SimpleComponent for MainApp {
                 //     if !self.queued_games_indexes.contains_key(&variant) {
                 //         self.queued_games_indexes.insert(variant.clone(), self.queued_games.guard().push_back(variant.clone()));
 
-                //         self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
-                //         self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
+                //         self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                //         self.queued_games.broadcast(CardComponentInput::SetClickable(false));
                 //     }
                 // }
 
@@ -520,8 +601,8 @@ impl SimpleComponent for MainApp {
                     if !self.queued_games_indexes.contains_key(&info) {
                         self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info));
 
-                        self.queued_games.broadcast(GameCardComponentInput::SetInstalled(false));
-                        self.queued_games.broadcast(GameCardComponentInput::SetClickable(false));
+                        self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                        self.queued_games.broadcast(CardComponentInput::SetClickable(false));
                     }
                 }
             }

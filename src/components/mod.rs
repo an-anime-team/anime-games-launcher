@@ -4,7 +4,7 @@ use std::thread::JoinHandle;
 use anime_game_core::updater::UpdaterExt;
 
 use crate::ui::components::tasks_queue::{ResolvedTask, TaskStatus};
-use crate::ui::components::game_card::GameCardInfo;
+use crate::ui::components::game_card::CardInfo;
 
 pub mod wine;
 pub mod dxvk;
@@ -105,8 +105,8 @@ pub struct DownloadComponentResolvedTask {
 
 impl ResolvedTask for DownloadComponentResolvedTask {
     #[inline]
-    fn get_info(&self) -> GameCardInfo {
-        GameCardInfo {
+    fn get_info(&self) -> CardInfo {
+        CardInfo::Component {
             name: self.name.clone(),
             title: self.title.clone(), 
             developer: self.developer.clone() 

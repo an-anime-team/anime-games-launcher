@@ -3,16 +3,69 @@ use relm4::component::*;
 
 use gtk::prelude::*;
 
-#[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct GameCardInfo {
-    pub name: String,
-    pub title: String,
-    pub developer: String
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum CardInfo {
+    Game {
+        name: String,
+        title: String,
+        developer: String,
+        uri: String
+    },
+    Component {
+        name: String,
+        title: String,
+        developer: String
+    }
+}
+
+impl Default for CardInfo {
+    #[inline]
+    fn default() -> Self {
+        Self::Component {
+            name: String::new(),
+            title: String::new(),
+            developer: String::new()
+        }
+    }
+}
+
+impl CardInfo {
+    #[inline]
+    pub fn get_name(&self) -> &str {
+        match self {
+            Self::Game { name, .. } => name,
+            Self::Component { name, .. } => name
+        }
+    }
+
+    #[inline]
+    pub fn get_title(&self) -> &str {
+        match self {
+            Self::Game { title, .. } => title,
+            Self::Component { title, .. } => title
+        }
+    }
+
+    #[inline]
+    pub fn get_developer(&self) -> &str {
+        match self {
+            Self::Game { developer, .. } => developer,
+            Self::Component { developer, .. } => developer
+        }
+    }
+
+    #[inline]
+    pub fn get_uri(&self) -> &str {
+        match self {
+            Self::Game { uri, .. } => uri,
+            Self::Component { .. } => "/moe/launcher/anime-games-launcher/images/component.png"
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GameCardComponent {
-    pub info: GameCardInfo,
+pub struct CardComponent {
+    pub info: CardInfo,
 
     pub width: i32,
     pub height: i32,
@@ -23,8 +76,8 @@ pub struct GameCardComponent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameCardComponentInput {
-    SetInfo(GameCardInfo),
+pub enum CardComponentInput {
+    SetInfo(CardInfo),
 
     SetWidth(i32),
     SetHeight(i32),
@@ -37,18 +90,18 @@ pub enum GameCardComponentInput {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameCardComponentOutput {
+pub enum CardComponentOutput {
     CardClicked {
-        info: GameCardInfo,
+        info: CardInfo,
         installed: bool
     }
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for GameCardComponent {
-    type Init = GameCardInfo;
-    type Input = GameCardComponentInput;
-    type Output = GameCardComponentOutput;
+impl SimpleAsyncComponent for CardComponent {
+    type Init = CardInfo;
+    type Input = CardComponentInput;
+    type Output = CardComponentOutput;
 
     view! {
         #[root]
@@ -61,7 +114,7 @@ impl SimpleAsyncComponent for GameCardComponent {
 
                 gtk::Overlay {
                     #[watch]
-                    set_tooltip: &model.info.title,
+                    set_tooltip: model.info.get_title(),
 
                     gtk::Picture {
                         set_valign: gtk::Align::Start,
@@ -90,8 +143,8 @@ impl SimpleAsyncComponent for GameCardComponent {
                         //     &["card", "game-card", "game-card--not-installed"]
                         // },
 
-                        // #[watch]
-                        // set_resource: Some(&model.variant.get_image()),
+                        #[watch]
+                        set_filename: Some(model.info.get_uri()),
 
                         set_content_fit: gtk::ContentFit::Cover
                     },
@@ -102,7 +155,7 @@ impl SimpleAsyncComponent for GameCardComponent {
                         #[watch]
                         set_visible: model.clickable,
 
-                        connect_clicked => GameCardComponentInput::EmitCardClick
+                        connect_clicked => CardComponentInput::EmitCardClick
 
                         // #[watch]
                         // set_icon_name: if model.installed {
@@ -120,7 +173,7 @@ impl SimpleAsyncComponent for GameCardComponent {
                     set_visible: model.display_title,
 
                     #[watch]
-                    set_label: &model.info.title
+                    set_label: model.info.get_title()
                 }
             }
         }
@@ -150,15 +203,15 @@ impl SimpleAsyncComponent for GameCardComponent {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            GameCardComponentInput::SetInfo(info)          => self.info = info,
-            GameCardComponentInput::SetWidth(width)                 => self.width = width,
-            GameCardComponentInput::SetHeight(height)               => self.height = height,
-            GameCardComponentInput::SetInstalled(installed)        => self.installed = installed,
-            GameCardComponentInput::SetClickable(clickable)        => self.clickable = clickable,
-            GameCardComponentInput::SetDisplayTitle(display_title) => self.display_title = display_title,
+            CardComponentInput::SetInfo(info)              => self.info          = info,
+            CardComponentInput::SetWidth(width)                 => self.width         = width,
+            CardComponentInput::SetHeight(height)               => self.height        = height,
+            CardComponentInput::SetInstalled(installed)        => self.installed     = installed,
+            CardComponentInput::SetClickable(clickable)        => self.clickable     = clickable,
+            CardComponentInput::SetDisplayTitle(display_title) => self.display_title = display_title,
 
-            GameCardComponentInput::EmitCardClick => {
-                sender.output(GameCardComponentOutput::CardClicked {
+            CardComponentInput::EmitCardClick => {
+                sender.output(CardComponentOutput::CardClicked {
                     info: self.info.clone(),
                     installed: self.installed
                 }).unwrap()

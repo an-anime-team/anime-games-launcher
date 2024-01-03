@@ -16,7 +16,7 @@ use anime_game_core::updater::UpdaterExt;
 use crate::components::wine::Wine;
 use crate::components::dxvk::Dxvk;
 
-use crate::ui::components::game_card::GameCardInfo;
+use crate::ui::components::game_card::CardInfo;
 
 use super::{QueuedTask, ResolvedTask, TaskStatus};
 
@@ -114,8 +114,8 @@ pub struct CreatePrefixQueuedTask {
 }
 
 impl QueuedTask for CreatePrefixQueuedTask {
-    fn get_info(&self) -> GameCardInfo {
-        GameCardInfo {
+    fn get_info(&self) -> CardInfo {
+        CardInfo::Component {
             name: String::from("wine-prefix"),
             title: String::from("Wine prefix"),
             developer: String::new()
@@ -229,8 +229,8 @@ pub struct CreatePrefixResolvedTask {
 }
 
 impl ResolvedTask for CreatePrefixResolvedTask {
-    fn get_info(&self) -> GameCardInfo {
-        GameCardInfo {
+    fn get_info(&self) -> CardInfo {
+        CardInfo::Component {
             name: String::from("wine-prefix"),
             title: String::from("Wine prefix"),
             developer: String::new()

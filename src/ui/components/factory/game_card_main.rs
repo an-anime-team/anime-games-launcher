@@ -4,22 +4,22 @@ use relm4::component::*;
 use crate::ui::windows::main::MainAppMsg;
 
 use crate::ui::components::game_card::{
-    GameCardInfo,
-    GameCardComponent,
-    GameCardComponentInput,
-    GameCardComponentOutput
+    CardInfo,
+    CardComponent,
+    CardComponentInput,
+    CardComponentOutput
 };
 
 #[derive(Debug)]
-pub struct GameCardFactory {
-    pub component: AsyncController<GameCardComponent>
+pub struct CardFactory {
+    pub component: AsyncController<CardComponent>
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent for GameCardFactory {
-    type Init = GameCardInfo;
-    type Input = GameCardComponentInput;
-    type Output = GameCardComponentOutput;
+impl FactoryComponent for CardFactory {
+    type Init = CardInfo;
+    type Input = CardComponentInput;
+    type Output = CardComponentOutput;
     type CommandOutput = ();
     type ParentInput = MainAppMsg;
     type ParentWidget = gtk::FlowBox;
@@ -32,7 +32,7 @@ impl FactoryComponent for GameCardFactory {
 
     fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
         match output {
-            GameCardComponentOutput::CardClicked { info, installed }
+            CardComponentOutput::CardClicked { info, installed }
                 => Some(Self::ParentInput::OpenDetails { info, installed })
         }
     }
@@ -40,7 +40,7 @@ impl FactoryComponent for GameCardFactory {
     #[inline]
     fn init_model(init: Self::Init, _index: &DynamicIndex, sender: FactorySender<Self>) -> Self {
         Self {
-            component: GameCardComponent::builder()
+            component: CardComponent::builder()
                 .launch(init)
                 .forward(sender.output_sender(), std::convert::identity)
         }

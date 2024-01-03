@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 
 use anime_game_core::filesystem::DriverExt;
 
@@ -7,7 +7,7 @@ use crate::config;
 
 pub mod integrations;
 
-static mut GAMES_SINGLETON: Option<HashMap<OsString, integrations::Game>> = None;
+static mut GAMES_SINGLETON: Option<HashMap<String, integrations::Game>> = None;
 
 fn init() -> anyhow::Result<()> {
     let driver = config::get().games.integrations.to_dyn_trait();
@@ -18,7 +18,7 @@ fn init() -> anyhow::Result<()> {
         if entry.path().is_dir() {
             let game = integrations::Game::new(&driver, format!("{}/manifest.json", entry.file_name().to_string_lossy()))?;
 
-            games.insert(entry.file_name(), game);
+            games.insert(entry.file_name().to_string_lossy().to_string(), game);
         }
     }
 
@@ -37,7 +37,7 @@ pub fn get<'a>(name: impl AsRef<str>) -> anyhow::Result<Option<&'a integrations:
             return get(name);
         };
 
-        if let Some(result) = singleton.get(OsStr::new(name.as_ref())) {
+        if let Some(result) = singleton.get(name.as_ref()) {
             return Ok(Some(result));
         }
 
@@ -45,7 +45,7 @@ pub fn get<'a>(name: impl AsRef<str>) -> anyhow::Result<Option<&'a integrations:
     }
 }
 
-pub fn list<'a>() -> anyhow::Result<&'a HashMap<OsString, integrations::Game>> {
+pub fn list<'a>() -> anyhow::Result<&'a HashMap<String, integrations::Game>> {
     unsafe {
         match &GAMES_SINGLETON {
             Some(singleton) => Ok(singleton),

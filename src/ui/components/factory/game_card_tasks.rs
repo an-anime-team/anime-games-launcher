@@ -4,22 +4,22 @@ use relm4::component::*;
 use crate::ui::components::tasks_queue::TasksQueueComponentInput;
 
 use crate::ui::components::game_card::{
-    GameCardInfo,
-    GameCardComponent,
-    GameCardComponentInput,
-    GameCardComponentOutput
+    CardInfo,
+    CardComponent,
+    CardComponentInput,
+    CardComponentOutput
 };
 
 #[derive(Debug)]
-pub struct GameCardFactory {
-    pub component: AsyncController<GameCardComponent>
+pub struct CardFactory {
+    pub component: AsyncController<CardComponent>
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent for GameCardFactory {
-    type Init = GameCardInfo;
-    type Input = GameCardComponentInput;
-    type Output = GameCardComponentOutput;
+impl FactoryComponent for CardFactory {
+    type Init = CardInfo;
+    type Input = CardComponentInput;
+    type Output = CardComponentOutput;
     type CommandOutput = ();
     type ParentInput = TasksQueueComponentInput;
     type ParentWidget = gtk::FlowBox;
@@ -36,14 +36,14 @@ impl FactoryComponent for GameCardFactory {
 
     #[inline]
     fn init_model(init: Self::Init, _index: &DynamicIndex, sender: FactorySender<Self>) -> Self {
-        let component = GameCardComponent::builder()
+        let component = CardComponent::builder()
             .launch(init)
             .forward(sender.output_sender(), std::convert::identity);
 
-        component.emit(GameCardComponentInput::SetWidth(60));
-        component.emit(GameCardComponentInput::SetHeight(84));
-        component.emit(GameCardComponentInput::SetClickable(false));
-        component.emit(GameCardComponentInput::SetDisplayTitle(false));
+        component.emit(CardComponentInput::SetWidth(60));
+        component.emit(CardComponentInput::SetHeight(84));
+        component.emit(CardComponentInput::SetClickable(false));
+        component.emit(CardComponentInput::SetDisplayTitle(false));
 
         Self { component }
     }

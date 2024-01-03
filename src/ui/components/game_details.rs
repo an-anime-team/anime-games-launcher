@@ -4,24 +4,24 @@ use relm4::component::*;
 use gtk::prelude::*;
 
 use crate::ui::components::game_card::{
-    GameCardInfo,
-    GameCardComponent,
-    GameCardComponentInput
+    CardInfo,
+    CardComponent,
+    CardComponentInput
 };
 
 #[derive(Debug)]
 pub struct GameDetailsComponent {
-    pub game_card: AsyncController<GameCardComponent>,
+    pub game_card: AsyncController<CardComponent>,
 
-    pub info: GameCardInfo,
+    pub info: CardInfo,
     pub installed: bool
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentInput {
-    SetInfo(GameCardInfo),
+    SetInfo(CardInfo),
     SetInstalled(bool),
-    EditGameCard(GameCardComponentInput),
+    EditCard(CardComponentInput),
 
     EmitDownloadGame,
     EmitVerifyGame,
@@ -34,8 +34,8 @@ pub enum GameDetailsComponentOutput {
     HideDetails,
     ShowTasksFlap,
 
-    DownloadGame(GameCardInfo),
-    VerifyGame(GameCardInfo),
+    DownloadGame(CardInfo),
+    VerifyGame(CardInfo),
 
     ShowToast {
         title: String,
@@ -45,7 +45,7 @@ pub enum GameDetailsComponentOutput {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameDetailsComponent {
-    type Init = ();
+    type Init = CardInfo;
     type Input = GameDetailsComponentInput;
     type Output = GameDetailsComponentOutput;
 
@@ -71,7 +71,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     add_css_class: "title-1",
 
                     #[watch]
-                    set_label: &model.info.title
+                    set_label: model.info.get_title()
                 },
 
                 gtk::Label {
@@ -80,7 +80,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     set_margin_top: 8,
 
                     #[watch]
-                    set_label: &format!("Developer: {}", model.info.developer)
+                    set_label: &format!("Developer: {}", model.info.get_developer())
                 },
 
                 gtk::Box {
@@ -184,16 +184,16 @@ impl SimpleAsyncComponent for GameDetailsComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            game_card: GameCardComponent::builder()
-                .launch(GameCardInfo::default())
+            game_card: CardComponent::builder()
+                .launch(init.clone())
                 .detach(),
 
-            info: GameCardInfo::default(),
+            info: init,
             installed: false
         };
 
-        model.game_card.emit(GameCardComponentInput::SetClickable(false));
-        model.game_card.emit(GameCardComponentInput::SetDisplayTitle(false));
+        model.game_card.emit(CardComponentInput::SetClickable(false));
+        model.game_card.emit(CardComponentInput::SetDisplayTitle(false));
 
         let widgets = view_output!();
 
@@ -205,16 +205,16 @@ impl SimpleAsyncComponent for GameDetailsComponent {
             GameDetailsComponentInput::SetInfo(info) => {
                 self.info = info.clone();
 
-                self.game_card.emit(GameCardComponentInput::SetInfo(info));
+                self.game_card.emit(CardComponentInput::SetInfo(info));
             }
 
             GameDetailsComponentInput::SetInstalled(installed) => {
                 self.installed = installed;
 
-                self.game_card.emit(GameCardComponentInput::SetInstalled(installed));
+                self.game_card.emit(CardComponentInput::SetInstalled(installed));
             }
 
-            GameDetailsComponentInput::EditGameCard(message) => self.game_card.emit(message),
+            GameDetailsComponentInput::EditCard(message) => self.game_card.emit(message),
 
             GameDetailsComponentInput::EmitDownloadGame => {
                 sender.output(GameDetailsComponentOutput::DownloadGame(self.info.clone())).unwrap();

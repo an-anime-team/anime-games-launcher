@@ -13,7 +13,7 @@ use anime_game_core::updater::{
 
 use crate::config;
 
-use crate::ui::components::game_card::GameCardInfo;
+use crate::ui::components::game_card::CardInfo;
 
 use super::{
     QueuedTask,
@@ -36,7 +36,7 @@ impl From<Status<RepairerStatus>> for TaskStatus {
 }
 
 pub struct VerifyIntegrityQueuedTask {
-    pub info: GameCardInfo
+    pub info: CardInfo
 }
 
 impl std::fmt::Debug for VerifyIntegrityQueuedTask {
@@ -49,7 +49,7 @@ impl std::fmt::Debug for VerifyIntegrityQueuedTask {
 
 impl QueuedTask for VerifyIntegrityQueuedTask {
     #[inline]
-    fn get_info(&self) -> GameCardInfo {
+    fn get_info(&self) -> CardInfo {
         self.info.clone()
     }
 
@@ -73,7 +73,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
 }
 
 pub struct VerifyIntegrityResolvedTask {
-    pub info: GameCardInfo,
+    pub info: CardInfo,
     pub verifier: Option<VerifyUpdater>,
     pub repairer: Option<RepairUpdater>
 }
@@ -88,7 +88,7 @@ impl std::fmt::Debug for VerifyIntegrityResolvedTask {
 
 impl ResolvedTask for VerifyIntegrityResolvedTask {
     #[inline]
-    fn get_info(&self) -> GameCardInfo {
+    fn get_info(&self) -> CardInfo {
         self.info.clone()
     }
 

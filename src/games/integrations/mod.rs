@@ -12,6 +12,7 @@ use standards::IntegrationStandard;
 pub struct Game {
     pub game_name: String,
     pub game_title: String,
+    pub game_developer: String,
 
     pub script_path: PathBuf,
     pub script_version: String,
@@ -62,6 +63,11 @@ impl Game {
                         None => anyhow::bail!("Wrong manifest v1 structure: field `game.title` expected but wasn't presented")
                     },
 
+                    game_developer: match game_manifest.get("developer").and_then(Json::as_str) {
+                        Some(developer) => developer.to_string(),
+                        None => anyhow::bail!("Wrong manifest v1 structure: field `game.developer` expected but wasn't presented")
+                    },
+
                     script_version: match script_manifest.get("version").and_then(Json::as_str) {
                         Some(version) => version.to_string(),
                         None => anyhow::bail!("Wrong manifest v1 structure: field `script.version` expected but wasn't presented")
@@ -102,6 +108,22 @@ impl Game {
         }
     }
 
+    pub fn get_card_picture(&self) -> anyhow::Result<String> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_visual_get_card_picture")?
+                .call::<_, String>(())?)
+        }
+    }
+
+    pub fn get_background_picture(&self) -> anyhow::Result<String> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_visual_get_background_picture")?
+                .call::<_, String>(())?)
+        }
+    }
+
     pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<standards::game::Edition>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
@@ -118,26 +140,32 @@ impl Game {
         }
     }
 
-    pub fn get_game_info(&self, path: impl AsRef<str>) -> anyhow::Result<standards::game::GameInfo> {
+    pub fn get_game_info(&self, path: impl AsRef<str>) -> anyhow::Result<Option<standards::game::GameInfo>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let info = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_info")?
-                    .call::<_, LuaTable>(path.as_ref())?;
+                    .call::<_, Option<LuaTable>>(path.as_ref())?;
 
-                standards::game::GameInfo::from_table(info, self.script_standard)
+                match info {
+                    Some(info) => Ok(Some(standards::game::GameInfo::from_table(info, self.script_standard)?)),
+                    None => Ok(None)
+                }
             }
         }
     }
 
-    pub fn get_game_diff(&self, path: impl AsRef<str>) -> anyhow::Result<standards::game::Diff> {
+    pub fn get_game_diff(&self, path: impl AsRef<str>) -> anyhow::Result<Option<standards::game::Diff>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_diff")?
-                    .call::<_, LuaTable>(path.as_ref())?;
+                    .call::<_, Option<LuaTable>>(path.as_ref())?;
 
-                standards::game::Diff::from_table(diff, self.script_standard)
+                match diff {
+                    Some(diff) => Ok(Some(standards::game::Diff::from_table(diff, self.script_standard)?)),
+                    None => Ok(None)
+                }
             }
         }
     }

@@ -21,7 +21,7 @@ use crate::components::{
     Status
 };
 
-use crate::ui::components::game_card::GameCardInfo;
+use crate::ui::components::game_card::CardInfo;
 use crate::ui::components::tasks_queue::{QueuedTask, ResolvedTask};
 
 use super::DownloadComponentResolvedTask;
@@ -147,8 +147,8 @@ pub struct DownloadDxvkQueuedTask {
 
 impl QueuedTask for DownloadDxvkQueuedTask {
     #[inline]
-    fn get_info(&self) -> GameCardInfo {
-        GameCardInfo {
+    fn get_info(&self) -> CardInfo {
+        CardInfo::Component {
             name: self.name.clone(),
             title: self.title.clone(),
             developer: self.developer.clone()

@@ -7,7 +7,8 @@
 	"manifest_version": "1",
 	"game": {
 		"name": "game-code-name",
-		"title": "Formal Game Name"
+		"title": "Formal Game Name",
+		"developer": "Game Developer"
 	},
 	"script": {
 		"path": "integration.lua",
@@ -30,10 +31,13 @@
 
 | API | Method | Output | Description |
 | - | - | - | - |
+| Visual | | | Visual representation of the game in the launcher |
+| | `v1_visual_get_card_picture` | `string` | Get card picture URI for the game |
+| | `v1_visual_get_background_picture` | `string` | Get background picture URI for the game |
 | Game | | | Base game manipulations |
 | | `v1_game_get_editions_list()` | `Edition[]` | Get list of game editions |
-| | `v1_game_get_info(path)` | `GameInfo` | Get installed game info |
-| | `v1_game_get_diff(path)` | `Diff` | Get game version diff |
+| | `v1_game_get_info(path)` | `GameInfo \| null` | Get installed game info |
+| | `v1_game_get_diff(path)` | `Diff \| null` | Get game version diff |
 | | `v1_game_post_process_diff` | | Post-process game after unpacking (installing) the diff |
 | DLC | | | Manipulate with additional game content (e.g. voice packages) |
 | ? | `v1_dlc_get_info(path, dlc)` | | Get installed DLC info |

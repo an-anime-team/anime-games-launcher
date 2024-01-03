@@ -42,7 +42,7 @@ pub fn get() -> Config {
     std::fs::read(CONFIG_FILE.as_path()).ok()
         .and_then(|config| serde_json::from_slice::<Json>(&config).ok())
         .map(|config| Config::from(&config))
-        .unwrap_or_else(Config::default)
+        .unwrap_or_default()
 }
 
 /// Update configuration file's value
