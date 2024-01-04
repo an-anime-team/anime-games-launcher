@@ -72,7 +72,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     sender.send((Status::PreparingTransition, 0, 1))?;
 
-                    let transition_name = format!("download-diff:{game_name}"); // TODO: add more metadata to the transition name
+                    let transition_name = format!("download-diff:{game_name}:{:?}", diff_info); // TODO: add more metadata to the transition name
                     let transition_path = driver.create_transition(&transition_name)?;
 
                     sender.send((Status::PreparingTransition, 1, 1))?;
