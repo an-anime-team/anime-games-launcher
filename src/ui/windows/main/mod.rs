@@ -355,8 +355,17 @@ impl SimpleComponent for MainApp {
                                     }
                                 };
 
-                                let game_settings = STARTUP_CONFIG.games.settings.get(name).cloned()
-                                    .unwrap_or_else(|| config::games::GameSettings::default_for_game(game).unwrap());
+                                let game_settings = match STARTUP_CONFIG.games.get_game_settings(name) {
+                                    Ok(settings) => settings,
+                                    Err(err) => {
+                                        sender.input(MainAppMsg::ShowToast {
+                                            title: format!("Unable to find {name} settings"),
+                                            message: Some(err.to_string())
+                                        });
+
+                                        continue;
+                                    }
+                                };
 
                                 let installed = match game_settings.paths.get(&edition.name) {
                                     Some(driver) => {
@@ -571,13 +580,16 @@ impl SimpleComponent for MainApp {
             MainAppMsg::AddDownloadGameTask(info) => {
                 let config = config::get();
 
-                let Some(settings) = config.games.settings.get(info.get_name()) else {
-                    sender.input(MainAppMsg::ShowToast {
-                        title: format!("Unable to find {} settings", info.get_title()),
-                        message: None
-                    });
+                let settings = match config.games.get_game_settings(info.get_name()) {
+                    Ok(settings) => settings,
+                    Err(err) => {
+                        sender.input(MainAppMsg::ShowToast {
+                            title: format!("Unable to find {} settings", info.get_title()),
+                            message: Some(err.to_string())
+                        });
 
-                    return;
+                        return;
+                    }
                 };
 
                 let Some(driver) = settings.paths.get(info.get_edition()) else {

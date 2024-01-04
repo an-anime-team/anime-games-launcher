@@ -3,10 +3,13 @@ use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
-use crate::LAUNCHER_FOLDER;
-
+use crate::games;
 use crate::games::integrations;
+
+use crate::config;
 use crate::config::driver::Driver;
+
+use crate::LAUNCHER_FOLDER;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Games {
@@ -49,6 +52,25 @@ impl From<&Json> for Games {
                 }
 
                 None => HashMap::new()
+            }
+        }
+    }
+}
+
+impl Games {
+    pub fn get_game_settings(&self, game: impl AsRef<str>) -> anyhow::Result<GameSettings> {
+        match self.settings.get(game.as_ref()) {
+            Some(settings) => Ok(settings.to_owned()),
+            None => {
+                let Some(game_object) = games::get(game.as_ref())? else {
+                    anyhow::bail!("Couldn't find {} integration script", game.as_ref());
+                };
+
+                let settings = GameSettings::default_for_game(game_object)?;
+
+                config::set(format!("games.settings.{}", game.as_ref()), serde_json::to_value(settings.clone())?)?;
+
+                Ok(settings)
             }
         }
     }
