@@ -59,6 +59,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
         let driver = self.driver.clone();
         let game_name = self.card_info.get_name().to_string();
+        let game_edition = self.card_info.get_edition().to_string();
         let diff_info = self.diff_info.clone();
 
         Ok(Box::new(DownloadDiffResolvedTask {
@@ -184,7 +185,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                     if game.has_game_diff_transition()? {
                         sender.send((Status::RunTransitionCode, 0, 1))?;
 
-                        game.run_game_diff_transition(transition_path.to_string_lossy())?;
+                        game.run_game_diff_transition(transition_path.to_string_lossy(), &game_edition)?;
 
                         sender.send((Status::RunTransitionCode, 1, 1))?;
                     }
@@ -204,7 +205,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                         let path = driver.deploy()?;
 
-                        game.run_game_diff_post_transition(path.to_string_lossy())?;
+                        game.run_game_diff_post_transition(path.to_string_lossy(), &game_edition)?;
 
                         driver.dismantle()?;
 

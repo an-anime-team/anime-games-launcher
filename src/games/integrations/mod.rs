@@ -195,7 +195,7 @@ impl Game {
         }
     }
 
-    pub fn get_dlc_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::dlc::Group>> {
+    pub fn get_dlc_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::dlc::DlcGroup>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let dlcs = self.lua.globals()
@@ -203,7 +203,7 @@ impl Game {
                     .call::<_, LuaTable>(edition.as_ref())?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|group| standards::dlc::Group::from_table(group, self.script_standard))
+                    .flat_map(|group| standards::dlc::DlcGroup::from_table(group, self.script_standard))
                     .collect();
 
                 Ok(dlcs)
@@ -217,11 +217,11 @@ impl Game {
         }
     }
 
-    pub fn run_game_diff_transition(&self, transition_path: impl AsRef<str>) -> anyhow::Result<()> {
+    pub fn run_game_diff_transition(&self, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .get::<_, LuaFunction>("v1_game_diff_transition")?
-                .call::<_, ()>(transition_path.as_ref())?)
+                .call::<_, ()>((transition_path.as_ref(), edition.as_ref()))?)
         }
     }
 
@@ -231,11 +231,11 @@ impl Game {
         }
     }
 
-    pub fn run_game_diff_post_transition(&self, path: impl AsRef<str>) -> anyhow::Result<()> {
+    pub fn run_game_diff_post_transition(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .get::<_, LuaFunction>("v1_game_diff_post_transition")?
-                .call::<_, ()>(path.as_ref())?)
+                .call::<_, ()>((path.as_ref(), edition.as_ref()))?)
         }
     }
 }

@@ -39,11 +39,11 @@
 | Game | | | Base game manipulations |
 | | `v1_game_get_editions_list()` | `Edition[]` | Get list of game editions |
 | | `v1_game_is_installed(path)` | `boolean` | Check if the game is installed |
-| | `v1_game_get_info(path)` | `GameInfo \| null` | Get installed game info |
+| | `v1_game_get_version(path)` | `string \| null` | Get installed game version |
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
-| | `v1_game_get_diff(path)` | `Diff \| null` | Get game version diff |
-| | `v1_game_get_launch_options(path)` | `LaunchOptions` | Get launch options for the game |
-| DLC | | | Manipulate with additional game content (e.g. voice packages) |
+| | `v1_game_get_diff(path, edition)` | `Diff \| null` | Get game version diff |
+| | `v1_game_get_launch_options(path, edition)` | `LaunchOptions` | Get launch options for the game |
+| DLC | | | Additional game content manipulations |
 | | `v1_dlc_get_list(edition)` | `DlcGroup[]` | Get list of available DLCs |
 | | `v1_dlc_get_info(path, edition)` | `DlcGroup[]` | Get list of DLCs installed in `path` folder |
 | | `v1_dlc_get_download(group_name, dlc_name, edition)` | `Download \| null` | Get full DLC downloading info |
@@ -54,8 +54,11 @@
 | API | Method | Output | Description |
 | - | - | - | - |
 | Game | | | Base game manipulations |
-| | `v1_game_diff_transition(path)` | | Process diff files before finishing transition |
-| | `v1_game_diff_post_transition(path)` | | Process diff files after finishing transition |
+| | `v1_game_diff_transition(path, edition)` | | Process diff files before finishing transition |
+| | `v1_game_diff_post_transition(path, edition)` | | Process diff files after finishing transition |
+| DLC | | | Additional game content manipulations |
+| | `v1_dlc_diff_transition(dlc_group, dlc_name, path, edition)` | | Process diff files before finishing transition |
+| | `v1_dlc_diff_post_transition(dlc_group, dlc_name, path, edition)` | | Process diff files after finishing transition |
 
 ### Types
 
