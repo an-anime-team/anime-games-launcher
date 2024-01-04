@@ -92,11 +92,11 @@ impl Game {
                         .map_err(LuaError::external)
                 })?)?;
 
-                // game.lua.globals().set("json_decode", game.lua.create_function(|_, json: String| {
-                //     serde_json::from_str::<serde_json::Value>(&json)
-                //         .and_then(|value| value.)
-                //         .map_err(LuaError::external)
-                // })?)?;
+                game.lua.globals().set("v1_json_decode", game.lua.create_function(|lua, json: String| {
+                    serde_json::from_str::<Json>(&json)
+                        .map(|value| lua.to_value(&value))
+                        .map_err(LuaError::external)
+                })?)?;
 
                 game.lua.load(script).exec()?;
 
