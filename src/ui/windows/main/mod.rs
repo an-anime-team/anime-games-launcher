@@ -45,6 +45,8 @@ use crate::ui::components::tasks_queue::{
     verify_integrity_task::VerifyIntegrityQueuedTask
 };
 
+pub mod launch_game;
+
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
 
@@ -58,10 +60,12 @@ pub struct MainApp {
     game_details: AsyncController<GameDetailsComponent>,
     game_details_info: CardInfo,
 
+    running_games: FactoryVecDeque<CardFactory>,
     installed_games: FactoryVecDeque<CardFactory>,
     queued_games: FactoryVecDeque<CardFactory>,
     available_games: FactoryVecDeque<CardFactory>,
 
+    running_games_indexes: HashMap<CardInfo, DynamicIndex>,
     installed_games_indexes: HashMap<CardInfo, DynamicIndex>,
     queued_games_indexes: HashMap<CardInfo, DynamicIndex>,
     available_games_indexes: HashMap<CardInfo, DynamicIndex>,
@@ -106,6 +110,9 @@ pub enum MainAppMsg {
         path: PathBuf,
         install_corefonts: bool
     },
+
+    LaunchGame(CardInfo),
+    FinishRunningGame(CardInfo),
 
     ShowToast {
         title: String,
@@ -176,6 +183,29 @@ impl SimpleComponent for MainApp {
                                 
                                 gtk::Box {
                                     set_orientation: gtk::Orientation::Vertical,
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
+                                        set_margin_start: 24,
+                                        add_css_class: "title-4",
+
+                                        #[watch]
+                                        set_visible: !model.running_games.is_empty(),
+
+                                        set_label: "Running games"
+                                    },
+
+                                    #[local_ref]
+                                    running_games_flow_box -> gtk::FlowBox {
+                                        set_row_spacing: 12,
+                                        set_column_spacing: 12,
+
+                                        set_margin_all: 16,
+
+                                        set_homogeneous: true,
+                                        set_selection_mode: gtk::SelectionMode::None
+                                    },
 
                                     gtk::Label {
                                         set_halign: gtk::Align::Start,
@@ -302,16 +332,21 @@ impl SimpleComponent for MainApp {
                     GameDetailsComponentOutput::VerifyGame(info)
                         => MainAppMsg::AddVerifyGameTask(info),
 
+                    GameDetailsComponentOutput::LaunchGame(info)
+                        => MainAppMsg::LaunchGame(info),
+
                     GameDetailsComponentOutput::ShowToast { title, message }
                         => MainAppMsg::ShowToast { title, message }
                 }),
 
             game_details_info: CardInfo::default(),
 
+            running_games_indexes: HashMap::new(),
             installed_games_indexes: HashMap::new(),
             queued_games_indexes: HashMap::new(),
             available_games_indexes: HashMap::new(),
 
+            running_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             queued_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
             available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
@@ -463,6 +498,7 @@ impl SimpleComponent for MainApp {
         let main_toast_overlay = &model.main_toast_overlay;
         let game_details_toast_overlay = &model.game_details_toast_overlay;
 
+        let running_games_flow_box = model.running_games.widget();
         let installed_games_flow_box = model.installed_games.widget();
         let queued_games_flow_box = model.queued_games.widget();
         let available_games_flow_box = model.available_games.widget();
@@ -727,15 +763,15 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::FinishQueuedTask(variant) => {
-                if let Some(index) = self.queued_games_indexes.get(&variant) {
+            MainAppMsg::FinishQueuedTask(info) => {
+                if let Some(index) = self.queued_games_indexes.get(&info) {
                     self.queued_games.guard().remove(index.current_index());
 
-                    self.queued_games_indexes.remove(&variant);
+                    self.queued_games_indexes.remove(&info);
 
                     #[allow(clippy::map_entry)]
-                    if !self.installed_games_indexes.contains_key(&variant) {
-                        self.installed_games_indexes.insert(variant.clone(), self.installed_games.guard().push_back(variant));
+                    if !self.installed_games_indexes.contains_key(&info) {
+                        self.installed_games_indexes.insert(info.clone(), self.installed_games.guard().push_back(info));
                     }
                 }
             }
@@ -763,6 +799,43 @@ impl SimpleComponent for MainApp {
                     path,
                     install_corefonts
                 })));
+            }
+
+            MainAppMsg::LaunchGame(info) => {
+                if let Some(index) = self.installed_games_indexes.get(&info) {
+                    self.installed_games.guard().remove(index.current_index());
+
+                    self.installed_games_indexes.remove(&info);
+
+                    #[allow(clippy::map_entry)]
+                    if !self.running_games_indexes.contains_key(&info) {
+                        self.running_games_indexes.insert(info.clone(), self.running_games.guard().push_back(info.clone()));
+                    }
+
+                    std::thread::spawn(move || {
+                        if let Err(err) = launch_game::launch_game(&info) {
+                            sender.input(MainAppMsg::ShowToast {
+                                title: format!("Failed to launch {}", info.get_title()),
+                                message: Some(err.to_string())
+                            });
+                        }
+
+                        sender.input(MainAppMsg::FinishRunningGame(info));
+                    });
+                }
+            }
+
+            MainAppMsg::FinishRunningGame(info) => {
+                if let Some(index) = self.running_games_indexes.get(&info) {
+                    self.running_games.guard().remove(index.current_index());
+
+                    self.running_games_indexes.remove(&info);
+
+                    #[allow(clippy::map_entry)]
+                    if !self.installed_games_indexes.contains_key(&info) {
+                        self.installed_games_indexes.insert(info.clone(), self.installed_games.guard().push_back(info));
+                    }
+                }
             }
 
             MainAppMsg::ShowToast { title, message } => {

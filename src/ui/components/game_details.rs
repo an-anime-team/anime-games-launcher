@@ -1,16 +1,7 @@
-use std::process::Command;
-
 use relm4::prelude::*;
 use relm4::component::*;
 
 use gtk::prelude::*;
-
-use anime_game_core::filesystem::DriverExt;
-
-use crate::games;
-use crate::config;
-
-use crate::components::wine::Wine;
 
 use crate::ui::components::game_card::{
     CardInfo,
@@ -34,8 +25,7 @@ pub enum GameDetailsComponentInput {
 
     EmitDownloadGame,
     EmitVerifyGame,
-
-    LaunchGame
+    EmitLaunchGame
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +35,7 @@ pub enum GameDetailsComponentOutput {
 
     DownloadGame(CardInfo),
     VerifyGame(CardInfo),
+    LaunchGame(CardInfo),
 
     ShowToast {
         title: String,
@@ -130,7 +121,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                                 set_label: "Play"
                             },
 
-                            connect_clicked => GameDetailsComponentInput::LaunchGame
+                            connect_clicked => GameDetailsComponentInput::EmitLaunchGame
                         },
     
                         gtk::Button {
@@ -232,62 +223,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
             }
 
-            GameDetailsComponentInput::LaunchGame => {
-                fn launch(info: &CardInfo) -> anyhow::Result<()> {
-                    // Get game driver
-                    let Some(game) = games::get(info.get_name())? else {
-                        anyhow::bail!("Unable to find {} integration script", info.get_title());
-                    };
-
-                    // Get game settings
-                    let settings = config::get().games.get_game_settings(info.get_name())?;
-
-                    // Get installation folder driver
-                    let Some(driver) = settings.paths.get(info.get_edition()) else {
-                        anyhow::bail!("Unable to find {} installation path", info.get_title());
-                    };
-
-                    let driver = driver.to_dyn_trait();
-
-                    // Deploy the game
-                    let path = driver.deploy()?;
-
-                    // Request game launch options
-                    let options = game.get_launch_options(path.to_string_lossy())?;
-
-                    // Prepare launch command
-                    let command = [
-                        format!("{:?}", Wine::from_config()?.get_executable()),
-                        format!("{:?}", path.join(options.executable))
-                    ];
-
-                    // Run the game
-                    Command::new("bash")
-                        .arg("-c")
-                        .arg(command.join(" "))
-                        .envs(options.environment)
-                        .current_dir(path)
-                        .spawn()?
-                        .wait()?;
-
-                    // Dismantle installation fodler
-                    driver.dismantle()?;
-
-                    Ok(())
-                }
-
-                let info = self.info.clone();
+            GameDetailsComponentInput::EmitLaunchGame => {
+                sender.output(GameDetailsComponentOutput::LaunchGame(self.info.clone())).unwrap();
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
-
-                std::thread::spawn(move || {
-                    if let Err(err) = launch(&info) {
-                        sender.output(GameDetailsComponentOutput::ShowToast {
-                            title: format!("Failed to launch {}", info.get_title()),
-                            message: Some(err.to_string())
-                        }).unwrap();
-                    }
-                });
             }
         }
     }
