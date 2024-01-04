@@ -176,7 +176,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         let elapsed_time  = (Instant::now() - model.current_task_progress_start).as_secs_f64();
                         let average_speed = (task.get_current() as f64 / elapsed_time).ceil() as u64;
 
-                        format!("Avg download speed: {}/s", pretty_bytes(average_speed))
+                        format!("Avg speed: {}/s", pretty_bytes(average_speed))
                     }
 
                     None => String::new()
