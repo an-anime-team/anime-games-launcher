@@ -206,31 +206,31 @@ impl Game {
         }
     }
 
-    pub fn create_task_from_game_diff(&self, diff: &standards::game::Diff) -> anyhow::Result<Option<u64>> {
+    pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
         match self.script_standard {
-            IntegrationStandard::V1 => {
-                let task_id = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_tasks_create_from_game_diff")?
-                    .call::<_, Option<u64>>(diff.to_table(&self.lua, self.script_standard)?)?;
-
-                Ok(task_id)
-            }
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_transition")?)
         }
     }
 
-    pub fn get_task_status(&self, task_id: u64) -> anyhow::Result<Option<standards::tasks::Info>> {
+    pub fn run_game_diff_transition(&self, transition_path: impl AsRef<str>) -> anyhow::Result<()> {
         match self.script_standard {
-            IntegrationStandard::V1 => {
-                let task_status = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_tasks_get_status")?
-                    .call::<_, Option<LuaTable>>(task_id)?;
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_game_diff_transition")?
+                .call::<_, ()>(transition_path.as_ref())?)
+        }
+    }
 
-                let Some(task_status) = task_status else {
-                    return Ok(None);
-                };
+    pub fn has_game_diff_post_transition(&self) -> anyhow::Result<bool> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_post_transition")?)
+        }
+    }
 
-                Ok(Some(standards::tasks::Info::from_table(task_status, self.script_standard)?))
-            }
+    pub fn run_game_diff_post_transition(&self, path: impl AsRef<str>) -> anyhow::Result<()> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_game_diff_post_transition")?
+                .call::<_, ()>(path.as_ref())?)
         }
     }
 }

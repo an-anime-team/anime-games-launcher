@@ -16,10 +16,8 @@ use anime_game_core::archive;
 
 use crate::ui::components::game_card::CardInfo;
 
-use crate::games::integrations::standards::game::{
-    Diff,
-    DiffInfo
-};
+use crate::games;
+use crate::games::integrations::standards::game::DiffInfo;
 
 use super::{
     QueuedTask,
@@ -68,6 +66,10 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
             updater: BasicUpdater::spawn(move |sender| {
                 Box::new(move || -> Result<(), anyhow::Error> {
+                    let Some(game) = games::get(&game_name)? else {
+                        anyhow::bail!("Couldn't find {game_name} integration script");
+                    };
+
                     // Create transition
 
                     sender.send((Status::PreparingTransition, 0, 1))?;
@@ -117,7 +119,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                             // Delete archive
 
-                            // std::fs::remove_file(archive)?;
+                            std::fs::remove_file(archive)?;
                         }
 
                         DiffInfo::Segments { size, segments } => {
@@ -167,9 +169,9 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                             // Delete segments
 
-                            // for archive in archives {
-                            //     std::fs::remove_file(archive)?;
-                            // }
+                            for archive in archives {
+                                std::fs::remove_file(archive)?;
+                            }
                         }
 
                         DiffInfo::Files { size, files } => {
@@ -179,68 +181,35 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     // Run transition code
 
-                    sender.send((Status::RunTransitionCode, 0, 1))?;
+                    if game.has_game_diff_transition()? {
+                        sender.send((Status::RunTransitionCode, 0, 1))?;
 
-                    let updater = sender.clone();
+                        game.run_game_diff_transition(transition_path.to_string_lossy())?;
 
-                    // TODO
-
-                    // hoyoverse_diffs::apply_update(driver.clone(), &transition_path, move |status| {
-                    //     let result = match status {
-                    //         hoyoverse_diffs::Status::ApplyingHdiffStarted => updater.send((Status::ApplyingHdiffPatches, 0, 1)),
-                    //         hoyoverse_diffs::Status::ApplyingHdiffFinished => updater.send((Status::ApplyingHdiffPatches, 1, 1)),
-
-                    //         hoyoverse_diffs::Status::ApplyingHdiffProgress(current, total) =>
-                    //             updater.send((Status::ApplyingHdiffPatches, current, total)),
-
-                    //         hoyoverse_diffs::Status::DeletingObsoleteStarted => updater.send((Status::DeletingObsoleteFiles, 0, 1)),
-                    //         hoyoverse_diffs::Status::DeletingObsoleteFinished => updater.send((Status::RunTransitionCode, 1, 1)),
-
-                    //         hoyoverse_diffs::Status::DeletingObsoleteProgress(current, total) =>
-                    //             updater.send((Status::RunTransitionCode, current, total))
-                    //     };
-
-                    //     result.expect("Failed to send flume message from the transition code updater");
-                    // })?;
-
-                    sender.send((Status::RunTransitionCode, 1, 1))?;
+                        sender.send((Status::RunTransitionCode, 1, 1))?;
+                    }
 
                     // Finish transition
 
                     sender.send((Status::FinishingTransition, 0, 1))?;
 
-                    // driver.finish_transition(&transition_name)?;
+                    driver.finish_transition(&transition_name)?;
 
                     sender.send((Status::FinishingTransition, 1, 1))?;
 
                     // Run post-transition code
 
-                    sender.send((Status::RunPostTransitionCode, 0, 1))?;
+                    if game.has_game_diff_post_transition()? {
+                        sender.send((Status::RunPostTransitionCode, 0, 1))?;
 
-                    // TODO: re-use code defined above
-                    let updater = sender.clone();
+                        let path = driver.deploy()?;
 
-                    // TODO
+                        game.run_game_diff_post_transition(path.to_string_lossy())?;
 
-                    // hoyoverse_diffs::post_transition(driver, move |status| {
-                    //     let result = match status {
-                    //         hoyoverse_diffs::Status::ApplyingHdiffStarted => updater.send((Status::ApplyingHdiffPatches, 0, 1)),
-                    //         hoyoverse_diffs::Status::ApplyingHdiffFinished => updater.send((Status::ApplyingHdiffPatches, 1, 1)),
+                        driver.dismantle()?;
 
-                    //         hoyoverse_diffs::Status::ApplyingHdiffProgress(current, total) =>
-                    //             updater.send((Status::ApplyingHdiffPatches, current, total)),
-
-                    //         hoyoverse_diffs::Status::DeletingObsoleteStarted => updater.send((Status::DeletingObsoleteFiles, 0, 1)),
-                    //         hoyoverse_diffs::Status::DeletingObsoleteFinished => updater.send((Status::RunTransitionCode, 1, 1)),
-
-                    //         hoyoverse_diffs::Status::DeletingObsoleteProgress(current, total) =>
-                    //             updater.send((Status::RunTransitionCode, current, total))
-                    //     };
-
-                    //     result.expect("Failed to send flume message from the transition code updater");
-                    // })?;
-
-                    sender.send((Status::RunPostTransitionCode, 1, 1))?;
+                        sender.send((Status::RunPostTransitionCode, 1, 1))?;
+                    }
 
                     Ok(())
                 })
