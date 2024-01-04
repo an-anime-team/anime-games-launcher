@@ -44,8 +44,10 @@
 | | `v1_game_get_diff(path)` | `Diff \| null` | Get game version diff |
 | | `v1_game_get_launch_options(path)` | `LaunchOptions` | Get launch options for the game |
 | DLC | | | Manipulate with additional game content (e.g. voice packages) |
-| ? | `v1_dlc_get_info(path, dlc)` | | Get installed DLC info |
-| ? | `v1_dlc_get_latest_info(edition)` | | Get list of available DLCs |
+| | `v1_dlc_get_list(edition)` | `DlcGroup[]` | Get list of available DLCs |
+| | `v1_dlc_get_info(path, edition)` | `DlcGroup[]` | Get list of DLCs installed in `path` folder |
+| | `v1_dlc_get_download(group_name, dlc_name, edition)` | `Download \| null` | Get full DLC downloading info |
+| | `v1_dlc_get_diff(group_name, dlc_name, path, edition)` | `Diff \| null` | Get DLC version diff |
 
 ### Optional APIs (can be ignored)
 
@@ -161,3 +163,38 @@ type LaunchOptions = {
 	environment: [variable: string]: string
 };
 ```
+
+#### DlcGroup
+
+```ts
+type DlcGroup = {
+	name: string,
+	title: string,
+	dlcs: Dlc[]
+};
+```
+
+#### Dlc
+
+```ts
+type Dlc = {
+	type: DlcType,
+	name: string,
+	title: string,
+	version: string,
+	required: boolean
+};
+```
+
+#### DlcType
+
+```ts
+type DlcType = 'module' | 'component';
+```
+
+| Value | Description |
+| - | - |
+| `module` | Modules are merged into the game folder when launching the game |
+| `component` | Components are installed to separate folders and are not merged to the game folder |
+
+All the DLCs are downloaded to separate folders. When launching the game, however, launcher can process them differently: for example, you want to put voice packages inside the game folder - then voice packages are "modules". Launcher will create new merged folder with "base game" and "modules" together (modules can overwrite base game files). "Components", however, intended to be used outside the game folder. You can access them using integration API.
