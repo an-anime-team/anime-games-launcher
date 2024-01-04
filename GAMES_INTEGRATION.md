@@ -39,7 +39,7 @@
 | Game | | | Base game manipulations |
 | | `v1_game_get_editions_list()` | `Edition[]` | Get list of game editions |
 | | `v1_game_is_installed(path)` | `boolean` | Check if the game is installed |
-| | `v1_game_get_version(path)` | `string \| null` | Get installed game version |
+| | `v1_game_get_version(path, edition)` | `string \| null` | Get installed game version |
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
 | | `v1_game_get_diff(path, edition)` | `Diff \| null` | Get game version diff |
 | | `v1_game_get_launch_options(path, edition)` | `LaunchOptions` | Get launch options for the game |
