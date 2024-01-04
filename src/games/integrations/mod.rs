@@ -148,18 +148,11 @@ impl Game {
         }
     }
 
-    pub fn get_game_info(&self, path: impl AsRef<str>) -> anyhow::Result<Option<standards::game::GameInfo>> {
+    pub fn get_game_version(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
         match self.script_standard {
-            IntegrationStandard::V1 => {
-                let info = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_game_get_info")?
-                    .call::<_, Option<LuaTable>>(path.as_ref())?;
-
-                match info {
-                    Some(info) => Ok(Some(standards::game::GameInfo::from_table(info, self.script_standard)?)),
-                    None => Ok(None)
-                }
-            }
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_game_get_version")?
+                .call::<_, Option<String>>((path.as_ref(), edition.as_ref()))?)
         }
     }
 
@@ -175,12 +168,12 @@ impl Game {
         }
     }
 
-    pub fn get_game_diff(&self, path: impl AsRef<str>) -> anyhow::Result<Option<standards::game::Diff>> {
+    pub fn get_game_diff(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<standards::game::Diff>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_diff")?
-                    .call::<_, Option<LuaTable>>(path.as_ref())?;
+                    .call::<_, Option<LuaTable>>((path.as_ref(), edition.as_ref()))?;
 
                 match diff {
                     Some(diff) => Ok(Some(standards::game::Diff::from_table(diff, self.script_standard)?)),
@@ -190,12 +183,12 @@ impl Game {
         }
     }
 
-    pub fn get_launch_options(&self, path: impl AsRef<str>) -> anyhow::Result<standards::game::LaunchOptions> {
+    pub fn get_launch_options(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::LaunchOptions> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let options = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_launch_options")?
-                    .call::<_, LuaTable>(path.as_ref())?;
+                    .call::<_, LuaTable>((path.as_ref(), edition.as_ref()))?;
 
                 standards::game::LaunchOptions::from_table(options, self.script_standard)
             }

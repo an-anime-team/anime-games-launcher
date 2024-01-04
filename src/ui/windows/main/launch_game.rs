@@ -28,7 +28,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     let path = driver.deploy()?;
 
     // Request game launch options
-    let options = game.get_launch_options(path.to_string_lossy())?;
+    let options = game.get_launch_options(path.to_string_lossy(), info.get_edition())?;
 
     // Prepare launch command
     let command = [

@@ -646,7 +646,7 @@ impl SimpleComponent for MainApp {
 
                         let diff_info = match game.is_game_installed(path.to_string_lossy()) {
                             Ok(true) => {
-                                match game.get_game_diff(path.to_string_lossy()) {
+                                match game.get_game_diff(path.to_string_lossy(), info.get_edition()) {
                                     Ok(Some(diff)) => diff.diff,
 
                                     Ok(None) => {
