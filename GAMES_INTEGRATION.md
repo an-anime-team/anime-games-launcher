@@ -26,6 +26,8 @@
 | - | - | - |
 | Network | | Work with the network |
 | | `v1_network_http_get(uri)` | Perform GET request to the given URI |
+| JSON | | Work with JSON |
+| | `v1_json_decode(json)` | Decode JSON string |
 
 ### Required APIs (should be implemented by the maintainer)
 
