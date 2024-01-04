@@ -190,6 +190,18 @@ impl Game {
         }
     }
 
+    pub fn get_launch_options(&self, path: impl AsRef<str>) -> anyhow::Result<standards::game::LaunchOptions> {
+        match self.script_standard {
+            IntegrationStandard::V1 => {
+                let options = self.lua.globals()
+                    .get::<_, LuaFunction>("v1_game_get_launch_options")?
+                    .call::<_, LuaTable>(path.as_ref())?;
+
+                standards::game::LaunchOptions::from_table(options, self.script_standard)
+            }
+        }
+    }
+
     pub fn get_dlc_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::dlc::Group>> {
         match self.script_standard {
             IntegrationStandard::V1 => {

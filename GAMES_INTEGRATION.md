@@ -42,7 +42,7 @@
 | | `v1_game_get_info(path)` | `GameInfo \| null` | Get installed game info |
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
 | | `v1_game_get_diff(path)` | `Diff \| null` | Get game version diff |
-| | `v1_game_post_process_diff()` | | Post-process game after unpacking (installing) the diff |
+| | `v1_game_get_launch_options(path)` | `LaunchOptions` | Get launch options for the game |
 | DLC | | | Manipulate with additional game content (e.g. voice packages) |
 | ? | `v1_dlc_get_info(path, dlc)` | | Get installed DLC info |
 | ? | `v1_dlc_get_latest_info(edition)` | | Get list of available DLCs |
@@ -83,6 +83,7 @@ type GameInfo = {
 type Download = {
 	version: string,
 	edition: string,
+
 	download: {
 		type: DiffType,
 		size: number,
@@ -148,3 +149,15 @@ type DiffType = 'archive' | 'segments' | 'files';
 | `archive` | Single archive with all updated files |
 | `segments` | Segmented archive |
 | `files` | List of files needed to be downloaded |
+
+#### LaunchOptions
+
+```ts
+type LaunchOptions = {
+	// Relative path to the executable
+	executable: string,
+
+	// Table of environment variables
+	environment: [variable: string]: string
+};
+```
