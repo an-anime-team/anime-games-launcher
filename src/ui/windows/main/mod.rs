@@ -342,7 +342,7 @@ impl SimpleComponent for MainApp {
                                     developer: game.game_developer.clone(),
                                     edition: edition.name.clone(),
 
-                                    picture_uri: match game.get_card_picture() {
+                                    picture_uri: match game.get_card_picture(&edition.name) {
                                         Ok(uri) => uri,
                                         Err(err) => {
                                             sender.input(MainAppMsg::ShowToast {

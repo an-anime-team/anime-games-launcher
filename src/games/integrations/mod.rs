@@ -108,19 +108,19 @@ impl Game {
         }
     }
 
-    pub fn get_card_picture(&self) -> anyhow::Result<String> {
+    pub fn get_card_picture(&self, edition: impl AsRef<str>) -> anyhow::Result<String> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .get::<_, LuaFunction>("v1_visual_get_card_picture")?
-                .call::<_, String>(())?)
+                .call::<_, String>(edition.as_ref())?)
         }
     }
 
-    pub fn get_background_picture(&self) -> anyhow::Result<String> {
+    pub fn get_background_picture(&self, edition: impl AsRef<str>) -> anyhow::Result<String> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .get::<_, LuaFunction>("v1_visual_get_background_picture")?
-                .call::<_, String>(())?)
+                .call::<_, String>(edition.as_ref())?)
         }
     }
 

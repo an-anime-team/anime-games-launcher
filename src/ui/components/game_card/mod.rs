@@ -175,14 +175,24 @@ impl SimpleAsyncComponent for CardComponent {
                     }
                 },
 
-                gtk::Label {
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_halign: gtk::Align::Center,
+
                     set_margin_all: 12,
 
                     #[watch]
                     set_visible: model.display_title,
 
-                    #[watch]
-                    set_label: &format!("{}  •  {}", model.info.get_title(), model.info.get_edition())
+                    gtk::Label {
+                        #[watch]
+                        set_label: model.info.get_title()
+                    },
+
+                    gtk::Label {
+                        #[watch]
+                        set_markup: &format!("  <span foreground=\"grey\">({})</span>", model.info.get_edition())
+                    }
                 }
             }
         }

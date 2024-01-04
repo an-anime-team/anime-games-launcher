@@ -32,8 +32,8 @@
 | API | Method | Output | Description |
 | - | - | - | - |
 | Visual | | | Visual representation of the game in the launcher |
-| | `v1_visual_get_card_picture()` | `string` | Get card picture URI for the game |
-| | `v1_visual_get_background_picture()` | `string` | Get background picture URI for the game |
+| | `v1_visual_get_card_picture(edition)` | `string` | Get card picture URI for the game |
+| | `v1_visual_get_background_picture(edition)` | `string` | Get background picture URI for the game |
 | Game | | | Base game manipulations |
 | | `v1_game_get_editions_list()` | `Edition[]` | Get list of game editions |
 | | `v1_game_is_installed(path)` | `boolean` | Check if the game is installed |
