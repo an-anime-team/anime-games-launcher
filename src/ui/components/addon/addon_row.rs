@@ -1,8 +1,6 @@
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use anime_game_core::filesystem::DriverExt;
-
 use crate::games;
 use crate::config;
 

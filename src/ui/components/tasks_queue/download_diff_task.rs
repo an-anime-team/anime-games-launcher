@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::path::PathBuf;
 
 use anime_game_core::updater::{
     UpdaterExt,
@@ -11,7 +11,6 @@ use anime_game_core::network::downloader::{
     basic::Downloader
 };
 
-use anime_game_core::filesystem::DriverExt;
 use anime_game_core::archive;
 
 use crate::ui::components::game_card::CardInfo;
@@ -35,19 +34,11 @@ pub enum Status {
     RunPostTransitionCode
 }
 
+#[derive(Debug, Clone)]
 pub struct DownloadDiffQueuedTask {
-    pub driver: Arc<dyn DriverExt>,
+    pub download_path: PathBuf,
     pub card_info: CardInfo,
     pub diff_info: DiffInfo
-}
-
-impl std::fmt::Debug for DownloadDiffQueuedTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DownloadDiffQueuedTask")
-            .field("card_info", &self.card_info)
-            .field("diff_info", &self.diff_info)
-            .finish()
-    }
 }
 
 impl QueuedTask for DownloadDiffQueuedTask {
@@ -57,165 +48,166 @@ impl QueuedTask for DownloadDiffQueuedTask {
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
-        let driver = self.driver.clone();
         let game_name = self.card_info.get_name().to_string();
         let game_edition = self.card_info.get_edition().to_string();
         let diff_info = self.diff_info.clone();
 
-        Ok(Box::new(DownloadDiffResolvedTask {
-            card_info: self.card_info.clone(),
+        todo!();
 
-            updater: BasicUpdater::spawn(move |sender| {
-                Box::new(move || -> Result<(), anyhow::Error> {
-                    let Some(game) = games::get(&game_name)? else {
-                        anyhow::bail!("Couldn't find {game_name} integration script");
-                    };
+        // Ok(Box::new(DownloadDiffResolvedTask {
+        //     card_info: self.card_info.clone(),
 
-                    // Create transition
+        //     updater: BasicUpdater::spawn(move |sender| {
+        //         Box::new(move || -> Result<(), anyhow::Error> {
+        //             let Some(game) = games::get(&game_name)? else {
+        //                 anyhow::bail!("Couldn't find {game_name} integration script");
+        //             };
 
-                    sender.send((Status::PreparingTransition, 0, 1))?;
+        //             // Create transition
 
-                    let transition_name = format!("download-diff:{game_name}:{:?}", diff_info); // TODO: add more metadata to the transition name
-                    let transition_path = driver.create_transition(&transition_name)?;
+        //             sender.send((Status::PreparingTransition, 0, 1))?;
 
-                    sender.send((Status::PreparingTransition, 1, 1))?;
+        //             let transition_name = format!("download-diff:{game_name}:{:?}", diff_info); // TODO: add more metadata to the transition name
+        //             let transition_path = driver.create_transition(&transition_name)?;
 
-                    // Download and extract diff files
+        //             sender.send((Status::PreparingTransition, 1, 1))?;
 
-                    match diff_info {
-                        DiffInfo::Archive { size, uri } => {
-                            // Download archive
+        //             // Download and extract diff files
 
-                            let downloader = Downloader::new(uri);
+        //             match diff_info {
+        //                 DiffInfo::Archive { size, uri } => {
+        //                     // Download archive
 
-                            let archive = transition_path.join(downloader.file_name());
+        //                     let downloader = Downloader::new(uri);
 
-                            let mut updater = downloader.download(&archive)?;
+        //                     let archive = transition_path.join(downloader.file_name());
 
-                            while !updater.is_finished() {
-                                // TODO: add timeouts
+        //                     let mut updater = downloader.download(&archive)?;
 
-                                sender.send((
-                                    Status::Downloading,
-                                    updater.current(),
-                                    updater.total()
-                                ))?;
-                            }
+        //                     while !updater.is_finished() {
+        //                         // TODO: add timeouts
 
-                            // Extract archive
+        //                         sender.send((
+        //                             Status::Downloading,
+        //                             updater.current(),
+        //                             updater.total()
+        //                         ))?;
+        //                     }
 
-                            let Some(mut updater) = archive::extract(&archive, &transition_path) else {
-                                anyhow::bail!("Failed to extract files from the archive: {:?}", archive);
-                            };
+        //                     // Extract archive
 
-                            while let Ok(false) = updater.status() {
-                                // TODO: add timeouts
+        //                     let Some(mut updater) = archive::extract(&archive, &transition_path) else {
+        //                         anyhow::bail!("Failed to extract files from the archive: {:?}", archive);
+        //                     };
 
-                                sender.send((
-                                    Status::Unpacking,
-                                    updater.current(),
-                                    updater.total()
-                                ))?;
-                            }
+        //                     while let Ok(false) = updater.status() {
+        //                         // TODO: add timeouts
 
-                            // Delete archive
+        //                         sender.send((
+        //                             Status::Unpacking,
+        //                             updater.current(),
+        //                             updater.total()
+        //                         ))?;
+        //                     }
 
-                            std::fs::remove_file(archive)?;
-                        }
+        //                     // Delete archive
 
-                        DiffInfo::Segments { size, segments } => {
-                            // Download segments
+        //                     std::fs::remove_file(archive)?;
+        //                 }
 
-                            let mut archives = vec![];
-                            let mut downloaded = 0;
+        //                 DiffInfo::Segments { size, segments } => {
+        //                     // Download segments
 
-                            for uri in segments {
-                                let downloader = Downloader::new(uri);
+        //                     let mut archives = vec![];
+        //                     let mut downloaded = 0;
 
-                                let archive = transition_path.join(downloader.file_name());
+        //                     for uri in segments {
+        //                         let downloader = Downloader::new(uri);
 
-                                let mut updater = downloader.download(&archive)?;
+        //                         let archive = transition_path.join(downloader.file_name());
 
-                                archives.push(archive);
+        //                         let mut updater = downloader.download(&archive)?;
 
-                                while !updater.is_finished() {
-                                    // TODO: add timeouts
+        //                         archives.push(archive);
 
-                                    sender.send((
-                                        Status::Downloading,
-                                        downloaded + updater.current(),
-                                        size
-                                        // updater.total()
-                                    ))?;
-                                }
+        //                         while !updater.is_finished() {
+        //                             // TODO: add timeouts
 
-                                downloaded += updater.total();
-                            }
+        //                             sender.send((
+        //                                 Status::Downloading,
+        //                                 downloaded + updater.current(),
+        //                                 size
+        //                                 // updater.total()
+        //                             ))?;
+        //                         }
 
-                            // Extract segments
+        //                         downloaded += updater.total();
+        //                     }
 
-                            let Some(mut updater) = archive::extract(&archives[0], &transition_path) else {
-                                anyhow::bail!("Failed to extract files from segmented archive: {:?}", archives[0]);
-                            };
+        //                     // Extract segments
 
-                            while let Ok(false) = updater.status() {
-                                // TODO: add timeouts
+        //                     let Some(mut updater) = archive::extract(&archives[0], &transition_path) else {
+        //                         anyhow::bail!("Failed to extract files from segmented archive: {:?}", archives[0]);
+        //                     };
 
-                                sender.send((
-                                    Status::Unpacking,
-                                    updater.current(),
-                                    updater.total()
-                                ))?;
-                            }
+        //                     while let Ok(false) = updater.status() {
+        //                         // TODO: add timeouts
 
-                            // Delete segments
+        //                         sender.send((
+        //                             Status::Unpacking,
+        //                             updater.current(),
+        //                             updater.total()
+        //                         ))?;
+        //                     }
 
-                            for archive in archives {
-                                std::fs::remove_file(archive)?;
-                            }
-                        }
+        //                     // Delete segments
 
-                        DiffInfo::Files { size, files } => {
-                            todo!()
-                        }
-                    }
+        //                     for archive in archives {
+        //                         std::fs::remove_file(archive)?;
+        //                     }
+        //                 }
 
-                    // Run transition code
+        //                 DiffInfo::Files { size, files } => {
+        //                     todo!()
+        //                 }
+        //             }
 
-                    if game.has_game_diff_transition()? {
-                        sender.send((Status::RunTransitionCode, 0, 1))?;
+        //             // Run transition code
 
-                        game.run_game_diff_transition(transition_path.to_string_lossy(), &game_edition)?;
+        //             if game.has_game_diff_transition()? {
+        //                 sender.send((Status::RunTransitionCode, 0, 1))?;
 
-                        sender.send((Status::RunTransitionCode, 1, 1))?;
-                    }
+        //                 game.run_game_diff_transition(transition_path.to_string_lossy(), &game_edition)?;
 
-                    // Finish transition
+        //                 sender.send((Status::RunTransitionCode, 1, 1))?;
+        //             }
 
-                    sender.send((Status::FinishingTransition, 0, 1))?;
+        //             // Finish transition
 
-                    driver.finish_transition(&transition_name)?;
+        //             sender.send((Status::FinishingTransition, 0, 1))?;
 
-                    sender.send((Status::FinishingTransition, 1, 1))?;
+        //             driver.finish_transition(&transition_name)?;
 
-                    // Run post-transition code
+        //             sender.send((Status::FinishingTransition, 1, 1))?;
 
-                    if game.has_game_diff_post_transition()? {
-                        sender.send((Status::RunPostTransitionCode, 0, 1))?;
+        //             // Run post-transition code
 
-                        let path = driver.deploy()?;
+        //             if game.has_game_diff_post_transition()? {
+        //                 sender.send((Status::RunPostTransitionCode, 0, 1))?;
 
-                        game.run_game_diff_post_transition(path.to_string_lossy(), &game_edition)?;
+        //                 let path = driver.deploy()?;
 
-                        driver.dismantle()?;
+        //                 game.run_game_diff_post_transition(path.to_string_lossy(), &game_edition)?;
 
-                        sender.send((Status::RunPostTransitionCode, 1, 1))?;
-                    }
+        //                 driver.dismantle()?;
 
-                    Ok(())
-                })
-            })
-        }))
+        //                 sender.send((Status::RunPostTransitionCode, 1, 1))?;
+        //             }
+
+        //             Ok(())
+        //         })
+        //     })
+        // }))
     }
 }
 

@@ -8,7 +8,7 @@ pub mod components;
 pub mod games;
 pub mod utils;
 
-use ui::windows::main::MainApp;
+use ui::windows::loading::LoadingApp;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
     let app = RelmApp::new(APP_ID);
 
     // Show first run window
-    app.run::<MainApp>(());
+    app.run::<LoadingApp>(());
 
     Ok(())
 }
