@@ -17,7 +17,7 @@ use anime_game_core::archive;
 use crate::ui::components::game_card::CardInfo;
 
 use crate::games;
-use crate::games::integrations::standards::game::DiffInfo;
+use crate::games::integrations::standards::diff::DiffInfo;
 
 use super::{
     QueuedTask,

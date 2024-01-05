@@ -7,7 +7,7 @@ use anime_game_core::filesystem::DriverExt;
 
 pub mod standards;
 
-use standards::IntegrationStandard;
+use standards::prelude::*;
 
 pub struct Game {
     pub game_name: String,
@@ -124,7 +124,7 @@ impl Game {
         }
     }
 
-    pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<standards::game::Edition>> {
+    pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<GameEdition>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let editions = self.lua.globals()
@@ -132,7 +132,7 @@ impl Game {
                     .call::<_, LuaTable>(())?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|edition| standards::game::Edition::from_table(edition, self.script_standard))
+                    .flat_map(|edition| GameEdition::from_table(edition, self.script_standard))
                     .collect();
 
                 Ok(editions)
@@ -156,19 +156,19 @@ impl Game {
         }
     }
 
-    pub fn get_game_download(&self, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Download> {
+    pub fn get_game_download(&self, edition: impl AsRef<str>) -> anyhow::Result<Download> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let download = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_download")?
                     .call::<_, LuaTable>(edition.as_ref())?;
 
-                standards::game::Download::from_table(download, self.script_standard)
+                Download::from_table(download, self.script_standard)
             }
         }
     }
 
-    pub fn get_game_diff(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<standards::game::Diff>> {
+    pub fn get_game_diff(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<Diff>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
@@ -176,26 +176,26 @@ impl Game {
                     .call::<_, Option<LuaTable>>((path.as_ref(), edition.as_ref()))?;
 
                 match diff {
-                    Some(diff) => Ok(Some(standards::game::Diff::from_table(diff, self.script_standard)?)),
+                    Some(diff) => Ok(Some(Diff::from_table(diff, self.script_standard)?)),
                     None => Ok(None)
                 }
             }
         }
     }
 
-    pub fn get_launch_options(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::LaunchOptions> {
+    pub fn get_launch_options(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<GameLaunchOptions> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let options = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_launch_options")?
                     .call::<_, LuaTable>((path.as_ref(), edition.as_ref()))?;
 
-                standards::game::LaunchOptions::from_table(options, self.script_standard)
+                GameLaunchOptions::from_table(options, self.script_standard)
             }
         }
     }
 
-    pub fn get_addons_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::addons::AddonsGroup>> {
+    pub fn get_addons_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<AddonsGroup>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let dlcs = self.lua.globals()
@@ -203,7 +203,7 @@ impl Game {
                     .call::<_, LuaTable>(edition.as_ref())?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|group| standards::addons::AddonsGroup::from_table(group, self.script_standard))
+                    .flat_map(|group| AddonsGroup::from_table(group, self.script_standard))
                     .collect();
 
                 Ok(dlcs)
@@ -237,7 +237,7 @@ impl Game {
         }
     }
 
-    pub fn get_addon_download(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Download> {
+    pub fn get_addon_download(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Download> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let download = self.lua.globals()
@@ -248,12 +248,12 @@ impl Game {
                         edition.as_ref()
                     ))?;
 
-                standards::game::Download::from_table(download, self.script_standard)
+                Download::from_table(download, self.script_standard)
             }
         }
     }
 
-    pub fn get_addon_diff(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Diff> {
+    pub fn get_addon_diff(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Diff> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
@@ -265,7 +265,7 @@ impl Game {
                         edition.as_ref()
                     ))?;
 
-                standards::game::Diff::from_table(diff, self.script_standard)
+                Diff::from_table(diff, self.script_standard)
             }
         }
     }
