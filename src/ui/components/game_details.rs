@@ -25,7 +25,8 @@ pub enum GameDetailsComponentInput {
 
     EmitDownloadGame,
     EmitVerifyGame,
-    EmitLaunchGame
+    EmitLaunchGame,
+    EmitOpenDlcsManager
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +37,7 @@ pub enum GameDetailsComponentOutput {
     DownloadGame(CardInfo),
     VerifyGame(CardInfo),
     LaunchGame(CardInfo),
+    OpenDlcsManager(CardInfo),
 
     ShowToast {
         title: String,
@@ -93,29 +95,26 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
-    
+
                         set_label: "Played: 4,837 hours"
                     },
-    
+
                     gtk::Label {
                         set_halign: gtk::Align::Start,
-    
+
                         set_label: "Last played: yesterday"
                     },
 
                     gtk::Box {
                         set_valign: gtk::Align::Center,
-    
+
                         set_margin_top: 36,
                         set_spacing: 8,
-    
+
                         gtk::Button {
                             add_css_class: "pill",
                             add_css_class: "suggested-action",
-    
-                            #[watch]
-                            set_visible: model.installed,
-    
+
                             adw::ButtonContent {
                                 set_icon_name: "media-playback-start-symbolic",
                                 set_label: "Play"
@@ -123,13 +122,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                             connect_clicked => GameDetailsComponentInput::EmitLaunchGame
                         },
-    
+
                         gtk::Button {
                             add_css_class: "pill",
-    
-                            #[watch]
-                            set_visible: model.installed,
-    
+
                             adw::ButtonContent {
                                 set_icon_name: "drive-harddisk-ieee1394-symbolic",
                                 set_label: "Verify"
@@ -137,6 +133,24 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                             connect_clicked => GameDetailsComponentInput::EmitVerifyGame
                         }
+                    },
+
+                    gtk::Box {
+                        set_valign: gtk::Align::Center,
+
+                        set_margin_top: 16,
+                        set_spacing: 8,
+
+                        gtk::Button {
+                            add_css_class: "pill",
+
+                            adw::ButtonContent {
+                                set_icon_name: "folder-download-symbolic",
+                                set_label: "Manage DLCs"
+                            },
+
+                            connect_clicked => GameDetailsComponentInput::EmitOpenDlcsManager
+                        },
                     }
                 },
 
@@ -227,6 +241,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 sender.output(GameDetailsComponentOutput::LaunchGame(self.info.clone())).unwrap();
 
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
+            }
+
+            GameDetailsComponentInput::EmitOpenDlcsManager => {
+                sender.output(GameDetailsComponentOutput::OpenDlcsManager(self.info.clone())).unwrap();
             }
         }
     }

@@ -21,6 +21,7 @@ use crate::components::wine::*;
 use crate::components::dxvk::*;
 
 use crate::ui::windows::preferences::PreferencesApp;
+use crate::ui::windows::game_dlcs::GameDlcsApp;
 
 use crate::ui::components::game_card::{
     CardInfo,
@@ -49,6 +50,7 @@ pub mod launch_game;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
+static mut GAME_DLCS_APP: Option<AsyncController<GameDlcsApp>> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -83,6 +85,7 @@ pub enum MainAppMsg {
     HideDetails,
 
     OpenPreferences,
+    OpenDlcsManager(CardInfo),
 
     ShowTasksFlap,
     HideTasksFlap,
@@ -335,6 +338,9 @@ impl SimpleComponent for MainApp {
                     GameDetailsComponentOutput::LaunchGame(info)
                         => MainAppMsg::LaunchGame(info),
 
+                    GameDetailsComponentOutput::OpenDlcsManager(info)
+                        => MainAppMsg::OpenDlcsManager(info),
+
                     GameDetailsComponentOutput::ShowToast { title, message }
                         => MainAppMsg::ShowToast { title, message }
                 }),
@@ -511,6 +517,10 @@ impl SimpleComponent for MainApp {
             PREFERENCES_APP = Some(PreferencesApp::builder()
                 .launch(widgets.window.clone())
                 .detach());
+
+            GAME_DLCS_APP = Some(GameDlcsApp::builder()
+                .launch(widgets.window.clone())
+                .detach());
         }
 
         std::thread::spawn(move || {
@@ -596,6 +606,13 @@ impl SimpleComponent for MainApp {
 
             MainAppMsg::OpenPreferences => unsafe {
                 PREFERENCES_APP.as_ref()
+                    .unwrap_unchecked()
+                    .widget()
+                    .present();
+            }
+
+            MainAppMsg::OpenDlcsManager(info) => unsafe {
+                GAME_DLCS_APP.as_ref()
                     .unwrap_unchecked()
                     .widget()
                     .present();

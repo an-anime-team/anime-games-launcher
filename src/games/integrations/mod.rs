@@ -211,6 +211,38 @@ impl Game {
         }
     }
 
+    pub fn get_dlc_info(&self, dlcs_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::dlc::DlcGroup>> {
+        match self.script_standard {
+            IntegrationStandard::V1 => {
+                let dlcs = self.lua.globals()
+                    .get::<_, LuaFunction>("v1_dlc_get_info")?
+                    .call::<_, LuaTable>((dlcs_path.as_ref(), edition.as_ref()))?
+                    .sequence_values::<LuaTable>()
+                    .flatten()
+                    .flat_map(|group| standards::dlc::DlcGroup::from_table(group, self.script_standard))
+                    .collect();
+
+                Ok(dlcs)
+            }
+        }
+    }
+
+    pub fn get_dlc_download(&self, group_name: impl AsRef<str>, dlc_name: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Download> {
+        match self.script_standard {
+            IntegrationStandard::V1 => {
+                let download = self.lua.globals()
+                    .get::<_, LuaFunction>("v1_dlc_get_download")?
+                    .call::<_, LuaTable>((
+                        group_name.as_ref(),
+                        dlc_name.as_ref(),
+                        edition.as_ref()
+                    ))?;
+
+                standards::game::Download::from_table(download, self.script_standard)
+            }
+        }
+    }
+
     pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_transition")?)
@@ -236,6 +268,44 @@ impl Game {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .get::<_, LuaFunction>("v1_game_diff_post_transition")?
                 .call::<_, ()>((path.as_ref(), edition.as_ref()))?)
+        }
+    }
+
+    pub fn has_dlc_diff_transition(&self) -> anyhow::Result<bool> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_dlc_diff_transition")?)
+        }
+    }
+
+    pub fn run_dlc_diff_transition(&self, group_name: impl AsRef<str>, dlc_name: impl AsRef<str>, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_dlc_diff_transition")?
+                .call::<_, ()>((
+                    group_name.as_ref(),
+                    dlc_name.as_ref(),
+                    transition_path.as_ref(),
+                    edition.as_ref()
+                ))?)
+        }
+    }
+
+    pub fn has_dlc_diff_post_transition(&self) -> anyhow::Result<bool> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_dlc_diff_post_transition")?)
+        }
+    }
+
+    pub fn run_dlc_diff_post_transition(&self, group_name: impl AsRef<str>, dlc_name: impl AsRef<str>, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_dlc_diff_post_transition")?
+                .call::<_, ()>((
+                    group_name.as_ref(),
+                    dlc_name.as_ref(),
+                    path.as_ref(),
+                    edition.as_ref()
+                ))?)
         }
     }
 }
