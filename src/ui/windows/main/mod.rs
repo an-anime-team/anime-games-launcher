@@ -20,7 +20,11 @@ use crate::components::wine::*;
 use crate::components::dxvk::*;
 
 use crate::ui::windows::preferences::PreferencesApp;
-use crate::ui::windows::game_dlcs::GameDlcsApp;
+
+use crate::ui::windows::game_dlcs::{
+    GameDlcsApp,
+    GameDlcsAppMsg
+};
 
 use crate::ui::components::game_card::{
     CardInfo,
@@ -644,10 +648,44 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::OpenDlcsManager(info) => unsafe {
-                GAME_DLCS_APP.as_ref()
-                    .unwrap_unchecked()
-                    .widget()
-                    .present();
+                let controller = GAME_DLCS_APP.as_ref()
+                    .unwrap_unchecked();
+
+                match games::get(info.get_name()) {
+                    Ok(Some(game)) => {
+                        match game.get_dlc_list(info.get_edition()) {
+                            Ok(dlcs) => {
+                                controller.emit(GameDlcsAppMsg::SetGameInfo {
+                                    info,
+                                    dlcs
+                                });
+                
+                                controller.widget().present();
+                            }
+
+                            Err(err) => {
+                                sender.input(MainAppMsg::ShowToast {
+                                    title: format!("Unable to get {} DLC list", info.get_title()),
+                                    message: Some(err.to_string())
+                                });
+                            }
+                        }
+                    }
+
+                    Ok(None) => {
+                        sender.input(MainAppMsg::ShowToast {
+                            title: format!("Unable to find {} integration script", info.get_title()),
+                            message: None
+                        });
+                    }
+
+                    Err(err) => {
+                        sender.input(MainAppMsg::ShowToast {
+                            title: format!("Unable to find {} integration script", info.get_title()),
+                            message: Some(err.to_string())
+                        });
+                    }
+                }
             }
 
             MainAppMsg::ShowTasksFlap => {

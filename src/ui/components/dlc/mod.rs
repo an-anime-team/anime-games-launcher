@@ -14,8 +14,10 @@ use crate::games::integrations::standards::dlc::{
     DlcGroup
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct DlcGroupComponent {
+    pub dlc_widgets: Vec<AsyncController<DlcComponent>>,
+
     pub info: DlcGroup
 }
 
@@ -37,7 +39,7 @@ impl SimpleAsyncComponent for DlcGroupComponent {
 
     view! {
         #[root]
-        adw::PreferencesGroup {
+        group = adw::PreferencesGroup {
             set_title: &model.info.title
         }
     }
@@ -48,10 +50,24 @@ impl SimpleAsyncComponent for DlcGroupComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
+            dlc_widgets: init.dlcs
+                .iter()
+                .cloned()
+                .map(|dlc| {
+                    DlcComponent::builder()
+                        .launch(dlc)
+                        .detach()
+                })
+                .collect(),
+
             info: init
         };
 
         let widgets = view_output!();
+
+        for widget in &model.dlc_widgets {
+            widgets.group.add(widget.widget());
+        }
 
         AsyncComponentParts { model, widgets }
     }

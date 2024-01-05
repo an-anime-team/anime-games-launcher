@@ -10,7 +10,7 @@ use crate::games::integrations::standards::dlc::{
     DlcGroup
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct DlcComponent {
     pub info: Dlc
 }

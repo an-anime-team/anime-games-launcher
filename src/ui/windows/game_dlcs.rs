@@ -1,29 +1,29 @@
 use relm4::prelude::*;
-use relm4::component::*;
-use relm4::factory::*;
 
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::games::integrations::standards::dlc::{
-    Dlc,
-    DlcGroup
-};
+use crate::games::integrations::standards::dlc::DlcGroup;
 
-use crate::{
-    config,
-    STARTUP_CONFIG
-};
+use crate::ui::components::dlc::DlcGroupComponent;
+use crate::ui::components::game_card::CardInfo;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
+#[derive(Debug)]
 pub struct GameDlcsApp {
-    
+    pub dlc_groups_widgets: Vec<AsyncController<DlcGroupComponent>>,
+    pub dlc_groups_page: adw::PreferencesPage,
+
+    pub info: CardInfo
 }
 
 #[derive(Debug, Clone)]
 pub enum GameDlcsAppMsg {
-    
+    SetGameInfo {
+        info: CardInfo,
+        dlcs: Vec<DlcGroup>
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -47,46 +47,8 @@ impl SimpleAsyncComponent for GameDlcsApp {
                     add_css_class: "flat"
                 },
 
-                adw::PreferencesPage {
-                    add = &adw::PreferencesGroup {
-                        set_title: "Voiceovers",
-
-                        adw::ActionRow {
-                            set_title: "English"
-                        },
-
-                        adw::ActionRow {
-                            set_title: "Japanese"
-                        },
-
-                        adw::ActionRow {
-                            set_title: "Korean"
-                        },
-
-                        adw::ActionRow {
-                            set_title: "Chinese"
-                        }
-                    },
-
-                    add = &adw::PreferencesGroup {
-                        set_title: "Extras",
-
-                        adw::ActionRow {
-                            set_title: "FPS Unlocker"
-                        }
-                    },
-
-                    add = &adw::PreferencesGroup {
-                        set_title: "Patch",
-
-                        adw::ActionRow {
-                            set_title: "Jadeite",
-                            set_subtitle: "Required",
-
-                            set_activatable: false
-                        }
-                    }
-                }
+                #[local_ref]
+                dlc_groups_page -> adw::PreferencesPage,
             }
         }
     }
@@ -97,8 +59,13 @@ impl SimpleAsyncComponent for GameDlcsApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            // todo
+            dlc_groups_widgets: Vec::new(),
+            dlc_groups_page: adw::PreferencesPage::new(),
+
+            info: CardInfo::default()
         };
+
+        let dlc_groups_page = &model.dlc_groups_page;
 
         let widgets = view_output!();
 
@@ -113,7 +80,24 @@ impl SimpleAsyncComponent for GameDlcsApp {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            
+            GameDlcsAppMsg::SetGameInfo { info, dlcs } => {
+                self.info = info;
+
+                for group in &self.dlc_groups_widgets {
+                    self.dlc_groups_page.remove(group.widget());
+                }
+
+                self.dlc_groups_widgets.clear();
+
+                for group in dlcs {
+                    let group = DlcGroupComponent::builder()
+                        .launch(group)
+                        .detach();
+
+                    self.dlc_groups_page.add(group.widget());
+                    self.dlc_groups_widgets.push(group);
+                }
+            }
         }
     }
 }
