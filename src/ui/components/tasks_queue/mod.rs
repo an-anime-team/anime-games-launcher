@@ -6,7 +6,6 @@ use std::time::{Instant, Duration};
 
 use relm4::factory::FactoryVecDeque;
 use relm4::prelude::*;
-use relm4::component::*;
 
 use gtk::prelude::*;
 
@@ -238,7 +237,10 @@ impl SimpleAsyncComponent for TasksQueueComponent {
             current_task_progress_start: Instant::now(),
             current_task_progress_pulse: false,
 
-            queued_tasks_factory: FactoryVecDeque::new(flow_box, sender.input_sender()),
+            queued_tasks_factory: FactoryVecDeque::builder()
+                .launch(flow_box)
+                .detach(),
+
             queued_tasks: VecDeque::new(),
 
             progress_label: gtk::Label::new(None),

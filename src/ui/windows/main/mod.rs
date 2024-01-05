@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use relm4::prelude::*;
-use relm4::component::*;
 use relm4::factory::*;
 
 use gtk::prelude::*;
@@ -25,7 +24,8 @@ use crate::ui::windows::game_dlcs::GameDlcsApp;
 
 use crate::ui::components::game_card::{
     CardInfo,
-    CardComponentInput
+    CardComponentInput,
+    CardComponentOutput
 };
 
 use crate::ui::components::factory::game_card_main::CardFactory;
@@ -352,10 +352,42 @@ impl SimpleComponent for MainApp {
             queued_games_indexes: HashMap::new(),
             available_games_indexes: HashMap::new(),
 
-            running_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
-            installed_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
-            queued_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
-            available_games: FactoryVecDeque::new(gtk::FlowBox::new(), sender.input_sender()),
+            running_games: FactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
+                    match output {
+                        CardComponentOutput::CardClicked { info, installed }
+                            => MainAppMsg::OpenDetails { info, installed }
+                    }
+                }),
+
+            installed_games: FactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
+                    match output {
+                        CardComponentOutput::CardClicked { info, installed }
+                            => MainAppMsg::OpenDetails { info, installed }
+                    }
+                }),
+
+            queued_games: FactoryVecDeque::builder()
+                .launch_default()
+                .detach(),
+                // .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
+                //     match output {
+                //         CardComponentOutput::CardClicked { info, installed }
+                //             => MainAppMsg::OpenDetails { info, installed }
+                //     }
+                // }),
+
+            available_games: FactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
+                    match output {
+                        CardComponentOutput::CardClicked { info, installed }
+                            => MainAppMsg::OpenDetails { info, installed }
+                    }
+                }),
 
             tasks_queue: TasksQueueComponent::builder()
                 .launch(CardInfo::default())

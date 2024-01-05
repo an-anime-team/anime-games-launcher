@@ -18,18 +18,18 @@ opt-level = "s"
 glib-build-tools = "0.18.0"
 
 [dependencies.relm4]
-version = "0.6.2"
+version = "0.7.0-beta.2"
 features = ["macros", "libadwaita"]
 
 [dependencies.gtk]
 package = "gtk4"
-version = "0.6.6"
-features = ["v4_10"]
+version = "0.7.3"
+features = ["v4_12"]
 
 [dependencies.adw]
 package = "libadwaita"
-version = "0.4.4"
-features = ["v1_3"]
+version = "0.5.3"
+features = ["v1_4"]
 
 [dependencies.anime-game-core]
 # git = "https://github.com/an-anime-team/anime-game-core"

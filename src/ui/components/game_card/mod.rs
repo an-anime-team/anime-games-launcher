@@ -1,6 +1,4 @@
 use relm4::prelude::*;
-use relm4::component::*;
-
 use gtk::prelude::*;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

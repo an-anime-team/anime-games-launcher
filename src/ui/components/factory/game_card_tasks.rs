@@ -21,17 +21,12 @@ impl FactoryComponent for CardFactory {
     type Input = CardComponentInput;
     type Output = CardComponentOutput;
     type CommandOutput = ();
-    type ParentInput = TasksQueueComponentInput;
     type ParentWidget = gtk::FlowBox;
 
     view! {
         root = gtk::Box {
             self.component.widget(),
         }
-    }
-
-    fn forward_to_parent(_output: Self::Output) -> Option<TasksQueueComponentInput> {
-        None
     }
 
     #[inline]

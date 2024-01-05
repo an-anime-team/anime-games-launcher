@@ -21,19 +21,11 @@ impl FactoryComponent for CardFactory {
     type Input = CardComponentInput;
     type Output = CardComponentOutput;
     type CommandOutput = ();
-    type ParentInput = MainAppMsg;
     type ParentWidget = gtk::FlowBox;
 
     view! {
         root = gtk::Box {
             self.component.widget(),
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            CardComponentOutput::CardClicked { info, installed }
-                => Some(Self::ParentInput::OpenDetails { info, installed })
         }
     }
 
