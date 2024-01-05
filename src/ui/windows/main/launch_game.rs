@@ -18,11 +18,11 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     let settings = config::get().games.get_game_settings(info.get_name())?;
 
     // Get installation folder driver
-    let Some(driver) = settings.paths.get(info.get_edition()) else {
+    let Some(paths) = settings.paths.get(info.get_edition()) else {
         anyhow::bail!("Unable to find {} installation path", info.get_title());
     };
 
-    let driver = driver.to_dyn_trait();
+    let driver = paths.game.to_dyn_trait();
 
     // Deploy the game
     let path = driver.deploy()?;

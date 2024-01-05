@@ -78,7 +78,7 @@ impl Games {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameSettings {
-    pub paths: HashMap<String, Driver>
+    pub paths: HashMap<String, GameEditionPaths>
 }
 
 impl GameSettings {
@@ -86,13 +86,11 @@ impl GameSettings {
         let editions = game.get_game_editions_list()?;
 
         Ok(Self {
-            paths: editions.into_iter().map(|edition| {
-                (edition.name, Driver::PhysicalFsDriver {
-                    base_folder: LAUNCHER_FOLDER
-                        .join("games")
-                        .join(&game.game_title)
-                        .join(edition.title)
-                })
+            paths: editions.into_iter().filter_map(|edition| {
+                match GameEditionPaths::default_for_edition(game, &edition) {
+                    Ok(paths) => Some((edition.name, paths)),
+                    Err(_) => None
+                }
             }).collect()
         })
     }
@@ -107,7 +105,9 @@ impl From<&Json> for GameSettings {
                     let mut paths = HashMap::new();
 
                     for (name, path) in values.clone() {
-                        paths.insert(name, serde_json::from_value(path).unwrap());
+                        if let Ok(value) = serde_json::from_value::<GameEditionPaths>(path) {
+                            paths.insert(name, value);
+                        }
                     }
 
                     paths
@@ -116,5 +116,33 @@ impl From<&Json> for GameSettings {
                 None => HashMap::new()
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameEditionPaths {
+    pub game: Driver,
+    pub addons: Driver
+}
+
+impl GameEditionPaths {
+    pub fn default_for_edition(game: &integrations::Game, edition: &integrations::standards::game::Edition) -> anyhow::Result<Self> {
+        Ok(Self {
+            game: Driver::PhysicalFsDriver {
+                base_folder: LAUNCHER_FOLDER
+                    .join("games")
+                    .join(&game.game_title)
+                    .join(&edition.title)
+                    .join("Game")
+            },
+
+            addons: Driver::PhysicalFsDriver {
+                base_folder: LAUNCHER_FOLDER
+                    .join("games")
+                    .join(&game.game_title)
+                    .join(&edition.title)
+                    .join("Addons")
+            }
+        })
     }
 }

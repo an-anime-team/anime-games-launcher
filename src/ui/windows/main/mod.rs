@@ -445,8 +445,8 @@ impl SimpleComponent for MainApp {
                                 };
 
                                 let installed = match game_settings.paths.get(&edition.name) {
-                                    Some(driver) => {
-                                        let driver = driver.to_dyn_trait();
+                                    Some(paths) => {
+                                        let driver = paths.game.to_dyn_trait();
 
                                         match driver.deploy() {
                                             Ok(path) => {
@@ -715,7 +715,7 @@ impl SimpleComponent for MainApp {
                     }
                 };
 
-                let Some(driver) = settings.paths.get(info.get_edition()) else {
+                let Some(paths) = settings.paths.get(info.get_edition()) else {
                     sender.input(MainAppMsg::ShowToast {
                         title: format!("Unable to find {} installation path", info.get_title()),
                         message: None
@@ -726,7 +726,7 @@ impl SimpleComponent for MainApp {
 
                 match games::get(info.get_name()) {
                     Ok(Some(game)) => {
-                        let driver = Arc::new(driver.to_dyn_trait());
+                        let driver = Arc::new(paths.game.to_dyn_trait());
 
                         // FIXME handle error
                         let path = driver.deploy().unwrap();
