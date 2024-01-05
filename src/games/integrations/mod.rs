@@ -211,19 +211,29 @@ impl Game {
         }
     }
 
-    pub fn get_addons_info(&self, addons_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::addons::AddonsGroup>> {
+    pub fn is_addon_installed(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<bool> {
         match self.script_standard {
-            IntegrationStandard::V1 => {
-                let dlcs = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_addons_get_info")?
-                    .call::<_, LuaTable>((addons_path.as_ref(), edition.as_ref()))?
-                    .sequence_values::<LuaTable>()
-                    .flatten()
-                    .flat_map(|group| standards::addons::AddonsGroup::from_table(group, self.script_standard))
-                    .collect();
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_addons_is_installed")?
+                .call::<_, bool>((
+                    group_name.as_ref(),
+                    addon_name.as_ref(),
+                    addon_path.as_ref(),
+                    edition.as_ref()
+                ))?)
+        }
+    }
 
-                Ok(dlcs)
-            }
+    pub fn get_addon_version(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_addons_get_version")?
+                .call::<_, Option<String>>((
+                    group_name.as_ref(),
+                    addon_name.as_ref(),
+                    addon_path.as_ref(),
+                    edition.as_ref()
+                ))?)
         }
     }
 
@@ -239,6 +249,23 @@ impl Game {
                     ))?;
 
                 standards::game::Download::from_table(download, self.script_standard)
+            }
+        }
+    }
+
+    pub fn get_addon_diff(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Diff> {
+        match self.script_standard {
+            IntegrationStandard::V1 => {
+                let diff = self.lua.globals()
+                    .get::<_, LuaFunction>("v1_addons_get_diff")?
+                    .call::<_, LuaTable>((
+                        group_name.as_ref(),
+                        addon_name.as_ref(),
+                        addon_path.as_ref(),
+                        edition.as_ref()
+                    ))?;
+
+                standards::game::Diff::from_table(diff, self.script_standard)
             }
         }
     }

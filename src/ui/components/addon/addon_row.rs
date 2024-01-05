@@ -1,11 +1,15 @@
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use crate::games;
 use crate::games::integrations::standards::addons::Addon;
+
+use crate::ui::components::game_card::CardInfo;
 
 #[derive(Debug)]
 pub struct AddonRowComponent {
-    pub info: Addon
+    pub addon_info: Addon,
+    pub game_info: CardInfo
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,14 +24,20 @@ pub enum AddonRowComponentOutput {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for AddonRowComponent {
-    type Init = Addon;
+    type Init = (Addon, CardInfo);
     type Input = AddonRowComponentInput;
     type Output = AddonRowComponentOutput;
 
     view! {
         #[root]
         adw::ActionRow {
-            set_title: &model.info.title
+            set_title: &model.addon_info.title,
+
+            set_subtitle: if model.addon_info.required {
+                "Required"
+            } else {
+                ""
+            }
         }
     }
 
@@ -37,7 +47,8 @@ impl SimpleAsyncComponent for AddonRowComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            info: init
+            addon_info: init.0,
+            game_info: init.1
         };
 
         let widgets = view_output!();

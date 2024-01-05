@@ -2,6 +2,7 @@ use relm4::prelude::*;
 use adw::prelude::*;
 
 use crate::games::integrations::standards::addons::AddonsGroup;
+use crate::ui::components::game_card::CardInfo;
 
 use super::addon_row::AddonRowComponent;
 
@@ -9,7 +10,8 @@ use super::addon_row::AddonRowComponent;
 pub struct AddonsGroupComponent {
     pub addons_widgets: Vec<AsyncController<AddonRowComponent>>,
 
-    pub info: AddonsGroup
+    pub addons_group: AddonsGroup,
+    pub game_info: CardInfo
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,14 +26,14 @@ pub enum AddonsGroupComponentOutput {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for AddonsGroupComponent {
-    type Init = AddonsGroup;
+    type Init = (AddonsGroup, CardInfo);
     type Input = AddonsGroupComponentInput;
     type Output = AddonsGroupComponentOutput;
 
     view! {
         #[root]
         group = adw::PreferencesGroup {
-            set_title: &model.info.title
+            set_title: &model.addons_group.title
         }
     }
 
@@ -41,17 +43,18 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            addons_widgets: init.addons
+            addons_widgets: init.0.addons
                 .iter()
                 .cloned()
-                .map(|dlc| {
+                .map(|addon| {
                     AddonRowComponent::builder()
-                        .launch(dlc)
+                        .launch((addon, init.1.clone()))
                         .detach()
                 })
                 .collect(),
 
-            info: init
+            addons_group: init.0,
+            game_info: init.1
         };
 
         let widgets = view_output!();

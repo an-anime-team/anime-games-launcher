@@ -38,15 +38,17 @@
 | | `v1_visual_get_background_picture(edition)` | `string` | Get background picture URI for the game |
 | Game | | | Base game manipulations |
 | | `v1_game_get_editions_list()` | `Edition[]` | Get list of game editions |
-| | `v1_game_is_installed(path)` | `boolean` | Check if the game is installed |
-| | `v1_game_get_version(path, edition)` | `string \| null` | Get installed game version |
+| | `v1_game_is_installed(game_path)` | `boolean` | Check if the game is installed |
+| | `v1_game_get_version(game_path, edition)` | `string \| null` | Get installed game version |
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
-| | `v1_game_get_diff(path, edition)` | `Diff \| null` | Get game version diff |
-| | `v1_game_get_launch_options(path, edition)` | `LaunchOptions` | Get launch options for the game |
+| | `v1_game_get_diff(game_path, edition)` | `Diff \| null` | Get game version diff |
+| | `v1_game_get_launch_options(game_path, edition)` | `LaunchOptions` | Get launch options for the game |
 | Addons | | | Additional game content manipulations |
 | | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |
+| | `v1_addons_is_installed(group_name, addon_name, addon_path, edition)` | `boolean` | Check if addon is installed |
+| | `v1_addons_get_version(group_name, addon_name, addon_path, edition)` | `string \| null` | Get installed addon version |
 | | `v1_addons_get_download(group_name, addon_name, edition)` | `Download \| null` | Get full addon downloading info |
-| | `v1_addons_get_diff(group_name, addon_name, path, edition)` | `Diff \| null` | Get addon version diff |
+| | `v1_addons_get_diff(group_name, addon_name, addon_path, edition)` | `Diff \| null` | Get addon version diff |
 
 ### Optional APIs (can be ignored)
 

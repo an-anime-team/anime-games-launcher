@@ -100,6 +100,10 @@ fn main() -> anyhow::Result<()> {
         }
     ");
 
+    // let game = games::get("genshin-impact").unwrap().unwrap();
+
+    // dbg!(game.get_addon_version("voiceovers", "en-us", "/var/home/observer/.var/app/moe.launcher.an-anime-game-launcher/data/anime-game-launcher/Genshin Impact/GenshinImpact_Data/StreamingAssets/AudioAssets/English(US)", "global"));
+
     // Create the app
     let app = RelmApp::new(APP_ID);
 

@@ -647,16 +647,16 @@ impl SimpleComponent for MainApp {
                     .present();
             }
 
-            MainAppMsg::OpenAddonsManager(info) => unsafe {
+            MainAppMsg::OpenAddonsManager(game_info) => unsafe {
                 let controller = GAME_ADDONS_MANAGER_APP.as_ref()
                     .unwrap_unchecked();
 
-                match games::get(info.get_name()) {
+                match games::get(game_info.get_name()) {
                     Ok(Some(game)) => {
-                        match game.get_addons_list(info.get_edition()) {
+                        match game.get_addons_list(game_info.get_edition()) {
                             Ok(addons) => {
                                 controller.emit(GameAddonsManagerAppMsg::SetGameInfo {
-                                    info,
+                                    game_info,
                                     addons
                                 });
                 
@@ -665,7 +665,7 @@ impl SimpleComponent for MainApp {
 
                             Err(err) => {
                                 sender.input(MainAppMsg::ShowToast {
-                                    title: format!("Unable to get {} DLC list", info.get_title()),
+                                    title: format!("Unable to get {} DLC list", game_info.get_title()),
                                     message: Some(err.to_string())
                                 });
                             }
@@ -674,14 +674,14 @@ impl SimpleComponent for MainApp {
 
                     Ok(None) => {
                         sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to find {} integration script", info.get_title()),
+                            title: format!("Unable to find {} integration script", game_info.get_title()),
                             message: None
                         });
                     }
 
                     Err(err) => {
                         sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to find {} integration script", info.get_title()),
+                            title: format!("Unable to find {} integration script", game_info.get_title()),
                             message: Some(err.to_string())
                         });
                     }

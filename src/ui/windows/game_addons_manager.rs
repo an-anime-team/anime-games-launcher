@@ -15,13 +15,13 @@ pub struct GameAddonsManagerApp {
     pub addons_groups_widgets: Vec<AsyncController<AddonsGroupComponent>>,
     pub addons_groups_page: adw::PreferencesPage,
 
-    pub info: CardInfo
+    pub game_info: CardInfo
 }
 
 #[derive(Debug, Clone)]
 pub enum GameAddonsManagerAppMsg {
     SetGameInfo {
-        info: CardInfo,
+        game_info: CardInfo,
         addons: Vec<AddonsGroup>
     }
 }
@@ -62,7 +62,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
             addons_groups_widgets: Vec::new(),
             addons_groups_page: adw::PreferencesPage::new(),
 
-            info: CardInfo::default()
+            game_info: CardInfo::default()
         };
 
         let addons_groups_page = &model.addons_groups_page;
@@ -80,8 +80,8 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameAddonsManagerAppMsg::SetGameInfo { info, addons } => {
-                self.info = info;
+            GameAddonsManagerAppMsg::SetGameInfo { game_info, addons } => {
+                self.game_info = game_info.clone();
 
                 for group in &self.addons_groups_widgets {
                     self.addons_groups_page.remove(group.widget());
@@ -91,7 +91,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
                 for group in addons {
                     let group = AddonsGroupComponent::builder()
-                        .launch(group)
+                        .launch((group, game_info.clone()))
                         .detach();
 
                     self.addons_groups_page.add(group.widget());
