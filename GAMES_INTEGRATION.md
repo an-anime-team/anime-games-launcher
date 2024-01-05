@@ -43,11 +43,11 @@
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
 | | `v1_game_get_diff(path, edition)` | `Diff \| null` | Get game version diff |
 | | `v1_game_get_launch_options(path, edition)` | `LaunchOptions` | Get launch options for the game |
-| DLC | | | Additional game content manipulations |
-| | `v1_dlc_get_list(edition)` | `DlcGroup[]` | Get list of available DLCs |
-| | `v1_dlc_get_info(path, edition)` | `DlcGroup[]` | Get list of DLCs installed in `path` folder |
-| | `v1_dlc_get_download(group_name, dlc_name, edition)` | `Download \| null` | Get full DLC downloading info |
-| | `v1_dlc_get_diff(group_name, dlc_name, path, edition)` | `Diff \| null` | Get DLC version diff |
+| Addons | | | Additional game content manipulations |
+| | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |
+| | `v1_addons_get_info(path, edition)` | `AddonsGroup[]` | Get list of addons installed in `path` folder |
+| | `v1_addons_get_download(group_name, addon_name, edition)` | `Download \| null` | Get full addon downloading info |
+| | `v1_addons_get_diff(group_name, addon_name, path, edition)` | `Diff \| null` | Get addon version diff |
 
 ### Optional APIs (can be ignored)
 
@@ -56,9 +56,9 @@
 | Game | | | Base game manipulations |
 | | `v1_game_diff_transition(path, edition)` | | Process diff files before finishing transition |
 | | `v1_game_diff_post_transition(path, edition)` | | Process diff files after finishing transition |
-| DLC | | | Additional game content manipulations |
-| | `v1_dlc_diff_transition(dlc_group, dlc_name, path, edition)` | | Process diff files before finishing transition |
-| | `v1_dlc_diff_post_transition(dlc_group, dlc_name, path, edition)` | | Process diff files after finishing transition |
+| Addons | | | Additional game content manipulations |
+| | `v1_addons_diff_transition(group_name, addon_name, path, edition)` | | Process diff files before finishing transition |
+| | `v1_addons_diff_post_transition(group_name, addon_name, path, edition)` | | Process diff files after finishing transition |
 
 ### Types
 
@@ -167,21 +167,21 @@ type LaunchOptions = {
 };
 ```
 
-#### DlcGroup
+#### AddonsGroup
 
 ```ts
-type DlcGroup = {
+type AddonsGroup = {
 	name: string,
 	title: string,
-	dlcs: Dlc[]
+	addons: Addon[]
 };
 ```
 
-#### Dlc
+#### Addon
 
 ```ts
-type Dlc = {
-	type: DlcType,
+type Addon = {
+	type: AddonType,
 	name: string,
 	title: string,
 	version: string,
@@ -189,10 +189,10 @@ type Dlc = {
 };
 ```
 
-#### DlcType
+#### AddonType
 
 ```ts
-type DlcType = 'module' | 'component';
+type AddonType = 'module' | 'component';
 ```
 
 | Value | Description |
@@ -200,4 +200,4 @@ type DlcType = 'module' | 'component';
 | `module` | Modules are merged into the game folder when launching the game |
 | `component` | Components are installed to separate folders and are not merged to the game folder |
 
-All the DLCs are downloaded to separate folders. When launching the game, however, launcher can process them differently: for example, you want to put voice packages inside the game folder - then voice packages are "modules". Launcher will create new merged folder with "base game" and "modules" together (modules can overwrite base game files). "Components", however, intended to be used outside the game folder. You can access them using integration API.
+All the addons are downloaded to separate folders. When launching the game, however, launcher can process them differently: for example, you want to put voice packages inside the game folder - then voice packages are "modules". Launcher will create new merged folder with "base game" and "modules" together (modules can overwrite base game files). "Components", however, intended to be used outside the game folder. You can access them using integration API.

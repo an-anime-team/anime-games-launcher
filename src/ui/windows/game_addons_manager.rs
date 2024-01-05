@@ -3,39 +3,39 @@ use relm4::prelude::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::games::integrations::standards::dlc::DlcGroup;
+use crate::games::integrations::standards::addons::AddonsGroup;
 
-use crate::ui::components::dlc::DlcGroupComponent;
+use crate::ui::components::addon::addon_group::AddonsGroupComponent;
 use crate::ui::components::game_card::CardInfo;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
 #[derive(Debug)]
-pub struct GameDlcsApp {
-    pub dlc_groups_widgets: Vec<AsyncController<DlcGroupComponent>>,
+pub struct GameAddonsManagerApp {
+    pub dlc_groups_widgets: Vec<AsyncController<AddonsGroupComponent>>,
     pub dlc_groups_page: adw::PreferencesPage,
 
     pub info: CardInfo
 }
 
 #[derive(Debug, Clone)]
-pub enum GameDlcsAppMsg {
+pub enum GameAddonsManagerAppMsg {
     SetGameInfo {
         info: CardInfo,
-        dlcs: Vec<DlcGroup>
+        dlcs: Vec<AddonsGroup>
     }
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for GameDlcsApp {
+impl SimpleAsyncComponent for GameAddonsManagerApp {
     type Init = adw::ApplicationWindow;
-    type Input = GameDlcsAppMsg;
+    type Input = GameAddonsManagerAppMsg;
     type Output = ();
 
     view! {
         window = adw::ApplicationWindow {
             set_default_size: (700, 560),
-            set_title: Some("Game DLCs"),
+            set_title: Some("Game addons"),
 
             set_hide_on_close: true,
             set_modal: true,
@@ -80,7 +80,7 @@ impl SimpleAsyncComponent for GameDlcsApp {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameDlcsAppMsg::SetGameInfo { info, dlcs } => {
+            GameAddonsManagerAppMsg::SetGameInfo { info, dlcs } => {
                 self.info = info;
 
                 for group in &self.dlc_groups_widgets {
@@ -90,7 +90,7 @@ impl SimpleAsyncComponent for GameDlcsApp {
                 self.dlc_groups_widgets.clear();
 
                 for group in dlcs {
-                    let group = DlcGroupComponent::builder()
+                    let group = AddonsGroupComponent::builder()
                         .launch(group)
                         .detach();
 

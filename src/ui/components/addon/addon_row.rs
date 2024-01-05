@@ -5,31 +5,31 @@ use relm4::factory::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::games::integrations::standards::dlc::{
-    Dlc,
-    DlcGroup
+use crate::games::integrations::standards::addons::{
+    Addon,
+    AddonsGroup
 };
 
 #[derive(Debug)]
-pub struct DlcComponent {
-    pub info: Dlc
+pub struct AddonRowComponent {
+    pub info: Addon
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DlcComponentInput {
+pub enum AddonRowComponentInput {
 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DlcComponentOutput {
+pub enum AddonRowComponentOutput {
 
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for DlcComponent {
-    type Init = Dlc;
-    type Input = DlcComponentInput;
-    type Output = DlcComponentOutput;
+impl SimpleAsyncComponent for AddonRowComponent {
+    type Init = Addon;
+    type Input = AddonRowComponentInput;
+    type Output = AddonRowComponentOutput;
 
     view! {
         #[root]

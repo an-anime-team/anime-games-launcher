@@ -5,37 +5,35 @@ use relm4::factory::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-mod dlc;
-
-pub use dlc::*;
-
-use crate::games::integrations::standards::dlc::{
-    Dlc,
-    DlcGroup
+use crate::games::integrations::standards::addons::{
+    Addon,
+    AddonsGroup
 };
 
+use super::addon_row::AddonRowComponent;
+
 #[derive(Debug)]
-pub struct DlcGroupComponent {
-    pub dlc_widgets: Vec<AsyncController<DlcComponent>>,
+pub struct AddonsGroupComponent {
+    pub addons_widgets: Vec<AsyncController<AddonRowComponent>>,
 
-    pub info: DlcGroup
+    pub info: AddonsGroup
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DlcGroupComponentInput {
+pub enum AddonsGroupComponentInput {
 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DlcGroupComponentOutput {
+pub enum AddonsGroupComponentOutput {
 
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for DlcGroupComponent {
-    type Init = DlcGroup;
-    type Input = DlcGroupComponentInput;
-    type Output = DlcGroupComponentOutput;
+impl SimpleAsyncComponent for AddonsGroupComponent {
+    type Init = AddonsGroup;
+    type Input = AddonsGroupComponentInput;
+    type Output = AddonsGroupComponentOutput;
 
     view! {
         #[root]
@@ -50,11 +48,11 @@ impl SimpleAsyncComponent for DlcGroupComponent {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            dlc_widgets: init.dlcs
+            addons_widgets: init.addons
                 .iter()
                 .cloned()
                 .map(|dlc| {
-                    DlcComponent::builder()
+                    AddonRowComponent::builder()
                         .launch(dlc)
                         .detach()
                 })
@@ -65,7 +63,7 @@ impl SimpleAsyncComponent for DlcGroupComponent {
 
         let widgets = view_output!();
 
-        for widget in &model.dlc_widgets {
+        for widget in &model.addons_widgets {
             widgets.group.add(widget.widget());
         }
 

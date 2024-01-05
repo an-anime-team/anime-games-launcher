@@ -26,7 +26,7 @@ pub enum GameDetailsComponentInput {
     EmitDownloadGame,
     EmitVerifyGame,
     EmitLaunchGame,
-    EmitOpenDlcsManager
+    EmitOpenAddonsManager
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,7 +37,7 @@ pub enum GameDetailsComponentOutput {
     DownloadGame(CardInfo),
     VerifyGame(CardInfo),
     LaunchGame(CardInfo),
-    OpenDlcsManager(CardInfo),
+    OpenAddonsManager(CardInfo),
 
     ShowToast {
         title: String,
@@ -146,10 +146,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                             adw::ButtonContent {
                                 set_icon_name: "folder-download-symbolic",
-                                set_label: "Manage DLCs"
+                                set_label: "Manage addons"
                             },
 
-                            connect_clicked => GameDetailsComponentInput::EmitOpenDlcsManager
+                            connect_clicked => GameDetailsComponentInput::EmitOpenAddonsManager
                         },
                     }
                 },
@@ -243,8 +243,8 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
             }
 
-            GameDetailsComponentInput::EmitOpenDlcsManager => {
-                sender.output(GameDetailsComponentOutput::OpenDlcsManager(self.info.clone())).unwrap();
+            GameDetailsComponentInput::EmitOpenAddonsManager => {
+                sender.output(GameDetailsComponentOutput::OpenAddonsManager(self.info.clone())).unwrap();
             }
         }
     }

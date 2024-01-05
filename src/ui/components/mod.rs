@@ -5,4 +5,4 @@ pub mod game_details;
 
 pub mod tasks_queue;
 
-pub mod dlc;
+pub mod addon;

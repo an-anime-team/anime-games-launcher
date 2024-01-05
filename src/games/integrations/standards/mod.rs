@@ -1,5 +1,5 @@
 pub mod game;
-pub mod dlc;
+pub mod addons;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegrationStandard {

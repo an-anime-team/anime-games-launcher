@@ -195,15 +195,15 @@ impl Game {
         }
     }
 
-    pub fn get_dlc_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::dlc::DlcGroup>> {
+    pub fn get_addons_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::addons::AddonsGroup>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let dlcs = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_dlc_get_list")?
+                    .get::<_, LuaFunction>("v1_addons_get_list")?
                     .call::<_, LuaTable>(edition.as_ref())?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|group| standards::dlc::DlcGroup::from_table(group, self.script_standard))
+                    .flat_map(|group| standards::addons::AddonsGroup::from_table(group, self.script_standard))
                     .collect();
 
                 Ok(dlcs)
@@ -211,15 +211,15 @@ impl Game {
         }
     }
 
-    pub fn get_dlc_info(&self, dlcs_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::dlc::DlcGroup>> {
+    pub fn get_addons_info(&self, addons_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<standards::addons::AddonsGroup>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let dlcs = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_dlc_get_info")?
-                    .call::<_, LuaTable>((dlcs_path.as_ref(), edition.as_ref()))?
+                    .get::<_, LuaFunction>("v1_addons_get_info")?
+                    .call::<_, LuaTable>((addons_path.as_ref(), edition.as_ref()))?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|group| standards::dlc::DlcGroup::from_table(group, self.script_standard))
+                    .flat_map(|group| standards::addons::AddonsGroup::from_table(group, self.script_standard))
                     .collect();
 
                 Ok(dlcs)
@@ -227,14 +227,14 @@ impl Game {
         }
     }
 
-    pub fn get_dlc_download(&self, group_name: impl AsRef<str>, dlc_name: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Download> {
+    pub fn get_addon_download(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<standards::game::Download> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let download = self.lua.globals()
-                    .get::<_, LuaFunction>("v1_dlc_get_download")?
+                    .get::<_, LuaFunction>("v1_addons_get_download")?
                     .call::<_, LuaTable>((
                         group_name.as_ref(),
-                        dlc_name.as_ref(),
+                        addon_name.as_ref(),
                         edition.as_ref()
                     ))?;
 

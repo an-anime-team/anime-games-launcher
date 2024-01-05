@@ -21,9 +21,9 @@ use crate::components::dxvk::*;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
-use crate::ui::windows::game_dlcs::{
-    GameDlcsApp,
-    GameDlcsAppMsg
+use crate::ui::windows::game_addons_manager::{
+    GameAddonsManagerApp,
+    GameAddonsManagerAppMsg
 };
 
 use crate::ui::components::game_card::{
@@ -54,7 +54,7 @@ pub mod launch_game;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
-static mut GAME_DLCS_APP: Option<AsyncController<GameDlcsApp>> = None;
+static mut GAME_DLCS_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -89,7 +89,7 @@ pub enum MainAppMsg {
     HideDetails,
 
     OpenPreferences,
-    OpenDlcsManager(CardInfo),
+    OpenAddonsManager(CardInfo),
 
     ShowTasksFlap,
     HideTasksFlap,
@@ -342,8 +342,8 @@ impl SimpleComponent for MainApp {
                     GameDetailsComponentOutput::LaunchGame(info)
                         => MainAppMsg::LaunchGame(info),
 
-                    GameDetailsComponentOutput::OpenDlcsManager(info)
-                        => MainAppMsg::OpenDlcsManager(info),
+                    GameDetailsComponentOutput::OpenAddonsManager(info)
+                        => MainAppMsg::OpenAddonsManager(info),
 
                     GameDetailsComponentOutput::ShowToast { title, message }
                         => MainAppMsg::ShowToast { title, message }
@@ -554,7 +554,7 @@ impl SimpleComponent for MainApp {
                 .launch(widgets.window.clone())
                 .detach());
 
-            GAME_DLCS_APP = Some(GameDlcsApp::builder()
+            GAME_DLCS_APP = Some(GameAddonsManagerApp::builder()
                 .launch(widgets.window.clone())
                 .detach());
         }
@@ -647,15 +647,15 @@ impl SimpleComponent for MainApp {
                     .present();
             }
 
-            MainAppMsg::OpenDlcsManager(info) => unsafe {
+            MainAppMsg::OpenAddonsManager(info) => unsafe {
                 let controller = GAME_DLCS_APP.as_ref()
                     .unwrap_unchecked();
 
                 match games::get(info.get_name()) {
                     Ok(Some(game)) => {
-                        match game.get_dlc_list(info.get_edition()) {
+                        match game.get_addons_list(info.get_edition()) {
                             Ok(dlcs) => {
-                                controller.emit(GameDlcsAppMsg::SetGameInfo {
+                                controller.emit(GameAddonsManagerAppMsg::SetGameInfo {
                                     info,
                                     dlcs
                                 });
