@@ -54,7 +54,7 @@ pub mod launch_game;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
-static mut GAME_DLCS_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
+static mut GAME_ADDONS_MANAGER_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -554,7 +554,7 @@ impl SimpleComponent for MainApp {
                 .launch(widgets.window.clone())
                 .detach());
 
-            GAME_DLCS_APP = Some(GameAddonsManagerApp::builder()
+            GAME_ADDONS_MANAGER_APP = Some(GameAddonsManagerApp::builder()
                 .launch(widgets.window.clone())
                 .detach());
         }
@@ -648,16 +648,16 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::OpenAddonsManager(info) => unsafe {
-                let controller = GAME_DLCS_APP.as_ref()
+                let controller = GAME_ADDONS_MANAGER_APP.as_ref()
                     .unwrap_unchecked();
 
                 match games::get(info.get_name()) {
                     Ok(Some(game)) => {
                         match game.get_addons_list(info.get_edition()) {
-                            Ok(dlcs) => {
+                            Ok(addons) => {
                                 controller.emit(GameAddonsManagerAppMsg::SetGameInfo {
                                     info,
-                                    dlcs
+                                    addons
                                 });
                 
                                 controller.widget().present();

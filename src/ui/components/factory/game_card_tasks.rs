@@ -1,7 +1,4 @@
 use relm4::prelude::*;
-use relm4::component::*;
-
-use crate::ui::components::tasks_queue::TasksQueueComponentInput;
 
 use crate::ui::components::game_card::{
     CardInfo,

@@ -12,8 +12,8 @@ static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
 #[derive(Debug)]
 pub struct GameAddonsManagerApp {
-    pub dlc_groups_widgets: Vec<AsyncController<AddonsGroupComponent>>,
-    pub dlc_groups_page: adw::PreferencesPage,
+    pub addons_groups_widgets: Vec<AsyncController<AddonsGroupComponent>>,
+    pub addons_groups_page: adw::PreferencesPage,
 
     pub info: CardInfo
 }
@@ -22,7 +22,7 @@ pub struct GameAddonsManagerApp {
 pub enum GameAddonsManagerAppMsg {
     SetGameInfo {
         info: CardInfo,
-        dlcs: Vec<AddonsGroup>
+        addons: Vec<AddonsGroup>
     }
 }
 
@@ -48,7 +48,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                 },
 
                 #[local_ref]
-                dlc_groups_page -> adw::PreferencesPage,
+                addons_groups_page -> adw::PreferencesPage,
             }
         }
     }
@@ -59,13 +59,13 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            dlc_groups_widgets: Vec::new(),
-            dlc_groups_page: adw::PreferencesPage::new(),
+            addons_groups_widgets: Vec::new(),
+            addons_groups_page: adw::PreferencesPage::new(),
 
             info: CardInfo::default()
         };
 
-        let dlc_groups_page = &model.dlc_groups_page;
+        let addons_groups_page = &model.addons_groups_page;
 
         let widgets = view_output!();
 
@@ -80,22 +80,22 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameAddonsManagerAppMsg::SetGameInfo { info, dlcs } => {
+            GameAddonsManagerAppMsg::SetGameInfo { info, addons } => {
                 self.info = info;
 
-                for group in &self.dlc_groups_widgets {
-                    self.dlc_groups_page.remove(group.widget());
+                for group in &self.addons_groups_widgets {
+                    self.addons_groups_page.remove(group.widget());
                 }
 
-                self.dlc_groups_widgets.clear();
+                self.addons_groups_widgets.clear();
 
-                for group in dlcs {
+                for group in addons {
                     let group = AddonsGroupComponent::builder()
                         .launch(group)
                         .detach();
 
-                    self.dlc_groups_page.add(group.widget());
-                    self.dlc_groups_widgets.push(group);
+                    self.addons_groups_page.add(group.widget());
+                    self.addons_groups_widgets.push(group);
                 }
             }
         }

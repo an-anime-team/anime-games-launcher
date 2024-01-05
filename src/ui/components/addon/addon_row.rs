@@ -1,14 +1,7 @@
 use relm4::prelude::*;
-use relm4::component::*;
-use relm4::factory::*;
-
-use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::games::integrations::standards::addons::{
-    Addon,
-    AddonsGroup
-};
+use crate::games::integrations::standards::addons::Addon;
 
 #[derive(Debug)]
 pub struct AddonRowComponent {

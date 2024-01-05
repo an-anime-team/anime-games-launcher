@@ -45,7 +45,6 @@
 | | `v1_game_get_launch_options(path, edition)` | `LaunchOptions` | Get launch options for the game |
 | Addons | | | Additional game content manipulations |
 | | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |
-| | `v1_addons_get_info(path, edition)` | `AddonsGroup[]` | Get list of addons installed in `path` folder |
 | | `v1_addons_get_download(group_name, addon_name, edition)` | `Download \| null` | Get full addon downloading info |
 | | `v1_addons_get_diff(group_name, addon_name, path, edition)` | `Diff \| null` | Get addon version diff |
 
