@@ -48,7 +48,7 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
                 .cloned()
                 .map(|addon| {
                     AddonRowComponent::builder()
-                        .launch((addon, init.1.clone()))
+                        .launch((init.0.clone(), addon, init.1.clone()))
                         .detach()
                 })
                 .collect(),

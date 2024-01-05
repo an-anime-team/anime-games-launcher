@@ -78,6 +78,7 @@ impl Games {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameSettings {
+    pub addons: HashMap<String, Vec<GameEditionAddon>>,
     pub paths: HashMap<String, GameEditionPaths>
 }
 
@@ -86,9 +87,11 @@ impl GameSettings {
         let editions = game.get_game_editions_list()?;
 
         Ok(Self {
-            paths: editions.into_iter().filter_map(|edition| {
-                match GameEditionPaths::default_for_edition(game, &edition) {
-                    Ok(paths) => Some((edition.name, paths)),
+            addons: HashMap::new(),
+
+            paths: editions.iter().filter_map(|edition| {
+                match GameEditionPaths::default_for_edition(game, edition) {
+                    Ok(paths) => Some((edition.name.clone(), paths)),
                     Err(_) => None
                 }
             }).collect()
@@ -100,13 +103,29 @@ impl From<&Json> for GameSettings {
     #[inline]
     fn from(value: &Json) -> Self {
         Self {
+            addons: match value.get("addons").and_then(Json::as_object) {
+                Some(values) => {
+                    let mut addons = HashMap::new();
+
+                    for (edition, names) in values.clone() {
+                        if let Some(names) = names.as_array() {
+                            addons.insert(edition, names.iter().map(GameEditionAddon::from).collect());
+                        }
+                    }
+
+                    addons
+                }
+
+                None => HashMap::new()
+            },
+
             paths: match value.get("paths").and_then(Json::as_object) {
                 Some(values) => {
                     let mut paths = HashMap::new();
 
-                    for (name, path) in values.clone() {
+                    for (edition, path) in values.clone() {
                         if let Ok(value) = serde_json::from_value::<GameEditionPaths>(path) {
-                            paths.insert(name, value);
+                            paths.insert(edition, value);
                         }
                     }
 
@@ -115,6 +134,31 @@ impl From<&Json> for GameSettings {
 
                 None => HashMap::new()
             }
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameEditionAddon {
+    pub group: String,
+    pub name: String
+}
+
+impl From<&Json> for GameEditionAddon {
+    #[inline]
+    fn from(value: &Json) -> Self {
+        let default = Self::default();
+
+        Self {
+            group: value.get("group")
+                .and_then(Json::as_str)
+                .map(String::from)
+                .unwrap_or(default.group),
+
+            name: value.get("name")
+                .and_then(Json::as_str)
+                .map(String::from)
+                .unwrap_or(default.name)
         }
     }
 }
