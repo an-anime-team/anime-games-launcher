@@ -1,7 +1,10 @@
 use relm4::prelude::*;
-use relm4::component::*;
-
 use gtk::prelude::*;
+
+use crate::games::integrations::standards::game::{
+    Status,
+    StatusSeverity
+};
 
 use crate::ui::components::game_card::{
     CardInfo,
@@ -14,13 +17,17 @@ pub struct GameDetailsComponent {
     pub game_card: AsyncController<CardComponent>,
 
     pub info: CardInfo,
-    pub installed: bool
+
+    pub installed: bool,
+    pub status: Option<Status>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentInput {
     SetInfo(CardInfo),
     SetInstalled(bool),
+    SetStatus(Option<Status>),
+
     EditCard(CardComponentInput),
 
     EmitDownloadGame,
@@ -112,12 +119,30 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         set_spacing: 8,
 
                         gtk::Button {
-                            add_css_class: "pill",
-                            add_css_class: "suggested-action",
-
                             adw::ButtonContent {
                                 set_icon_name: "media-playback-start-symbolic",
                                 set_label: "Play"
+                            },
+
+                            #[watch]
+                            set_css_classes: match &model.status {
+                                Some(Status { severity: StatusSeverity::Critical, .. }) => &["pill", "destructive-action"],
+                                Some(Status { severity: StatusSeverity::Warning, .. })  => &["pill", "warning"],
+                                Some(Status { severity: StatusSeverity::None, .. })     => &["pill", "suggested-action"],
+
+                                None => &["pill", "suggested-action"]
+                            },
+
+                            #[watch]
+                            set_tooltip: match &model.status {
+                                Some(Status { reason: Some(reason), .. }) => reason,
+                                _ => ""
+                            },
+
+                            #[watch]
+                            set_sensitive: match &model.status {
+                                Some(Status { allow_launch, .. }) => *allow_launch,
+                                _ => true
                             },
 
                             connect_clicked => GameDetailsComponentInput::EmitLaunchGame
@@ -192,7 +217,9 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 .detach(),
 
             info: init,
-            installed: false
+
+            installed: false,
+            status: None
         };
 
         model.game_card.emit(CardComponentInput::SetClickable(false));
@@ -216,6 +243,8 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                 self.game_card.emit(CardComponentInput::SetInstalled(installed));
             }
+
+            GameDetailsComponentInput::SetStatus(status) => self.status = status,
 
             GameDetailsComponentInput::EditCard(message) => self.game_card.emit(message),
 

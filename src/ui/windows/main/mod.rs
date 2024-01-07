@@ -503,8 +503,40 @@ impl SimpleComponent for MainApp {
             MainAppMsg::OpenDetails { info, installed } => {
                 self.game_details_info = info.clone();
 
-                self.game_details.emit(GameDetailsComponentInput::SetInfo(info));
+                self.game_details.emit(GameDetailsComponentInput::SetInfo(info.clone()));
                 self.game_details.emit(GameDetailsComponentInput::SetInstalled(installed));
+
+                if !installed {
+                    self.game_details.emit(GameDetailsComponentInput::SetStatus(None));
+                }
+
+                else {
+                    let config = config::get();
+
+                    let settings = config.games.get_game_settings(info.get_name()).unwrap();
+
+                    let paths = settings
+                        .paths
+                        .get(info.get_edition())
+                        .unwrap();
+
+                    let game = unsafe {
+                        games::get_unsafe(info.get_name())
+                    };
+
+                    match game.get_game_status(paths.game.to_string_lossy(), info.get_edition()) {
+                        Ok(status) => {
+                            self.game_details.emit(GameDetailsComponentInput::SetStatus(status));
+                        }
+
+                        Err(err) => {
+                            sender.input(MainAppMsg::ShowToast {
+                                title: format!("Unable to get {} status", info.get_title()),
+                                message: Some(err.to_string())
+                            });
+                        }
+                    }
+                }
 
                 self.leaflet.navigate(adw::NavigationDirection::Forward);
             }
