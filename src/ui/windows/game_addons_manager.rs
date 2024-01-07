@@ -12,7 +12,8 @@ use crate::games;
 
 use crate::games::integrations::standards::addons::{
     Addon,
-    AddonsGroup
+    AddonsGroup,
+    AddonType
 };
 
 use crate::ui::components::addon::addon_group::{
@@ -140,9 +141,13 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
                 for group in addons {
                     for addon in &group.addons {
-                        let addon_path = paths.addons
-                            .join(&group.name)
-                            .join(&addon.name);
+                        let addon_path = if addon.r#type == AddonType::Module {
+                            paths.game.clone()
+                        } else {
+                            paths.addons
+                                .join(&group.name)
+                                .join(&addon.name)
+                        };
 
                         // FIXME: handle errors
                         if let Ok(true) = game.is_addon_installed(&group.name, &addon.name, addon_path.to_string_lossy(), game_info.get_edition()) {
