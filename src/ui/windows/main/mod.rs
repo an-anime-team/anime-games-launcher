@@ -19,6 +19,11 @@ use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
+use crate::games::integrations::standards::addons::{
+    Addon,
+    AddonsGroup
+};
+
 use crate::ui::windows::game_addons_manager::{
     GameAddonsManagerApp,
     GameAddonsManagerAppMsg
@@ -106,12 +111,14 @@ pub enum MainAppMsg {
 
     AddDownloadAddonTask {
         game_info: CardInfo,
-        addon: GameEditionAddon
+        addon: Addon,
+        group: AddonsGroup
     },
 
     AddUninstallAddonTask {
         game_info: CardInfo,
-        addon: GameEditionAddon
+        addon: Addon,
+        group: AddonsGroup
     },
 
     AddDownloadWineTask {
@@ -675,7 +682,7 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::AddDownloadAddonTask { game_info, addon } => {
+            MainAppMsg::AddDownloadAddonTask { game_info, addon, group } => {
                 let config = config::get();
 
                 unsafe {
@@ -688,7 +695,7 @@ impl SimpleComponent for MainApp {
                 sender.input(MainAppMsg::HideDetails);
                 sender.input(MainAppMsg::ShowTasksFlap);
 
-                match download_addon_task::get_download_addon_task(&game_info, &addon, &config) {
+                match download_addon_task::get_download_addon_task(&game_info, &addon, &group, &config) {
                     Ok(task) => {
                         // TODO: should I move game to "queued"?
                         self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
@@ -698,7 +705,7 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::AddUninstallAddonTask { game_info, addon } => {
+            MainAppMsg::AddUninstallAddonTask { game_info, addon, group } => {
                 todo!()
             }
 

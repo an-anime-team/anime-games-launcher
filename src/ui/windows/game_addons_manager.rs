@@ -9,7 +9,11 @@ use crate::config;
 use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::games;
-use crate::games::integrations::standards::addons::AddonsGroup;
+
+use crate::games::integrations::standards::addons::{
+    Addon,
+    AddonsGroup
+};
 
 use crate::ui::components::addon::addon_group::{
     AddonsGroupComponent,
@@ -40,8 +44,15 @@ pub enum GameAddonsManagerAppMsg {
         addons: Vec<AddonsGroup>
     },
 
-    InstallAddon(GameEditionAddon),
-    UninstallAddon(GameEditionAddon),
+    InstallAddon {
+        addon: Addon,
+        group: AddonsGroup
+    },
+
+    UninstallAddon {
+        addon: Addon,
+        group: AddonsGroup
+    },
 
     ToggleAddon {
         addon: GameEditionAddon,
@@ -154,11 +165,11 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                                 AddonsGroupComponentOutput::ToggleAddon { addon, enabled }
                                     => GameAddonsManagerAppMsg::ToggleAddon { addon, enabled },
 
-                                AddonsGroupComponentOutput::InstallAddon(addon)
-                                    => GameAddonsManagerAppMsg::InstallAddon(addon),
+                                AddonsGroupComponentOutput::InstallAddon { addon, group }
+                                    => GameAddonsManagerAppMsg::InstallAddon { addon, group },
 
-                                AddonsGroupComponentOutput::UninstallAddon(addon)
-                                    => GameAddonsManagerAppMsg::UninstallAddon(addon)
+                                AddonsGroupComponentOutput::UninstallAddon { addon, group }
+                                    => GameAddonsManagerAppMsg::UninstallAddon { addon, group }
                             }
                         });
 
@@ -167,17 +178,19 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                 }
             }
 
-            GameAddonsManagerAppMsg::InstallAddon(addon) => {
+            GameAddonsManagerAppMsg::InstallAddon { addon, group } => {
                 sender.output(MainAppMsg::AddDownloadAddonTask {
                     game_info: self.game_info.clone(),
-                    addon
+                    addon,
+                    group
                 }).unwrap();
             }
 
-            GameAddonsManagerAppMsg::UninstallAddon(addon) => {
+            GameAddonsManagerAppMsg::UninstallAddon { addon, group } => {
                 sender.output(MainAppMsg::AddUninstallAddonTask {
                     game_info: self.game_info.clone(),
-                    addon
+                    addon,
+                    group
                 }).unwrap();
             }
 

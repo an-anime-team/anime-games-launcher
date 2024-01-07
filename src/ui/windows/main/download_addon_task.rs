@@ -4,13 +4,18 @@ use crate::games;
 
 use crate::config;
 use crate::config::games::settings::GameSettings;
-use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::ui::components::game_card::CardInfo;
 use crate::ui::components::tasks_queue::download_diff_task::DownloadDiffQueuedTask;
 
 use crate::games::integrations::Game;
 use crate::games::integrations::standards::diff::DiffInfo;
+
+use crate::games::integrations::standards::addons::{
+    Addon,
+    AddonsGroup,
+    AddonType
+};
 
 use super::MainAppMsg;
 
@@ -88,6 +93,20 @@ fn get_settings(game_info: &CardInfo, config: &config::Config) -> HeapResult<Gam
         }))
 }
 
+// TODO: reuse get_game_path function from get_game_task ?
+
+#[inline]
+fn get_game_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> HeapResult<PathBuf> {
+    get_settings(game_info, config)?
+        .paths.get(game_info.get_edition())
+        .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
+            title: format!("Unable to find {} installation path", game_info.get_title()),
+            message: None
+        }))
+        .map(|paths| paths.game.clone())
+
+}
+
 #[inline]
 fn get_addons_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> HeapResult<PathBuf> {
     get_settings(game_info, config)?
@@ -101,10 +120,16 @@ fn get_addons_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> H
 }
 
 #[inline]
-pub fn get_download_addon_task(game_info: &CardInfo, addon: &GameEditionAddon, config: &config::Config) -> HeapResult<Box<DownloadDiffQueuedTask>> {
+pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &AddonsGroup, config: &config::Config) -> HeapResult<Box<DownloadDiffQueuedTask>> {
     let addon_path = get_addons_path(game_info, config)?
-        .join(&addon.group)
+        .join(&group.name)
         .join(&addon.name);
+
+    let download_path = if addon.r#type == AddonType::Module {
+        get_game_path(game_info, config)?
+    } else {
+        addon_path.clone()
+    };
 
     let game = unsafe {
         games::get_unsafe(game_info.get_name())
@@ -112,10 +137,10 @@ pub fn get_download_addon_task(game_info: &CardInfo, addon: &GameEditionAddon, c
 
     Ok(Box::new(DownloadDiffQueuedTask {
         card_info: game_info.clone(),
-        download_path: addon_path.clone(),
+        download_path,
         diff_info: get_diff_or_download(
             game,
-            &addon.group,
+            &group.name,
             &addon.name,
             addon_path.to_string_lossy(),
             game_info.get_edition()
