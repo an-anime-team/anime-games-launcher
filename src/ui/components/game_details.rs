@@ -126,7 +126,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                             #[watch]
                             set_css_classes: match &model.status {
-                                Some(Status { severity: StatusSeverity::Critical, .. }) => &["pill", "destructive-action"],
+                                Some(Status { severity: StatusSeverity::Critical, .. }) => &["pill", "error"],
                                 Some(Status { severity: StatusSeverity::Warning, .. })  => &["pill", "warning"],
                                 Some(Status { severity: StatusSeverity::None, .. })     => &["pill", "suggested-action"],
 

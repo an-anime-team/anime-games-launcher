@@ -65,25 +65,44 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
     }
 
     async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+        let mut addons = init.addons_group.addons
+            .clone()
+            .into_iter()
+            .map(|addon| {
+                let enabled = init.enabled_addons.iter().any(|enabled_addon| {
+                    enabled_addon.group == init.addons_group.name && enabled_addon.name == addon.name
+                });
+
+                let installed = init.installed_addons.iter().any(|installed_addon| {
+                    installed_addon.group == init.addons_group.name && installed_addon.name == addon.name
+                });
+
+                (addon, enabled, installed)
+            })
+            .collect::<Vec<_>>();
+
+        addons.sort_by(|a, b| {
+            if a.2 == b.2 {
+                b.1.cmp(&a.1)
+            } else if a.1 == b.1 {
+                b.0.title.cmp(&a.0.title)
+            } else {
+                b.2.cmp(&a.2)
+            }
+        });
+
         let model = Self {
-            addons_widgets: init.addons_group.addons
-                .clone()
+            addons_widgets: addons
                 .into_iter()
-                .map(|addon| {
+                .map(|(addon, enabled, installed)| {
                     AddonRowComponent::builder()
                         .launch(AddonRowComponent {
-                            enabled: init.enabled_addons.iter().any(|enabled_addon| {
-                                enabled_addon.group == init.addons_group.name && enabled_addon.name == addon.name
-                            }),
-
-                            installed: init.installed_addons.iter().any(|installed_addon| {
-                                installed_addon.group == init.addons_group.name && installed_addon.name == addon.name
-                            }),
-
                             addons_group: init.addons_group.clone(),
                             game_info: init.game_info.clone(),
 
-                            addon_info: addon
+                            addon_info: addon,
+                            enabled,
+                            installed
                         })
                         .forward(sender.input_sender(), std::convert::identity)
                 })

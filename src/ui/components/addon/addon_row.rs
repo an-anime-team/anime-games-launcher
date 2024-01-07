@@ -46,10 +46,18 @@ impl SimpleAsyncComponent for AddonRowComponent {
             add_suffix = &gtk::Button {
                 set_valign: gtk::Align::Center,
 
-                add_css_class: "flat",
+                set_css_classes: if model.installed {
+                    &["flat", "error"]
+                } else {
+                    &["flat"]
+                },
 
                 adw::ButtonContent {
-                    set_icon_name: "folder-download-symbolic",
+                    set_icon_name: if model.installed {
+                        "user-trash-symbolic"
+                    } else {
+                        "folder-download-symbolic"
+                    },
 
                     set_label: if model.installed {
                         "Uninstall"
