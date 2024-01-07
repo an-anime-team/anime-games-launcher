@@ -43,7 +43,7 @@
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
 | | `v1_game_get_diff(game_path, edition)` | `Diff \| null` | Get game version diff |
 | | `v1_game_get_status(game_path, edition)` | `Status \| null` | Get installed game status |
-| | `v1_game_get_launch_options(game_path, edition)` | `LaunchOptions` | Get launch options for the game |
+| | `v1_game_get_launch_options(game_path, addons_path, edition)` | `LaunchOptions` | Get launch options for the game |
 | Addons | | | Additional game content manipulations |
 | | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |
 | | `v1_addons_is_installed(group_name, addon_name, addon_path, edition)` | `boolean` | Check if addon is installed |
@@ -167,8 +167,11 @@ type Status = {
 
 ```ts
 type LaunchOptions = {
-	// Relative path to the executable
+	// Path to the executable
 	executable: string,
+
+	// Launch options
+	options: string[],
 
 	// Table of environment variables
 	environment: [variable: string]: string

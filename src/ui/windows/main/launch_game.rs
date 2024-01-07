@@ -21,7 +21,11 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     };
 
     // Request game launch options
-    let options = game.get_launch_options(paths.game.to_string_lossy(), info.get_edition())?;
+    let options = game.get_launch_options(
+        paths.game.to_string_lossy(),
+        paths.addons.to_string_lossy(),
+        info.get_edition()
+    )?;
 
     // Prepare launch command
     let command = [

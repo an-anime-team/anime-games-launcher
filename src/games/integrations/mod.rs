@@ -198,12 +198,12 @@ impl Game {
         }
     }
 
-    pub fn get_launch_options(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<GameLaunchOptions> {
+    pub fn get_launch_options(&self, game_path: impl AsRef<str>, addons_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<GameLaunchOptions> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let options = self.lua.globals()
                     .get::<_, LuaFunction>("v1_game_get_launch_options")?
-                    .call::<_, LuaTable>((path.as_ref(), edition.as_ref()))?;
+                    .call::<_, LuaTable>((game_path.as_ref(), addons_path.as_ref(), edition.as_ref()))?;
 
                 GameLaunchOptions::from_table(options, self.script_standard)
             }
