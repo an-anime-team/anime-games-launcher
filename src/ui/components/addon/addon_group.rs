@@ -31,6 +31,9 @@ pub struct AddonsGroupComponent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddonsGroupComponentInput {
+    InstallAddon(Addon),
+    UninstallAddon(Addon),
+
     ToggleAddon {
         addon: Addon,
         enabled: bool
@@ -39,9 +42,11 @@ pub enum AddonsGroupComponentInput {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddonsGroupComponentOutput {
+    InstallAddon(GameEditionAddon),
+    UninstallAddon(GameEditionAddon),
+
     ToggleAddon {
-        addon: Addon,
-        group: AddonsGroup,
+        addon: GameEditionAddon,
         enabled: bool
     }
 }
@@ -99,10 +104,26 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            Self::Input::ToggleAddon { addon, enabled } => {
-                sender.output(Self::Output::ToggleAddon {
-                    addon,
-                    group: self.addons_group.clone(),
+            AddonsGroupComponentInput::InstallAddon(addon) => {
+                sender.output(AddonsGroupComponentOutput::InstallAddon(GameEditionAddon {
+                    group: self.addons_group.name.clone(),
+                    name: addon.name
+                })).unwrap();
+            }
+
+            AddonsGroupComponentInput::UninstallAddon(addon) => {
+                sender.output(AddonsGroupComponentOutput::UninstallAddon(GameEditionAddon {
+                    group: self.addons_group.name.clone(),
+                    name: addon.name
+                })).unwrap();
+            }
+
+            AddonsGroupComponentInput::ToggleAddon { addon, enabled } => {
+                sender.output(AddonsGroupComponentOutput::ToggleAddon {
+                    addon: GameEditionAddon {
+                        group: self.addons_group.name.clone(),
+                        name: addon.name
+                    },
                     enabled
                 }).unwrap();
             }

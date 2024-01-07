@@ -22,6 +22,7 @@ pub struct AddonRowComponent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddonRowComponentMsg {
+    PerformAction,
     ToggleAddon
 }
 
@@ -56,6 +57,8 @@ impl SimpleAsyncComponent for AddonRowComponent {
                         "Install"
                     }
                 },
+
+                connect_clicked => AddonRowComponentMsg::PerformAction
             },
 
             add_suffix = &gtk::Switch {
@@ -80,10 +83,20 @@ impl SimpleAsyncComponent for AddonRowComponent {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            Self::Input::ToggleAddon => {
+            AddonRowComponentMsg::PerformAction => {
+                let message = if self.installed {
+                    AddonsGroupComponentInput::UninstallAddon(self.addon_info.clone())
+                } else {
+                    AddonsGroupComponentInput::InstallAddon(self.addon_info.clone())
+                };
+
+                sender.output(message).unwrap();
+            }
+
+            AddonRowComponentMsg::ToggleAddon => {
                 self.enabled = !self.enabled;
 
-                sender.output(Self::Output::ToggleAddon {
+                sender.output(AddonsGroupComponentInput::ToggleAddon {
                     addon: self.addon_info.clone(),
                     enabled: self.enabled
                 }).unwrap();

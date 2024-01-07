@@ -50,6 +50,7 @@ use super::loading::load_app::LoadingResult;
 
 pub mod launch_game;
 pub mod download_game_task;
+pub mod download_addon_task;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
@@ -102,6 +103,16 @@ pub enum MainAppMsg {
     AddDownloadGameTask(CardInfo),
     AddVerifyGameTask(CardInfo),
     FinishQueuedTask(CardInfo),
+
+    AddDownloadAddonTask {
+        game_info: CardInfo,
+        addon: GameEditionAddon
+    },
+
+    AddUninstallAddonTask {
+        game_info: CardInfo,
+        addon: GameEditionAddon
+    },
 
     AddDownloadWineTask {
         name: String,
@@ -599,21 +610,21 @@ impl SimpleComponent for MainApp {
                 self.flap.set_reveal_flap(!self.flap.reveals_flap());
             }
 
-            MainAppMsg::AddDownloadGameTask(info) => {
+            MainAppMsg::AddDownloadGameTask(game_info) => {
                 let config = config::get();
 
-                match download_game_task::get_download_game_task(&info, &config) {
+                match download_game_task::get_download_game_task(&game_info, &config) {
                     Ok(task) => {
                         self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                        if let Some(index) = self.available_games_indexes.get(&info) {
+                        if let Some(index) = self.available_games_indexes.get(&game_info) {
                             self.available_games.guard().remove(index.current_index());
 
-                            self.available_games_indexes.remove(&info);
+                            self.available_games_indexes.remove(&game_info);
 
                             #[allow(clippy::map_entry)]
-                            if !self.queued_games_indexes.contains_key(&info) {
-                                self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info.clone()));
+                            if !self.queued_games_indexes.contains_key(&game_info) {
+                                self.queued_games_indexes.insert(game_info.clone(), self.queued_games.guard().push_back(game_info.clone()));
 
                                 self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
                                 self.queued_games.broadcast(CardComponentInput::SetClickable(false));
@@ -621,7 +632,7 @@ impl SimpleComponent for MainApp {
                         }
 
                         if config.general.verify_games {
-                            sender.input(MainAppMsg::AddVerifyGameTask(info));
+                            sender.input(MainAppMsg::AddVerifyGameTask(game_info));
                         }
                     }
 
@@ -662,6 +673,23 @@ impl SimpleComponent for MainApp {
                         self.installed_games_indexes.insert(info.clone(), self.installed_games.guard().push_back(info));
                     }
                 }
+            }
+
+            MainAppMsg::AddDownloadAddonTask { game_info, addon } => {
+                let config = config::get();
+
+                match download_addon_task::get_download_addon_task(&game_info, &addon, &config) {
+                    Ok(task) => {
+                        // TODO: should I move game to "queued"?
+                        self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                    }
+
+                    Err(err) => sender.input(*err)
+                }
+            }
+
+            MainAppMsg::AddUninstallAddonTask { game_info, addon } => {
+                todo!()
             }
 
             MainAppMsg::AddDownloadWineTask { name, title, developer, version } => {

@@ -63,8 +63,8 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
             updater: BasicUpdater::spawn(move |sender| {
                 Box::new(move || -> Result<(), anyhow::Error> {
-                    let Some(game) = games::get(&game_name)? else {
-                        anyhow::bail!("Couldn't find {game_name} integration script");
+                    let game = unsafe {
+                        games::get_unsafe(&game_name)
                     };
 
                     // Create transition

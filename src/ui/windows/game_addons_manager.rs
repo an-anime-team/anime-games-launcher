@@ -43,9 +43,11 @@ pub enum GameAddonsManagerAppMsg {
         addons: Vec<AddonsGroup>
     },
 
+    InstallAddon(GameEditionAddon),
+    UninstallAddon(GameEditionAddon),
+
     ToggleAddon {
-        addon: Addon,
-        group: AddonsGroup,
+        addon: GameEditionAddon,
         enabled: bool
     }
 }
@@ -253,8 +255,14 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                         })
                         .forward(sender.input_sender(), |msg| {
                             match msg {
-                                AddonsGroupComponentOutput::ToggleAddon { addon, group, enabled }
-                                    => Self::Input::ToggleAddon { addon, group, enabled }
+                                AddonsGroupComponentOutput::ToggleAddon { addon, enabled }
+                                    => GameAddonsManagerAppMsg::ToggleAddon { addon, enabled },
+
+                                AddonsGroupComponentOutput::InstallAddon(addon)
+                                    => GameAddonsManagerAppMsg::InstallAddon(addon),
+
+                                AddonsGroupComponentOutput::UninstallAddon(addon)
+                                    => GameAddonsManagerAppMsg::UninstallAddon(addon)
                             }
                         });
 
@@ -263,12 +271,21 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                 }
             }
 
-            GameAddonsManagerAppMsg::ToggleAddon { addon, group, enabled } => {
-                let addon = GameEditionAddon {
-                    group: group.name,
-                    name: addon.name
-                };
+            GameAddonsManagerAppMsg::InstallAddon(addon) => {
+                sender.output(MainAppMsg::AddDownloadAddonTask {
+                    game_info: self.game_info.clone(),
+                    addon
+                }).unwrap();
+            }
 
+            GameAddonsManagerAppMsg::UninstallAddon(addon) => {
+                sender.output(MainAppMsg::AddUninstallAddonTask {
+                    game_info: self.game_info.clone(),
+                    addon
+                }).unwrap();
+            }
+
+            GameAddonsManagerAppMsg::ToggleAddon { addon, enabled } => {
                 if enabled {
                     self.enabled_addons.insert(addon);
                 }
