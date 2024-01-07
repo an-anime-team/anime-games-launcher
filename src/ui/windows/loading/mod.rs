@@ -98,8 +98,6 @@ impl SimpleComponent for LoadingApp {
             match load_app::load_app(&sender) {
                 Ok(result) => {
                     gtk::glib::MainContext::default().spawn(async {
-                        dbg!(&result);
-
                         let main_app = MainApp::builder()
                             .launch(result)
                             .detach();
