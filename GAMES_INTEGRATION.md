@@ -42,6 +42,7 @@
 | | `v1_game_get_version(game_path, edition)` | `string \| null` | Get installed game version |
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
 | | `v1_game_get_diff(game_path, edition)` | `Diff \| null` | Get game version diff |
+| | `v1_game_get_status(game_path, edition)` | `Status` | Get installed game status |
 | | `v1_game_get_launch_options(game_path, edition)` | `LaunchOptions` | Get launch options for the game |
 | Addons | | | Additional game content manipulations |
 | | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |
@@ -151,6 +152,16 @@ type DiffType = 'archive' | 'segments' | 'files';
 | `archive` | Single archive with all updated files |
 | `segments` | Segmented archive |
 | `files` | List of files needed to be downloaded |
+
+#### Status
+
+```ts
+type Status = {
+	allow_launch: boolean,
+	severity: 'critical' | 'warning' | 'none',
+	reason?: string
+};
+```
 
 #### LaunchOptions
 

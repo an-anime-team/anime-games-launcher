@@ -6,6 +6,7 @@ pub mod download;
 pub mod prelude {
     pub use super::game::{
         Edition as GameEdition,
+        Status as GameStatus,
         LaunchOptions as GameLaunchOptions
     };
 

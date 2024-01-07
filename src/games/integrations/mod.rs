@@ -183,6 +183,18 @@ impl Game {
         }
     }
 
+    pub fn get_game_status(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<GameStatus> {
+        match self.script_standard {
+            IntegrationStandard::V1 => {
+                let status = self.lua.globals()
+                    .get::<_, LuaFunction>("v1_game_get_status")?
+                    .call::<_, LuaTable>((path.as_ref(), edition.as_ref()))?;
+
+                GameStatus::from_table(status, self.script_standard)
+            }
+        }
+    }
+
     pub fn get_launch_options(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<GameLaunchOptions> {
         match self.script_standard {
             IntegrationStandard::V1 => {
