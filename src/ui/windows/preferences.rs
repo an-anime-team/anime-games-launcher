@@ -2,10 +2,7 @@ use relm4::prelude::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::{
-    config,
-    STARTUP_CONFIG
-};
+use crate::config;
 
 static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
@@ -56,7 +53,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                         add_suffix = &gtk::Switch {
                             set_valign: gtk::Align::Center,
 
-                            set_active: STARTUP_CONFIG.general.verify_games,
+                            set_active: config::get().general.verify_games,
 
                             connect_state_notify[sender] => move |switch| {
                                 if let Err(err) = config::set("general.verify_games", switch.is_active()) {
@@ -184,7 +181,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                         add_suffix = &gtk::Switch {
                             set_valign: gtk::Align::Center,
 
-                            set_active: STARTUP_CONFIG.components.wine.prefix.install_corefonts,
+                            set_active: config::get().components.wine.prefix.install_corefonts,
 
                             connect_state_notify[sender] => move |switch| {
                                 if let Err(err) = config::set("components.wine.prefix.install_corefonts", switch.is_active()) {

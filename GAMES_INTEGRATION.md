@@ -52,14 +52,10 @@
 
 ### Optional APIs (can be ignored)
 
-| API | Method | Output | Description |
-| - | - | - | - |
-| Game | | | Base game manipulations |
-| | `v1_game_diff_transition(path, edition)` | | Process diff files before finishing transition |
-| | `v1_game_diff_post_transition(path, edition)` | | Process diff files after finishing transition |
-| Addons | | | Additional game content manipulations |
-| | `v1_addons_diff_transition(group_name, addon_name, path, edition)` | | Process diff files before finishing transition |
-| | `v1_addons_diff_post_transition(group_name, addon_name, path, edition)` | | Process diff files after finishing transition |
+| Method | Description |
+| - | - |
+| `v1_diff_transition(path, edition)` | Process diff files before finishing transition |
+| `v1_diff_post_transition(path, edition)` | Process diff files after finishing transition |
 
 ### Types
 

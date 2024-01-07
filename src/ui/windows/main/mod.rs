@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use relm4::prelude::*;
 use relm4::factory::*;
@@ -10,8 +9,7 @@ use adw::prelude::*;
 
 use crate::{
     config,
-    games,
-    STARTUP_CONFIG
+    games
 };
 
 use crate::components::wine::*;
@@ -44,8 +42,7 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponentOutput,
 
     download_diff_task::DownloadDiffQueuedTask,
-    create_prefix_task::CreatePrefixQueuedTask,
-    verify_integrity_task::VerifyIntegrityQueuedTask
+    create_prefix_task::CreatePrefixQueuedTask
 };
 
 use super::loading::load_app::LoadingResult;
@@ -698,25 +695,25 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddVerifyGameTask(info) => {
-                let task = Box::new(VerifyIntegrityQueuedTask {
-                    info: info.clone()
-                });
+                // let task = Box::new(VerifyIntegrityQueuedTask {
+                //     info: info.clone()
+                // });
 
-                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                // self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                if let Some(index) = self.available_games_indexes.get(&info) {
-                    self.available_games.guard().remove(index.current_index());
+                // if let Some(index) = self.available_games_indexes.get(&info) {
+                //     self.available_games.guard().remove(index.current_index());
 
-                    self.available_games_indexes.remove(&info);
+                //     self.available_games_indexes.remove(&info);
 
-                    #[allow(clippy::map_entry)]
-                    if !self.queued_games_indexes.contains_key(&info) {
-                        self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info));
+                //     #[allow(clippy::map_entry)]
+                //     if !self.queued_games_indexes.contains_key(&info) {
+                //         self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info));
 
-                        self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
-                        self.queued_games.broadcast(CardComponentInput::SetClickable(false));
-                    }
-                }
+                //         self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                //         self.queued_games.broadcast(CardComponentInput::SetClickable(false));
+                //     }
+                // }
             }
 
             MainAppMsg::FinishQueuedTask(info) => {

@@ -3,6 +3,7 @@ use relm4::prelude::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
+pub mod check_default_dirs;
 pub mod init_config;
 pub mod init_games;
 pub mod check_wine;

@@ -53,11 +53,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
         }
     }
 
-    async fn init(
-        parent: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(parent: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             addons_groups_widgets: Vec::new(),
             addons_groups_page: adw::PreferencesPage::new(),

@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-
 use serde_json::Value as Json;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

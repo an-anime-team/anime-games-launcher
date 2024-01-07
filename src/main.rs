@@ -44,21 +44,9 @@ lazy_static::lazy_static! {
 
     /// Path to the launcher's config file
     pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
-
-    /// Unmodified config variant
-    pub static ref STARTUP_CONFIG: config::Config = config::get();
 }
 
 fn main() -> anyhow::Result<()> {
-    if !LAUNCHER_FOLDER.exists() {
-        std::fs::create_dir_all(LAUNCHER_FOLDER.as_path())?;
-
-        std::fs::create_dir_all(COMPONENTS_FOLDER.join("wine"))?;
-        std::fs::create_dir_all(COMPONENTS_FOLDER.join("dxvk"))?;
-
-        config::update(&STARTUP_CONFIG)?;
-    }
-
     adw::init().expect("Libadwaita initialization failed");
 
     // Register and include resources
@@ -81,22 +69,6 @@ fn main() -> anyhow::Result<()> {
 
         .game-card:hover {
             transform: scale(1.03);
-        }
-
-        .game-details--genshin {
-            background: radial-gradient(#f4cc99, #3b4b7c);
-        }
-
-        .game-details--honkai {
-            background: radial-gradient(#f8c2d0, #4078c5);
-        }
-
-        .game-details--star-rail {
-            background: radial-gradient(#c2fafb, #1c1328);
-        }
-
-        .game-details--pgr {
-            background: radial-gradient(#534232, #c6b297);
         }
     ");
 

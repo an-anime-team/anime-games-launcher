@@ -6,25 +6,20 @@ use serde_json::Value as Json;
 use crate::LAUNCHER_FOLDER;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Prefix {
-    pub path: PathBuf,
-    pub install_corefonts: bool
+pub struct Transitions {
+    pub path: PathBuf
 }
 
-impl Default for Prefix {
+impl Default for Transitions {
     #[inline]
     fn default() -> Self {
         Self {
-            path: LAUNCHER_FOLDER
-                .join("components")
-                .join("prefix"),
-
-            install_corefonts: true
+            path: LAUNCHER_FOLDER.join("transitions")
         }
     }
 }
 
-impl From<&Json> for Prefix {
+impl From<&Json> for Transitions {
     #[inline]
     fn from(value: &Json) -> Self {
         let default = Self::default();
@@ -33,11 +28,7 @@ impl From<&Json> for Prefix {
             path: value.get("path")
                 .and_then(Json::as_str)
                 .map(PathBuf::from)
-                .unwrap_or(default.path),
-
-            install_corefonts: value.get("install_corefonts")
-                .and_then(Json::as_bool)
-                .unwrap_or(default.install_corefonts)
+                .unwrap_or(default.path)
         }
     }
 }
