@@ -41,13 +41,13 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponentInput,
     TasksQueueComponentOutput,
 
-    download_diff_task::DownloadDiffQueuedTask,
     create_prefix_task::CreatePrefixQueuedTask
 };
 
 use super::loading::load_app::LoadingResult;
 
 pub mod launch_game;
+pub mod download_game_task;
 
 static mut WINDOW: Option<adw::ApplicationWindow> = None;
 static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
@@ -569,129 +569,31 @@ impl SimpleComponent for MainApp {
             MainAppMsg::AddDownloadGameTask(info) => {
                 let config = config::get();
 
-                let settings = match config.games.get_game_settings(info.get_name()) {
-                    Ok(settings) => settings,
-                    Err(err) => {
-                        sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to find {} settings", info.get_title()),
-                            message: Some(err.to_string())
-                        });
+                match download_game_task::get_download_game_task(&info, &config) {
+                    Ok(task) => {
+                        self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                        return;
+                        if let Some(index) = self.available_games_indexes.get(&info) {
+                            self.available_games.guard().remove(index.current_index());
+
+                            self.available_games_indexes.remove(&info);
+
+                            #[allow(clippy::map_entry)]
+                            if !self.queued_games_indexes.contains_key(&info) {
+                                self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info.clone()));
+
+                                self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                                self.queued_games.broadcast(CardComponentInput::SetClickable(false));
+                            }
+                        }
+
+                        if config.general.verify_games {
+                            sender.input(MainAppMsg::AddVerifyGameTask(info));
+                        }
                     }
-                };
 
-                let Some(paths) = settings.paths.get(info.get_edition()) else {
-                    sender.input(MainAppMsg::ShowToast {
-                        title: format!("Unable to find {} installation path", info.get_title()),
-                        message: None
-                    });
-
-                    return;
-                };
-
-                // match games::get(info.get_name()) {
-                //     Ok(Some(game)) => {
-                //         let driver = Arc::new(paths.game.to_dyn_trait());
-
-                //         // FIXME handle error
-                //         let path = driver.deploy().unwrap();
-
-                //         let diff_info = match game.is_game_installed(path.to_string_lossy()) {
-                //             Ok(true) => {
-                //                 match game.get_game_diff(path.to_string_lossy(), info.get_edition()) {
-                //                     Ok(Some(diff)) => diff.diff,
-
-                //                     Ok(None) => {
-                //                         sender.input(MainAppMsg::ShowToast {
-                //                             title: format!("{} is not installed", info.get_title()),
-                //                             message: None
-                //                         });
-
-                //                         return;
-                //                     }
-
-                //                     Err(err) => {
-                //                         sender.input(MainAppMsg::ShowToast {
-                //                             title: format!("Unable to find {} version diff", info.get_title()),
-                //                             message: Some(err.to_string())
-                //                         });
-
-                //                         return;
-                //                     }
-                //                 }
-                //             }
-
-                //             Ok(false) => {
-                //                 match game.get_game_download(info.get_edition()) {
-                //                     Ok(download) => Some(download.download),
-                //                     Err(err) => {
-                //                         sender.input(MainAppMsg::ShowToast {
-                //                             title: format!("Unable to find {} version diff", info.get_title()),
-                //                             message: Some(err.to_string())
-                //                         });
-    
-                //                         return;
-                //                     }
-                //                 }
-                //             }
-
-                //             Err(err) => {
-                //                 sender.input(MainAppMsg::ShowToast {
-                //                     title: format!("Unable to find {} version diff", info.get_title()),
-                //                     message: Some(err.to_string())
-                //                 });
-
-                //                 return;
-                //             }
-                //         };
-
-                //         if let Some(diff_info) = diff_info {
-                //             let task = Box::new(DownloadDiffQueuedTask {
-                //                 driver: driver.clone(),
-                //                 card_info: info.clone(),
-                //                 diff_info
-                //             });
-
-                //             // FIXME handle error
-                //             driver.dismantle().unwrap();
-
-                //             self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
-
-                //             if let Some(index) = self.available_games_indexes.get(&info) {
-                //                 self.available_games.guard().remove(index.current_index());
-
-                //                 self.available_games_indexes.remove(&info);
-
-                //                 #[allow(clippy::map_entry)]
-                //                 if !self.queued_games_indexes.contains_key(&info) {
-                //                     self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info.clone()));
-
-                //                     self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
-                //                     self.queued_games.broadcast(CardComponentInput::SetClickable(false));
-                //                 }
-                //             }
-
-                //             if config.general.verify_games {
-                //                 sender.input(MainAppMsg::AddVerifyGameTask(info));
-                //             }
-                //         }
-                //     }
-
-                //     Ok(None) => {
-                //         sender.input(MainAppMsg::ShowToast {
-                //             title: format!("Unable to find {} integration script", info.get_title()),
-                //             message: None
-                //         });
-                //     }
-
-                //     Err(err) => {
-                //         sender.input(MainAppMsg::ShowToast {
-                //             title: format!("Unable to find {} integration script", info.get_title()),
-                //             message: Some(err.to_string())
-                //         });
-                //     }
-                // }
+                    Err(err) => sender.input(*err)
+                }
             }
 
             MainAppMsg::AddVerifyGameTask(info) => {
