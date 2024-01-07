@@ -37,9 +37,9 @@ impl Diff {
             IntegrationStandard::V1 => {
                 let table = lua.create_table()?;
 
-                table.set("current_version", self.current_version.clone())?;
-                table.set("latest_version", self.latest_version.clone())?;
-                table.set("edition", self.edition.clone())?;
+                table.set("current_version", self.current_version.as_str())?;
+                table.set("latest_version", self.latest_version.as_str())?;
+                table.set("edition", self.edition.as_str())?;
                 table.set("status", self.status.to_str(standard))?;
 
                 if let Some(diff) = &self.diff {
@@ -146,14 +146,14 @@ impl DiffInfo {
                     Self::Archive { size, uri } => {
                         table.set("type", "archive")?;
                         table.set("size", *size)?;
-                        table.set("uri", uri.clone())?;
+                        table.set("uri", uri.as_str())?;
                     }
 
                     Self::Segments { size, segments } => {
                         let segments_lua = lua.create_table()?;
 
                         for segment in segments {
-                            segments_lua.push(segment.clone())?;
+                            segments_lua.push(segment.as_str())?;
                         }
 
                         table.set("type", "segments")?;
@@ -165,7 +165,7 @@ impl DiffInfo {
                         let files_lua = lua.create_table()?;
 
                         for file in files {
-                            files_lua.push(file.clone())?;
+                            files_lua.push(file.as_str())?;
                         }
 
                         table.set("type", "files")?;

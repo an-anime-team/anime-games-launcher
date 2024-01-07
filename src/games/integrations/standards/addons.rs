@@ -16,6 +16,7 @@ impl AddonsGroup {
                 Ok(Self {
                     name: table.get::<_, String>("name")?,
                     title: table.get::<_, String>("title")?,
+
                     addons: table.get::<_, LuaTable>("addons")?
                         .sequence_values()
                         .flatten()

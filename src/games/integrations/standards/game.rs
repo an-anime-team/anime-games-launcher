@@ -116,6 +116,7 @@ impl StatusSeverity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchOptions {
     pub executable: String,
+    pub options: Vec<String>,
     pub environment: HashMap<String, String>
 }
 
@@ -125,6 +126,12 @@ impl LaunchOptions {
             IntegrationStandard::V1 => {
                 Ok(Self {
                     executable: table.get::<_, String>("executable")?,
+
+                    options: table.get::<_, LuaTable>("environment")?
+                        .sequence_values::<String>()
+                        .flatten()
+                        .collect(),
+
                     environment: table.get::<_, LuaTable>("environment")?
                         .pairs::<String, String>()
                         .flatten()
@@ -138,13 +145,20 @@ impl LaunchOptions {
         match standard {
             IntegrationStandard::V1 => {
                 let table = lua.create_table()?;
+
+                let options = lua.create_table()?;
                 let environment = lua.create_table()?;
 
-                for (key, value) in self.environment.clone() {
-                    environment.set(key, value)?;
+                for option in &self.options {
+                    environment.push(option.as_str())?;
+                }
+
+                for (key, value) in &self.environment {
+                    environment.set(key.as_str(), value.as_str())?;
                 }
 
                 table.set("executable", self.executable.as_str())?;
+                table.set("options", options)?;
                 table.set("environment", environment)?;
 
                 Ok(table)

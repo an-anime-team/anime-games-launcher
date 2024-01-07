@@ -28,10 +28,12 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     )?;
 
     // Prepare launch command
-    let command = [
+    let mut command = vec![
         format!("{:?}", Wine::from_config()?.get_executable()),
         format!("{:?}", paths.game.join(options.executable))
     ];
+
+    command.extend(options.options);
 
     // TODO: support addons
 
