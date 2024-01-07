@@ -16,6 +16,7 @@ pub struct AddonRowComponent {
     pub addon_info: Addon,
     pub game_info: CardInfo,
 
+    pub installed: bool,
     pub enabled: bool
 }
 
@@ -32,7 +33,7 @@ impl SimpleAsyncComponent for AddonRowComponent {
 
     view! {
         #[root]
-        adw::SwitchRow {
+        adw::ActionRow {
             set_title: &model.addon_info.title,
 
             set_subtitle: if model.addon_info.required {
@@ -41,12 +42,33 @@ impl SimpleAsyncComponent for AddonRowComponent {
                 ""
             },
 
-            set_activatable: !model.addon_info.required,
+            add_suffix = &gtk::Button {
+                set_valign: gtk::Align::Center,
 
-            #[watch]
-            set_active: model.enabled,
+                add_css_class: "flat",
 
-            connect_active_notify => AddonRowComponentMsg::ToggleAddon
+                adw::ButtonContent {
+                    set_icon_name: "folder-download-symbolic",
+
+                    set_label: if model.installed {
+                        "Uninstall"
+                    } else {
+                        "Install"
+                    }
+                },
+            },
+
+            add_suffix = &gtk::Switch {
+                set_valign: gtk::Align::Center,
+
+                set_sensitive: !model.addon_info.required,
+                set_visible: model.installed,
+
+                #[watch]
+                set_active: model.enabled,
+
+                connect_active_notify => AddonRowComponentMsg::ToggleAddon
+            }
         }
     }
 

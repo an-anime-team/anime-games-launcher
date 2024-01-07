@@ -17,7 +17,8 @@ use super::addon_row::AddonRowComponent;
 pub struct AddonsGroupComponentInit {
     pub addons_group: AddonsGroup,
     pub game_info: CardInfo,
-    pub enabled_addons: HashSet<GameEditionAddon>
+    pub enabled_addons: HashSet<GameEditionAddon>,
+    pub installed_addons: HashSet<GameEditionAddon>
 }
 
 #[derive(Debug)]
@@ -68,6 +69,10 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
                         .launch(AddonRowComponent {
                             enabled: init.enabled_addons.iter().any(|enabled_addon| {
                                 enabled_addon.group == init.addons_group.name && enabled_addon.name == addon.name
+                            }),
+
+                            installed: init.installed_addons.iter().any(|installed_addon| {
+                                installed_addon.group == init.addons_group.name && installed_addon.name == addon.name
                             }),
 
                             addons_group: init.addons_group.clone(),

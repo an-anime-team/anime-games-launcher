@@ -147,7 +147,7 @@ impl SimpleComponent for LoadingApp {
                 dialog.add_response("close", "Close");
                 dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
 
-                dialog.connect_response(None, |_, _| window.close());
+                dialog.connect_response(None, |_, _| relm4::main_application().quit());
 
                 dialog.present();
             }

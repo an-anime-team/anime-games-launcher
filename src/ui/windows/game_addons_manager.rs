@@ -8,6 +8,7 @@ use adw::prelude::*;
 use crate::config;
 use crate::config::games::GameEditionAddon;
 
+use crate::games;
 use crate::games::integrations::standards::addons::{
     Addon,
     AddonsGroup
@@ -71,7 +72,108 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                 },
 
                 #[local_ref]
-                addons_groups_page -> adw::PreferencesPage,
+                addons_groups_page -> adw::PreferencesPage {
+                    // add = &adw::PreferencesGroup {
+                    //     set_title: "Mockup",
+
+                    //     adw::ActionRow {
+                    //         set_title: "Not installed addon",
+
+                    //         add_suffix = &gtk::Button {
+                    //             set_valign: gtk::Align::Center,
+
+                    //             add_css_class: "flat",
+
+                    //             adw::ButtonContent {
+                    //                 set_icon_name: "folder-download-symbolic",
+                    //                 set_label: "Install"
+                    //             },
+                    //         }
+                    //     },
+
+                    //     adw::ActionRow {
+                    //         set_title: "Installed addon",
+
+                    //         add_suffix = &gtk::Button {
+                    //             set_valign: gtk::Align::Center,
+
+                    //             add_css_class: "flat",
+
+                    //             adw::ButtonContent {
+                    //                 set_icon_name: "user-trash-symbolic",
+                    //                 set_label: "Uninstall"
+                    //             },
+                    //         },
+
+                    //         add_suffix = &gtk::Switch {
+                    //             set_valign: gtk::Align::Center
+                    //         }
+                    //     },
+
+                    //     adw::ExpanderRow {
+                    //         set_title: "Addon with options",
+
+                    //         add_suffix = &gtk::Switch {
+                    //             set_valign: gtk::Align::Center
+                    //         },
+
+                    //         add_suffix = &gtk::Button {
+                    //             set_valign: gtk::Align::Center,
+
+                    //             add_css_class: "flat",
+
+                    //             adw::ButtonContent {
+                    //                 set_icon_name: "user-trash-symbolic",
+                    //                 set_label: "Uninstall"
+                    //             },
+                    //         },
+
+                    //         add_row = &adw::ActionRow {
+                    //             set_title: "Option 1"
+                    //         },
+
+                    //         add_row = &adw::ActionRow {
+                    //             set_title: "Option 2"
+                    //         },
+
+                    //         add_row = &adw::ActionRow {
+                    //             set_title: "Option 3"
+                    //         }
+                    //     },
+
+                    //     adw::ExpanderRow {
+                    //         set_title: "Addon with an author",
+                    //         set_subtitle: "Author: amogus",
+
+                    //         add_suffix = &gtk::Switch {
+                    //             set_valign: gtk::Align::Center
+                    //         },
+
+                    //         add_suffix = &gtk::Button {
+                    //             set_valign: gtk::Align::Center,
+
+                    //             add_css_class: "flat",
+
+                    //             adw::ButtonContent {
+                    //                 set_icon_name: "user-trash-symbolic",
+                    //                 set_label: "Uninstall"
+                    //             },
+                    //         },
+
+                    //         add_row = &adw::ActionRow {
+                    //             set_title: "Option 1"
+                    //         },
+
+                    //         add_row = &adw::ActionRow {
+                    //             set_title: "Option 2"
+                    //         },
+
+                    //         add_row = &adw::ActionRow {
+                    //             set_title: "Option 3"
+                    //         }
+                    //     }
+                    // }
+                }
             }
         }
     }
@@ -102,10 +204,18 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             Self::Input::SetGameInfo { game_info, addons } => {
-                self.enabled_addons = config::get()
+                let game = unsafe {
+                    games::get_unsafe(game_info.get_name())
+                };
+
+                let settings = config::get()
                     .games.get_game_settings(game_info.get_name())
-                    .unwrap()
-                    .addons.get(game_info.get_edition())
+                    .unwrap();
+
+                let paths = settings.paths.get(game_info.get_edition()).unwrap();
+
+                self.enabled_addons = settings.addons
+                    .get(game_info.get_edition())
                     .map(|addons| HashSet::from_iter(addons.clone()))
                     .unwrap_or_default();
 
@@ -117,12 +227,29 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
                 self.addons_groups_widgets.clear();
 
+                let mut installed_addons = HashSet::new();
+
                 for group in addons {
+                    for addon in &group.addons {
+                        let addon_path = paths.addons
+                            .join(&group.name)
+                            .join(&addon.name);
+
+                        // FIXME: handle errors
+                        if let Ok(true) = game.is_addon_installed(&group.name, &addon.name, addon_path.to_string_lossy(), game_info.get_edition()) {
+                            installed_addons.insert(GameEditionAddon {
+                                group: group.name.clone(),
+                                name: addon.name.clone()
+                            });
+                        }
+                    }
+
                     let group = AddonsGroupComponent::builder()
                         .launch(AddonsGroupComponentInit {
                             addons_group: group,
                             game_info: game_info.clone(),
-                            enabled_addons: self.enabled_addons.clone()
+                            enabled_addons: self.enabled_addons.clone(),
+                            installed_addons: installed_addons.clone()
                         })
                         .forward(sender.input_sender(), |msg| {
                             match msg {
