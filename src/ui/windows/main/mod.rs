@@ -678,6 +678,16 @@ impl SimpleComponent for MainApp {
             MainAppMsg::AddDownloadAddonTask { game_info, addon } => {
                 let config = config::get();
 
+                unsafe {
+                    GAME_ADDONS_MANAGER_APP.as_ref()
+                        .unwrap_unchecked()
+                        .widget()
+                        .close();
+                }
+
+                sender.input(MainAppMsg::HideDetails);
+                sender.input(MainAppMsg::ShowTasksFlap);
+
                 match download_addon_task::get_download_addon_task(&game_info, &addon, &config) {
                     Ok(task) => {
                         // TODO: should I move game to "queued"?
