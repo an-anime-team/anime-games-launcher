@@ -137,13 +137,13 @@ pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &Addo
 
     Ok(Box::new(DownloadDiffQueuedTask {
         card_info: game_info.clone(),
-        download_path,
         diff_info: get_diff_or_download(
             game,
             &group.name,
             &addon.name,
-            addon_path.to_string_lossy(),
+            download_path.to_string_lossy(),
             game_info.get_edition()
-        )?
+        )?,
+        download_path
     }))
 }
