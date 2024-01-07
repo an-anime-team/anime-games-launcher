@@ -15,7 +15,7 @@ use crate::{
 use crate::components::wine::*;
 use crate::components::dxvk::*;
 
-use crate::config::games::GameEditionAddon;
+use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::ui::windows::preferences::PreferencesApp;
 

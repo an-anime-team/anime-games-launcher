@@ -82,7 +82,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                     // Download and extract diff files
 
                     match diff_info {
-                        DiffInfo::Archive { size, uri } => {
+                        DiffInfo::Archive { size: _, uri } => {
                             // Download archive
 
                             let downloader = Downloader::new(uri);
@@ -176,7 +176,8 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             }
                         }
 
-                        DiffInfo::Files { size, files } => {
+                        DiffInfo::Files { size: _, files: _ } => {
+                            // TODO
                             todo!()
                         }
                     }

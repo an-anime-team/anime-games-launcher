@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use crate::config::games::GameEditionAddon;
+use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::games::integrations::standards::addons::{
     AddonsGroup,

@@ -6,13 +6,10 @@ use gtk::prelude::*;
 use adw::prelude::*;
 
 use crate::config;
-use crate::config::games::GameEditionAddon;
+use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::games;
-use crate::games::integrations::standards::addons::{
-    Addon,
-    AddonsGroup
-};
+use crate::games::integrations::standards::addons::AddonsGroup;
 
 use crate::ui::components::addon::addon_group::{
     AddonsGroupComponent,
@@ -74,108 +71,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                 },
 
                 #[local_ref]
-                addons_groups_page -> adw::PreferencesPage {
-                    // add = &adw::PreferencesGroup {
-                    //     set_title: "Mockup",
-
-                    //     adw::ActionRow {
-                    //         set_title: "Not installed addon",
-
-                    //         add_suffix = &gtk::Button {
-                    //             set_valign: gtk::Align::Center,
-
-                    //             add_css_class: "flat",
-
-                    //             adw::ButtonContent {
-                    //                 set_icon_name: "folder-download-symbolic",
-                    //                 set_label: "Install"
-                    //             },
-                    //         }
-                    //     },
-
-                    //     adw::ActionRow {
-                    //         set_title: "Installed addon",
-
-                    //         add_suffix = &gtk::Button {
-                    //             set_valign: gtk::Align::Center,
-
-                    //             add_css_class: "flat",
-
-                    //             adw::ButtonContent {
-                    //                 set_icon_name: "user-trash-symbolic",
-                    //                 set_label: "Uninstall"
-                    //             },
-                    //         },
-
-                    //         add_suffix = &gtk::Switch {
-                    //             set_valign: gtk::Align::Center
-                    //         }
-                    //     },
-
-                    //     adw::ExpanderRow {
-                    //         set_title: "Addon with options",
-
-                    //         add_suffix = &gtk::Switch {
-                    //             set_valign: gtk::Align::Center
-                    //         },
-
-                    //         add_suffix = &gtk::Button {
-                    //             set_valign: gtk::Align::Center,
-
-                    //             add_css_class: "flat",
-
-                    //             adw::ButtonContent {
-                    //                 set_icon_name: "user-trash-symbolic",
-                    //                 set_label: "Uninstall"
-                    //             },
-                    //         },
-
-                    //         add_row = &adw::ActionRow {
-                    //             set_title: "Option 1"
-                    //         },
-
-                    //         add_row = &adw::ActionRow {
-                    //             set_title: "Option 2"
-                    //         },
-
-                    //         add_row = &adw::ActionRow {
-                    //             set_title: "Option 3"
-                    //         }
-                    //     },
-
-                    //     adw::ExpanderRow {
-                    //         set_title: "Addon with an author",
-                    //         set_subtitle: "Author: amogus",
-
-                    //         add_suffix = &gtk::Switch {
-                    //             set_valign: gtk::Align::Center
-                    //         },
-
-                    //         add_suffix = &gtk::Button {
-                    //             set_valign: gtk::Align::Center,
-
-                    //             add_css_class: "flat",
-
-                    //             adw::ButtonContent {
-                    //                 set_icon_name: "user-trash-symbolic",
-                    //                 set_label: "Uninstall"
-                    //             },
-                    //         },
-
-                    //         add_row = &adw::ActionRow {
-                    //             set_title: "Option 1"
-                    //         },
-
-                    //         add_row = &adw::ActionRow {
-                    //             set_title: "Option 2"
-                    //         },
-
-                    //         add_row = &adw::ActionRow {
-                    //             set_title: "Option 3"
-                    //         }
-                    //     }
-                    // }
-                }
+                addons_groups_page -> adw::PreferencesPage,
             }
         }
     }

@@ -3,10 +3,8 @@ use std::path::PathBuf;
 use crate::games;
 
 use crate::config;
-use crate::config::games::{
-    GameSettings,
-    GameEditionAddon
-};
+use crate::config::games::settings::GameSettings;
+use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::ui::components::game_card::CardInfo;
 use crate::ui::components::tasks_queue::download_diff_task::DownloadDiffQueuedTask;
