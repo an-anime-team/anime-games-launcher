@@ -203,12 +203,11 @@ type Addon = {
 #### AddonType
 
 ```ts
-type AddonType = 'module' | 'component';
+type AddonType = 'module' | 'layer' | 'component';
 ```
 
 | Value | Description |
 | - | - |
-| `module` | Modules are merged into the game folder when launching the game |
-| `component` | Components are installed to separate folders and are not merged to the game folder |
-
-All the addons are downloaded to separate folders. When launching the game, however, launcher can process them differently: for example, you want to put voice packages inside the game folder - then voice packages are "modules". Launcher will create new merged folder with "base game" and "modules" together (modules can overwrite base game files). "Components", however, intended to be used outside the game folder. You can access them using integration API.
+| `module` | Modules are downloaded into the game folder |
+| `layer` | Layers are merged with the game folder before launching the game using symlinks |
+| `component` | Components are downloaded to separate folders |

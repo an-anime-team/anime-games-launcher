@@ -91,6 +91,7 @@ impl Addon {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AddonType {
     Module,
+    Layer,
     Component
 }
 
@@ -100,6 +101,7 @@ impl AddonType {
             IntegrationStandard::V1 => {
                 match value.as_ref() {
                     "module"    => Ok(Self::Module),
+                    "layer"     => Ok(Self::Layer),
                     "component" => Ok(Self::Component),
 
                     _ => anyhow::bail!("Wrong v1 addon type: '{}'", value.as_ref())
@@ -113,6 +115,7 @@ impl AddonType {
             IntegrationStandard::V1 => {
                 match self {
                     Self::Module    => "module",
+                    Self::Layer     => "layer",
                     Self::Component => "component"
                 }
             }
