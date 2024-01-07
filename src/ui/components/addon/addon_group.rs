@@ -1,10 +1,24 @@
+use std::collections::HashSet;
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use crate::games::integrations::standards::addons::AddonsGroup;
+use crate::config::games::GameEditionAddon;
+
+use crate::games::integrations::standards::addons::{
+    AddonsGroup,
+    Addon
+};
+
 use crate::ui::components::game_card::CardInfo;
 
 use super::addon_row::AddonRowComponent;
+
+pub struct AddonsGroupComponentInit {
+    pub addons_group: AddonsGroup,
+    pub game_info: CardInfo,
+    pub enabled_addons: HashSet<GameEditionAddon>
+}
 
 #[derive(Debug)]
 pub struct AddonsGroupComponent {
@@ -16,17 +30,24 @@ pub struct AddonsGroupComponent {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddonsGroupComponentInput {
-
+    ToggleAddon {
+        addon: Addon,
+        enabled: bool
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddonsGroupComponentOutput {
-
+    ToggleAddon {
+        addon: Addon,
+        group: AddonsGroup,
+        enabled: bool
+    }
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for AddonsGroupComponent {
-    type Init = (AddonsGroup, CardInfo);
+    type Init = AddonsGroupComponentInit;
     type Input = AddonsGroupComponentInput;
     type Output = AddonsGroupComponentOutput;
 
@@ -39,18 +60,27 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
 
     async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
-            addons_widgets: init.0.addons
-                .iter()
-                .cloned()
+            addons_widgets: init.addons_group.addons
+                .clone()
+                .into_iter()
                 .map(|addon| {
                     AddonRowComponent::builder()
-                        .launch((init.0.clone(), addon, init.1.clone()))
-                        .detach()
+                        .launch(AddonRowComponent {
+                            enabled: init.enabled_addons.iter().any(|enabled_addon| {
+                                enabled_addon.group == init.addons_group.name && enabled_addon.name == addon.name
+                            }),
+
+                            addons_group: init.addons_group.clone(),
+                            game_info: init.game_info.clone(),
+
+                            addon_info: addon
+                        })
+                        .forward(sender.input_sender(), std::convert::identity)
                 })
                 .collect(),
 
-            addons_group: init.0,
-            game_info: init.1
+            addons_group: init.addons_group,
+            game_info: init.game_info
         };
 
         let widgets = view_output!();
@@ -63,6 +93,14 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
-        
+        match msg {
+            Self::Input::ToggleAddon { addon, enabled } => {
+                sender.output(Self::Output::ToggleAddon {
+                    addon,
+                    group: self.addons_group.clone(),
+                    enabled
+                }).unwrap();
+            }
+        }
     }
 }

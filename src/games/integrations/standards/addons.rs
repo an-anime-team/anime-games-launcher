@@ -2,7 +2,7 @@ use mlua::prelude::*;
 
 use super::IntegrationStandard;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AddonsGroup {
     pub name: String,
     pub title: String,
@@ -46,7 +46,7 @@ impl AddonsGroup {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Addon {
     pub r#type: AddonType,
     pub name: String,
@@ -87,7 +87,7 @@ impl Addon {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AddonType {
     Module,
     Component

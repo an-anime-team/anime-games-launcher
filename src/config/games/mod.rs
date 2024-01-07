@@ -130,7 +130,11 @@ impl GameSettings {
 
                     for (edition, names) in values.clone() {
                         if let Some(names) = names.as_array() {
-                            addons.insert(edition, names.iter().map(GameEditionAddon::from).collect());
+                            let names = names.iter()
+                                .map(GameEditionAddon::from)
+                                .collect();
+
+                            addons.insert(edition, names);
                         }
                     }
 
@@ -141,7 +145,7 @@ impl GameSettings {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GameEditionAddon {
     pub group: String,
     pub name: String

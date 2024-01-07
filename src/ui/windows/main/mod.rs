@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use relm4::prelude::*;
 use relm4::factory::*;
@@ -14,6 +14,8 @@ use crate::{
 
 use crate::components::wine::*;
 use crate::components::dxvk::*;
+
+use crate::config::games::GameEditionAddon;
 
 use crate::ui::windows::preferences::PreferencesApp;
 
@@ -87,6 +89,11 @@ pub enum MainAppMsg {
 
     OpenPreferences,
     OpenAddonsManager(CardInfo),
+
+    SetEnabledAddons {
+        game: CardInfo,
+        addons: HashSet<GameEditionAddon>
+    },
 
     ShowTasksFlap,
     HideTasksFlap,
@@ -454,7 +461,7 @@ impl SimpleComponent for MainApp {
 
             GAME_ADDONS_MANAGER_APP = Some(GameAddonsManagerApp::builder()
                 .launch(widgets.window.clone())
-                .detach());
+                .forward(sender.input_sender(), std::convert::identity));
         }
 
         if let Some(wine) = init.download_wine {
@@ -517,41 +524,35 @@ impl SimpleComponent for MainApp {
                 let controller = GAME_ADDONS_MANAGER_APP.as_ref()
                     .unwrap_unchecked();
 
-                match games::get(game_info.get_name()) {
-                    Ok(Some(game)) => {
-                        match game.get_addons_list(game_info.get_edition()) {
-                            Ok(addons) => {
-                                controller.emit(GameAddonsManagerAppMsg::SetGameInfo {
-                                    game_info,
-                                    addons
-                                });
-                
-                                controller.widget().present();
-                            }
+                let game = games::get_unsafe(game_info.get_name());
 
-                            Err(err) => {
-                                sender.input(MainAppMsg::ShowToast {
-                                    title: format!("Unable to get {} DLC list", game_info.get_title()),
-                                    message: Some(err.to_string())
-                                });
-                            }
-                        }
-                    }
-
-                    Ok(None) => {
-                        sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to find {} integration script", game_info.get_title()),
-                            message: None
+                match game.get_addons_list(game_info.get_edition()) {
+                    Ok(addons) => {
+                        controller.emit(GameAddonsManagerAppMsg::SetGameInfo {
+                            game_info,
+                            addons
                         });
+
+                        controller.widget().present();
                     }
 
                     Err(err) => {
                         sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to find {} integration script", game_info.get_title()),
+                            title: format!("Unable to get {} addons list", game_info.get_title()),
                             message: Some(err.to_string())
                         });
                     }
                 }
+            }
+
+            // FIXME: doesn't look really safe
+            MainAppMsg::SetEnabledAddons { game, addons } => {
+                let property = format!("games.settings.{}.addons.{}", game.get_name(), game.get_edition());
+                let value = serde_json::to_value(&addons).unwrap();
+
+                config::set(property, value).unwrap();
+
+
             }
 
             MainAppMsg::ShowTasksFlap => {
