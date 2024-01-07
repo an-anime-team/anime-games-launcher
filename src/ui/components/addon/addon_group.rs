@@ -37,11 +37,7 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
         }
     }
 
-    async fn init(
-        init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             addons_widgets: init.0.addons
                 .iter()

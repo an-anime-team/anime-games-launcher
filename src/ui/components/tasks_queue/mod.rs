@@ -213,11 +213,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
         }
     }
 
-    async fn init(
-        init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let flow_box = gtk::FlowBox::new();
 
         flow_box.set_valign(gtk::Align::End);

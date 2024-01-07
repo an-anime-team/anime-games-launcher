@@ -47,11 +47,7 @@ impl SimpleAsyncComponent for AddonRowComponent {
         }
     }
 
-    async fn init(
-        init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             addons_group: init.0,
             addon_info: init.1,

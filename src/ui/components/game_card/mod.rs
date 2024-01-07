@@ -196,11 +196,7 @@ impl SimpleAsyncComponent for CardComponent {
         }
     }
 
-    async fn init(
-        init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             info: init,
 

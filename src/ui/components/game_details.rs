@@ -185,11 +185,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
         }
     }
 
-    async fn init(
-        init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             game_card: CardComponent::builder()
                 .launch(init.clone())
