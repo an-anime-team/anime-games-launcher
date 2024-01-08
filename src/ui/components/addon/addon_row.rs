@@ -92,13 +92,27 @@ impl SimpleAsyncComponent for AddonRowComponent {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             AddonRowComponentMsg::PerformAction => {
-                let message = if self.installed {
-                    AddonsGroupComponentInput::UninstallAddon(self.addon_info.clone())
-                } else {
-                    AddonsGroupComponentInput::InstallAddon(self.addon_info.clone())
-                };
+                if self.installed {
+                    self.enabled = false;
 
-                sender.output(message).unwrap();
+                    sender.output(AddonsGroupComponentInput::ToggleAddon {
+                        addon: self.addon_info.clone(),
+                        enabled: self.enabled
+                    }).unwrap();
+
+                    sender.output(AddonsGroupComponentInput::UninstallAddon(self.addon_info.clone())).unwrap();
+                }
+
+                else {
+                    self.enabled = true;
+
+                    sender.output(AddonsGroupComponentInput::ToggleAddon {
+                        addon: self.addon_info.clone(),
+                        enabled: self.enabled
+                    }).unwrap();
+
+                    sender.output(AddonsGroupComponentInput::InstallAddon(self.addon_info.clone())).unwrap();
+                }
             }
 
             AddonRowComponentMsg::ToggleAddon => {
