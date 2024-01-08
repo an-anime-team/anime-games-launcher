@@ -85,10 +85,10 @@ impl Game {
                     lua: Lua::new()
                 };
 
-                game.lua.globals().set("v1_network_http_get", game.lua.create_function(|_, uri: String| {
+                game.lua.globals().set("v1_network_http_get", game.lua.create_function(|lua, uri: String| {
                     anime_game_core::network::minreq::get(uri)
                         .send()
-                        .and_then(|result| result.as_str().map(String::from))
+                        .map(|result| lua.create_string(result.as_bytes()))
                         .map_err(LuaError::external)
                 })?)?;
 
