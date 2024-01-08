@@ -10,8 +10,19 @@ use crate::ui::components::game_card::CardInfo;
 
 use super::addon_group::AddonsGroupComponentInput;
 
+pub struct AddonRowComponentInit {
+    pub addons_group: AddonsGroup,
+    pub addon_info: Addon,
+    pub game_info: CardInfo,
+
+    pub installed: bool,
+    pub enabled: bool
+}
+
 #[derive(Debug)]
 pub struct AddonRowComponent {
+    pub switch: gtk::Switch,
+
     pub addons_group: AddonsGroup,
     pub addon_info: Addon,
     pub game_info: CardInfo,
@@ -28,7 +39,7 @@ pub enum AddonRowComponentMsg {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for AddonRowComponent {
-    type Init = Self;
+    type Init = AddonRowComponentInit;
     type Input = AddonRowComponentMsg;
     type Output = AddonsGroupComponentInput;
 
@@ -69,7 +80,8 @@ impl SimpleAsyncComponent for AddonRowComponent {
                 connect_clicked => AddonRowComponentMsg::PerformAction
             },
 
-            add_suffix = &gtk::Switch {
+            #[local_ref]
+            add_suffix = switch -> gtk::Switch {
                 set_valign: gtk::Align::Center,
 
                 set_sensitive: !model.addon_info.required,
@@ -83,7 +95,20 @@ impl SimpleAsyncComponent for AddonRowComponent {
         }
     }
 
-    async fn init(model: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+        let model = Self {
+            switch: gtk::Switch::new(),
+
+            addons_group: init.addons_group,
+            game_info: init.game_info,
+
+            addon_info: init.addon_info,
+            enabled: init.enabled,
+            installed: init.installed
+        };
+
+        let switch = &model.switch;
+
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
@@ -93,23 +118,13 @@ impl SimpleAsyncComponent for AddonRowComponent {
         match msg {
             AddonRowComponentMsg::PerformAction => {
                 if self.installed {
-                    self.enabled = false;
-
-                    sender.output(AddonsGroupComponentInput::ToggleAddon {
-                        addon: self.addon_info.clone(),
-                        enabled: self.enabled
-                    }).unwrap();
+                    self.switch.set_state(false);
 
                     sender.output(AddonsGroupComponentInput::UninstallAddon(self.addon_info.clone())).unwrap();
                 }
 
                 else {
-                    self.enabled = true;
-
-                    sender.output(AddonsGroupComponentInput::ToggleAddon {
-                        addon: self.addon_info.clone(),
-                        enabled: self.enabled
-                    }).unwrap();
+                    self.switch.set_state(true);
 
                     sender.output(AddonsGroupComponentInput::InstallAddon(self.addon_info.clone())).unwrap();
                 }

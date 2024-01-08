@@ -9,14 +9,13 @@ pub enum TaskStatus {
     Unpacking,
     RunTransitionCode,
     FinishingTransition,
-    ApplyingHdiffPatches,
-    DeletingObsoleteFiles,
     RunPostTransitionCode,
     CreatingPrefix,
     InstallingDxvk,
     InstallingFonts,
     VerifyingFiles,
     RepairingFiles,
+    DeletingFolders,
     Finished
 }
 

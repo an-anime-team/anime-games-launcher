@@ -112,7 +112,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            Self::Input::SetGameInfo { game_info, addons } => {
+            GameAddonsManagerAppMsg::SetGameInfo { game_info, addons } => {
                 let game = unsafe {
                     games::get_unsafe(game_info.get_name())
                 };

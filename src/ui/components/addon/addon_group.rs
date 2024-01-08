@@ -12,7 +12,10 @@ use crate::games::integrations::standards::addons::{
 
 use crate::ui::components::game_card::CardInfo;
 
-use super::addon_row::AddonRowComponent;
+use super::addon_row::{
+    AddonRowComponent,
+    AddonRowComponentInit
+};
 
 pub struct AddonsGroupComponentInit {
     pub addons_group: AddonsGroup,
@@ -103,7 +106,7 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
                 .into_iter()
                 .map(|(addon, enabled, installed)| {
                     AddonRowComponent::builder()
-                        .launch(AddonRowComponent {
+                        .launch(AddonRowComponentInit {
                             addons_group: init.addons_group.clone(),
                             game_info: init.game_info.clone(),
 

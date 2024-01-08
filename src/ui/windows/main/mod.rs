@@ -56,6 +56,7 @@ use super::loading::load_app::LoadingResult;
 pub mod launch_game;
 pub mod download_game_task;
 pub mod download_addon_task;
+pub mod uninstall_addon_task;
 
 pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
 pub static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
@@ -714,7 +715,24 @@ impl SimpleComponent for MainApp {
             }
 
             MainAppMsg::AddUninstallAddonTask { game_info, addon, group } => {
-                todo!()
+                unsafe {
+                    GAME_ADDONS_MANAGER_APP.as_ref()
+                        .unwrap_unchecked()
+                        .widget()
+                        .close();
+                }
+
+                sender.input(MainAppMsg::HideDetails);
+                sender.input(MainAppMsg::ShowTasksFlap);
+
+                match uninstall_addon_task::get_uninstall_addon_task(&game_info, &addon, &group) {
+                    Ok(task) => {
+                        // TODO: should I move game to "queued"?
+                        self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                    }
+
+                    Err(err) => sender.input(*err)
+                }
             }
 
             MainAppMsg::AddDownloadWineTask { name, title, developer, version } => {

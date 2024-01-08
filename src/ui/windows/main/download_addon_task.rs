@@ -1,9 +1,4 @@
-use std::path::PathBuf;
-
 use crate::games;
-
-use crate::config;
-use crate::config::games::settings::GameSettings;
 
 use crate::ui::components::game_card::CardInfo;
 
@@ -17,8 +12,7 @@ use crate::games::integrations::standards::diff::DiffInfo;
 
 use crate::games::integrations::standards::addons::{
     Addon,
-    AddonsGroup,
-    AddonType
+    AddonsGroup
 };
 
 use super::MainAppMsg;

@@ -26,6 +26,7 @@ pub mod task;
 pub mod download_diff_task;
 pub mod create_prefix_task;
 pub mod verify_integrity_task;
+pub mod delete_folders_task;
 
 pub use task::*;
 
@@ -366,8 +367,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::Downloading => (false, String::from("Downloading...")),
                                 TaskStatus::Unpacking   => (false, String::from("Unpacking...")),
 
-                                TaskStatus::ApplyingHdiffPatches  => (false, String::from("Applying hdiff patches...")),
-                                TaskStatus::DeletingObsoleteFiles => (false, String::from("Deleting obsolete files...")),
+                                TaskStatus::DeletingFolders => (true, String::from("Deleting folders...")),
 
                                 TaskStatus::RunTransitionCode     => (false, String::from("Starting transition code...")),
                                 TaskStatus::RunPostTransitionCode => (false, String::from("Starting post-transition code...")),
