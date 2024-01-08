@@ -231,7 +231,8 @@ impl SimpleComponent for MainApp {
                                         set_row_spacing: 12,
                                         set_column_spacing: 12,
 
-                                        set_margin_all: 16,
+                                        #[watch]
+                                        set_margin_all: if model.running_games.is_empty() { 0 } else { 16 },
 
                                         set_homogeneous: true,
                                         set_selection_mode: gtk::SelectionMode::None
@@ -254,7 +255,8 @@ impl SimpleComponent for MainApp {
                                         set_row_spacing: 12,
                                         set_column_spacing: 12,
 
-                                        set_margin_all: 16,
+                                        #[watch]
+                                        set_margin_all: if model.installed_games.is_empty() { 0 } else { 16 },
 
                                         set_homogeneous: true,
                                         set_selection_mode: gtk::SelectionMode::None
@@ -277,7 +279,8 @@ impl SimpleComponent for MainApp {
                                         set_row_spacing: 12,
                                         set_column_spacing: 12,
 
-                                        set_margin_all: 16,
+                                        #[watch]
+                                        set_margin_all: if model.queued_games.is_empty() { 0 } else { 16 },
 
                                         set_homogeneous: true,
                                         set_selection_mode: gtk::SelectionMode::None
@@ -300,7 +303,8 @@ impl SimpleComponent for MainApp {
                                         set_row_spacing: 12,
                                         set_column_spacing: 12,
 
-                                        set_margin_all: 16,
+                                        #[watch]
+                                        set_margin_all: if model.available_games.is_empty() { 0 } else { 16 },
 
                                         set_homogeneous: true,
                                         set_selection_mode: gtk::SelectionMode::None
