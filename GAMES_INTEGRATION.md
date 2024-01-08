@@ -55,8 +55,10 @@
 
 | Method | Description |
 | - | - |
-| `v1_diff_transition(path, edition)` | Process diff files before finishing transition |
-| `v1_diff_post_transition(path, edition)` | Process diff files after finishing transition |
+| `v1_game_diff_transition(transition_path, edition)` | Process game diff files before finishing transition |
+| `v1_game_diff_post_transition(game_path, edition)` | Process game diff files after finishing transition |
+| `v1_addons_diff_transition(group_name, addon_name, transition_path, edition)` | Process addons diff files before finishing transition |
+| `v1_addons_diff_post_transition(group_name, addon_name, addon_path, edition)` | Process addons diff files after finishing transition |
 
 ### Types
 

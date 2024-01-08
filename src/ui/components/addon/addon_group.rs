@@ -89,10 +89,10 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
             .collect::<Vec<_>>();
 
         addons.sort_by(|a, b| {
-            if a.2 == b.2 {
-                b.1.cmp(&a.1)
-            } else if a.1 == b.1 {
+            if a.2 == b.2 && a.1 == b.1 {
                 b.0.title.cmp(&a.0.title)
+            } else if a.2 == b.2 {
+                b.1.cmp(&a.1)
             } else {
                 b.2.cmp(&a.2)
             }

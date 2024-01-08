@@ -268,48 +268,79 @@ impl Game {
         }
     }
 
-    pub fn get_addon_diff(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Diff> {
+    pub fn get_addon_diff(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<Diff>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
                     .get::<_, LuaFunction>("v1_addons_get_diff")?
-                    .call::<_, LuaTable>((
+                    .call::<_, Option<LuaTable>>((
                         group_name.as_ref(),
                         addon_name.as_ref(),
                         addon_path.as_ref(),
                         edition.as_ref()
                     ))?;
 
-                Diff::from_table(diff, self.script_standard)
+                match diff {
+                    Some(diff) => Ok(Some(Diff::from_table(diff, self.script_standard)?)),
+                    None => Ok(None)
+                }
             }
         }
     }
 
-    pub fn has_diff_transition(&self) -> anyhow::Result<bool> {
+    pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
         match self.script_standard {
-            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_diff_transition")?)
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_transition")?)
         }
     }
 
-    pub fn run_diff_transition(&self, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    pub fn run_game_diff_transition(&self, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .get::<_, LuaFunction>("v1_diff_transition")?
+                .get::<_, LuaFunction>("v1_game_diff_transition")?
                 .call::<_, ()>((transition_path.as_ref(), edition.as_ref()))?)
         }
     }
 
-    pub fn has_diff_post_transition(&self) -> anyhow::Result<bool> {
+    pub fn has_game_diff_post_transition(&self) -> anyhow::Result<bool> {
         match self.script_standard {
-            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_diff_post_transition")?)
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_post_transition")?)
         }
     }
 
-    pub fn run_diff_post_transition(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    pub fn run_game_diff_post_transition(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .get::<_, LuaFunction>("v1_diff_post_transition")?
+                .get::<_, LuaFunction>("v1_game_diff_post_transition")?
                 .call::<_, ()>((path.as_ref(), edition.as_ref()))?)
+        }
+    }
+
+    pub fn has_addons_diff_transition(&self) -> anyhow::Result<bool> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_addons_diff_transition")?)
+        }
+    }
+
+    pub fn run_addons_diff_transition(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_addons_diff_transition")?
+                .call::<_, ()>((group_name.as_ref(), addon_name.as_ref(), transition_path.as_ref(), edition.as_ref()))?)
+        }
+    }
+
+    pub fn has_addons_diff_post_transition(&self) -> anyhow::Result<bool> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_addons_diff_post_transition")?)
+        }
+    }
+
+    pub fn run_addons_diff_post_transition(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_addons_diff_post_transition")?
+                .call::<_, ()>((group_name.as_ref(), addon_name.as_ref(), addon_path.as_ref(), edition.as_ref()))?)
         }
     }
 }

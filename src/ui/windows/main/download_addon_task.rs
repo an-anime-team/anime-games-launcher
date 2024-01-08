@@ -6,7 +6,11 @@ use crate::config;
 use crate::config::games::settings::GameSettings;
 
 use crate::ui::components::game_card::CardInfo;
-use crate::ui::components::tasks_queue::download_diff_task::DownloadDiffQueuedTask;
+
+use crate::ui::components::tasks_queue::download_diff_task::{
+    DownloadDiffQueuedTask,
+    DiffOrigin
+};
 
 use crate::games::integrations::Game;
 use crate::games::integrations::standards::diff::DiffInfo;
@@ -48,8 +52,8 @@ fn get_diff(
         .map_err(|err| MainAppMsg::ShowToast {
             title: format!("Unable to find {} addon version diff", game.game_title),
             message: Some(err.to_string())
-        })
-        .map(|diff| diff.diff)?
+        })?
+        .and_then(|diff| diff.diff)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
             title: format!("{} addon is not installed", game.game_title),
             message: None
@@ -105,6 +109,10 @@ pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &Addo
             download_path.to_string_lossy(),
             game_info.get_edition()
         )?,
+        diff_origin: DiffOrigin::Addon {
+            group_name: group.name.clone(),
+            addon_name: addon.name.clone()
+        },
         download_path
     }))
 }

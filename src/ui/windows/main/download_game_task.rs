@@ -6,7 +6,11 @@ use crate::config;
 use crate::config::games::settings::GameSettings;
 
 use crate::ui::components::game_card::CardInfo;
-use crate::ui::components::tasks_queue::download_diff_task::DownloadDiffQueuedTask;
+
+use crate::ui::components::tasks_queue::download_diff_task::{
+    DownloadDiffQueuedTask,
+    DiffOrigin
+};
 
 use crate::games::integrations::Game;
 use crate::games::integrations::standards::diff::DiffInfo;
@@ -91,6 +95,7 @@ pub fn get_download_game_task(game_info: &CardInfo, config: &config::Config) -> 
             game,
             game_info.get_edition(),
             game_path.to_string_lossy()
-        )?
+        )?,
+        diff_origin: DiffOrigin::Game
     }))
 }

@@ -98,7 +98,7 @@ impl SimpleComponent for LoadingApp {
         std::thread::spawn(move || {
             match load_app::load_app(&sender) {
                 Ok(result) => {
-                    dbg!(&result);
+                    // dbg!(&result);
 
                     gtk::glib::MainContext::default().spawn(async {
                         let main_app = MainApp::builder()

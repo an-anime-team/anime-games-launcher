@@ -4,7 +4,11 @@ use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::games;
 use crate::games::integrations::Game;
-use crate::games::integrations::standards::diff::DiffStatus;
+
+use crate::games::integrations::standards::diff::{
+    Diff,
+    DiffStatus
+};
 
 use crate::games::integrations::standards::addons::{
     Addon,
@@ -40,20 +44,36 @@ fn check_addon(
         .then(|| {
             let addon_path = addon.get_installation_path(&group.name, &game.game_name, edition.as_ref())?;
 
-            let diff = game.get_addon_diff(&group.name, &addon.name, addon_path.to_string_lossy(), edition.as_ref())?;
+            let installed = game.is_addon_installed(
+                &group.name,
+                &addon.name,
+                addon_path.to_string_lossy(),
+                edition.as_ref()
+            )?;
+
+            let entry = AddonsListEntry {
+                game_info: game_info.clone(),
+                addon: addon.clone(),
+                group: group.clone()
+            };
+
+            if !installed {
+                return Ok(Some(entry));
+            }
+
+            let diff = game.get_addon_diff(
+                &group.name,
+                &addon.name,
+                addon_path.to_string_lossy(),
+                edition.as_ref()
+            )?;
 
             // TODO: handle "unavailable" status
-            if diff.status == DiffStatus::Outdated {
-                Ok(Some(AddonsListEntry {
-                    game_info: game_info.clone(),
-                    addon: addon.clone(),
-                    group: group.clone()
-                }))
+            if let Some(Diff { status: DiffStatus::Outdated, .. }) = diff {
+                return Ok(Some(entry));
             }
 
-            else {
-                Ok(None)
-            }
+            Ok(None)
         })
         .unwrap_or(Ok(None))
 }

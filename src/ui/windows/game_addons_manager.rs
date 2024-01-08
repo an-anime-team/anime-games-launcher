@@ -12,8 +12,7 @@ use crate::games;
 
 use crate::games::integrations::standards::addons::{
     Addon,
-    AddonsGroup,
-    AddonType
+    AddonsGroup
 };
 
 use crate::ui::components::addon::addon_group::{

@@ -27,7 +27,16 @@ use super::{
     TaskStatus
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DiffOrigin {
+    Game,
+    Addon {
+        group_name: String,
+        addon_name: String
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Status {
     PreparingTransition,
     Downloading,
@@ -41,6 +50,7 @@ pub enum Status {
 pub struct DownloadDiffQueuedTask {
     pub card_info: CardInfo,
     pub diff_info: DiffInfo,
+    pub diff_origin: DiffOrigin,
     pub download_path: PathBuf
 }
 
@@ -56,6 +66,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
         let game_name = self.card_info.get_name().to_string();
         let game_edition = self.card_info.get_edition().to_string();
         let diff_info = self.diff_info.clone();
+        let diff_origin = self.diff_origin.clone();
         let download_path = self.download_path.clone();
 
         Ok(Box::new(DownloadDiffResolvedTask {
@@ -184,12 +195,32 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     // Run transition code
 
-                    if game.has_diff_transition()? {
-                        sender.send((Status::RunTransitionCode, 0, 1))?;
+                    match &diff_origin {
+                        DiffOrigin::Game if game.has_game_diff_transition()? => {
+                            sender.send((Status::RunTransitionCode, 0, 1))?;
 
-                        game.run_diff_transition(transition.transition_path().to_string_lossy(), &game_edition)?;
+                            game.run_game_diff_transition(
+                                transition.transition_path().to_string_lossy(),
+                                &game_edition
+                            )?;
 
-                        sender.send((Status::RunTransitionCode, 1, 1))?;
+                            sender.send((Status::RunTransitionCode, 1, 1))?;
+                        }
+
+                        DiffOrigin::Addon { group_name, addon_name } if game.has_addons_diff_transition()? => {
+                            sender.send((Status::RunTransitionCode, 0, 1))?;
+
+                            game.run_addons_diff_transition(
+                                group_name,
+                                addon_name,
+                                transition.transition_path().to_string_lossy(),
+                                &game_edition
+                            )?;
+
+                            sender.send((Status::RunTransitionCode, 1, 1))?;
+                        }
+
+                        _ => ()
                     }
 
                     // Finish transition
@@ -202,12 +233,32 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     // Run post-transition code
 
-                    if game.has_diff_post_transition()? {
-                        sender.send((Status::RunPostTransitionCode, 0, 1))?;
+                    match &diff_origin {
+                        DiffOrigin::Game if game.has_game_diff_post_transition()? => {
+                            sender.send((Status::RunPostTransitionCode, 0, 1))?;
 
-                        game.run_diff_post_transition(transition.original_path().to_string_lossy(), &game_edition)?;
+                            game.run_game_diff_post_transition(
+                                transition.original_path().to_string_lossy(),
+                                &game_edition
+                            )?;
 
-                        sender.send((Status::RunPostTransitionCode, 1, 1))?;
+                            sender.send((Status::RunPostTransitionCode, 1, 1))?;
+                        }
+
+                        DiffOrigin::Addon { group_name, addon_name } if game.has_addons_diff_post_transition()? => {
+                            sender.send((Status::RunPostTransitionCode, 0, 1))?;
+
+                            game.run_addons_diff_post_transition(
+                                group_name,
+                                addon_name,
+                                transition.transition_path().to_string_lossy(),
+                                &game_edition
+                            )?;
+
+                            sender.send((Status::RunPostTransitionCode, 1, 1))?;
+                        }
+
+                        _ => ()
                     }
 
                     Ok(())

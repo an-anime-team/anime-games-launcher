@@ -513,6 +513,16 @@ impl SimpleComponent for MainApp {
             sender.input(MainAppMsg::ShowTasksFlap);
         }
 
+        for addon in init.download_addons {
+            sender.input(MainAppMsg::AddDownloadAddonTask {
+                game_info: addon.game_info,
+                addon: addon.addon,
+                group: addon.group
+            });
+
+            sender.input(MainAppMsg::ShowTasksFlap);
+        }
+
         ComponentParts { model, widgets }
     }
 
