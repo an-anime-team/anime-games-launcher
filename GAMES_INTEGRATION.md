@@ -50,6 +50,7 @@
 | | `v1_addons_get_version(group_name, addon_name, addon_path, edition)` | `string \| null` | Get installed addon version |
 | | `v1_addons_get_download(group_name, addon_name, edition)` | `Download \| null` | Get full addon downloading info |
 | | `v1_addons_get_diff(group_name, addon_name, addon_path, edition)` | `Diff \| null` | Get addon version diff |
+| | `v1_addons_get_paths(group_name, addon_name, addon_path, edition)` | `string[]` | Get installed addon files and folders paths |
 
 ### Optional APIs (can be ignored)
 

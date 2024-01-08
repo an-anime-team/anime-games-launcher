@@ -288,6 +288,19 @@ impl Game {
         }
     }
 
+    pub fn get_addon_paths(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<String>> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .get::<_, LuaFunction>("v1_addons_get_paths")?
+                .call::<_, Vec<String>>((
+                    group_name.as_ref(),
+                    addon_name.as_ref(),
+                    addon_path.as_ref(),
+                    edition.as_ref()
+                ))?)
+        }
+    }
+
     pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
         match self.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_transition")?)
