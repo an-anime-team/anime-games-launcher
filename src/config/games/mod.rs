@@ -1,11 +1,10 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
-use crate::games;
 use crate::config;
+use crate::games::integrations::Game;
 
 use crate::LAUNCHER_FOLDER;
 
@@ -16,7 +15,7 @@ use settings::GameSettings;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Games {
     pub integrations: PathBuf,
-    pub settings: HashMap<String, GameSettings>
+    settings: Json
 }
 
 impl Default for Games {
@@ -24,7 +23,7 @@ impl Default for Games {
     fn default() -> Self {
         Self {
             integrations: LAUNCHER_FOLDER.join("integrations"),
-            settings: HashMap::new()
+            settings: Json::Object(serde_json::Map::default())
         }
     }
 }
@@ -41,45 +40,26 @@ impl From<&Json> for Games {
                 .unwrap_or(default.integrations),
 
             settings: value.get("settings")
-                .and_then(Json::as_object)
-                .map(|values| {
-                    let mut settings = HashMap::new();
-
-                    for (name, game) in values {
-                        let editions: &[&str] = &[];
-
-                        if let Ok(game_settings) = GameSettings::from_json(name, editions, game) {
-                            settings.insert(name.to_owned(), game_settings);
-                        }
-                    }
-
-                    settings
-                })
+                .cloned()
                 .unwrap_or(default.settings)
         }
     }
 }
 
 impl Games {
-    pub fn get_game_settings(&self, game: impl AsRef<str>) -> anyhow::Result<GameSettings> {
-        match self.settings.get(game.as_ref()) {
-            Some(settings) => Ok(settings.to_owned()),
-            None => {
-                let Some(game_object) = games::get(game.as_ref())? else {
-                    anyhow::bail!("Couldn't find {} integration script", game.as_ref());
-                };
+    pub fn get_game_settings(&self, game: &Game) -> anyhow::Result<GameSettings> {
+        let editions = game
+            .get_game_editions_list()?
+            .into_iter()
+            .map(|edition| edition.name);
 
-                let editions = game_object
-                    .get_game_editions_list()?
-                    .into_iter()
-                    .map(|edition| edition.name);
+        let settings = match self.settings.get(&game.game_name) {
+            Some(settings) => GameSettings::from_json(&game.game_name, editions, settings)?,
+            None => GameSettings::default(&game.game_name, editions)?
+        };
 
-                let settings = GameSettings::default(&game_object.game_name, editions)?;
+        config::set(format!("games.settings.{}", game.game_name), serde_json::to_value(settings.clone())?)?;
 
-                config::set(format!("games.settings.{}", game.as_ref()), serde_json::to_value(settings.clone())?)?;
-
-                Ok(settings)
-            }
-        }
+        Ok(settings)
     }
 }

@@ -540,18 +540,16 @@ impl SimpleComponent for MainApp {
                 }
 
                 else {
-                    let config = config::get();
+                    let game = unsafe {
+                        games::get_unsafe(info.get_name())
+                    };
 
-                    let settings = config.games.get_game_settings(info.get_name()).unwrap();
+                    let settings = config::get().games.get_game_settings(game).unwrap();
 
                     let paths = settings
                         .paths
                         .get(info.get_edition())
                         .unwrap();
-
-                    let game = unsafe {
-                        games::get_unsafe(info.get_name())
-                    };
 
                     match game.get_game_status(paths.game.to_string_lossy(), info.get_edition()) {
                         Ok(status) => {

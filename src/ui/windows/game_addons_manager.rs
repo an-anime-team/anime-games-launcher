@@ -118,7 +118,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                 };
 
                 let settings = config::get()
-                    .games.get_game_settings(game_info.get_name())
+                    .games.get_game_settings(game)
                     .unwrap();
 
                 self.enabled_addons = settings.addons

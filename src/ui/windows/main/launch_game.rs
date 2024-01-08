@@ -59,7 +59,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     };
 
     // Get game settings
-    let settings = config::get().games.get_game_settings(info.get_name())?;
+    let settings = config::get().games.get_game_settings(game)?;
 
     // Get game paths
     let Some(paths) = settings.paths.get(info.get_edition()) else {

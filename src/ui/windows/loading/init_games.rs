@@ -54,7 +54,7 @@ pub fn get_games_list() -> anyhow::Result<GamesList> {
     let mut available = Vec::with_capacity(games.len());
 
     for (name, game) in games {
-        let settings = settings.get_game_settings(name)?;
+        let settings = settings.get_game_settings(game)?;
 
         let entries = get_game_entries(game, settings)?;
 

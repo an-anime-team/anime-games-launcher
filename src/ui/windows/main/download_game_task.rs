@@ -60,20 +60,20 @@ fn get_diff_or_download(game: &Game, edition: impl AsRef<str> + Copy, game_path:
 }
 
 #[inline]
-fn get_settings(game_info: &CardInfo, config: &config::Config) -> HeapResult<GameSettings> {
-    config.games.get_game_settings(game_info.get_name())
+fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings> {
+    config.games.get_game_settings(game)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} settings", game_info.get_title()),
+            title: format!("Unable to find {} settings", game.game_name),
             message: Some(err.to_string())
         }))
 }
 
 #[inline]
-fn get_game_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> HeapResult<PathBuf> {
-    get_settings(game_info, config)?
-        .paths.get(game_info.get_edition())
+fn get_game_path<'a>(game: &'a Game, edition: impl AsRef<str>, config: &'a config::Config) -> HeapResult<PathBuf> {
+    get_settings(game, config)?
+        .paths.get(edition.as_ref())
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} installation path", game_info.get_title()),
+            title: format!("Unable to find {} installation path", game.game_title),
             message: None
         }))
         .map(|paths| paths.game.clone())
@@ -82,11 +82,11 @@ fn get_game_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> Hea
 
 #[inline]
 pub fn get_download_game_task(game_info: &CardInfo, config: &config::Config) -> HeapResult<Box<DownloadDiffQueuedTask>> {
-    let game_path = get_game_path(game_info, config)?;
-
     let game = unsafe {
         games::get_unsafe(game_info.get_name())
     };
+
+    let game_path = get_game_path(game, game_info.get_edition(), config)?;
 
     Ok(Box::new(DownloadDiffQueuedTask {
         card_info: game_info.clone(),
