@@ -88,9 +88,10 @@ impl SimpleAsyncComponent for AddonRowComponent {
                 set_visible: model.installed,
 
                 #[watch]
+                #[block_signal(toggle_handler)]
                 set_active: model.enabled,
 
-                connect_active_notify => AddonRowComponentMsg::ToggleAddon
+                connect_active_notify => AddonRowComponentMsg::ToggleAddon @toggle_handler
             }
         }
     }
@@ -118,13 +119,13 @@ impl SimpleAsyncComponent for AddonRowComponent {
         match msg {
             AddonRowComponentMsg::PerformAction => {
                 if self.installed {
-                    self.switch.set_state(false);
+                    self.switch.set_active(false);
 
                     sender.output(AddonsGroupComponentInput::UninstallAddon(self.addon_info.clone())).unwrap();
                 }
 
                 else {
-                    self.switch.set_state(true);
+                    self.switch.set_active(true);
 
                     sender.output(AddonsGroupComponentInput::InstallAddon(self.addon_info.clone())).unwrap();
                 }
