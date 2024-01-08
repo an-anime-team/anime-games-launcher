@@ -9,6 +9,7 @@ pub mod init_games;
 pub mod check_wine;
 pub mod check_dxvk;
 pub mod check_wine_prefix;
+pub mod check_addons;
 pub mod load_app;
 
 use crate::APP_ID;
@@ -97,6 +98,8 @@ impl SimpleComponent for LoadingApp {
         std::thread::spawn(move || {
             match load_app::load_app(&sender) {
                 Ok(result) => {
+                    dbg!(&result);
+
                     gtk::glib::MainContext::default().spawn(async {
                         let main_app = MainApp::builder()
                             .launch(result)

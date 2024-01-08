@@ -122,8 +122,6 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                     .games.get_game_settings(game_info.get_name())
                     .unwrap();
 
-                let paths = settings.paths.get(game_info.get_edition()).unwrap();
-
                 self.enabled_addons = settings.addons
                     .get(game_info.get_edition())
                     .map(|addons| HashSet::from_iter(addons.clone()))
@@ -141,13 +139,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
 
                 for group in addons {
                     for addon in &group.addons {
-                        let addon_path = if addon.r#type == AddonType::Module {
-                            paths.game.clone()
-                        } else {
-                            paths.addons
-                                .join(&group.name)
-                                .join(&addon.name)
-                        };
+                        let addon_path = addon.get_installation_path(&group.name, game_info.get_name(), game_info.get_edition()).unwrap();
 
                         // FIXME: handle errors
                         if let Ok(true) = game.is_addon_installed(&group.name, &addon.name, addon_path.to_string_lossy(), game_info.get_edition()) {

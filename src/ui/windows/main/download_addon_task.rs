@@ -85,51 +85,12 @@ fn get_diff_or_download(
 }
 
 #[inline]
-fn get_settings(game_info: &CardInfo, config: &config::Config) -> HeapResult<GameSettings> {
-    config.games.get_game_settings(game_info.get_name())
+pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &AddonsGroup) -> HeapResult<Box<DownloadDiffQueuedTask>> {
+    let download_path = addon.get_installation_path(&group.name, game_info.get_name(), game_info.get_edition())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} settings", game_info.get_title()),
+            title: format!("Unable to find {} addon installation path", game_info.get_title()),
             message: Some(err.to_string())
-        }))
-}
-
-// TODO: reuse get_game_path function from get_game_task ?
-
-#[inline]
-fn get_game_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> HeapResult<PathBuf> {
-    get_settings(game_info, config)?
-        .paths.get(game_info.get_edition())
-        .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} installation path", game_info.get_title()),
-            message: None
-        }))
-        .map(|paths| paths.game.clone())
-
-}
-
-#[inline]
-fn get_addons_path<'a>(game_info: &'a CardInfo, config: &'a config::Config) -> HeapResult<PathBuf> {
-    get_settings(game_info, config)?
-        .paths.get(game_info.get_edition())
-        .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} installation path", game_info.get_title()),
-            message: None
-        }))
-        .map(|paths| paths.addons.clone())
-
-}
-
-#[inline]
-pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &AddonsGroup, config: &config::Config) -> HeapResult<Box<DownloadDiffQueuedTask>> {
-    let addon_path = get_addons_path(game_info, config)?
-        .join(&group.name)
-        .join(&addon.name);
-
-    let download_path = if addon.r#type == AddonType::Module {
-        get_game_path(game_info, config)?
-    } else {
-        addon_path.clone()
-    };
+        }))?;
 
     let game = unsafe {
         games::get_unsafe(game_info.get_name())

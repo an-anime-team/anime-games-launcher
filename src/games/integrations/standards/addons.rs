@@ -1,4 +1,8 @@
+use std::path::PathBuf;
+
 use mlua::prelude::*;
+
+use crate::config;
 
 use super::IntegrationStandard;
 
@@ -85,6 +89,25 @@ impl Addon {
                 Ok(table)
             }
         }
+    }
+
+    /// Get proper addon installation path according to its type
+    pub fn get_installation_path(&self, group_name: impl AsRef<str>, game: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<PathBuf> {
+        let settings = config::get().games.get_game_settings(game.as_ref())?;
+
+        let Some(paths) = settings.paths.get(edition.as_ref()) else {
+            anyhow::bail!("Unable to find {} paths", game.as_ref());
+        };
+
+        let addon_path = if self.r#type == AddonType::Module {
+            paths.game.clone()
+        } else {
+            paths.addons
+                .join(group_name.as_ref())
+                .join(&self.name)
+        };
+
+        Ok(addon_path)
     }
 }
 

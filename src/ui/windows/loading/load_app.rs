@@ -7,13 +7,14 @@ use crate::config::components::wine::prefix::Prefix;
 
 use super::*;
 
-const TOTAL_STEPS: f64 = 7.0;
+const TOTAL_STEPS: f64 = 8.0;
 
 #[derive(Debug)]
 pub struct LoadingResult {
     pub download_wine: Option<Wine>,
     pub download_dxvk: Option<Dxvk>,
     pub create_prefix: Option<Prefix>,
+    pub download_addons: Vec<check_addons::AddonsListEntry>,
 
     pub games_list: init_games::GamesList
 }
@@ -72,12 +73,21 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
 
     let create_prefix = check_wine_prefix::check_wine_prefix();
 
+    sender.input(LoadingAppMsg::SetProgress(7.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking games addons")));
+
+    let download_addons = check_addons::check_addons().map_err(|err| LoadingAppMsg::DisplayError {
+        title: String::from("Failed to check games addons"),
+        message: err.to_string()
+    })?;
+
     sender.input(LoadingAppMsg::SetProgress(1.0));
 
     Ok(LoadingResult {
         download_wine,
         download_dxvk,
         create_prefix,
+        download_addons,
 
         games_list
     })
