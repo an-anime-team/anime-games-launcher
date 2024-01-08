@@ -16,8 +16,8 @@ use crate::APP_ID;
 
 use super::main::MainApp;
 
-static mut WINDOW: Option<adw::ApplicationWindow> = None;
-static mut MAIN_WINDOW: Option<Controller<MainApp>> = None;
+pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
+pub static mut MAIN_WINDOW: Option<Controller<MainApp>> = None;
 
 #[derive(Debug)]
 pub struct LoadingApp {

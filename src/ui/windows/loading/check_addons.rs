@@ -25,7 +25,7 @@ pub struct AddonsListEntry {
 }
 
 #[inline]
-fn is_addon_enabled(enabled_addons: &[GameEditionAddon], addon: &Addon, group: &AddonsGroup) -> bool {
+pub fn is_addon_enabled(enabled_addons: &[GameEditionAddon], addon: &Addon, group: &AddonsGroup) -> bool {
     addon.required || enabled_addons.iter().any(|enabled_addon| {
         enabled_addon.group == group.name && enabled_addon.name == addon.name
     })

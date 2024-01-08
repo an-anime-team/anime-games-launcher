@@ -57,9 +57,9 @@ pub mod launch_game;
 pub mod download_game_task;
 pub mod download_addon_task;
 
-static mut WINDOW: Option<adw::ApplicationWindow> = None;
-static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
-static mut GAME_ADDONS_MANAGER_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
+pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
+pub static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
+pub static mut GAME_ADDONS_MANAGER_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,

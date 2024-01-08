@@ -8,7 +8,8 @@ use crate::LAUNCHER_FOLDER;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameEditionPaths {
     pub game: PathBuf,
-    pub addons: PathBuf
+    pub addons: PathBuf,
+    pub deployment: PathBuf
 }
 
 impl GameEditionPaths {
@@ -24,7 +25,13 @@ impl GameEditionPaths {
                 .join("games")
                 .join(game_name.as_ref())
                 .join(edition_name.as_ref())
-                .join("addons")
+                .join("addons"),
+
+            deployment: LAUNCHER_FOLDER
+                .join("games")
+                .join(game_name.as_ref())
+                .join(edition_name.as_ref())
+                .join("deployment")
         })
     }
 
@@ -40,7 +47,12 @@ impl GameEditionPaths {
             addons: value.get("addons")
                 .and_then(Json::as_str)
                 .map(PathBuf::from)
-                .unwrap_or(default.addons)
+                .unwrap_or(default.addons),
+
+            deployment: value.get("deployment")
+                .and_then(Json::as_str)
+                .map(PathBuf::from)
+                .unwrap_or(default.deployment)
         })
     }
 }

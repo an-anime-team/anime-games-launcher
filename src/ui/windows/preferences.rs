@@ -4,7 +4,7 @@ use adw::prelude::*;
 
 use crate::config;
 
-static mut WINDOW: Option<adw::PreferencesWindow> = None;
+pub static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
 pub struct PreferencesApp {
 

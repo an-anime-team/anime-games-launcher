@@ -25,7 +25,7 @@ use crate::ui::components::game_card::CardInfo;
 
 use super::main::MainAppMsg;
 
-static mut WINDOW: Option<adw::ApplicationWindow> = None;
+pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
 #[derive(Debug)]
 pub struct GameAddonsManagerApp {
