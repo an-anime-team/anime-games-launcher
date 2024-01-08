@@ -13,13 +13,6 @@ use ui::windows::loading::LoadingApp;
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
 
-#[macro_export]
-macro_rules! resource {
-    ($name:expr) => {
-        format!("{}/{}", $crate::APP_RESOURCE_PREFIX, $name)
-    };
-}
-
 lazy_static::lazy_static! {
     /// Path to the launcher's data folder
     /// 

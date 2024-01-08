@@ -151,7 +151,14 @@ impl SimpleAsyncComponent for CardComponent {
                         // },
 
                         #[watch]
-                        set_filename: Some(model.info.get_picture_uri()),
+                        set_resource?: model.info.get_picture_uri()
+                            .starts_with(crate::APP_RESOURCE_PREFIX)
+                            .then(|| Some(model.info.get_picture_uri())),
+
+                        #[watch]
+                        set_filename?: (!model.info.get_picture_uri()
+                            .starts_with(crate::APP_RESOURCE_PREFIX))
+                            .then(|| Some(model.info.get_picture_uri())),
 
                         set_content_fit: gtk::ContentFit::Cover
                     },
