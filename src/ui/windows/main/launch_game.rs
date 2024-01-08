@@ -71,8 +71,12 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
         anyhow::bail!("Unable to find {} enabled addons", info.get_title());
     };
 
+    // TODO: move files of disabled addons
+
     // Init game merge tree filesystem
     let mut tree = MergeTree::create(&paths.game)?;
+
+    let mut has_merged_layers = false;
 
     // Go through game addons list
     for group in game.get_addons_list(info.get_edition())? {
@@ -89,6 +93,8 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
                     // Merge it to the game folder if its type is "layer"
                     if addon.r#type == AddonType::Layer {
                         tree.add_layer(&addon_path)?;
+
+                        has_merged_layers = true;
                     }
 
                     continue;
@@ -107,6 +113,8 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
                         // Merge it to the game folder if its type is "layer"
                         if addon.r#type == AddonType::Layer {
                             tree.add_layer(&addon_path)?;
+
+                            has_merged_layers = true;
                         }
                     }
 
@@ -116,24 +124,30 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
         }
     }
 
-    // Prepare deployment folder
-    if paths.deployment.exists() {
-        std::fs::remove_dir_all(&paths.deployment)?;
+    let mut game_path = paths.game.clone();
+    let mut addons_path = paths.addons.clone();
+
+    // Create deployment folder it there's layered addons
+    if has_merged_layers {
+        // Prepare deployment folder
+        if paths.deployment.exists() {
+            std::fs::remove_dir_all(&paths.deployment)?;
+        }
+
+        std::fs::create_dir_all(&paths.deployment)?;
+
+        game_path = paths.deployment.join("game");
+        addons_path = paths.deployment.join("addons");
+
+        // Symlink addons to the deployment folder
+        std::os::unix::fs::symlink(&paths.addons, &addons_path)?;
+
+        // Create game folder
+        std::fs::create_dir_all(&game_path)?;
+
+        // Mount merged game folder to the deployment folder
+        tree.mount(&game_path)?;
     }
-
-    std::fs::create_dir_all(&paths.deployment)?;
-
-    let game_path = paths.deployment.join("game");
-    let addons_path = paths.deployment.join("addons");
-
-    // Symlink addons to the deployment folder
-    std::os::unix::fs::symlink(&paths.addons, &addons_path)?;
-
-    // Create game folder
-    std::fs::create_dir_all(&game_path)?;
-
-    // Mount merged game folder to the deployment folder
-    tree.mount(&game_path)?;
 
     // Request game launch options
     let options = game.get_launch_options(
