@@ -15,7 +15,7 @@ pub enum TaskStatus {
     InstallingFonts,
     VerifyingFiles,
     RepairingFiles,
-    DeletingFolders,
+    DeletingFiles,
     Finished
 }
 

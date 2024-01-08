@@ -15,30 +15,34 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
-pub struct DeleteFoldersQueuedTask {
-    pub folders: Vec<PathBuf>
+pub struct DeleteFilesQueuedTask {
+    pub paths: Vec<PathBuf>
 }
 
-impl QueuedTask for DeleteFoldersQueuedTask {
+impl QueuedTask for DeleteFilesQueuedTask {
     #[inline]
     fn get_info(&self) -> CardInfo {
         CardInfo::Component {
-            name: String::from("delete-folders"),
-            title: String::from("Delete folders"),
+            name: String::from("delete-files"),
+            title: String::from("Delete files"),
             developer: String::new()
         }
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
-        let folders = self.folders.clone();
+        let paths = self.paths.clone();
 
-        Ok(Box::new(DeleteFoldersResolvedTask {
+        Ok(Box::new(DeleteFilesResolvedTask {
             updater: BasicUpdater::spawn(move |sender| {
                 Box::new(move || -> Result<(), anyhow::Error> {
                     sender.send(((), 0, 1))?;
 
-                    for folder in folders {
-                        std::fs::remove_dir_all(folder)?;
+                    for path in paths {
+                        if path.is_dir() {
+                            std::fs::remove_dir_all(path)?;
+                        } else if path.is_file() {
+                            std::fs::remove_file(path)?;
+                        }
                     }
 
                     sender.send(((), 1, 1))?;
@@ -51,16 +55,16 @@ impl QueuedTask for DeleteFoldersQueuedTask {
 }
 
 #[derive(Debug)]
-pub struct DeleteFoldersResolvedTask {
+pub struct DeleteFilesResolvedTask {
     pub updater: BasicUpdater<(), (), anyhow::Error>
 }
 
-impl ResolvedTask for DeleteFoldersResolvedTask {
+impl ResolvedTask for DeleteFilesResolvedTask {
     #[inline]
     fn get_info(&self) -> CardInfo {
         CardInfo::Component {
-            name: String::from("delete-folders"),
-            title: String::from("Delete folders"),
+            name: String::from("delete-files"),
+            title: String::from("Delete files"),
             developer: String::new()
         }
     }
@@ -89,7 +93,7 @@ impl ResolvedTask for DeleteFoldersResolvedTask {
         match self.updater.status() {
             Ok(status) => Ok(match status {
                 BasicStatus::Pending     => TaskStatus::Pending,
-                BasicStatus::Working(()) => TaskStatus::DeletingFolders,
+                BasicStatus::Working(()) => TaskStatus::DeletingFiles,
                 BasicStatus::Finished    => TaskStatus::Finished
             }),
 
