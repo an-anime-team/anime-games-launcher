@@ -79,32 +79,49 @@ fn check_addon(
 }
 
 #[inline]
-pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
-    let settings = config::get().games.settings;
+fn get_game_addons(
+    game_info: &CardInfo,
+    game: &Game,
+    edition: impl AsRef<str>,
+    enabled_addons: &[GameEditionAddon]
+) -> anyhow::Result<Vec<Option<AddonsListEntry>>> {
+    game.get_addons_list(edition.as_ref())?
+        .into_iter()
+        .fold(vec![], |mut result, group| {
+            let group_addons = group.addons.iter()
+                .map(|addon| check_addon(game_info, game, edition.as_ref(), enabled_addons, addon, &group));
 
+            result.extend(group_addons);
+
+            result
+        })
+        .into_iter()
+        .collect::<anyhow::Result<Vec<_>>>()
+}
+
+#[inline]
+pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
     let mut addons = Vec::new();
 
     for game in games::list()?.values() {
-        if let Some(game_settings) = settings.get(&game.game_name) {
-            for edition in game.get_game_editions_list()? {
-                if let Some(enabled_addons) = game_settings.addons.get(&edition.name) {
-                    let game_info = CardInfo::Game {
-                        name: game.game_name.clone(),
-                        title: game.game_title.clone(),
-                        developer: game.game_developer.clone(),
-                        picture_uri: game.get_card_picture(&edition.name)?,
-                        edition: edition.name.clone()
-                    };
+        let settings = config::get().games.get_game_settings(&game.game_name)?;
 
-                    for group in game.get_addons_list(&edition.name)? {
-                        for addon in &group.addons {
-                            if let Some(addon) = check_addon(&game_info, game, &edition.name, enabled_addons, addon, &group)? {
-                                addons.push(addon);
-                            }
-                        }
-                    }
-                }
-            }
+        for edition in game.get_game_editions_list()? {
+            let enabled_addons = &settings.addons[&edition.name];
+
+            let game_info = CardInfo::Game {
+                name: game.game_name.clone(),
+                title: game.game_title.clone(),
+                developer: game.game_developer.clone(),
+                picture_uri: game.get_card_picture(&edition.name)?,
+                edition: edition.name.clone()
+            };
+
+            let game_addons = get_game_addons(&game_info, game, &edition.name, enabled_addons)?
+                .into_iter()
+                .flatten();
+
+            addons.extend(game_addons);
         }
     }
 

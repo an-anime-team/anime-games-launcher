@@ -1,6 +1,8 @@
 use crate::config;
+use crate::config::games::settings::GameSettings;
 
 use crate::games;
+use crate::games::integrations::Game;
 use crate::games::integrations::standards::game::Edition;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +26,25 @@ pub fn init_games() -> anyhow::Result<()> {
 }
 
 #[inline]
+fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(bool, GameListEntry)>> {
+    game.get_game_editions_list()?
+        .into_iter()
+        .map(|edition| game.get_card_picture(&edition.name)
+        .map(|card_picture| GameListEntry {
+            game_name: game.game_name.clone(),
+            game_title: game.game_title.clone(),
+            game_developer: game.game_developer.clone(),
+            card_picture,
+            edition
+        })
+        .and_then(|entry| {
+            game.is_game_installed(settings.paths[&entry.edition.name].game.to_string_lossy())
+                .map(|installed| (installed, entry))
+        }))
+        .collect::<anyhow::Result<Vec<_>>>()
+}
+
+#[inline]
 pub fn get_games_list() -> anyhow::Result<GamesList> {
     let settings = config::get().games;
 
@@ -35,21 +56,18 @@ pub fn get_games_list() -> anyhow::Result<GamesList> {
     for (name, game) in games {
         let settings = settings.get_game_settings(name)?;
 
-        for edition in game.get_game_editions_list()? {
-            let entry = GameListEntry {
-                game_name: game.game_name.clone(),
-                game_title: game.game_title.clone(),
-                game_developer: game.game_developer.clone(),
-                card_picture: game.get_card_picture(&edition.name)?,
-                edition
-            };
+        let entries = get_game_entries(game, settings)?;
 
-            if game.is_game_installed(settings.paths[&entry.edition.name].game.to_string_lossy())? {
-                installed.push(entry);
-            } else {
-                available.push(entry);
-            }
-        }
+        let installed_entries = entries.iter()
+            .filter_map(|(installed, entry)| installed.then_some(entry))
+            .cloned();
+
+        let available_entries = entries.iter()
+            .filter_map(|(installed, entry)| (!installed).then_some(entry))
+            .cloned();
+
+        installed.extend(installed_entries);
+        available.extend(available_entries);
     }
 
     Ok(GamesList {
