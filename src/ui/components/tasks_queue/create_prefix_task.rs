@@ -145,9 +145,9 @@ impl QueuedTask for CreatePrefixQueuedTask {
                     sender.send((Status::CreatingPrefix, 0, 1))?;
 
                     if self.path.exists() {
-                        wine.update_prefix(Some(&self.path))?;
+                        wine.update_prefix(None::<&str>)?;
                     } else {
-                        wine.init_prefix(Some(&self.path))?;
+                        wine.init_prefix(None::<&str>)?;
                     }
 
                     sender.send((Status::CreatingPrefix, 1, 1))?;
