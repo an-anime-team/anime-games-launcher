@@ -124,6 +124,16 @@ impl Game {
         }
     }
 
+    pub fn get_details_background_style(&self, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
+        match self.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_visual_get_details_background_css")?
+                .then(|| self.lua.globals().get::<_, LuaFunction>("v1_visual_get_details_background_css"))
+                .transpose()?
+                .map(|function| function.call::<_, String>(edition.as_ref()))
+                .transpose()?)
+        }
+    }
+
     pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<GameEdition>> {
         match self.script_standard {
             IntegrationStandard::V1 => {
