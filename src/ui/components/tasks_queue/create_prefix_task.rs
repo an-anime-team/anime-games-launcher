@@ -136,9 +136,10 @@ impl QueuedTask for CreatePrefixQueuedTask {
                 worker: Some(std::thread::spawn(move || -> anyhow::Result<()> {
                     // Specify basic wine params
 
-                    let wine = wine.with_arch(WineArch::Win64)
-                        .with_prefix(&self.path)
-                        .with_loader(WineLoader::Current);
+                    let wine = wine
+                        .with_arch(WineArch::Win64)
+                        .with_loader(WineLoader::Current)
+                        .with_prefix(&self.path);
 
                     // Create wine prefix
 
