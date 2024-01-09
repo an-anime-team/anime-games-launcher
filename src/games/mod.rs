@@ -7,7 +7,7 @@ pub mod integrations;
 static mut GAMES_SINGLETON: Option<HashMap<String, integrations::Game>> = None;
 
 pub fn init() -> anyhow::Result<()> {
-    let integration_scripts = config::get().games.integrations;
+    let integration_scripts = config::get().games.integrations.path;
 
     let mut games = HashMap::new();
 

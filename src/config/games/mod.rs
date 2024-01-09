@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
@@ -7,16 +6,17 @@ use serde_json::Value as Json;
 use crate::config;
 use crate::games::integrations::Game;
 
-use crate::LAUNCHER_FOLDER;
-
 pub mod wine;
 pub mod enhancements;
+pub mod integrations;
 pub mod settings;
 
 pub mod prelude {
     pub use super::wine::prelude::*;
     pub use super::enhancements::prelude::*;
     pub use super::settings::prelude::*;
+
+    pub use super::integrations::Integrations;
 
     pub use super::Games;
 }
@@ -28,7 +28,7 @@ pub struct Games {
     pub wine: Wine,
     pub enhancements: Enhancements,
     pub environment: HashMap<String, String>,
-    pub integrations: PathBuf,
+    pub integrations: Integrations,
 
     settings: Json
 }
@@ -40,7 +40,7 @@ impl Default for Games {
             wine: Wine::default(),
             enhancements: Enhancements::default(),
             environment: HashMap::new(),
-            integrations: LAUNCHER_FOLDER.join("integrations"),
+            integrations: Integrations::default(),
             settings: Json::Object(serde_json::Map::default())
         }
     }
@@ -71,8 +71,7 @@ impl From<&Json> for Games {
                 .unwrap_or(default.environment),
 
             integrations: value.get("integrations")
-                .and_then(Json::as_str)
-                .map(PathBuf::from)
+                .map(Integrations::from)
                 .unwrap_or(default.integrations),
 
             settings: value.get("settings")
