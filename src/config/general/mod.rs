@@ -2,14 +2,24 @@ use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
 pub mod wine;
+pub mod enhancements;
 pub mod transitions;
 
-use wine::Wine;
-use transitions::Transitions;
+pub mod prelude {
+    pub use super::wine::prelude::*;
+    pub use super::enhancements::prelude::*;
+
+    pub use super::transitions::Transitions;
+
+    pub use super::General;
+}
+
+use prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct General {
     pub wine: Wine,
+    pub enhancements: Enhancements,
     pub transitions: Transitions,
     pub verify_games: bool
 }
@@ -19,6 +29,7 @@ impl Default for General {
     fn default() -> Self {
         Self {
             wine: Wine::default(),
+            enhancements: Enhancements::default(),
             transitions: Transitions::default(),
             verify_games: true
         }
@@ -34,6 +45,10 @@ impl From<&Json> for General {
             wine: value.get("wine")
                 .map(Wine::from)
                 .unwrap_or(default.wine),
+
+            enhancements: value.get("enhancements")
+                .map(Enhancements::from)
+                .unwrap_or(default.enhancements),
 
             transitions: value.get("transitions")
                 .map(Transitions::from)

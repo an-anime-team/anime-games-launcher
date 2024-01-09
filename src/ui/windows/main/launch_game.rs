@@ -25,6 +25,7 @@ use crate::ui::components::game_card::CardInfo;
 use crate::ui::windows::main::WINDOW as MAIN_WINDOW;
 use crate::ui::windows::loading::check_addons::is_addon_enabled;
 
+#[inline]
 pub fn addon_unavailable(addon_title: impl AsRef<str>, group_title: impl AsRef<str>) -> anyhow::Result<String> {
     let message = format!("Addon {} from group {} is unavailable or outdated. You can launch the game without it or continue to use old version", addon_title.as_ref(), group_title.as_ref());
 
@@ -144,10 +145,15 @@ pub fn prepare_folders(game: &Game, info: &CardInfo, paths: &GameEditionPaths, e
 }
 
 #[inline]
-pub fn prepare_bash_command(wine: &Wine) -> String {
+pub fn prepare_bash_command(config: &config::Config, wine: &Wine) -> String {
     let mut bash_command = String::new();
 
-    // '<wine path>'
+    // [gamemoderun]
+    if config.general.enhancements.gamemode {
+        bash_command = format!("{bash_command} gamemoderun");
+    }
+
+    // [gamemoderun] '<wine path>'
     bash_command = format!("{bash_command} '{}'", wine.get_executable().to_string_lossy());
 
     bash_command
@@ -220,7 +226,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     let wine = Wine::from_config()?;
 
     // Prepare game launching command
-    let bash_command = prepare_bash_command(&wine);
+    let bash_command = prepare_bash_command(&config, &wine);
     let windows_command = prepare_windows_command(&config, info, &options);
     let launch_args = prepare_launch_args(&config);
 
@@ -236,6 +242,9 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     // Setup command environment
     command.env("WINEARCH", "win64");
     command.env("WINEPREFIX", config.components.wine.prefix.path);
+
+    command.envs(config.general.enhancements.hud.get_env_vars(false));
+    command.envs(config.general.enhancements.fsr.get_env_vars());
 
     command.envs(config.general.wine.sync.get_env_vars());
     command.envs(config.general.wine.language.get_env_vars());

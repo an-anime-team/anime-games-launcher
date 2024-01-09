@@ -5,6 +5,7 @@ use adw::prelude::*;
 use crate::config;
 
 use crate::config::general::wine::prelude::*;
+use crate::config::general::enhancements::prelude::*;
 
 pub static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
@@ -174,31 +175,122 @@ impl SimpleAsyncComponent for PreferencesApp {
                             "None",
                             "DXVK",
                             "MangoHUD"
-                        ]))
-                    },
-
-                    adw::ComboRow {
-                        set_title: "FSR",
-                        set_subtitle: "Upscales game to your monitor size. To use select lower resolution in the game's settings and press Alt+Enter",
-
-                        set_model: Some(&gtk::StringList::new(&[
-                            "Ultra quality",
-                            "Quality",
-                            "Balanced",
-                            "Performance"
                         ])),
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center
+                        set_selected: match config::get().general.enhancements.hud {
+                            HUD::None     => 0,
+                            HUD::DXVK     => 1,
+                            HUD::MangoHUD => 2
+                        },
+
+                        connect_selected_notify[sender] => move |row| {
+                            let hud = [
+                                HUD::None,
+                                HUD::DXVK,
+                                HUD::MangoHUD 
+                            ][row.selected() as usize];
+
+                            let value = serde_json::to_value(hud).unwrap();
+
+                            if let Err(err) = config::set("general.enhancements.hud", value) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
+                            }
                         }
                     },
 
-                    adw::ActionRow {
+                    adw::ExpanderRow {
+                        set_title: "FSR",
+                        set_subtitle: "Upscales game to your monitor size. To use select lower resolution in the game's settings and press Alt+Enter",
+
+                        add_row = &adw::SwitchRow {
+                            set_title: "Enabled",
+                            set_subtitle: "Render the game in lower resolution and upscale it",
+
+                            set_active: config::get().general.enhancements.fsr.enabled,
+
+                            connect_active_notify[sender] => move |switch| {
+                                if let Err(err) = config::set("general.enhancements.fsr.enabled", switch.is_active()) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: String::from("Failed to update property"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
+                        },
+
+                        add_row = &adw::ComboRow {
+                            set_title: "Quality",
+                            set_subtitle: "Specifies game rendering resolution. Ultra quality renders the game in 1.3 smaller resolution, while preformance in 2.0 smaller",
+
+                            set_model: Some(&gtk::StringList::new(&[
+                                "Ultra quality",
+                                "Quality",
+                                "Balanced",
+                                "Performance"
+                            ])),
+
+                            set_selected: match config::get().general.enhancements.fsr.quality {
+                                FsrQuality::Ultra       => 0,
+                                FsrQuality::Quality     => 1,
+                                FsrQuality::Balanced    => 2,
+                                FsrQuality::Performance => 3
+                            },
+    
+                            connect_selected_notify[sender] => move |row| {
+                                let hud = [
+                                    FsrQuality::Ultra,
+                                    FsrQuality::Quality,
+                                    FsrQuality::Balanced,
+                                    FsrQuality::Performance
+                                ][row.selected() as usize];
+    
+                                let value = serde_json::to_value(hud).unwrap();
+    
+                                if let Err(err) = config::set("general.enhancements.fsr.quality", value) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: String::from("Failed to update property"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
+                        },
+
+                        add_row = &adw::SpinRow {
+                            set_title: "Sharpening strength",
+                            set_subtitle: "Image sharpening strength where 0 is maximal sharpness",
+
+                            set_adjustment: Some(&gtk::Adjustment::new(
+                                config::get().general.enhancements.fsr.strength as f64,
+                                0.0, 5.0, 1.0, 1.0, 0.0
+                            )),
+
+                            connect_value_notify[sender] => move |row| {
+                                if let Err(err) = config::set("general.enhancements.fsr.strength", row.value() as u64) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: String::from("Failed to update property"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
+                        }
+                    },
+
+                    adw::SwitchRow {
                         set_title: "Gamemode",
                         set_subtitle: "Prioritize the game over the rest of the processes",
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center
+                        set_active: config::get().general.enhancements.gamemode,
+
+                        connect_active_notify[sender] => move |switch| {
+                            if let Err(err) = config::set("general.enhancements.gamemode", switch.is_active()) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
+                            }
                         }
                     }
                 },
