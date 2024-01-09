@@ -17,7 +17,7 @@ pub mod prelude {
     pub use super::IntegrationStandard;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntegrationStandard {
     V1
 }

@@ -31,9 +31,9 @@ fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(
         .into_iter()
         .map(|edition| game.get_card_picture(&edition.name)
         .map(|card_picture| GameListEntry {
-            game_name: game.game_name.clone(),
-            game_title: game.game_title.clone(),
-            game_developer: game.game_developer.clone(),
+            game_name: game.manifest.game_name.clone(),
+            game_title: game.manifest.game_title.clone(),
+            game_developer: game.manifest.game_developer.clone(),
             card_picture,
             edition
         })

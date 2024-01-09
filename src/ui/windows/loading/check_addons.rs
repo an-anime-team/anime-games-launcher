@@ -42,7 +42,7 @@ fn check_addon(
 ) -> anyhow::Result<Option<AddonsListEntry>> {
     is_addon_enabled(enabled_addons, addon, group)
         .then(|| {
-            let addon_path = addon.get_installation_path(&group.name, &game.game_name, edition.as_ref())?;
+            let addon_path = addon.get_installation_path(&group.name, &game.manifest.game_name, edition.as_ref())?;
 
             let installed = game.is_addon_installed(
                 &group.name,
@@ -110,9 +110,9 @@ pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
             let enabled_addons = &settings.addons[&edition.name];
 
             let game_info = CardInfo::Game {
-                name: game.game_name.clone(),
-                title: game.game_title.clone(),
-                developer: game.game_developer.clone(),
+                name: game.manifest.game_name.clone(),
+                title: game.manifest.game_title.clone(),
+                developer: game.manifest.game_developer.clone(),
                 picture_uri: game.get_card_picture(&edition.name)?,
                 edition: edition.name.clone()
             };

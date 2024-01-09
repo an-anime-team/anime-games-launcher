@@ -29,7 +29,7 @@ fn is_installed(
 ) -> HeapResult<bool> {
     game.is_addon_installed(group_name, addon_name, addon_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to verify addon installation for {}", game.game_title),
+            title: format!("Unable to verify addon installation for {}", game.manifest.game_title),
             message: Some(err.to_string())
         }))
 }
@@ -44,12 +44,12 @@ fn get_diff(
 ) -> HeapResult<DiffInfo> {
     game.get_addon_diff(group_name, addon_name, addon_path, edition)
         .map_err(|err| MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon version diff", game.game_title),
+            title: format!("Unable to find {} addon version diff", game.manifest.game_title),
             message: Some(err.to_string())
         })?
         .and_then(|diff| diff.diff)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("{} addon is not installed", game.game_title),
+            title: format!("{} addon is not installed", game.manifest.game_title),
             message: None
         }))
 }
@@ -63,7 +63,7 @@ fn get_download(
 ) -> HeapResult<DiffInfo> {
     game.get_addon_download(group_name, addon_name, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon download info", game.game_title),
+            title: format!("Unable to find {} addon download info", game.manifest.game_title),
             message: Some(err.to_string())
         }))
         .map(|download| download.download)

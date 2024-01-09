@@ -88,12 +88,12 @@ impl Games {
             .into_iter()
             .map(|edition| edition.name);
 
-        let settings = match self.settings.get(&game.game_name) {
-            Some(settings) => GameSettings::from_json(&game.game_name, editions, settings)?,
-            None => GameSettings::default(&game.game_name, editions)?
+        let settings = match self.settings.get(&game.manifest.game_name) {
+            Some(settings) => GameSettings::from_json(&game.manifest.game_name, editions, settings)?,
+            None => GameSettings::default(&game.manifest.game_name, editions)?
         };
 
-        config::set(format!("games.settings.{}", game.game_name), serde_json::to_value(settings.clone())?)?;
+        config::set(format!("games.settings.{}", game.manifest.game_name), serde_json::to_value(settings.clone())?)?;
 
         Ok(settings)
     }

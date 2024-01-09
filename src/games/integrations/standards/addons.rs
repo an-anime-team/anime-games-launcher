@@ -101,7 +101,7 @@ impl Addon {
         let settings = config::get().games.get_game_settings(game)?;
 
         let Some(paths) = settings.paths.get(edition.as_ref()) else {
-            anyhow::bail!("Unable to find {} paths", game.game_title);
+            anyhow::bail!("Unable to find {} paths", game.manifest.game_title);
         };
 
         let addon_path = if self.r#type == AddonType::Module {

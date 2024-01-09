@@ -23,7 +23,7 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 fn is_installed(game: &Game, game_path: impl AsRef<str>) -> HeapResult<bool> {
     game.is_game_installed(game_path.as_ref())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to verify {} installation", game.game_title),
+            title: format!("Unable to verify {} installation", game.manifest.game_title),
             message: Some(err.to_string())
         }))
 }
@@ -32,12 +32,12 @@ fn is_installed(game: &Game, game_path: impl AsRef<str>) -> HeapResult<bool> {
 fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -> HeapResult<DiffInfo> {
     game.get_game_diff(game_path.as_ref(), edition.as_ref())
         .map_err(|err| MainAppMsg::ShowToast {
-            title: format!("Unable to find {} version diff", game.game_title),
+            title: format!("Unable to find {} version diff", game.manifest.game_title),
             message: Some(err.to_string())
         })?
         .and_then(|diff| diff.diff)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("{} is not installed", game.game_title),
+            title: format!("{} is not installed", game.manifest.game_title),
             message: None
         }))
 }
@@ -46,7 +46,7 @@ fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -
 fn get_download(game: &Game, edition: impl AsRef<str>) -> HeapResult<DiffInfo> {
     game.get_game_download(edition.as_ref())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} download info", game.game_title),
+            title: format!("Unable to find {} download info", game.manifest.game_title),
             message: Some(err.to_string())
         }))
         .map(|download| download.download)
@@ -63,7 +63,7 @@ fn get_diff_or_download(game: &Game, edition: impl AsRef<str> + Copy, game_path:
 fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings> {
     config.games.get_game_settings(game)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} settings", game.game_name),
+            title: format!("Unable to find {} settings", game.manifest.game_title),
             message: Some(err.to_string())
         }))
 }
@@ -73,7 +73,7 @@ fn get_game_path<'a>(game: &'a Game, edition: impl AsRef<str>, config: &'a confi
     get_settings(game, config)?
         .paths.get(edition.as_ref())
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} installation path", game.game_title),
+            title: format!("Unable to find {} installation path", game.manifest.game_title),
             message: None
         }))
         .map(|paths| paths.game.clone())

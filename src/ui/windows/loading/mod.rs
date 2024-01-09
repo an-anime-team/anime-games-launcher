@@ -5,6 +5,7 @@ use adw::prelude::*;
 
 pub mod check_default_dirs;
 pub mod init_config;
+pub mod update_integrations;
 pub mod init_games;
 pub mod check_wine;
 pub mod check_dxvk;
