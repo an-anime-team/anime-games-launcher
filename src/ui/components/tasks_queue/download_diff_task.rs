@@ -251,7 +251,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             game.run_addons_diff_post_transition(
                                 group_name,
                                 addon_name,
-                                transition.transition_path().to_string_lossy(),
+                                transition.original_path().to_string_lossy(),
                                 &game_edition
                             )?;
 
