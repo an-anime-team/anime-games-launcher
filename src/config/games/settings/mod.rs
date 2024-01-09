@@ -6,8 +6,13 @@ use serde_json::Value as Json;
 pub mod edition_addons;
 pub mod edition_paths;
 
-use edition_addons::GameEditionAddon;
-use edition_paths::GameEditionPaths;
+pub mod prelude {
+    pub use super::edition_addons::GameEditionAddon;
+    pub use super::edition_paths::GameEditionPaths;
+    pub use super::GameSettings;
+}
+
+use prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameSettings {

@@ -4,6 +4,8 @@ use adw::prelude::*;
 
 use crate::config;
 
+use crate::config::general::wine::prelude::*;
+
 pub static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
 pub struct PreferencesApp {
@@ -29,8 +31,8 @@ impl SimpleAsyncComponent for PreferencesApp {
             set_default_size: (700, 560),
             set_title: Some("Preferences"),
 
-            set_hide_on_close: true,
             set_modal: true,
+            set_hide_on_close: true,
             set_search_enabled: true,
 
             add = &adw::PreferencesPage {
@@ -46,43 +48,39 @@ impl SimpleAsyncComponent for PreferencesApp {
                         ]))
                     },
 
-                    adw::ActionRow {
+                    adw::SwitchRow {
                         set_title: "Verify games",
                         set_subtitle: "Verify games installations after installation or updating",
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center,
+                        set_active: config::get().general.verify_games,
 
-                            set_active: config::get().general.verify_games,
-
-                            connect_state_notify[sender] => move |switch| {
-                                if let Err(err) = config::set("general.verify_games", switch.is_active()) {
-                                    sender.input(PreferencesAppMsg::ShowToast {
-                                        title: String::from("Failed to update property"),
-                                        message: Some(err.to_string())
-                                    })
-                                }
+                        connect_active_notify[sender] => move |switch| {
+                            if let Err(err) = config::set("general.verify_games", switch.is_active()) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
                             }
                         }
                     },
 
-                    adw::ActionRow {
-                        set_title: "Update games",
-                        set_subtitle: "Download updates for installed games when they become available",
+                    // adw::ActionRow {
+                    //     set_title: "Update games",
+                    //     set_subtitle: "Download updates for installed games when they become available",
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center
-                        }
-                    },
+                    //     add_suffix = &gtk::Switch {
+                    //         set_valign: gtk::Align::Center
+                    //     }
+                    // },
 
-                    adw::ActionRow {
-                        set_title: "Pre-download updates",
-                        set_subtitle: "Pre-download updates for installed games when they become available",
+                    // adw::ActionRow {
+                    //     set_title: "Pre-download updates",
+                    //     set_subtitle: "Pre-download updates for installed games when they become available",
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center
-                        }
-                    }
+                    //     add_suffix = &gtk::Switch {
+                    //         set_valign: gtk::Align::Center
+                    //     }
+                    // }
                 },
 
                 add = &adw::PreferencesGroup {
@@ -92,9 +90,28 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_title: "Language",
                         set_subtitle: "Language used in the wine environment. Can fix keyboard layout issues",
 
-                        set_model: Some(&gtk::StringList::new(&[
-                            "English"
-                        ]))
+                        set_model: Some(&gtk::StringList::new({
+                            WineLang::list()
+                                .into_iter()
+                                .map(|lang| lang.name())
+                                .collect::<Vec<_>>()
+                                .as_slice()
+                        })),
+
+                        set_selected: WineLang::list().iter()
+                            .position(|lang| lang == &config::get().general.wine.language)
+                            .unwrap_or(0) as u32,
+
+                        connect_selected_notify[sender] => move |row| {
+                            let value = serde_json::to_value(WineLang::list()[row.selected() as usize]).unwrap();
+
+                            if let Err(err) = config::set("general.wine.language", value) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
+                            }
+                        }
                     },
 
                     adw::ComboRow {
@@ -105,14 +122,44 @@ impl SimpleAsyncComponent for PreferencesApp {
                             "None",
                             "ESync",
                             "FSync"
-                        ]))
+                        ])),
+
+                        set_selected: match config::get().general.wine.sync {
+                            WineSync::None  => 0,
+                            WineSync::ESync => 1,
+                            WineSync::FSync => 2
+                        },
+
+                        connect_selected_notify[sender] => move |row| {
+                            let sync = [
+                                WineSync::None,
+                                WineSync::ESync,
+                                WineSync::FSync 
+                            ][row.selected() as usize];
+
+                            let value = serde_json::to_value(sync).unwrap();
+
+                            if let Err(err) = config::set("general.wine.sync", value) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
+                            }
+                        }
                     },
 
-                    adw::ActionRow {
+                    adw::SwitchRow {
                         set_title: "Borderless window",
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center
+                        set_active: config::get().general.wine.borderless,
+
+                        connect_active_notify[sender] => move |switch| {
+                            if let Err(err) = config::set("general.wine.borderless", switch.is_active()) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
+                            }
                         }
                     }
                 },
@@ -175,21 +222,17 @@ impl SimpleAsyncComponent for PreferencesApp {
                         ]))
                     },
 
-                    adw::ActionRow {
+                    adw::SwitchRow {
                         set_title: "Install corefonts",
 
-                        add_suffix = &gtk::Switch {
-                            set_valign: gtk::Align::Center,
+                        set_active: config::get().components.wine.prefix.install_corefonts,
 
-                            set_active: config::get().components.wine.prefix.install_corefonts,
-
-                            connect_state_notify[sender] => move |switch| {
-                                if let Err(err) = config::set("components.wine.prefix.install_corefonts", switch.is_active()) {
-                                    sender.input(PreferencesAppMsg::ShowToast {
-                                        title: String::from("Failed to update property"),
-                                        message: Some(err.to_string())
-                                    })
-                                }
+                        connect_active_notify[sender] => move |switch| {
+                            if let Err(err) = config::set("components.wine.prefix.install_corefonts", switch.is_active()) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: String::from("Failed to update property"),
+                                    message: Some(err.to_string())
+                                })
                             }
                         }
                     }
