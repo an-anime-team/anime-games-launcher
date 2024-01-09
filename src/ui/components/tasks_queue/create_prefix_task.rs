@@ -4,12 +4,7 @@ use std::{cell::Cell, sync::Arc};
 use std::path::PathBuf;
 use std::thread::JoinHandle;
 
-use wincompatlib::prelude::{
-    WineBootExt,
-    WineFontsExt,
-    Font,
-    InstallParams
-};
+use wincompatlib::prelude::*;
 
 use anime_game_core::updater::UpdaterExt;
 
@@ -139,13 +134,23 @@ impl QueuedTask for CreatePrefixQueuedTask {
                 updater: receiver,
 
                 worker: Some(std::thread::spawn(move || -> anyhow::Result<()> {
+                    // Specify basic wine params
+
+                    let wine = wine.with_arch(WineArch::Win64)
+                        .with_prefix(&self.path)
+                        .with_loader(WineLoader::Current);
+
                     // Create wine prefix
+
+                    sender.send((Status::CreatingPrefix, 0, 1))?;
 
                     if self.path.exists() {
                         wine.update_prefix(Some(&self.path))?;
                     } else {
                         wine.init_prefix(Some(&self.path))?;
                     }
+
+                    sender.send((Status::CreatingPrefix, 1, 1))?;
 
                     // Apply DXVK
 
@@ -157,6 +162,8 @@ impl QueuedTask for CreatePrefixQueuedTask {
                         repair_dlls: false,
                         ..InstallParams::default()
                     })?;
+
+                    sender.send((Status::InstallingDxvk, 1, 1))?;
 
                     // Install fonts
 
@@ -210,6 +217,8 @@ impl QueuedTask for CreatePrefixQueuedTask {
                         for thread in threads {
                             thread.join().expect("Failed to join font installing thread")?;
                         }
+
+                        sender.send((Status::InstallingFonts, total_fonts, total_fonts))?;
                     }
 
                     // Finish downloading
