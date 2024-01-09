@@ -49,7 +49,7 @@ impl SimpleComponent for LoadingApp {
             set_title: Some("Anime Games Launcher"),
 
             set_resizable: false,
-            set_hide_on_close: true,
+            // set_hide_on_close: true,
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -112,9 +112,11 @@ impl SimpleComponent for LoadingApp {
                         });
 
                         unsafe {
-                            WINDOW.as_ref()
-                                .unwrap_unchecked()
-                                .close();
+                            let window = WINDOW.as_ref()
+                                .unwrap_unchecked();
+
+                            window.set_hide_on_close(true);
+                            window.close();
 
                             main_app.widget()
                                 .present();
