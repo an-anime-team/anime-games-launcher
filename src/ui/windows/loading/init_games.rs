@@ -45,6 +45,33 @@ fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(
 }
 
 #[inline]
+pub fn register_games_styles() -> anyhow::Result<()> {
+    let sus = games::list()?.iter()
+        .map(|(name, game)| game.get_game_editions_list()
+            .map(|editions| editions.into_iter()
+                .map(|edition| game.get_details_background_style(&edition.name)
+                .map(|style| (name, edition.name, style)))
+                .collect::<Result<Vec<_>, _>>()))
+        .collect::<Result<Result<Vec<_>, _>, _>>()??;
+
+    let mut styles = String::new();
+
+    for entries in sus {
+        for (game, edition, style) in entries {
+            if let Some(style) = style {
+                styles = format!("{styles} .game-details--{game}--{edition} {{ {style} }}");
+            }
+        }
+    }
+
+    gtk::glib::MainContext::default().spawn(async move {
+        relm4::set_global_css(&styles);
+    });
+
+    Ok(())
+}
+
+#[inline]
 pub fn get_games_list() -> anyhow::Result<GamesList> {
     let settings = config::get().games;
 

@@ -320,10 +320,10 @@ impl SimpleComponent for MainApp {
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
 
-                        // #[watch]
-                        // set_css_classes: &[
-                        //     model.game_details_info.get_details_style()
-                        // ],
+                        #[watch]
+                        set_css_classes: &[
+                            &format!("game-details--{}--{}", model.game_details_info.get_name(), model.game_details_info.get_edition())
+                        ],
 
                         adw::HeaderBar {
                             add_css_class: "flat",
