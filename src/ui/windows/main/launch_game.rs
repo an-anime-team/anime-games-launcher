@@ -250,6 +250,8 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     command.envs(config.general.wine.language.get_env_vars());
     command.envs(config.general.wine.shared_libraries.get_env_vars(wine.get_folder()));
 
+    command.envs(config.general.environment);
+
     // Setup environment from the lua script
     command.envs(options.environment);
 

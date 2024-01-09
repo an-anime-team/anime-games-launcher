@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
@@ -20,6 +22,7 @@ use prelude::*;
 pub struct General {
     pub wine: Wine,
     pub enhancements: Enhancements,
+    pub environment: HashMap<String, String>,
     pub transitions: Transitions,
     pub verify_games: bool
 }
@@ -30,6 +33,7 @@ impl Default for General {
         Self {
             wine: Wine::default(),
             enhancements: Enhancements::default(),
+            environment: HashMap::new(),
             transitions: Transitions::default(),
             verify_games: true
         }
@@ -49,6 +53,16 @@ impl From<&Json> for General {
             enhancements: value.get("enhancements")
                 .map(Enhancements::from)
                 .unwrap_or(default.enhancements),
+
+            environment: value.get("environment")
+                .and_then(Json::as_object)
+                .map(|object| object.into_iter()
+                    .filter_map(|(key, value)| {
+                        value.as_str().map(|value| (key.to_string(), value.to_string()))
+                    })
+                    .collect::<HashMap<_, _>>()
+                )
+                .unwrap_or(default.environment),
 
             transitions: value.get("transitions")
                 .map(Transitions::from)
