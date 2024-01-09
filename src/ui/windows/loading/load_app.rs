@@ -7,7 +7,7 @@ use crate::config::components::wine::prefix::Prefix;
 
 use super::*;
 
-const TOTAL_STEPS: f64 = 9.0;
+const TOTAL_STEPS: f64 = 10.0;
 
 #[derive(Debug)]
 pub struct LoadingResult {
@@ -37,6 +37,14 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     })?;
 
     sender.input(LoadingAppMsg::SetProgress(2.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetActiveStage(String::from("Updating integration scripts")));
+
+    update_integrations::update_integrations().map_err(|err| LoadingAppMsg::DisplayError {
+        title: String::from("Failed to update integration scripts"),
+        message: err.to_string()
+    })?;
+
+    sender.input(LoadingAppMsg::SetProgress(3.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Preparing games")));
 
     init_games::init_games().map_err(|err| LoadingAppMsg::DisplayError {
@@ -44,7 +52,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
         message: err.to_string()
     })?;
 
-    sender.input(LoadingAppMsg::SetProgress(3.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(4.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Preparing games list")));
 
     let games_list = init_games::get_games_list().map_err(|err| LoadingAppMsg::DisplayError {
@@ -52,7 +60,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
         message: err.to_string()
     })?;
 
-    sender.input(LoadingAppMsg::SetProgress(4.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(5.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Registering games styles")));
 
     init_games::register_games_styles().map_err(|err| LoadingAppMsg::DisplayError {
@@ -60,7 +68,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
         message: err.to_string()
     })?;
 
-    sender.input(LoadingAppMsg::SetProgress(5.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(6.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking wine version")));
 
     let download_wine = check_wine::is_downloaded().map_err(|err| LoadingAppMsg::DisplayError {
@@ -68,7 +76,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
         message: err.to_string()
     })?;
 
-    sender.input(LoadingAppMsg::SetProgress(6.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(7.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking dxvk version")));
 
     let download_dxvk = check_dxvk::is_downloaded().map_err(|err| LoadingAppMsg::DisplayError {
@@ -76,12 +84,12 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
         message: err.to_string()
     })?;
 
-    sender.input(LoadingAppMsg::SetProgress(7.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(8.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking wine prefix")));
 
     let create_prefix = check_wine_prefix::check_wine_prefix();
 
-    sender.input(LoadingAppMsg::SetProgress(8.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(9.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking games addons")));
 
     let download_addons = check_addons::check_addons().map_err(|err| LoadingAppMsg::DisplayError {

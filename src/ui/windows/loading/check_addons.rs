@@ -99,6 +99,8 @@ fn get_game_addons(
         .collect::<anyhow::Result<Vec<_>>>()
 }
 
+// TODO: parallelize this
+
 #[inline]
 pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
     let mut addons = Vec::new();
