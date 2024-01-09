@@ -59,7 +59,8 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     };
 
     // Get game settings
-    let settings = config::get().games.get_game_settings(game)?;
+    let config = config::get();
+    let settings = config.games.get_game_settings(game)?;
 
     // Get game paths
     let Some(paths) = settings.paths.get(info.get_edition()) else {
@@ -156,20 +157,31 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
         info.get_edition()
     )?;
 
-    // Prepare launch command
-    let mut command = vec![
-        format!("{:?}", Wine::from_config()?.get_executable()),
-        format!("{:?}", options.executable)
-    ];
-
-    command.extend(options.options);
+    // Get selected wine version
+    let wine = Wine::from_config()?;
 
     // Run the game
-    Command::new("bash")
-        .arg("-c")
-        .arg(command.join(" "))
-        .envs(options.environment)
-        .current_dir(&game_path)
+    let mut command = Command::new("bash");
+
+    // Setup command options
+    command.arg("-c");
+    command.arg(wine.get_executable());
+    command.arg(options.executable);
+    command.args(options.options);
+
+    // Setup command environment
+    command.env("WINEARCH", "win64");
+    command.env("WINEPREFIX", config.components.wine.prefix.path);
+
+    command.envs(config.general.wine.sync.get_env_vars());
+    command.envs(config.general.wine.language.get_env_vars());
+    command.envs(config.general.wine.shared_libraries.get_env_vars(wine.get_folder()));
+
+    // Setup environment from the lua script
+    command.envs(options.environment);
+
+    // Run the game
+    command.current_dir(&game_path)
         .spawn()?
         .wait()?;
 
