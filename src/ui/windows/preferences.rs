@@ -4,8 +4,8 @@ use adw::prelude::*;
 
 use crate::config;
 
-use crate::config::general::wine::prelude::*;
-use crate::config::general::enhancements::prelude::*;
+use crate::config::games::wine::prelude::*;
+use crate::config::games::enhancements::prelude::*;
 
 pub static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
@@ -100,13 +100,13 @@ impl SimpleAsyncComponent for PreferencesApp {
                         })),
 
                         set_selected: WineLang::list().iter()
-                            .position(|lang| lang == &config::get().general.wine.language)
+                            .position(|lang| lang == &config::get().games.wine.language)
                             .unwrap_or(0) as u32,
 
                         connect_selected_notify[sender] => move |row| {
                             let value = serde_json::to_value(WineLang::list()[row.selected() as usize]).unwrap();
 
-                            if let Err(err) = config::set("general.wine.language", value) {
+                            if let Err(err) = config::set("games.wine.language", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
                                     title: String::from("Failed to update property"),
                                     message: Some(err.to_string())
@@ -125,7 +125,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             "FSync"
                         ])),
 
-                        set_selected: match config::get().general.wine.sync {
+                        set_selected: match config::get().games.wine.sync {
                             WineSync::None  => 0,
                             WineSync::ESync => 1,
                             WineSync::FSync => 2
@@ -140,7 +140,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             let value = serde_json::to_value(sync).unwrap();
 
-                            if let Err(err) = config::set("general.wine.sync", value) {
+                            if let Err(err) = config::set("games.wine.sync", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
                                     title: String::from("Failed to update property"),
                                     message: Some(err.to_string())
@@ -152,10 +152,10 @@ impl SimpleAsyncComponent for PreferencesApp {
                     adw::SwitchRow {
                         set_title: "Borderless window",
 
-                        set_active: config::get().general.wine.borderless,
+                        set_active: config::get().games.wine.borderless,
 
                         connect_active_notify[sender] => move |switch| {
-                            if let Err(err) = config::set("general.wine.borderless", switch.is_active()) {
+                            if let Err(err) = config::set("games.wine.borderless", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
                                     title: String::from("Failed to update property"),
                                     message: Some(err.to_string())
@@ -177,7 +177,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             "MangoHUD"
                         ])),
 
-                        set_selected: match config::get().general.enhancements.hud {
+                        set_selected: match config::get().games.enhancements.hud {
                             HUD::None     => 0,
                             HUD::DXVK     => 1,
                             HUD::MangoHUD => 2
@@ -192,7 +192,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             let value = serde_json::to_value(hud).unwrap();
 
-                            if let Err(err) = config::set("general.enhancements.hud", value) {
+                            if let Err(err) = config::set("games.enhancements.hud", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
                                     title: String::from("Failed to update property"),
                                     message: Some(err.to_string())
@@ -209,10 +209,10 @@ impl SimpleAsyncComponent for PreferencesApp {
                             set_title: "Enabled",
                             set_subtitle: "Render the game in lower resolution and upscale it",
 
-                            set_active: config::get().general.enhancements.fsr.enabled,
+                            set_active: config::get().games.enhancements.fsr.enabled,
 
                             connect_active_notify[sender] => move |switch| {
-                                if let Err(err) = config::set("general.enhancements.fsr.enabled", switch.is_active()) {
+                                if let Err(err) = config::set("games.enhancements.fsr.enabled", switch.is_active()) {
                                     sender.input(PreferencesAppMsg::ShowToast {
                                         title: String::from("Failed to update property"),
                                         message: Some(err.to_string())
@@ -232,7 +232,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                                 "Performance"
                             ])),
 
-                            set_selected: match config::get().general.enhancements.fsr.quality {
+                            set_selected: match config::get().games.enhancements.fsr.quality {
                                 FsrQuality::Ultra       => 0,
                                 FsrQuality::Quality     => 1,
                                 FsrQuality::Balanced    => 2,
@@ -249,7 +249,7 @@ impl SimpleAsyncComponent for PreferencesApp {
     
                                 let value = serde_json::to_value(hud).unwrap();
     
-                                if let Err(err) = config::set("general.enhancements.fsr.quality", value) {
+                                if let Err(err) = config::set("games.enhancements.fsr.quality", value) {
                                     sender.input(PreferencesAppMsg::ShowToast {
                                         title: String::from("Failed to update property"),
                                         message: Some(err.to_string())
@@ -263,12 +263,12 @@ impl SimpleAsyncComponent for PreferencesApp {
                             set_subtitle: "Image sharpening strength where 0 is maximal sharpness",
 
                             set_adjustment: Some(&gtk::Adjustment::new(
-                                config::get().general.enhancements.fsr.strength as f64,
+                                config::get().games.enhancements.fsr.strength as f64,
                                 0.0, 5.0, 1.0, 1.0, 0.0
                             )),
 
                             connect_value_notify[sender] => move |row| {
-                                if let Err(err) = config::set("general.enhancements.fsr.strength", row.value() as u64) {
+                                if let Err(err) = config::set("games.enhancements.fsr.strength", row.value() as u64) {
                                     sender.input(PreferencesAppMsg::ShowToast {
                                         title: String::from("Failed to update property"),
                                         message: Some(err.to_string())
@@ -282,10 +282,10 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_title: "Gamemode",
                         set_subtitle: "Prioritize the game over the rest of the processes",
 
-                        set_active: config::get().general.enhancements.gamemode,
+                        set_active: config::get().games.enhancements.gamemode,
 
                         connect_active_notify[sender] => move |switch| {
-                            if let Err(err) = config::set("general.enhancements.gamemode", switch.is_active()) {
+                            if let Err(err) = config::set("games.enhancements.gamemode", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
                                     title: String::from("Failed to update property"),
                                     message: Some(err.to_string())

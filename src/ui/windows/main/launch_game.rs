@@ -149,7 +149,7 @@ pub fn prepare_bash_command(config: &config::Config, wine: &Wine) -> String {
     let mut bash_command = String::new();
 
     // [gamemoderun]
-    if config.general.enhancements.gamemode {
+    if config.games.enhancements.gamemode {
         bash_command = format!("{bash_command} gamemoderun");
     }
 
@@ -164,7 +164,7 @@ pub fn prepare_windows_command(config: &config::Config, info: &CardInfo, options
     let mut windows_command = String::new();
 
     // [explorer /desktop=[desktop_name],[width]x[height]]
-    if let Some(virtual_desktop) = config.general.wine.virtual_desktop.get_command(format!("{}_{}", info.get_name(), info.get_edition())) {
+    if let Some(virtual_desktop) = config.games.wine.virtual_desktop.get_command(format!("{}_{}", info.get_name(), info.get_edition())) {
         windows_command = format!("{windows_command} {virtual_desktop}");
     }
 
@@ -182,7 +182,7 @@ pub fn prepare_launch_args(config: &config::Config) -> String {
     let mut launch_args = String::new();
 
     // [-screen-fullscreen 0 -popupwindow]
-    if config.general.wine.borderless {
+    if config.games.wine.borderless {
         launch_args = format!("{launch_args} -screen-fullscreen 0 -popupwindow");
     }
 
@@ -243,14 +243,14 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     command.env("WINEARCH", "win64");
     command.env("WINEPREFIX", config.components.wine.prefix.path);
 
-    command.envs(config.general.enhancements.hud.get_env_vars(false));
-    command.envs(config.general.enhancements.fsr.get_env_vars());
+    command.envs(config.games.enhancements.hud.get_env_vars(false));
+    command.envs(config.games.enhancements.fsr.get_env_vars());
 
-    command.envs(config.general.wine.sync.get_env_vars());
-    command.envs(config.general.wine.language.get_env_vars());
-    command.envs(config.general.wine.shared_libraries.get_env_vars(wine.get_folder()));
+    command.envs(config.games.wine.sync.get_env_vars());
+    command.envs(config.games.wine.language.get_env_vars());
+    command.envs(config.games.wine.shared_libraries.get_env_vars(wine.get_folder()));
 
-    command.envs(config.general.environment);
+    command.envs(config.games.environment);
 
     // Setup environment from the lua script
     command.envs(options.environment);
