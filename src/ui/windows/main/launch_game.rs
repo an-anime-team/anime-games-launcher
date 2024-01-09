@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::path::PathBuf;
 
 use adw::prelude::*;
 
@@ -7,8 +8,12 @@ use anime_game_core::filesystem::merge::MergeTree;
 use crate::games;
 use crate::config;
 
+use crate::config::games::settings::prelude::*;
+use crate::games::integrations::standards::prelude::*;
+
 use crate::components::wine::Wine;
-use crate::games::integrations::standards::addons::AddonType;
+
+use crate::games::integrations::Game;
 
 use crate::games::integrations::standards::diff::{
     Diff,
@@ -52,26 +57,8 @@ pub fn addon_unavailable(addon_title: impl AsRef<str>, group_title: impl AsRef<s
     Ok(receiver.recv()?)
 }
 
-pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
-    // Get game driver
-    let game = unsafe {
-        games::get_unsafe(info.get_name())
-    };
-
-    // Get game settings
-    let config = config::get();
-    let settings = config.games.get_game_settings(game)?;
-
-    // Get game paths
-    let Some(paths) = settings.paths.get(info.get_edition()) else {
-        anyhow::bail!("Unable to find {} paths", info.get_title());
-    };
-
-    // Get game addons
-    let Some(enabled_addons) = settings.addons.get(info.get_edition()) else {
-        anyhow::bail!("Unable to find {} enabled addons", info.get_title());
-    };
-
+#[inline]
+pub fn prepare_folders(game: &Game, info: &CardInfo, paths: &GameEditionPaths, enabled_addons: &[GameEditionAddon]) -> anyhow::Result<Option<(PathBuf, PathBuf)>> {
     // TODO: move files of disabled addons
 
     // Init game merge tree filesystem
@@ -104,7 +91,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
                 // Ask user what to do with outdated / not installed addon
                 match addon_unavailable(&addon.title, &group.title)?.as_str() {
                     // Stop the launching function
-                    "stop" => return Ok(()),
+                    "stop" => return Ok(None),
 
                     // We technically can disable only layer addons so just continue here
                     "disable" => continue,
@@ -150,6 +137,78 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
         tree.mount(&game_path)?;
     }
 
+    Ok(Some((
+        game_path,
+        addons_path
+    )))
+}
+
+#[inline]
+pub fn prepare_bash_command(wine: &Wine) -> String {
+    let mut bash_command = String::new();
+
+    // '<wine path>'
+    bash_command = format!("{bash_command} '{}'", wine.get_executable().to_string_lossy());
+
+    bash_command
+}
+
+#[inline]
+pub fn prepare_windows_command(config: &config::Config, info: &CardInfo, options: &GameLaunchOptions) -> String {
+    let mut windows_command = String::new();
+
+    // [explorer /desktop=[desktop_name],[width]x[height]]
+    if let Some(virtual_desktop) = config.general.wine.virtual_desktop.get_command(format!("{}_{}", info.get_name(), info.get_edition())) {
+        windows_command = format!("{windows_command} {virtual_desktop}");
+    }
+
+    // [explorer /desktop=[desktop_name],[width]x[height]] '<game executable path>'
+    windows_command = format!("{windows_command} '{}'", options.executable);
+
+    // [explorer /desktop=[desktop_name],[width]x[height]] '<game executable path>' <launch options>
+    windows_command = format!("{windows_command} {}", options.options.join(" "));
+
+    windows_command
+}
+
+#[inline]
+pub fn prepare_launch_args(config: &config::Config) -> String {
+    let mut launch_args = String::new();
+
+    // [-screen-fullscreen 0 -popupwindow]
+    if config.general.wine.borderless {
+        launch_args = format!("{launch_args} -screen-fullscreen 0 -popupwindow");
+    }
+
+    launch_args
+}
+
+#[inline]
+pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
+    // Get game driver
+    let game = unsafe {
+        games::get_unsafe(info.get_name())
+    };
+
+    // Get game settings
+    let config = config::get();
+    let settings = config.games.get_game_settings(game)?;
+
+    // Get game paths
+    let Some(paths) = settings.paths.get(info.get_edition()) else {
+        anyhow::bail!("Unable to find {} paths", info.get_title());
+    };
+
+    // Get game addons
+    let Some(enabled_addons) = settings.addons.get(info.get_edition()) else {
+        anyhow::bail!("Unable to find {} enabled addons", info.get_title());
+    };
+
+    // Prepare game and addons folders
+    let Some((game_path, addons_path)) = prepare_folders(game, info, paths, enabled_addons)? else {
+        return Ok(())
+    };
+
     // Request game launch options
     let options = game.get_launch_options(
         game_path.to_string_lossy(),
@@ -160,14 +219,19 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     // Get selected wine version
     let wine = Wine::from_config()?;
 
-    // Run the game
+    // Prepare game launching command
+    let bash_command = prepare_bash_command(&wine);
+    let windows_command = prepare_windows_command(&config, info, &options);
+    let launch_args = prepare_launch_args(&config);
+
+    let launch_command = format!("{bash_command} {windows_command} {launch_args}");
+
+    // Prepare game launcher
     let mut command = Command::new("bash");
 
     // Setup command options
     command.arg("-c");
-    command.arg(wine.get_executable());
-    command.arg(options.executable);
-    command.args(options.options);
+    command.arg(launch_command);
 
     // Setup command environment
     command.env("WINEARCH", "win64");
@@ -179,6 +243,8 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
 
     // Setup environment from the lua script
     command.envs(options.environment);
+
+    // dbg!(&command);
 
     // Run the game
     command.current_dir(&game_path)
