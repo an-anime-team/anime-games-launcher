@@ -97,8 +97,8 @@ impl Game {
                     .call_function::<_, LuaTable>("v1_game_get_editions_list", ())?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|edition| GameEdition::from_table(edition, self.manifest.script_standard))
-                    .collect();
+                    .map(|edition| GameEdition::from_table(edition, self.manifest.script_standard))
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 Ok(editions)
             }
@@ -169,6 +169,21 @@ impl Game {
         }
     }
 
+    pub fn get_game_integrity(&self, game_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<IntegrityInfo>> {
+        match self.manifest.script_standard {
+            IntegrationStandard::V1 => {
+                let info = self.lua.globals()
+                    .call_function::<_, LuaTable>("v1_game_get_integrity_info", (game_path.as_ref(), edition.as_ref()))?
+                    .sequence_values::<LuaTable>()
+                    .flatten()
+                    .map(|info| IntegrityInfo::from_table(info, self.manifest.script_standard))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(info)
+            }
+        }
+    }
+
     pub fn get_addons_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<AddonsGroup>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
@@ -176,8 +191,8 @@ impl Game {
                     .call_function::<_, LuaTable>("v1_addons_get_list", edition.as_ref())?
                     .sequence_values::<LuaTable>()
                     .flatten()
-                    .flat_map(|group| AddonsGroup::from_table(group, self.manifest.script_standard))
-                    .collect();
+                    .map(|group| AddonsGroup::from_table(group, self.manifest.script_standard))
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 Ok(dlcs)
             }
@@ -254,6 +269,26 @@ impl Game {
         }
     }
 
+    pub fn get_addon_integrity(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<IntegrityInfo>> {
+        match self.manifest.script_standard {
+            IntegrationStandard::V1 => {
+                let info = self.lua.globals()
+                    .call_function::<_, LuaTable>("v1_addons_get_integrity_info", (
+                        group_name.as_ref(),
+                        addon_name.as_ref(),
+                        addon_path.as_ref(),
+                        edition.as_ref()
+                    ))?
+                    .sequence_values::<LuaTable>()
+                    .flatten()
+                    .map(|info| IntegrityInfo::from_table(info, self.manifest.script_standard))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(info)
+            }
+        }
+    }
+
     pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_transition")?)
@@ -312,6 +347,22 @@ impl Game {
                     addon_name.as_ref(),
                     addon_path.as_ref(),
                     edition.as_ref()
+                ))?)
+        }
+    }
+
+    pub fn has_integrity_hash(&self) -> anyhow::Result<bool> {
+        match self.manifest.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_integrity_hash")?)
+        }
+    }
+
+    pub fn integrity_hash(&self, algorithm: impl AsRef<str>, data: impl AsRef<[u8]>) -> anyhow::Result<String> {
+        match self.manifest.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .call_function("v1_integrity_hash", (
+                    algorithm.as_ref(),
+                    self.lua.create_string(data)?
                 ))?)
         }
     }

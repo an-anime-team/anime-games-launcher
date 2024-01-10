@@ -44,6 +44,7 @@
 | | `v1_game_get_diff(game_path, edition)` | `Diff \| null` | Get game version diff |
 | | `v1_game_get_status(game_path, edition)` | `Status \| null` | Get installed game status |
 | | `v1_game_get_launch_options(game_path, addons_path, edition)` | `LaunchOptions` | Get launch options for the game |
+| | `v1_game_get_integrity_info(game_path, edition)` | `IntegrityInfo[]` | Get game integrity info |
 | Addons | | | Additional game content manipulations |
 | | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |
 | | `v1_addons_is_installed(group_name, addon_name, addon_path, edition)` | `boolean` | Check if addon is installed |
@@ -51,6 +52,7 @@
 | | `v1_addons_get_download(group_name, addon_name, edition)` | `Download \| null` | Get full addon downloading info |
 | | `v1_addons_get_diff(group_name, addon_name, addon_path, edition)` | `Diff \| null` | Get addon version diff |
 | | `v1_addons_get_paths(group_name, addon_name, addon_path, edition)` | `string[]` | Get installed addon files and folders paths |
+| | `v1_addons_get_integrity_info(group_name, addon_name, addon_path, edition)` | `IntegrityInfo[]` | Get addon integrity info |
 
 ### Optional APIs (can be ignored)
 
@@ -63,6 +65,8 @@
 | | `v1_game_diff_post_transition(game_path, edition)` | | Process game diff files after finishing transition |
 | | `v1_addons_diff_transition(group_name, addon_name, transition_path, edition)` | | Process addons diff files before finishing transition |
 | | `v1_addons_diff_post_transition(group_name, addon_name, addon_path, edition)` | | Process addons diff files after finishing transition |
+| Integrity | | | |
+| | `v1_integrity_hash(algorithm, data)` | `string` | Hash input data |
 
 ### Types
 
@@ -92,20 +96,7 @@ type GameInfo = {
 type Download = {
 	version: string,
 	edition: string,
-
-	download: {
-		type: DiffType,
-		size: number,
-
-		// URI if type is `archive`
-		uri?: string,
-
-		// List of segments URIs if type is `segments`
-		segments?: string[],
-
-		// List of files if type is `files`
-		files?: FileDownload[]
-	}
+	download: DiffInfo
 };
 ```
 
@@ -119,19 +110,7 @@ type Diff = {
 	status: DiffStatus,
 
 	// Isn't needed if the current version is latest
-	diff?: {
-		type: DiffType,
-		size: number,
-
-		// URI if type is `archive`
-		uri?: string,
-
-		// List of segments URIs if type is `segments`
-		segments?: string[],
-
-		// List of files if type is `files`
-		files?: FileDownload[]
-	}
+	diff?: DiffInfo
 };
 ```
 
@@ -146,6 +125,24 @@ type DiffStatus = 'latest' | 'outdated' | 'unavailable';
 | `latest` | Installed component version is latest |
 | `outdated` | Component update is available |
 | `unavailable` | The component is outdated, but there's no update available (e.g. too outdated version) |
+
+#### DiffInfo
+
+```ts
+type DiffInfo = {
+	type: DiffType,
+	size: number,
+
+	// URI if type is `archive`
+	uri?: string,
+
+	// List of segments URIs if type is `segments`
+	segments?: string[],
+
+	// List of files if type is `files`
+	files?: FileDownload[]
+};
+```
 
 #### DiffType
 
@@ -193,6 +190,24 @@ type LaunchOptions = {
 	environment: [variable: string]: string
 };
 ```
+
+#### IntegrityInfo
+
+```ts
+type IntegrityInfo = {
+	hash: HashType,
+	value: string,
+	file: FileDownload
+};
+```
+
+#### HashType
+
+```ts
+type HashType = 'md5' | 'sha1' | 'crc32' | 'xxhash32' | 'xxhash64';
+```
+
+Launcher will try to use `v1_integrity_hash` if given hash doesn't belong to the `HashType` type
 
 #### AddonsGroup
 
