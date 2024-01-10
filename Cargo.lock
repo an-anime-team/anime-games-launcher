@@ -45,6 +45,7 @@ dependencies = [
  "lazy_static",
  "libadwaita",
  "mlua",
+ "num_cpus",
  "relm4",
  "rusty_pool",
  "serde",

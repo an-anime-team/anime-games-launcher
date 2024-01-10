@@ -10,7 +10,7 @@ impl Default for Threads {
     #[inline]
     fn default() -> Self {
         Self {
-            number: 0
+            number: num_cpus::get() as u64
         }
     }
 }
