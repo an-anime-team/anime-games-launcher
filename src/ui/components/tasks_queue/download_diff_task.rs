@@ -1,4 +1,9 @@
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{
+    AtomicU64,
+    Ordering
+};
 
 use anime_game_core::updater::{
     UpdaterExt,
@@ -187,9 +192,49 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             }
                         }
 
-                        DiffInfo::Files { size: _, files: _ } => {
-                            // TODO
-                            todo!()
+                        DiffInfo::Files { size, files } => {
+                            let pool = rusty_pool::Builder::new()
+                                .name(String::from("download_files"))
+                                .core_size(config.general.threads.number as usize)
+                                .build();
+
+                            let files_chunks_size = std::cmp::max(config.general.threads.number as usize, 64);
+
+                            let mut tasks = Vec::with_capacity(files_chunks_size);
+
+                            let downloaded = Arc::new(AtomicU64::new(0));
+
+                            for chunk in files.chunks(files_chunks_size) {
+                                for file in chunk {
+                                    let download_path = transition.transition_path().join(&file.path);
+                                    let download_uri = file.uri.clone();
+                                    let file_size = file.size;
+
+                                    let downloaded = downloaded.clone();
+                                    let sender = sender.clone();
+
+                                    tasks.push(pool.evaluate(move || -> anyhow::Result<()> {
+                                        Downloader::new(download_uri)
+                                            .continue_downloading(false)
+                                            .download(download_path)?
+                                            .wait()?;
+
+                                        let prev = downloaded.fetch_add(file_size, Ordering::Relaxed);
+
+                                        sender.send((
+                                            Status::Downloading,
+                                            prev + file_size,
+                                            size
+                                        ))?;
+
+                                        Ok(())
+                                    }));
+                                }
+
+                                for task in tasks.drain(..) {
+                                    task.await_complete()?;
+                                }
+                            }
                         }
                     }
 

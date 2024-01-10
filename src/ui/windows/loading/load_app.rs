@@ -3,6 +3,7 @@ use relm4::prelude::*;
 use crate::components::dxvk::Dxvk;
 use crate::components::wine::Wine;
 
+use crate::config;
 use crate::config::components::wine::prefix::Prefix;
 
 use super::*;
@@ -20,10 +21,6 @@ pub struct LoadingResult {
 }
 
 pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, LoadingAppMsg> {
-    let pool = rusty_pool::Builder::new()
-        .name(String::from("load_app"))
-        .build();
-
     let begin = std::time::Instant::now();
 
     sender.input(LoadingAppMsg::SetProgress(0.0));
@@ -44,6 +41,13 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
 
     sender.input(LoadingAppMsg::SetProgress(2.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Updating integration scripts")));
+
+    let config = config::get();
+
+    let pool = rusty_pool::Builder::new()
+        .name(String::from("load_app"))
+        .core_size(config.general.threads.number as usize)
+        .build();
 
     update_integrations::update_integrations(&pool).map_err(|err| LoadingAppMsg::DisplayError {
         title: String::from("Failed to update integration scripts"),

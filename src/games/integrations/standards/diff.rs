@@ -184,7 +184,8 @@ impl DiffInfo {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DiffFileDownload {
     pub path: String,
-    pub uri: String
+    pub uri: String,
+    pub size: u64
 }
 
 impl DiffFileDownload {
@@ -193,7 +194,8 @@ impl DiffFileDownload {
             IntegrationStandard::V1 => {
                 Ok(Self {
                     path: table.get::<_, String>("path")?,
-                    uri: table.get::<_, String>("uri")?
+                    uri: table.get::<_, String>("uri")?,
+                    size: table.get::<_, u64>("size")?
                 })
             }
         }
@@ -206,6 +208,7 @@ impl DiffFileDownload {
 
                 table.set("path", self.path.as_str())?;
                 table.set("uri", self.uri.as_str())?;
+                table.set("size", self.size)?;
 
                 Ok(table)
             }

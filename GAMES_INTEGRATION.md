@@ -164,7 +164,8 @@ type DiffType = 'archive' | 'segments' | 'files';
 ```ts
 type FileDownload = {
 	path: string,
-	uri: string
+	uri: string,
+	size: number
 };
 ```
 
