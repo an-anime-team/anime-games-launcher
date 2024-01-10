@@ -63,6 +63,10 @@ fn main() -> anyhow::Result<()> {
         .game-card:hover {
             transform: scale(1.03);
         }
+
+        .warning-action {
+            background-color: #BFB04D;
+        }
     ");
 
     // Create the app
