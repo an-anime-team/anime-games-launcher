@@ -112,8 +112,9 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                         for info in chunk.iter().cloned() {
                             let integrity_file = path.join(&info.file.path);
     
-                            // Stop immediately if file doesn't exist
-                            if !integrity_file.exists() {
+                            // Stop immediately if the file doesn't exist
+                            // or its size is different from the remote file
+                            if !integrity_file.exists() || integrity_file.metadata()?.len() != info.file.size {
                                 broken_files.push(info.file);
 
                                 sender.send((
@@ -135,7 +136,11 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
 
                                 // Get existing file hash
                                 let hash = match info.hash {
-                                    HashType::Md5 => todo!(),
+                                    HashType::Md5 => {
+                                        use md5::{Md5, Digest};
+
+                                        format!("{:x}", Md5::digest(&data))
+                                    },
 
                                     HashType::Sha1 => {
                                         use sha1::{Sha1, Digest};

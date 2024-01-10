@@ -668,10 +668,10 @@ impl SimpleComponent for MainApp {
                     Ok(task) => {
                         self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                        if let Some(index) = self.available_games_indexes.get(&game_info) {
-                            self.available_games.guard().remove(index.current_index());
+                        if let Some(index) = self.installed_games_indexes.get(&game_info) {
+                            self.installed_games.guard().remove(index.current_index());
 
-                            self.available_games_indexes.remove(&game_info);
+                            self.installed_games_indexes.remove(&game_info);
 
                             #[allow(clippy::map_entry)]
                             if !self.queued_games_indexes.contains_key(&game_info) {

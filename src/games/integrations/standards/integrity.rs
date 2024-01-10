@@ -17,7 +17,7 @@ impl IntegrityInfo {
                 Ok(Self {
                     hash: HashType::from_str(table.get::<_, String>("hash")?, standard)?,
                     value: table.get::<_, String>("value")?,
-                    file: DiffFileDownload::from_table(table.get::<_, LuaTable>("size")?, standard)?
+                    file: DiffFileDownload::from_table(table.get::<_, LuaTable>("file")?, standard)?
                 })
             }
         }
