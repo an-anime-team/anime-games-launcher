@@ -200,13 +200,13 @@ impl QueuedTask for DownloadDiffQueuedTask {
                                 .core_size(config.general.threads.number as usize)
                                 .build();
 
-                            let files_chunks_size = std::cmp::max(config.general.threads.number as usize, 64);
+                            let queue_size = config.general.threads.max_queue_size as usize;
 
-                            let mut tasks = Vec::with_capacity(files_chunks_size);
+                            let mut tasks = Vec::with_capacity(queue_size);
 
                             let downloaded = Arc::new(AtomicU64::new(0));
 
-                            for chunk in files.chunks(files_chunks_size) {
+                            for chunk in files.chunks(queue_size) {
                                 for file in chunk {
                                     let download_path = transition.transition_path().join(&file.path);
                                     let download_uri = file.uri.clone();

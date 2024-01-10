@@ -93,12 +93,12 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                         .core_size(config.general.threads.number as usize)
                         .build();
 
-                    let files_chunks_size = std::cmp::max(config.general.threads.number as usize, 64);
+                    let queue_size = config.general.threads.max_queue_size as usize;
 
                     let total = integrity_info.len() as u64;
                     let current = Arc::new(AtomicU64::new(0));
 
-                    let mut tasks = Vec::with_capacity(files_chunks_size);
+                    let mut tasks = Vec::with_capacity(queue_size);
                     let mut broken_files = Vec::new();
 
                     sender.send((
@@ -108,7 +108,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                     ))?;
 
                     // Iterate through integrity files
-                    for chunk in integrity_info.chunks(files_chunks_size) {
+                    for chunk in integrity_info.chunks(queue_size) {
                         for info in chunk.iter().cloned() {
                             let integrity_file = path.join(&info.file.path);
     
@@ -194,7 +194,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
 
                     // Repair files
 
-                    let mut tasks = Vec::with_capacity(files_chunks_size);
+                    let mut tasks = Vec::with_capacity(queue_size);
 
                     let total = broken_files.len() as u64;
                     let current = Arc::new(AtomicU64::new(0));
@@ -206,7 +206,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                     ))?;
 
                     // Go through the broken files list
-                    for chunk in broken_files.chunks(files_chunks_size) {
+                    for chunk in broken_files.chunks(queue_size) {
                         for file in chunk.iter().cloned() {
                             let file_path = path.join(&file.path);
 
