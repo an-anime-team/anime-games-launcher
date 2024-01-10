@@ -1,177 +1,311 @@
-// use anime_game_core::updater::{
-//     UpdaterExt,
-//     Status
-// };
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{
+    AtomicU64,
+    Ordering
+};
 
-// use crate::config;
+use anime_game_core::filesystem::transition::Transition;
 
-// use crate::ui::components::game_card::CardInfo;
+use anime_game_core::updater::{
+    UpdaterExt,
+    BasicUpdater,
+    Status as BasicStatus
+};
 
-// use super::{
-//     QueuedTask,
-//     ResolvedTask,
-//     TaskStatus
-// };
+use anime_game_core::network::downloader::{
+    DownloaderExt,
+    basic::Downloader
+};
 
-// pub struct VerifyIntegrityQueuedTask {
-//     pub info: CardInfo
-// }
+use crate::ui::components::game_card::CardInfo;
 
-// impl std::fmt::Debug for VerifyIntegrityQueuedTask {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_struct("VerifyIntegrityQueuedTask")
-//             .field("info", &self.info)
-//             .finish()
-//     }
-// }
+use crate::games;
+use crate::games::integrations::standards::prelude::*;
 
-// impl QueuedTask for VerifyIntegrityQueuedTask {
-//     #[inline]
-//     fn get_info(&self) -> CardInfo {
-//         self.info.clone()
-//     }
+use crate::config;
 
-//     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
-//         let config = config::get();
+use super::{
+    QueuedTask,
+    ResolvedTask,
+    TaskStatus
+};
 
-//         todo!()
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Status {
+    PreparingTransition,
+    VerifyingFiles,
+    RepairingFiles,
+    FinishingTransition
+}
 
-//         // let game = match &self.info {
-//         //     CardVariant::Genshin => config.games.genshin.to_game(),
+#[derive(Debug, Clone)]
+pub struct VerifyIntegrityQueuedTask {
+    pub card_info: CardInfo,
+    pub integrity_info: Vec<IntegrityInfo>,
+    pub path: PathBuf
+}
 
-//         //     _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
-//         // };
+impl QueuedTask for VerifyIntegrityQueuedTask {
+    #[inline]
+    fn get_info(&self) -> CardInfo {
+        self.card_info.clone()
+    }
 
-//         // Ok(Box::new(VerifyIntegrityResolvedTask {
-//         //     variant: self.variant,
-//         //     verifier: Some(game.verify_files()?),
-//         //     repairer: None
-//         // }))
-//     }
-// }
+    fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
+        let config = config::get();
 
-// pub struct VerifyIntegrityResolvedTask {
-//     pub info: CardInfo,
-//     pub verifier: Option<VerifyUpdater>,
-//     pub repairer: Option<RepairUpdater>
-// }
+        let game_name = self.card_info.get_name().to_string();
+        let game_edition = self.card_info.get_edition().to_string();
 
-// impl std::fmt::Debug for VerifyIntegrityResolvedTask {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_struct("VerifyIntegrityResolvedTask")
-//             .field("info", &self.info)
-//             .finish()
-//     }
-// }
+        let integrity_info = self.integrity_info.clone();
 
-// impl ResolvedTask for VerifyIntegrityResolvedTask {
-//     #[inline]
-//     fn get_info(&self) -> CardInfo {
-//         self.info.clone()
-//     }
+        let path = self.path.clone();
 
-//     fn is_finished(&mut self) -> bool {
-//         if let Some(verifier) = &mut self.verifier {
-//             verifier.is_finished()
-//         }
+        Ok(Box::new(VerifyIntegrityResolvedTask {
+            card_info: self.card_info.clone(),
 
-//         else if let Some(repairer) = &mut self.repairer {
-//             repairer.is_finished()
-//         }
+            updater: BasicUpdater::spawn(move |sender| {
+                Box::new(move || -> Result<(), anyhow::Error> {
+                    let game = unsafe {
+                        games::get_unsafe(&game_name)
+                    };
 
-//         else {
-//             unreachable!()
-//         }
-//     }
+                    // Check if lua script support custom hashes
+                    let has_integrity_hash = game.has_integrity_hash()?;
 
-//     #[inline]
-//     fn get_current(&self) -> u64 {
-//         if let Some(verifier) = &self.verifier {
-//             verifier.current()
-//         }
+                    // Create transition
 
-//         else if let Some(repairer) = &self.repairer {
-//             repairer.current()
-//         }
+                    sender.send((Status::PreparingTransition, 0, 1))?;
 
-//         else {
-//             unreachable!()
-//         }
-//     }
+                    let transition = Transition::get_in(
+                        format!("verify-integrity:{game_name}:{game_edition}:{:?}", integrity_info),
+                        &path,
+                        config.general.transitions.path
+                    )?;
 
-//     #[inline]
-//     fn get_total(&self) -> u64 {
-//         if let Some(verifier) = &self.verifier {
-//             verifier.total()
-//         }
+                    sender.send((Status::PreparingTransition, 1, 1))?;
 
-//         else if let Some(repairer) = &self.repairer {
-//             repairer.total()
-//         }
+                    // Verify files
 
-//         else {
-//             unreachable!()
-//         }
-//     }
+                    let pool = rusty_pool::Builder::new()
+                        .name(String::from("verify_files"))
+                        .core_size(config.general.threads.number as usize)
+                        .build();
 
-//     #[inline]
-//     fn get_progress(&self) -> f64 {
-//         if let Some(verifier) = &self.verifier {
-//             verifier.progress()
-//         }
+                    let files_chunks_size = std::cmp::max(config.general.threads.number as usize, 64);
 
-//         else if let Some(repairer) = &self.repairer {
-//             repairer.progress()
-//         }
+                    let total = integrity_info.len() as u64;
+                    let current = Arc::new(AtomicU64::new(0));
 
-//         else {
-//             unreachable!()
-//         }
-//     }
+                    let mut tasks = Vec::with_capacity(files_chunks_size);
+                    let mut broken_files = Vec::new();
 
-//     #[inline]
-//     fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
-//         if let Some(mut verifier) = self.verifier.take() {
-//             if !verifier.is_finished() {
-//                 let status = verifier.status()
-//                     .map(|status| if status.is_finished() {
-//                         TaskStatus::Finished
-//                     } else {
-//                         TaskStatus::VerifyingFiles
-//                     })
-//                     .map_err(|err| anyhow::anyhow!(err.to_string()));
+                    sender.send((
+                        Status::VerifyingFiles,
+                        0,
+                        total
+                    ))?;
 
-//                 self.verifier = Some(verifier);
+                    // Iterate through integrity files
+                    for chunk in integrity_info.chunks(files_chunks_size) {
+                        for info in chunk.iter().cloned() {
+                            let integrity_file = path.join(&info.file.path);
+    
+                            // Stop immediately if file doesn't exist
+                            if !integrity_file.exists() {
+                                broken_files.push(info.file);
 
-//                 status
-//             }
+                                sender.send((
+                                    Status::VerifyingFiles,
+                                    current.fetch_add(1, Ordering::Relaxed) + 1,
+                                    total
+                                ))?;
 
-//             else {
-//                 let config = config::get();
+                                continue;
+                            }
 
-//                 todo!()
+                            let current = current.clone();
+                            let sender = sender.clone();
 
-//                 // let game = match &self.info {
-//                 //     CardVariant::Genshin => config.games.genshin.to_game(),
+                            // Otherwise verifying the file is a heavy task so we put it to the threads pool
+                            tasks.push(pool.evaluate(move || -> anyhow::Result<Option<DiffFileDownload>> {
+                                // Read existing file
+                                let data = std::fs::read(&integrity_file)?;
 
-//                 //     _ => anyhow::bail!("Card {:?} cannot be represented as the game descriptor", self.variant)
-//                 // };
+                                // Get existing file hash
+                                let hash = match info.hash {
+                                    HashType::Md5 => todo!(),
 
-//                 // self.repairer = Some(game.repair_files(verifier.wait()?)?);
+                                    HashType::Sha1 => {
+                                        use sha1::{Sha1, Digest};
 
-//                 // Ok(TaskStatus::PreparingTransition)
-//             }
-//         }
+                                        format!("{:x}", Sha1::digest(&data))
+                                    },
 
-//         else if let Some(repairer) = self.repairer.as_mut() {
-//             match repairer.status() {
-//                 Ok(status) => Ok(TaskStatus::from(status)),
-//                 Err(err) => anyhow::bail!(err.to_string())
-//             }
-//         }
+                                    HashType::Crc32 => {
+                                        let mut hasher = crc32fast::Hasher::new();
 
-//         else {
-//             unreachable!()
-//         }
-//     }
-// }
+                                        hasher.update(&data);
+
+                                        hasher.finalize().to_string()
+                                    }
+
+                                    HashType::Custom(name) if has_integrity_hash => {
+                                        game.integrity_hash(name, data)?
+                                    }
+
+                                    _ => unimplemented!()
+                                };
+
+                                sender.send((
+                                    Status::VerifyingFiles,
+                                    current.fetch_add(1, Ordering::Relaxed) + 1,
+                                    total
+                                ))?;
+
+                                // Compare existing file hash with integrity info
+                                if info.value != hash {
+                                    return Ok(Some(info.file));
+                                }
+
+                                Ok(None)
+                            }));
+                        }
+
+                        // Wait for current chunk of files to finish verifying
+                        for task in tasks.drain(..) {
+                            if let Some(file) = task.await_complete()? {
+                                broken_files.push(file);
+                            }
+                        }
+                    }
+
+                    sender.send((
+                        Status::VerifyingFiles,
+                        total,
+                        total
+                    ))?;
+
+                    // Repair files
+
+                    let mut tasks = Vec::with_capacity(files_chunks_size);
+
+                    let total = broken_files.len() as u64;
+                    let current = Arc::new(AtomicU64::new(0));
+
+                    sender.send((
+                        Status::RepairingFiles,
+                        0,
+                        total
+                    ))?;
+
+                    // Go through the broken files list
+                    for chunk in broken_files.chunks(files_chunks_size) {
+                        for file in chunk.iter().cloned() {
+                            let file_path = path.join(&file.path);
+
+                            let current = current.clone();
+                            let sender = sender.clone();
+
+                            // Create file repairing task
+                            tasks.push(pool.evaluate(move || -> anyhow::Result<()> {
+                                // Create parent folder if it doesn't exist
+                                if let Some(parent) = file_path.parent() {
+                                    if !parent.exists() {
+                                        std::fs::create_dir_all(parent)?;
+                                    }
+                                }
+
+                                // Download the file
+                                Downloader::new(file.uri)
+                                    .continue_downloading(false)
+                                    .download(file_path)?
+                                    .wait()?;
+
+                                sender.send((
+                                    Status::RepairingFiles,
+                                    current.fetch_add(1, Ordering::Relaxed) + 1,
+                                    total
+                                ))?;
+
+                                Ok(())
+                            }));
+                        }
+
+                        // Wait for current chunk of files to finish repairing
+                        for task in tasks.drain(..) {
+                            task.await_complete()?;
+                        }
+                    }
+
+                    sender.send((
+                        Status::RepairingFiles,
+                        total,
+                        total
+                    ))?;
+
+                    // Finish transition
+
+                    sender.send((Status::FinishingTransition, 0, 1))?;
+
+                    transition.finish()?;
+
+                    sender.send((Status::FinishingTransition, 1, 1))?;
+
+                    Ok(())
+                })
+            })
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub struct VerifyIntegrityResolvedTask {
+    pub updater: BasicUpdater<Status, (), anyhow::Error>,
+    pub card_info: CardInfo
+}
+
+impl ResolvedTask for VerifyIntegrityResolvedTask {
+    #[inline]
+    fn get_info(&self) -> CardInfo {
+        self.card_info.clone()
+    }
+
+    #[inline]
+    fn is_finished(&mut self) -> bool {
+        self.updater.is_finished()
+    }
+
+    #[inline]
+    fn get_current(&self) -> u64 {
+        self.updater.current()
+    }
+
+    #[inline]
+    fn get_total(&self) -> u64 {
+        self.updater.total()
+    }
+
+    #[inline]
+    fn get_progress(&self) -> f64 {
+        self.updater.progress()
+    }
+
+    fn get_status(&mut self) -> anyhow::Result<TaskStatus> {
+        match self.updater.status() {
+            Ok(status) => Ok(match status {
+                BasicStatus::Pending => TaskStatus::Pending,
+
+                BasicStatus::Working(Status::PreparingTransition) => TaskStatus::PreparingTransition,
+                BasicStatus::Working(Status::VerifyingFiles)      => TaskStatus::VerifyingFiles,
+                BasicStatus::Working(Status::RepairingFiles)      => TaskStatus::RepairingFiles,
+                BasicStatus::Working(Status::FinishingTransition) => TaskStatus::FinishingTransition,
+
+                BasicStatus::Finished => TaskStatus::Finished
+            }),
+
+            Err(err) => anyhow::bail!(err.to_string())
+        }
+    }
+}

@@ -57,6 +57,7 @@ pub mod launch_game;
 pub mod download_game_task;
 pub mod download_addon_task;
 pub mod uninstall_addon_task;
+pub mod verify_game_task;
 
 pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
 pub static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
@@ -660,26 +661,30 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::AddVerifyGameTask(info) => {
-                // let task = Box::new(VerifyIntegrityQueuedTask {
-                //     info: info.clone()
-                // });
+            MainAppMsg::AddVerifyGameTask(game_info) => {
+                let config = config::get();
 
-                // self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                match verify_game_task::get_verify_game_task(&game_info, &config) {
+                    Ok(task) => {
+                        self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
 
-                // if let Some(index) = self.available_games_indexes.get(&info) {
-                //     self.available_games.guard().remove(index.current_index());
+                        if let Some(index) = self.available_games_indexes.get(&game_info) {
+                            self.available_games.guard().remove(index.current_index());
 
-                //     self.available_games_indexes.remove(&info);
+                            self.available_games_indexes.remove(&game_info);
 
-                //     #[allow(clippy::map_entry)]
-                //     if !self.queued_games_indexes.contains_key(&info) {
-                //         self.queued_games_indexes.insert(info.clone(), self.queued_games.guard().push_back(info));
+                            #[allow(clippy::map_entry)]
+                            if !self.queued_games_indexes.contains_key(&game_info) {
+                                self.queued_games_indexes.insert(game_info.clone(), self.queued_games.guard().push_back(game_info.clone()));
 
-                //         self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
-                //         self.queued_games.broadcast(CardComponentInput::SetClickable(false));
-                //     }
-                // }
+                                self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                                self.queued_games.broadcast(CardComponentInput::SetClickable(false));
+                            }
+                        }
+                    }
+
+                    Err(err) => sender.input(*err)
+                }
             }
 
             MainAppMsg::FinishQueuedTask(info) => {

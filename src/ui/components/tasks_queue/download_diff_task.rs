@@ -70,8 +70,10 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
         let game_name = self.card_info.get_name().to_string();
         let game_edition = self.card_info.get_edition().to_string();
+
         let diff_info = self.diff_info.clone();
         let diff_origin = self.diff_origin.clone();
+
         let download_path = self.download_path.clone();
 
         Ok(Box::new(DownloadDiffResolvedTask {
@@ -88,7 +90,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                     sender.send((Status::PreparingTransition, 0, 1))?;
 
                     let transition = Transition::get_in(
-                        format!("download-diff:{game_name}:{:?}", diff_info),
+                        format!("download-diff:{game_name}:{game_edition}:{:?}:{:?}", diff_origin, diff_info),
                         &download_path,
                         config.general.transitions.path
                     )?;
