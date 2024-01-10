@@ -17,6 +17,14 @@ pub struct Game {
     lua: Lua
 }
 
+// Let (at least for now) lua scripts maintainers resolve
+// possible data races themselves
+// 
+// FIXME: use Mutex or RwLock, or anything else but please remove this shit
+
+unsafe impl Send for Game {}
+unsafe impl Sync for Game {}
+
 impl Game {
     pub fn new(manifest_path: impl AsRef<Path>) -> anyhow::Result<Self> {
         let manifest = std::fs::read(manifest_path.as_ref())?;

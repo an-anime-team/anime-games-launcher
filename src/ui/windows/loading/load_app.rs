@@ -20,6 +20,8 @@ pub struct LoadingResult {
 }
 
 pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, LoadingAppMsg> {
+    let begin = std::time::Instant::now();
+
     sender.input(LoadingAppMsg::SetProgress(0.0));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Preparing default folders")));
 
@@ -98,6 +100,8 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     })?;
 
     sender.input(LoadingAppMsg::SetProgress(1.0));
+
+    println!("Launcher loading time: {} ms", begin.elapsed().as_millis());
 
     Ok(LoadingResult {
         download_wine,

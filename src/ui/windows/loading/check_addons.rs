@@ -99,34 +99,51 @@ fn get_game_addons(
         .collect::<anyhow::Result<Vec<_>>>()
 }
 
-// TODO: parallelize this
-
 #[inline]
 pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
+    let pool = rusty_pool::Builder::new()
+        .name(String::from("check_addons"))
+        .build();
+
     let config = config::get();
 
-    let mut addons = Vec::new();
+    let mut tasks = Vec::new();
 
     for game in games::list()?.values() {
         let settings = config.games.get_game_settings(game)?;
 
-        for edition in game.get_game_editions_list()? {
-            let enabled_addons = &settings.addons[&edition.name];
+        // Unfortunately it's impossible to run get_game_addons and other tasks
+        // in the threads as well because lua executer cannot be run in different threads
+        // See multithread-lua branch for details
+        tasks.push(pool.evaluate(move || -> anyhow::Result<Vec<AddonsListEntry>> {
+            let mut addons = Vec::new();
 
-            let game_info = CardInfo::Game {
-                name: game.manifest.game_name.clone(),
-                title: game.manifest.game_title.clone(),
-                developer: game.manifest.game_developer.clone(),
-                picture_uri: game.get_card_picture(&edition.name)?,
-                edition: edition.name.clone()
-            };
+            for edition in game.get_game_editions_list()? {
+                let enabled_addons = &settings.addons[&edition.name];
+    
+                let game_info = CardInfo::Game {
+                    name: game.manifest.game_name.clone(),
+                    title: game.manifest.game_title.clone(),
+                    developer: game.manifest.game_developer.clone(),
+                    picture_uri: game.get_card_picture(&edition.name)?,
+                    edition: edition.name.clone()
+                };
+    
+                let game_addons = get_game_addons(&game_info, game, &edition.name, enabled_addons)?
+                    .into_iter()
+                    .flatten();
+    
+                addons.extend(game_addons);
+            }
 
-            let game_addons = get_game_addons(&game_info, game, &edition.name, enabled_addons)?
-                .into_iter()
-                .flatten();
+            Ok(addons)
+        }));
+    }
 
-            addons.extend(game_addons);
-        }
+    let mut addons = Vec::new();
+
+    for task in tasks {
+        addons.extend(task.await_complete()?);
     }
 
     Ok(addons)
