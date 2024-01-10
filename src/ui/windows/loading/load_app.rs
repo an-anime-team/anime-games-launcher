@@ -20,6 +20,10 @@ pub struct LoadingResult {
 }
 
 pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, LoadingAppMsg> {
+    let pool = rusty_pool::Builder::new()
+        .name(String::from("load_app"))
+        .build();
+
     let begin = std::time::Instant::now();
 
     sender.input(LoadingAppMsg::SetProgress(0.0));
@@ -41,7 +45,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     sender.input(LoadingAppMsg::SetProgress(2.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Updating integration scripts")));
 
-    update_integrations::update_integrations().map_err(|err| LoadingAppMsg::DisplayError {
+    update_integrations::update_integrations(&pool).map_err(|err| LoadingAppMsg::DisplayError {
         title: String::from("Failed to update integration scripts"),
         message: err.to_string()
     })?;
@@ -94,12 +98,15 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     sender.input(LoadingAppMsg::SetProgress(9.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking games addons")));
 
-    let download_addons = check_addons::check_addons().map_err(|err| LoadingAppMsg::DisplayError {
+    let download_addons = check_addons::check_addons(&pool).map_err(|err| LoadingAppMsg::DisplayError {
         title: String::from("Failed to check games addons"),
         message: err.to_string()
     })?;
 
     sender.input(LoadingAppMsg::SetProgress(1.0));
+
+    // TODO: pulse progress bar before it's joined
+    pool.join();
 
     println!("Launcher loading time: {} ms", begin.elapsed().as_millis());
 

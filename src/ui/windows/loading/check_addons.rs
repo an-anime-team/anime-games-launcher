@@ -100,11 +100,7 @@ fn get_game_addons(
 }
 
 #[inline]
-pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
-    let pool = rusty_pool::Builder::new()
-        .name(String::from("check_addons"))
-        .build();
-
+pub fn check_addons(pool: &rusty_pool::ThreadPool) -> anyhow::Result<Vec<AddonsListEntry>> {
     let config = config::get();
 
     let mut tasks = Vec::new();
@@ -120,7 +116,7 @@ pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
 
             for edition in game.get_game_editions_list()? {
                 let enabled_addons = &settings.addons[&edition.name];
-    
+
                 let game_info = CardInfo::Game {
                     name: game.manifest.game_name.clone(),
                     title: game.manifest.game_title.clone(),
@@ -128,11 +124,11 @@ pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
                     picture_uri: game.get_card_picture(&edition.name)?,
                     edition: edition.name.clone()
                 };
-    
+
                 let game_addons = get_game_addons(&game_info, game, &edition.name, enabled_addons)?
                     .into_iter()
                     .flatten();
-    
+
                 addons.extend(game_addons);
             }
 

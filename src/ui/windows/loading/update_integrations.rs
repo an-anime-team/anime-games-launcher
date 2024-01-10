@@ -7,46 +7,72 @@ use anime_game_core::network::minreq;
 use crate::config;
 use crate::games::integrations::manifest::Manifest;
 
-// TODO: parallelize this
+struct IntegrationInfo {
+    pub source: String,
+    pub manifest_body: Vec<u8>,
+    pub manifest: Manifest
+}
 
 #[inline]
-pub fn update_integrations() -> anyhow::Result<()> {
+pub fn update_integrations(pool: &rusty_pool::ThreadPool) -> anyhow::Result<()> {
     let config = config::get();
+
+    let mut tasks = Vec::with_capacity(config.games.integrations.sources.len());
+
+    for source in config.games.integrations.sources {
+        tasks.push(pool.evaluate(move || -> anyhow::Result<HashMap<String, IntegrationInfo>> {
+            let integrations = minreq::get(format!("{source}/integrations.json"))
+                .send()?.json::<Json>()?;
+
+            let Some(integrations) = integrations.get("games").and_then(Json::as_array) else {
+                anyhow::bail!("Wrong integrations file structue");
+            };
+
+            let mut games = HashMap::new();
+
+            for game in integrations {
+                if let Some(game) = game.as_str() {
+                    let bytes = minreq::get(format!("{source}/games/{game}/manifest.json"))
+                        .send()?.into_bytes();
+
+                    let manifest = Manifest::from_json(&serde_json::from_slice(&bytes)?)?;
+
+                    games.insert(game.to_string(), IntegrationInfo {
+                        source: source.clone(),
+                        manifest_body: bytes,
+                        manifest
+                    });
+                }
+            }
+
+            Ok(games)
+        }));
+    }
 
     let mut games = HashMap::new();
 
-    for source in config.games.integrations.sources {
-        let integrations = minreq::get(format!("{source}/integrations.json"))
-            .send()?.json::<Json>()?;
-
-        let Some(integrations) = integrations.get("games").and_then(Json::as_array) else {
-            anyhow::bail!("Wrong integrations file structue");
-        };
-
-        for game in integrations {
-            if let Some(game) = game.as_str() {
-                let bytes = minreq::get(format!("{source}/games/{game}/manifest.json"))
-                    .send()?.into_bytes();
-
-                let manifest = Manifest::from_json(&serde_json::from_slice(&bytes)?)?;
-
-                games.insert(game.to_string(), (source.clone(), manifest, bytes));
-            }
+    for task in tasks {
+        for (game, value) in task.await_complete()? {
+            games.insert(game, value);
         }
     }
 
-    for (game, (source, manifest, bytes)) in games {
+    let mut tasks = Vec::with_capacity(games.len());
+
+    for (game, info) in games {
         let integration_path = config.games.integrations.path.join(&game);
 
         let manifest_path = integration_path.join("manifest.json");
-        let script_path = integration_path.join(&manifest.script_path);
+        let script_path = integration_path.join(&info.manifest.script_path);
 
+        // Spawning new threads to read a few KBs of data is more time-consuming
+        // than doing it in the same thread
         if integration_path.exists() {
             let local_manifest = std::fs::read(&manifest_path)?;
             let local_manifest = serde_json::from_slice(&local_manifest)?;
             let local_manifest = Manifest::from_json(&local_manifest)?;
 
-            if local_manifest.script_version == manifest.script_version {
+            if local_manifest.script_version == info.manifest.script_version {
                 continue;
             }
         }
@@ -55,12 +81,18 @@ pub fn update_integrations() -> anyhow::Result<()> {
             std::fs::create_dir_all(&integration_path)?;
         }
 
-        let script = minreq::get(format!("{source}/games/{game}/{}", &manifest.script_path))
-            .send()?.into_bytes();
+        tasks.push(pool.evaluate(move || -> anyhow::Result<()> {
+            let script = minreq::get(format!("{}/games/{game}/{}", info.source, &info.manifest.script_path))
+                .send()?.into_bytes();
 
-        std::fs::write(manifest_path, bytes)?;
-        std::fs::write(script_path, script)?;
+            std::fs::write(manifest_path, info.manifest_body)?;
+            std::fs::write(script_path, script)?;
+
+            Ok(())
+        }));
     }
+
+    tasks.into_iter().try_for_each(|task| task.await_complete())?;
 
     Ok(())
 }
