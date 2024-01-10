@@ -103,8 +103,8 @@ type Download = {
 		// List of segments URIs if type is `segments`
 		segments?: string[],
 
-		// List of files URIs if type is `files`
-		files?: string[]
+		// List of files if type is `files`
+		files?: FileDownload[]
 	}
 };
 ```
@@ -129,8 +129,8 @@ type Diff = {
 		// List of segments URIs if type is `segments`
 		segments?: string[],
 
-		// List of files URIs if type is `files`
-		files?: string[]
+		// List of files if type is `files`
+		files?: FileDownload[]
 	}
 };
 ```
@@ -158,6 +158,15 @@ type DiffType = 'archive' | 'segments' | 'files';
 | `archive` | Single archive with all updated files |
 | `segments` | Segmented archive |
 | `files` | List of files needed to be downloaded |
+
+#### FileDownload
+
+```ts
+type FileDownload = {
+	path: string,
+	uri: string
+};
+```
 
 #### Status
 

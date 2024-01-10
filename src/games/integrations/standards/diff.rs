@@ -2,7 +2,7 @@ use mlua::prelude::*;
 
 use super::IntegrationStandard;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Diff {
     pub current_version: String,
     pub latest_version: String,
@@ -52,7 +52,7 @@ impl Diff {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DiffStatus {
     Latest,
     Outdated,
@@ -87,7 +87,7 @@ impl DiffStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DiffInfo {
     Archive {
         size: u64,
@@ -99,7 +99,7 @@ pub enum DiffInfo {
     },
     Files {
         size: u64,
-        files: Vec<String>
+        files: Vec<DiffFileDownload>
     }
 }
 
@@ -126,9 +126,10 @@ impl DiffInfo {
                     "files" => Ok(Self::Files {
                         size,
                         files: table.get::<_, LuaTable>("files")?
-                            .sequence_values::<String>()
+                            .sequence_values::<LuaTable>()
                             .flatten()
-                            .collect()
+                            .map(|file| DiffFileDownload::from_table(file, standard))
+                            .collect::<Result<Vec<_>, _>>()?
                     }),
 
                     value => anyhow::bail!("Wrong v1 diff type: '{value}'")
@@ -165,7 +166,7 @@ impl DiffInfo {
                         let files_lua = lua.create_table()?;
 
                         for file in files {
-                            files_lua.push(file.as_str())?;
+                            files_lua.push(file.to_table(lua, standard)?)?;
                         }
 
                         table.set("type", "files")?;
@@ -173,6 +174,38 @@ impl DiffInfo {
                         table.set("files", files_lua)?;
                     }
                 }
+
+                Ok(table)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DiffFileDownload {
+    pub path: String,
+    pub uri: String
+}
+
+impl DiffFileDownload {
+    pub fn from_table(table: LuaTable, standard: IntegrationStandard) -> anyhow::Result<Self> {
+        match standard {
+            IntegrationStandard::V1 => {
+                Ok(Self {
+                    path: table.get::<_, String>("path")?,
+                    uri: table.get::<_, String>("uri")?
+                })
+            }
+        }
+    }
+
+    pub fn to_table<'a>(&self, lua: &'a Lua, standard: IntegrationStandard) -> anyhow::Result<LuaTable<'a>> {
+        match standard {
+            IntegrationStandard::V1 => {
+                let table = lua.create_table()?;
+
+                table.set("path", self.path.as_str())?;
+                table.set("uri", self.uri.as_str())?;
 
                 Ok(table)
             }
