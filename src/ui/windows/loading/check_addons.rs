@@ -103,10 +103,12 @@ fn get_game_addons(
 
 #[inline]
 pub fn check_addons() -> anyhow::Result<Vec<AddonsListEntry>> {
+    let config = config::get();
+
     let mut addons = Vec::new();
 
     for game in games::list()?.values() {
-        let settings = config::get().games.get_game_settings(game)?;
+        let settings = config.games.get_game_settings(game)?;
 
         for edition in game.get_game_editions_list()? {
             let enabled_addons = &settings.addons[&edition.name];
