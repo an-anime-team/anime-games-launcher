@@ -3,3 +3,5 @@
 /flamegraph.svg
 /perf.data
 /perf.data.old
+/perf-output.data
+/profile.json

@@ -14,6 +14,11 @@ strip = true
 lto = true
 opt-level = "s"
 
+[profile.profiling]
+inherits = "release"
+strip = false
+debug = true
+
 [build-dependencies]
 glib-build-tools = "0.18.0"
 
