@@ -57,6 +57,8 @@ impl SimpleAsyncComponent for AddonRowComponent {
             add_suffix = &gtk::Button {
                 set_valign: gtk::Align::Center,
 
+                set_visible: !model.addon_info.required || !model.installed,
+
                 set_css_classes: if model.installed {
                     &["flat", "error"]
                 } else {
@@ -84,8 +86,7 @@ impl SimpleAsyncComponent for AddonRowComponent {
             add_suffix = switch -> gtk::Switch {
                 set_valign: gtk::Align::Center,
 
-                set_sensitive: !model.addon_info.required,
-                set_visible: model.installed,
+                set_visible: model.installed && !model.addon_info.required,
 
                 #[watch]
                 #[block_signal(toggle_handler)]
@@ -101,11 +102,11 @@ impl SimpleAsyncComponent for AddonRowComponent {
             switch: gtk::Switch::new(),
 
             addons_group: init.addons_group,
+            addon_info: init.addon_info,
             game_info: init.game_info,
 
-            addon_info: init.addon_info,
-            enabled: init.enabled,
-            installed: init.installed
+            installed: init.installed,
+            enabled: init.enabled
         };
 
         let switch = &model.switch;

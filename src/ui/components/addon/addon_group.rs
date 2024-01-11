@@ -108,11 +108,11 @@ impl SimpleAsyncComponent for AddonsGroupComponent {
                     AddonRowComponent::builder()
                         .launch(AddonRowComponentInit {
                             addons_group: init.addons_group.clone(),
+                            addon_info: addon,
                             game_info: init.game_info.clone(),
 
-                            addon_info: addon,
-                            enabled,
-                            installed
+                            installed,
+                            enabled
                         })
                         .forward(sender.input_sender(), std::convert::identity)
                 })
