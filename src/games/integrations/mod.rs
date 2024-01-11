@@ -69,40 +69,78 @@ impl Game {
     }
 
     pub fn get_card_picture(&self, edition: impl AsRef<str>) -> anyhow::Result<String> {
-        match self.manifest.script_standard {
-            IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_visual_get_card_picture", edition.as_ref())?)
+        #[inline]
+        #[cached::proc_macro::cached(
+            key = "String",
+            convert = r##"{ edition.to_string() }"##,
+            result
+        )]
+        fn get_card_picture(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<String> {
+            match standard {
+                IntegrationStandard::V1 => Ok(lua.globals().call_function("v1_visual_get_card_picture", edition)?)
+            }
         }
+
+        get_card_picture(&self.lua, self.manifest.script_standard, edition.as_ref())
     }
 
     pub fn get_background_picture(&self, edition: impl AsRef<str>) -> anyhow::Result<String> {
-        match self.manifest.script_standard {
-            IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_visual_get_background_picture", edition.as_ref())?)
+        #[inline]
+        #[cached::proc_macro::cached(
+            key = "String",
+            convert = r##"{ edition.to_string() }"##,
+            result
+        )]
+        fn get_background_picture(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<String> {
+            match standard {
+                IntegrationStandard::V1 => Ok(lua.globals().call_function("v1_visual_get_background_picture", edition)?)
+            }
         }
+
+        get_background_picture(&self.lua, self.manifest.script_standard, edition.as_ref())
     }
 
     pub fn get_details_background_style(&self, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
-        match self.manifest.script_standard {
-            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_visual_get_details_background_css")?
-                .then(|| self.lua.globals().call_function("v1_visual_get_details_background_css", edition.as_ref()))
-                .transpose()?)
+        #[inline]
+        #[cached::proc_macro::cached(
+            key = "String",
+            convert = r##"{ edition.to_string() }"##,
+            result
+        )]
+        fn get_details_background_style(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<Option<String>> {
+            match standard {
+                IntegrationStandard::V1 => {
+                    if !lua.globals().contains_key("v1_visual_get_details_background_css")? {
+                        return Ok(None);
+                    }
+
+                    Ok(lua.globals().call_function("v1_visual_get_details_background_css", edition)?)
+                }
+            }
         }
+
+        get_details_background_style(&self.lua, self.manifest.script_standard, edition.as_ref())
     }
 
     pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<GameEdition>> {
-        match self.manifest.script_standard {
-            IntegrationStandard::V1 => {
-                let editions = self.lua.globals()
-                    .call_function::<_, LuaTable>("v1_game_get_editions_list", ())?
-                    .sequence_values::<LuaTable>()
-                    .flatten()
-                    .map(|edition| GameEdition::from_table(edition, self.manifest.script_standard))
-                    .collect::<Result<Vec<_>, _>>()?;
+        #[inline]
+        #[cached::proc_macro::once(result)]
+        fn get_game_editions_list(lua: &Lua, standard: IntegrationStandard) -> anyhow::Result<Vec<GameEdition>> {
+            match standard {
+                IntegrationStandard::V1 => {
+                    let editions = lua.globals()
+                        .call_function::<_, LuaTable>("v1_game_get_editions_list", ())?
+                        .sequence_values::<LuaTable>()
+                        .flatten()
+                        .map(|edition| GameEdition::from_table(edition, standard))
+                        .collect::<Result<Vec<_>, _>>()?;
 
-                Ok(editions)
+                    Ok(editions)
+                }
             }
         }
+
+        get_game_editions_list(&self.lua, self.manifest.script_standard)
     }
 
     pub fn is_game_installed(&self, path: impl AsRef<str>) -> anyhow::Result<bool> {
@@ -185,18 +223,28 @@ impl Game {
     }
 
     pub fn get_addons_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<AddonsGroup>> {
-        match self.manifest.script_standard {
-            IntegrationStandard::V1 => {
-                let dlcs = self.lua.globals()
-                    .call_function::<_, LuaTable>("v1_addons_get_list", edition.as_ref())?
-                    .sequence_values::<LuaTable>()
-                    .flatten()
-                    .map(|group| AddonsGroup::from_table(group, self.manifest.script_standard))
-                    .collect::<Result<Vec<_>, _>>()?;
+        #[inline]
+        #[cached::proc_macro::cached(
+            key = "String",
+            convert = r##"{ edition.to_string() }"##,
+            result
+        )]
+        fn get_addons_list(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<Vec<AddonsGroup>> {
+            match standard {
+                IntegrationStandard::V1 => {
+                    let addons = lua.globals()
+                        .call_function::<_, LuaTable>("v1_addons_get_list", edition)?
+                        .sequence_values::<LuaTable>()
+                        .flatten()
+                        .map(|group| AddonsGroup::from_table(group, standard))
+                        .collect::<Result<Vec<_>, _>>()?;
 
-                Ok(dlcs)
+                    Ok(addons)
+                }
             }
         }
+
+        get_addons_list(&self.lua, self.manifest.script_standard, edition.as_ref())
     }
 
     pub fn is_addon_installed(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<bool> {

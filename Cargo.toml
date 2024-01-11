@@ -55,6 +55,7 @@ lazy_static = "1.4.0"
 flume = "0.11.0"
 rusty_pool = "0.7.0"
 num_cpus = "1.16.0"
+cached = "0.47.0"
 
 wincompatlib = { version = "0.7.4", features = ["all"] }
 
