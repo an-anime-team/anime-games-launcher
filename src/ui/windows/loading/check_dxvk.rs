@@ -21,7 +21,7 @@ pub fn get_apply() -> anyhow::Result<Option<Dxvk>> {
     let installed_dxvk = WincompatlibDxvk::get_version(config::get().components.wine.prefix.path)?;
 
     if let Some(version) = installed_dxvk {
-        if dxvk.name.contains(&version) {
+        if dxvk.name.contains(&version) || dxvk.version.contains(&version) {
             return Ok(None);
         }
     }

@@ -30,6 +30,7 @@ use super::DownloadComponentResolvedTask;
 pub struct Dxvk {
     pub name: String,
     pub title: String,
+    pub version: String,
     pub uri: String
 }
 
@@ -46,12 +47,14 @@ impl Dxvk {
         for dxvk in dxvk_versions {
             let name = dxvk.get("name").and_then(Json::as_str);
             let title = dxvk.get("title").and_then(Json::as_str);
+            let version = dxvk.get("version").and_then(Json::as_str);
             let uri = dxvk.get("uri").and_then(Json::as_str);
 
-            if let (Some(name), Some(title), Some(uri)) = (name, title, uri) {
+            if let (Some(name), Some(title), Some(version), Some(uri)) = (name, title, version, uri) {
                 versions.push(Self {
                     name: name.to_owned(),
                     title: title.to_owned(),
+                    version: version.to_owned(),
                     uri: uri.to_owned()
                 });
             }
@@ -65,7 +68,7 @@ impl Dxvk {
         let dxvk_info = config::get().components.dxvk;
 
         for version in Self::versions()? {
-            if version.name.contains(&dxvk_info.version) || dxvk_info.version == "latest" {
+            if version.name.contains(&dxvk_info.version) || version.version.contains(&dxvk_info.version) || dxvk_info.version == "latest" {
                 return Ok(version);
             }
         }

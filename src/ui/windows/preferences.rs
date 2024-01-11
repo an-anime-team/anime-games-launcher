@@ -339,7 +339,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             let strings = gtk::StringList::new(&["latest"]);
 
                             for version in &model.dxvk_versions {
-                                strings.append(&version.title);
+                                strings.append(&version.name);
                             }
 
                             strings
@@ -424,7 +424,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                 let version = if index == 0 {
                     String::from("latest")
                 } else {
-                    self.dxvk_versions[index as usize - 1].name.clone()
+                    self.dxvk_versions[index as usize - 1].version.clone()
                 };
 
                 if let Err(err) = config::set("components.dxvk.version", version) {
