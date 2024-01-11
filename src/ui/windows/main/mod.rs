@@ -716,8 +716,8 @@ impl SimpleAsyncComponent for MainApp {
                 let config = config::get();
 
                 match download_game_task::get_download_game_task(&game_info, &config) {
-                    Ok(task) => {
-                        self.tasks_queue.emit(TasksQueueComponentInput::AddTask(task));
+                    Ok(result) => {
+                        self.tasks_queue.emit(TasksQueueComponentInput::AddTask(result.game_task));
 
                         if let Some(index) = self.available_games_indexes.get(&game_info) {
                             self.available_games.guard().remove(index.current_index());
@@ -734,7 +734,15 @@ impl SimpleAsyncComponent for MainApp {
                         }
 
                         if config.general.verify_games {
-                            sender.input(MainAppMsg::AddVerifyGameTask(game_info));
+                            sender.input(MainAppMsg::AddVerifyGameTask(game_info.clone()));
+                        }
+
+                        for addon in result.download_addons {
+                            sender.input(MainAppMsg::AddDownloadAddonTask {
+                                game_info: game_info.clone(),
+                                addon: addon.addon,
+                                group: addon.group
+                            });
                         }
                     }
 

@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
 use crate::games;
 
 use crate::config;
-use crate::config::games::settings::GameSettings;
+use crate::config::games::prelude::*;
 
 use crate::ui::components::game_card::CardInfo;
 
@@ -14,6 +12,11 @@ use crate::ui::components::tasks_queue::download_diff_task::{
 
 use crate::games::integrations::Game;
 use crate::games::integrations::standards::diff::DiffInfo;
+
+use crate::ui::windows::loading::check_addons::{
+    AddonsListEntry,
+    get_game_addons_downloads
+};
 
 use super::MainAppMsg;
 
@@ -69,33 +72,45 @@ fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings
 }
 
 #[inline]
-fn get_game_path<'a>(game: &'a Game, edition: &str, config: &'a config::Config) -> HeapResult<PathBuf> {
-    get_settings(game, config)?
-        .paths.get(edition)
-        .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} installation path", game.manifest.game_title),
-            message: None
+fn get_addons(game: &Game, game_info: &CardInfo, edition: &str, enabled_addons: &[GameEditionAddon]) -> HeapResult<Vec<AddonsListEntry>> {
+    get_game_addons_downloads(game_info, game, edition, enabled_addons)
+        .map_err(|err| Box::new(MainAppMsg::ShowToast {
+            title: format!("Unable to get {} addons", game.manifest.game_title),
+            message: Some(err.to_string())
         }))
-        .map(|paths| paths.game.clone())
+}
 
+pub struct DownloadGameResult {
+    pub game_task: Box<DownloadDiffQueuedTask>,
+    pub download_addons: Vec<AddonsListEntry>
 }
 
 #[inline]
-pub fn get_download_game_task(game_info: &CardInfo, config: &config::Config) -> HeapResult<Box<DownloadDiffQueuedTask>> {
+pub fn get_download_game_task(game_info: &CardInfo, config: &config::Config) -> HeapResult<DownloadGameResult> {
     let game = unsafe {
         games::get_unsafe(game_info.get_name())
     };
 
-    let game_path = get_game_path(game, game_info.get_edition(), config)?;
+    let settings = get_settings(game, config)?;
 
-    Ok(Box::new(DownloadDiffQueuedTask {
-        card_info: game_info.clone(),
-        download_path: game_path.clone(),
-        diff_info: get_diff_or_download(
-            game,
-            &game_path.to_string_lossy(),
-            game_info.get_edition()
-        )?,
-        diff_origin: DiffOrigin::Game
-    }))
+    // Game installation path
+    let game_path = &settings.paths[game_info.get_edition()].game;
+
+    // Enabled game addons
+    let enabled_addons = &settings.addons[game_info.get_edition()];
+
+    Ok(DownloadGameResult {
+        game_task: Box::new(DownloadDiffQueuedTask {
+            card_info: game_info.clone(),
+            download_path: game_path.clone(),
+            diff_info: get_diff_or_download(
+                game,
+                &game_path.to_string_lossy(),
+                game_info.get_edition()
+            )?,
+            diff_origin: DiffOrigin::Game
+        }),
+
+        download_addons: get_addons(game, game_info, game_info.get_edition(), enabled_addons)?
+    })
 }
