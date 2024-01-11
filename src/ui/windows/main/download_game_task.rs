@@ -20,8 +20,8 @@ use super::MainAppMsg;
 type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 
 #[inline]
-fn is_installed(game: &Game, game_path: impl AsRef<str>) -> HeapResult<bool> {
-    game.is_game_installed(game_path.as_ref())
+fn is_installed(game: &Game, game_path: &str, edition: &str) -> HeapResult<bool> {
+    game.is_game_installed(game_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to verify {} installation", game.manifest.game_title),
             message: Some(err.to_string())
@@ -43,7 +43,7 @@ fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -
 }
 
 #[inline]
-fn get_download(game: &Game, edition: impl AsRef<str>) -> HeapResult<DiffInfo> {
+fn get_download(game: &Game, edition: &str) -> HeapResult<DiffInfo> {
     game.get_game_download(edition.as_ref())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to find {} download info", game.manifest.game_title),
@@ -53,8 +53,8 @@ fn get_download(game: &Game, edition: impl AsRef<str>) -> HeapResult<DiffInfo> {
 }
 
 #[inline]
-fn get_diff_or_download(game: &Game, edition: impl AsRef<str> + Copy, game_path: impl AsRef<str>) -> HeapResult<DiffInfo> {
-    is_installed(game, game_path.as_ref())?
+fn get_diff_or_download(game: &Game, game_path: &str, edition: &str) -> HeapResult<DiffInfo> {
+    is_installed(game, game_path, edition)?
         .then(|| get_diff(game, edition, game_path))
         .unwrap_or_else(|| get_download(game, edition))
 }
@@ -69,9 +69,9 @@ fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings
 }
 
 #[inline]
-fn get_game_path<'a>(game: &'a Game, edition: impl AsRef<str>, config: &'a config::Config) -> HeapResult<PathBuf> {
+fn get_game_path<'a>(game: &'a Game, edition: &str, config: &'a config::Config) -> HeapResult<PathBuf> {
     get_settings(game, config)?
-        .paths.get(edition.as_ref())
+        .paths.get(edition)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to find {} installation path", game.manifest.game_title),
             message: None
@@ -93,8 +93,8 @@ pub fn get_download_game_task(game_info: &CardInfo, config: &config::Config) -> 
         download_path: game_path.clone(),
         diff_info: get_diff_or_download(
             game,
-            game_info.get_edition(),
-            game_path.to_string_lossy()
+            &game_path.to_string_lossy(),
+            game_info.get_edition()
         )?,
         diff_origin: DiffOrigin::Game
     }))

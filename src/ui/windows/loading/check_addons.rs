@@ -32,7 +32,7 @@ pub fn is_addon_enabled(enabled_addons: &[GameEditionAddon], addon: &Addon, grou
 }
 
 #[inline]
-fn check_addon(
+fn get_addon_download(
     game_info: &CardInfo,
     game: &Game,
     edition: &str,
@@ -77,28 +77,27 @@ fn check_addon(
 }
 
 #[inline]
-fn get_game_addons(
+pub fn get_game_addons_downloads(
     game_info: &CardInfo,
     game: &Game,
     edition: &str,
     enabled_addons: &[GameEditionAddon]
-) -> anyhow::Result<Vec<Option<AddonsListEntry>>> {
-    game.get_addons_list(edition)?
-        .into_iter()
-        .fold(vec![], |mut result, group| {
-            let group_addons = group.addons.iter()
-                .map(|addon| check_addon(game_info, game, edition, enabled_addons, addon, &group));
+) -> anyhow::Result<Vec<AddonsListEntry>> {
+    let mut result = Vec::new();
 
-            result.extend(group_addons);
+    for group in game.get_addons_list(edition)? {
+        for addon in &group.addons {
+            if let Some(addon) = get_addon_download(game_info, game, edition, enabled_addons, addon, &group)? {
+                result.push(addon);
+            }
+        }
+    }
 
-            result
-        })
-        .into_iter()
-        .collect::<anyhow::Result<Vec<_>>>()
+    Ok(result)
 }
 
 #[inline]
-pub fn check_addons(pool: &rusty_pool::ThreadPool) -> anyhow::Result<Vec<AddonsListEntry>> {
+pub fn get_download(pool: &rusty_pool::ThreadPool) -> anyhow::Result<Vec<AddonsListEntry>> {
     let config = config::get();
 
     let mut tasks = Vec::new();
@@ -113,21 +112,25 @@ pub fn check_addons(pool: &rusty_pool::ThreadPool) -> anyhow::Result<Vec<AddonsL
             let mut addons = Vec::new();
 
             for edition in game.get_game_editions_list()? {
-                let enabled_addons = &settings.addons[&edition.name];
+                let installed = game.is_game_installed(
+                    &settings.paths[&edition.name].game.to_string_lossy(),
+                    &edition.name
+                )?;
 
-                let game_info = CardInfo::Game {
-                    name: game.manifest.game_name.clone(),
-                    title: game.manifest.game_title.clone(),
-                    developer: game.manifest.game_developer.clone(),
-                    picture_uri: game.get_card_picture(&edition.name)?,
-                    edition: edition.name.clone()
-                };
+                // Check if addons should be installed only if the game itself is installed
+                if installed {
+                    let enabled_addons = &settings.addons[&edition.name];
 
-                let game_addons = get_game_addons(&game_info, game, &edition.name, enabled_addons)?
-                    .into_iter()
-                    .flatten();
+                    let game_info = CardInfo::Game {
+                        name: game.manifest.game_name.clone(),
+                        title: game.manifest.game_title.clone(),
+                        developer: game.manifest.game_developer.clone(),
+                        picture_uri: game.get_card_picture(&edition.name)?,
+                        edition: edition.name.clone()
+                    };
 
-                addons.extend(game_addons);
+                    addons.extend(get_game_addons_downloads(&game_info, game, &edition.name, enabled_addons)?);
+                }
             }
 
             Ok(addons)

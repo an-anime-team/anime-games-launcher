@@ -38,7 +38,7 @@
 | | `v1_visual_get_background_picture(edition)` | `string` | Get background picture URI for the game |
 | Game | | | Base game manipulations |
 | | `v1_game_get_editions_list()` | `Edition[]` | Get list of game editions |
-| | `v1_game_is_installed(game_path)` | `boolean` | Check if the game is installed |
+| | `v1_game_is_installed(game_path, edition)` | `boolean` | Check if the game is installed |
 | | `v1_game_get_version(game_path, edition)` | `string \| null` | Get installed game version |
 | | `v1_game_get_download(edition)` | `Download` | Get full game downloading info |
 | | `v1_game_get_diff(game_path, edition)` | `Diff \| null` | Get game version diff |

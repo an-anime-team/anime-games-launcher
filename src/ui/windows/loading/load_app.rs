@@ -111,7 +111,7 @@ pub fn load_app(sender: &AsyncComponentSender<LoadingApp>) -> Result<LoadingResu
     sender.input(LoadingAppMsg::SetProgress(10.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking games addons")));
 
-    let download_addons = check_addons::check_addons(&pool).map_err(|err| LoadingAppMsg::DisplayError {
+    let download_addons = check_addons::get_download(&pool).map_err(|err| LoadingAppMsg::DisplayError {
         title: String::from("Failed to check games addons"),
         message: err.to_string()
     })?;

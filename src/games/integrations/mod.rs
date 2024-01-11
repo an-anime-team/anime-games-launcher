@@ -151,10 +151,10 @@ impl Game {
     }
 
     #[tracing::instrument(level = "trace", ret)]
-    pub fn is_game_installed(&self, path: &str) -> anyhow::Result<bool> {
+    pub fn is_game_installed(&self, path: &str, edition: &str) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_game_is_installed", path)?)
+                .call_function("v1_game_is_installed", (path, edition))?)
         }
     }
 
