@@ -21,27 +21,54 @@ pub fn update_integrations(pool: &rusty_pool::ThreadPool) -> anyhow::Result<()> 
 
     for source in config.games.integrations.sources {
         tasks.push(pool.evaluate(move || -> anyhow::Result<HashMap<String, IntegrationInfo>> {
-            let integrations = minreq::get(format!("{source}/integrations.json"))
-                .send()?.json::<Json>()?;
-
-            let Some(integrations) = integrations.get("games").and_then(Json::as_array) else {
-                anyhow::bail!("Wrong integrations file structue");
-            };
+            let response = minreq::get(format!("{source}/integrations.json"))
+                .send()?;
 
             let mut games = HashMap::new();
 
-            for game in integrations {
-                if let Some(game) = game.as_str() {
-                    let bytes = minreq::get(format!("{source}/games/{game}/manifest.json"))
-                        .send()?.into_bytes();
+            // HTTP OK
+            if (200..300).contains(&response.status_code) {
+                let integrations = response.json::<Json>()?;
+
+                let Some(integrations) = integrations.get("games").and_then(Json::as_array) else {
+                    anyhow::bail!("Wrong integrations file structue");
+                };
+
+                for game in integrations {
+                    if let Some(game) = game.as_str() {
+                        let bytes = minreq::get(format!("{source}/games/{game}/manifest.json"))
+                            .send()?.into_bytes();
+
+                        let manifest = Manifest::from_json(&serde_json::from_slice(&bytes)?)?;
+
+                        games.insert(game.to_string(), IntegrationInfo {
+                            source: format!("{source}/games/{game}"),
+                            manifest_body: bytes,
+                            manifest
+                        });
+                    }
+                }
+            }
+
+            else {
+                let response = minreq::get(format!("{source}/manifest.json"))
+                    .send()?;
+
+                // HTTP OK
+                if (200..300).contains(&response.status_code) {
+                    let bytes = response.into_bytes();
 
                     let manifest = Manifest::from_json(&serde_json::from_slice(&bytes)?)?;
 
-                    games.insert(game.to_string(), IntegrationInfo {
+                    games.insert(manifest.game_name.to_string(), IntegrationInfo {
                         source: source.clone(),
                         manifest_body: bytes,
                         manifest
                     });
+                }
+
+                else {
+                    anyhow::bail!("Source {source} doesn't have integrations.json or manifest.json file");
                 }
             }
 
@@ -82,7 +109,7 @@ pub fn update_integrations(pool: &rusty_pool::ThreadPool) -> anyhow::Result<()> 
         }
 
         tasks.push(pool.evaluate(move || -> anyhow::Result<()> {
-            let script = minreq::get(format!("{}/games/{game}/{}", info.source, &info.manifest.script_path))
+            let script = minreq::get(format!("{}/{}", info.source, &info.manifest.script_path))
                 .send()?.into_bytes();
 
             std::fs::write(manifest_path, info.manifest_body)?;
