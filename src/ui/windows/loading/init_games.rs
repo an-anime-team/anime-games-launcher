@@ -38,7 +38,7 @@ fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(
             edition
         })
         .and_then(|entry| {
-            game.is_game_installed(settings.paths[&entry.edition.name].game.to_string_lossy())
+            game.is_game_installed(&settings.paths[&entry.edition.name].game.to_string_lossy())
                 .map(|installed| (installed, entry))
         }))
         .collect::<anyhow::Result<Vec<_>>>()

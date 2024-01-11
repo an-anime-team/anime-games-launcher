@@ -141,7 +141,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
                         let addon_path = addon.get_installation_path(&group.name, game_info.get_name(), game_info.get_edition()).unwrap();
 
                         // FIXME: handle errors
-                        if let Ok(true) = game.is_addon_installed(&group.name, &addon.name, addon_path.to_string_lossy(), game_info.get_edition()) {
+                        if let Ok(true) = game.is_addon_installed(&group.name, &addon.name, &addon_path.to_string_lossy(), game_info.get_edition()) {
                             installed_addons.insert(GameEditionAddon {
                                 group: group.name.clone(),
                                 name: addon.name.clone()

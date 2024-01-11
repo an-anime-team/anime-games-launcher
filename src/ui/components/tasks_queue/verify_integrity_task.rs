@@ -157,7 +157,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                                     }
 
                                     HashType::Custom(name) if has_integrity_hash => {
-                                        game.integrity_hash(name, data)?
+                                        game.integrity_hash(&name, data)?
                                     }
 
                                     _ => unimplemented!()

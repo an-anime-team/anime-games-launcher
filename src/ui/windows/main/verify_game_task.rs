@@ -16,7 +16,7 @@ use super::MainAppMsg;
 type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 
 #[inline]
-fn get_integrity_info(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -> HeapResult<Vec<IntegrityInfo>> {
+fn get_integrity_info(game: &Game, game_path: &str, edition: &str) -> HeapResult<Vec<IntegrityInfo>> {
     game.get_game_integrity(game_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to get {} integrity info", game.manifest.game_title),
@@ -34,9 +34,9 @@ fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings
 }
 
 #[inline]
-fn get_game_path<'a>(game: &'a Game, edition: impl AsRef<str>, config: &'a config::Config) -> HeapResult<PathBuf> {
+fn get_game_path<'a>(game: &'a Game, edition: &str, config: &'a config::Config) -> HeapResult<PathBuf> {
     get_settings(game, config)?
-        .paths.get(edition.as_ref())
+        .paths.get(edition)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to find {} installation path", game.manifest.game_title),
             message: None
@@ -57,8 +57,8 @@ pub fn get_verify_game_task(game_info: &CardInfo, config: &config::Config) -> He
         card_info: game_info.clone(),
         integrity_info: get_integrity_info(
             game,
-            game_info.get_edition(),
-            game_path.to_string_lossy()
+            &game_path.to_string_lossy(),
+            game_info.get_edition()
         )?,
         path: game_path
     }))

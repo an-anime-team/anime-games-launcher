@@ -2,6 +2,9 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::filter::*;
+
 pub mod ui;
 pub mod config;
 pub mod components;
@@ -12,8 +15,11 @@ use ui::windows::loading::LoadingApp;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static::lazy_static! {
+    pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
+
     /// Path to the launcher's data folder
     /// 
     /// Resolution order:
@@ -37,9 +43,42 @@ lazy_static::lazy_static! {
 
     /// Path to the launcher's config file
     pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
+
+    /// Path to launcher's debug log file
+    pub static ref DEBUG_FILE: PathBuf = LAUNCHER_FOLDER.join("debug.log");
 }
 
 fn main() -> anyhow::Result<()> {
+    // Prepare stdout logger
+    let stdout = tracing_subscriber::fmt::layer()
+        .pretty()
+        .with_filter({
+            if *APP_DEBUG {
+                LevelFilter::TRACE
+            } else {
+                LevelFilter::WARN
+            }
+        })
+        .with_filter(filter_fn(move |metadata| {
+            !metadata.target().contains("rustls")
+        }));
+
+    // Prepare debug file logger
+    let file = std::fs::File::create(DEBUG_FILE.as_path())?;
+
+    let debug_log = tracing_subscriber::fmt::layer()
+        .pretty()
+        .with_ansi(false)
+        .with_writer(std::sync::Arc::new(file))
+        .with_filter(filter_fn(|metadata| {
+            !metadata.target().contains("rustls")
+        }));
+
+    tracing_subscriber::registry()
+        .with(stdout)
+        .with(debug_log)
+        .init();
+
     adw::init().expect("Libadwaita initialization failed");
 
     // Register and include resources

@@ -20,13 +20,7 @@ use super::MainAppMsg;
 type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 
 #[inline]
-fn is_installed(
-    game: &Game,
-    group_name: impl AsRef<str>,
-    addon_name: impl AsRef<str>,
-    addon_path: impl AsRef<str>,
-    edition: impl AsRef<str>
-) -> HeapResult<bool> {
+fn is_installed(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<bool> {
     game.is_addon_installed(group_name, addon_name, addon_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to verify addon installation for {}", game.manifest.game_title),
@@ -35,13 +29,7 @@ fn is_installed(
 }
 
 #[inline]
-fn get_diff(
-    game: &Game,
-    group_name: impl AsRef<str>,
-    addon_name: impl AsRef<str>,
-    addon_path: impl AsRef<str>,
-    edition: impl AsRef<str>
-) -> HeapResult<DiffInfo> {
+fn get_diff(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<DiffInfo> {
     game.get_addon_diff(group_name, addon_name, addon_path, edition)
         .map_err(|err| MainAppMsg::ShowToast {
             title: format!("Unable to find {} addon version diff", game.manifest.game_title),
@@ -55,12 +43,7 @@ fn get_diff(
 }
 
 #[inline]
-fn get_download(
-    game: &Game,
-    group_name: impl AsRef<str>,
-    addon_name: impl AsRef<str>,
-    edition: impl AsRef<str>
-) -> HeapResult<DiffInfo> {
+fn get_download(game: &Game, group_name: &str, addon_name: &str, edition: &str) -> HeapResult<DiffInfo> {
     game.get_addon_download(group_name, addon_name, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to find {} addon download info", game.manifest.game_title),
@@ -70,14 +53,8 @@ fn get_download(
 }
 
 #[inline]
-fn get_diff_or_download(
-    game: &Game,
-    group_name: impl AsRef<str> + Copy,
-    addon_name: impl AsRef<str> + Copy,
-    addon_path: impl AsRef<str>,
-    edition: impl AsRef<str> + Copy
-) -> HeapResult<DiffInfo> {
-    is_installed(game, group_name, addon_name, addon_path.as_ref(), edition)?
+fn get_diff_or_download(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<DiffInfo> {
+    is_installed(game, group_name, addon_name, addon_path, edition)?
         .then(|| get_diff(game, group_name, addon_name, addon_path, edition))
         .unwrap_or_else(|| get_download(game, group_name, addon_name, edition))
 }
@@ -100,7 +77,7 @@ pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &Addo
             game,
             &group.name,
             &addon.name,
-            download_path.to_string_lossy(),
+            &download_path.to_string_lossy(),
             game_info.get_edition()
         )?,
         diff_origin: DiffOrigin::Addon {

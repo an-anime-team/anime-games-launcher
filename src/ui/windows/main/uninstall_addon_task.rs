@@ -26,7 +26,7 @@ pub fn get_uninstall_addon_task(game_info: &CardInfo, addon: &Addon, group: &Add
         games::get_unsafe(game_info.get_name())
     };
 
-    let paths = game.get_addon_paths(&group.name, &addon.name, addon_path.to_string_lossy(), game_info.get_edition())
+    let paths = game.get_addon_paths(&group.name, &addon.name, &addon_path.to_string_lossy(), game_info.get_edition())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: format!("Unable to find {} addon installation path", game_info.get_title()),
             message: Some(err.to_string())

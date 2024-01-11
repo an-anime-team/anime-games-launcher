@@ -35,61 +35,59 @@ pub fn is_addon_enabled(enabled_addons: &[GameEditionAddon], addon: &Addon, grou
 fn check_addon(
     game_info: &CardInfo,
     game: &Game,
-    edition: impl AsRef<str>,
+    edition: &str,
     enabled_addons: &[GameEditionAddon],
     addon: &Addon,
     group: &AddonsGroup
 ) -> anyhow::Result<Option<AddonsListEntry>> {
-    is_addon_enabled(enabled_addons, addon, group)
-        .then(|| {
-            let addon_path = addon.get_installation_path(&group.name, &game.manifest.game_name, edition.as_ref())?;
+    if is_addon_enabled(enabled_addons, addon, group) {
+        let addon_path = addon.get_installation_path(&group.name, &game.manifest.game_name, edition)?;
 
-            let installed = game.is_addon_installed(
-                &group.name,
-                &addon.name,
-                addon_path.to_string_lossy(),
-                edition.as_ref()
-            )?;
+        let installed = game.is_addon_installed(
+            &group.name,
+            &addon.name,
+            &addon_path.to_string_lossy(),
+            edition
+        )?;
 
-            let entry = AddonsListEntry {
-                game_info: game_info.clone(),
-                addon: addon.clone(),
-                group: group.clone()
-            };
+        let entry = AddonsListEntry {
+            game_info: game_info.clone(),
+            addon: addon.clone(),
+            group: group.clone()
+        };
 
-            if !installed {
-                return Ok(Some(entry));
-            }
+        if !installed {
+            return Ok(Some(entry));
+        }
 
-            let diff = game.get_addon_diff(
-                &group.name,
-                &addon.name,
-                addon_path.to_string_lossy(),
-                edition.as_ref()
-            )?;
+        let diff = game.get_addon_diff(
+            &group.name,
+            &addon.name,
+            &addon_path.to_string_lossy(),
+            edition
+        )?;
 
-            // TODO: handle "unavailable" status
-            if let Some(Diff { status: DiffStatus::Outdated, .. }) = diff {
-                return Ok(Some(entry));
-            }
+        // TODO: handle "unavailable" status
+        if let Some(Diff { status: DiffStatus::Outdated, .. }) = diff {
+            return Ok(Some(entry));
+        }
+    }
 
-            Ok(None)
-        })
-        .unwrap_or(Ok(None))
+    Ok(None)
 }
 
 #[inline]
 fn get_game_addons(
     game_info: &CardInfo,
     game: &Game,
-    edition: impl AsRef<str>,
+    edition: &str,
     enabled_addons: &[GameEditionAddon]
 ) -> anyhow::Result<Vec<Option<AddonsListEntry>>> {
-    game.get_addons_list(edition.as_ref())?
+    game.get_addons_list(edition)?
         .into_iter()
         .fold(vec![], |mut result, group| {
             let group_addons = group.addons.iter()
-                .map(|addon| check_addon(game_info, game, edition.as_ref(), enabled_addons, addon, &group));
+                .map(|addon| check_addon(game_info, game, edition, enabled_addons, addon, &group));
 
             result.extend(group_addons);
 

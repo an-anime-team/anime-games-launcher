@@ -247,7 +247,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             sender.send((Status::RunTransitionCode, 0, 1))?;
 
                             game.run_game_diff_transition(
-                                transition.transition_path().to_string_lossy(),
+                                &transition.transition_path().to_string_lossy(),
                                 &game_edition
                             )?;
 
@@ -260,7 +260,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             game.run_addons_diff_transition(
                                 group_name,
                                 addon_name,
-                                transition.transition_path().to_string_lossy(),
+                                &transition.transition_path().to_string_lossy(),
                                 &game_edition
                             )?;
 
@@ -285,7 +285,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             sender.send((Status::RunPostTransitionCode, 0, 1))?;
 
                             game.run_game_diff_post_transition(
-                                transition.original_path().to_string_lossy(),
+                                &transition.original_path().to_string_lossy(),
                                 &game_edition
                             )?;
 
@@ -298,7 +298,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             game.run_addons_diff_post_transition(
                                 group_name,
                                 addon_name,
-                                transition.original_path().to_string_lossy(),
+                                &transition.original_path().to_string_lossy(),
                                 &game_edition
                             )?;
 

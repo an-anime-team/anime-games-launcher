@@ -68,46 +68,48 @@ impl Game {
         Ok(game)
     }
 
-    pub fn get_card_picture(&self, edition: impl AsRef<str>) -> anyhow::Result<String> {
+    pub fn get_card_picture(&self, edition: &str) -> anyhow::Result<String> {
         #[inline]
         #[cached::proc_macro::cached(
             key = "String",
-            convert = r##"{ edition.to_string() }"##,
+            convert = r##"{ format!("{_game}{edition}") }"##,
             result
         )]
-        fn get_card_picture(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<String> {
+        fn get_card_picture(lua: &Lua, standard: IntegrationStandard, _game: &str, edition: &str) -> anyhow::Result<String> {
             match standard {
                 IntegrationStandard::V1 => Ok(lua.globals().call_function("v1_visual_get_card_picture", edition)?)
             }
         }
 
-        get_card_picture(&self.lua, self.manifest.script_standard, edition.as_ref())
+        get_card_picture(&self.lua, self.manifest.script_standard, &self.manifest.game_name, edition)
     }
 
-    pub fn get_background_picture(&self, edition: impl AsRef<str>) -> anyhow::Result<String> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_background_picture(&self, edition: &str) -> anyhow::Result<String> {
         #[inline]
         #[cached::proc_macro::cached(
             key = "String",
-            convert = r##"{ edition.to_string() }"##,
+            convert = r##"{ format!("{_game}{edition}") }"##,
             result
         )]
-        fn get_background_picture(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<String> {
+        fn get_background_picture(lua: &Lua, standard: IntegrationStandard, _game: &str, edition: &str) -> anyhow::Result<String> {
             match standard {
                 IntegrationStandard::V1 => Ok(lua.globals().call_function("v1_visual_get_background_picture", edition)?)
             }
         }
 
-        get_background_picture(&self.lua, self.manifest.script_standard, edition.as_ref())
+        get_background_picture(&self.lua, self.manifest.script_standard, &self.manifest.game_name, edition)
     }
 
-    pub fn get_details_background_style(&self, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_details_background_style(&self, edition: &str) -> anyhow::Result<Option<String>> {
         #[inline]
         #[cached::proc_macro::cached(
             key = "String",
-            convert = r##"{ edition.to_string() }"##,
+            convert = r##"{ format!("{_game}{edition}") }"##,
             result
         )]
-        fn get_details_background_style(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<Option<String>> {
+        fn get_details_background_style(lua: &Lua, standard: IntegrationStandard, _game: &str, edition: &str) -> anyhow::Result<Option<String>> {
             match standard {
                 IntegrationStandard::V1 => {
                     if !lua.globals().contains_key("v1_visual_get_details_background_css")? {
@@ -119,13 +121,18 @@ impl Game {
             }
         }
 
-        get_details_background_style(&self.lua, self.manifest.script_standard, edition.as_ref())
+        get_details_background_style(&self.lua, self.manifest.script_standard, &self.manifest.game_name, edition)
     }
 
+    #[tracing::instrument(level = "trace", ret)]
     pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<GameEdition>> {
         #[inline]
-        #[cached::proc_macro::once(result)]
-        fn get_game_editions_list(lua: &Lua, standard: IntegrationStandard) -> anyhow::Result<Vec<GameEdition>> {
+        #[cached::proc_macro::cached(
+            key = "String",
+            convert = r##"{ _game.to_string() }"##,
+            result
+        )]
+        fn get_game_editions_list(lua: &Lua, standard: IntegrationStandard, _game: &str) -> anyhow::Result<Vec<GameEdition>> {
             match standard {
                 IntegrationStandard::V1 => {
                     let editions = lua.globals()
@@ -140,39 +147,43 @@ impl Game {
             }
         }
 
-        get_game_editions_list(&self.lua, self.manifest.script_standard)
+        get_game_editions_list(&self.lua, self.manifest.script_standard, &self.manifest.game_name)
     }
 
-    pub fn is_game_installed(&self, path: impl AsRef<str>) -> anyhow::Result<bool> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn is_game_installed(&self, path: &str) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_game_is_installed", path.as_ref())?)
+                .call_function("v1_game_is_installed", path)?)
         }
     }
 
-    pub fn get_game_version(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_game_version(&self, path: &str, edition: &str) -> anyhow::Result<Option<String>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_game_get_version", (path.as_ref(), edition.as_ref()))?)
+                .call_function("v1_game_get_version", (path, edition))?)
         }
     }
 
-    pub fn get_game_download(&self, edition: impl AsRef<str>) -> anyhow::Result<Download> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_game_download(&self, edition: &str) -> anyhow::Result<Download> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let download = self.lua.globals()
-                    .call_function("v1_game_get_download", edition.as_ref())?;
+                    .call_function("v1_game_get_download", edition)?;
 
                 Download::from_table(download, self.manifest.script_standard)
             }
         }
     }
 
-    pub fn get_game_diff(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<Diff>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_game_diff(&self, path: &str, edition: &str) -> anyhow::Result<Option<Diff>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
-                    .call_function("v1_game_get_diff", (path.as_ref(), edition.as_ref()))?;
+                    .call_function("v1_game_get_diff", (path, edition))?;
 
                 match diff {
                     Some(diff) => Ok(Some(Diff::from_table(diff, self.manifest.script_standard)?)),
@@ -182,11 +193,12 @@ impl Game {
         }
     }
 
-    pub fn get_game_status(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<GameStatus>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_game_status(&self, path: &str, edition: &str) -> anyhow::Result<Option<GameStatus>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let status = self.lua.globals()
-                    .call_function("v1_game_get_status", (path.as_ref(), edition.as_ref()))?;
+                    .call_function("v1_game_get_status", (path, edition))?;
 
                 match status {
                     Some(status) => Ok(Some(GameStatus::from_table(status, self.manifest.script_standard)?)),
@@ -196,22 +208,24 @@ impl Game {
         }
     }
 
-    pub fn get_launch_options(&self, game_path: impl AsRef<str>, addons_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<GameLaunchOptions> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_launch_options(&self, game_path: &str, addons_path: &str, edition: &str) -> anyhow::Result<GameLaunchOptions> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let options = self.lua.globals()
-                    .call_function("v1_game_get_launch_options", (game_path.as_ref(), addons_path.as_ref(), edition.as_ref()))?;
+                    .call_function("v1_game_get_launch_options", (game_path, addons_path, edition))?;
 
                 GameLaunchOptions::from_table(options, self.manifest.script_standard)
             }
         }
     }
 
-    pub fn get_game_integrity(&self, game_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<IntegrityInfo>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_game_integrity(&self, game_path: &str, edition: &str) -> anyhow::Result<Vec<IntegrityInfo>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let info = self.lua.globals()
-                    .call_function::<_, LuaTable>("v1_game_get_integrity_info", (game_path.as_ref(), edition.as_ref()))?
+                    .call_function::<_, LuaTable>("v1_game_get_integrity_info", (game_path, edition))?
                     .sequence_values::<LuaTable>()
                     .flatten()
                     .map(|info| IntegrityInfo::from_table(info, self.manifest.script_standard))
@@ -222,14 +236,15 @@ impl Game {
         }
     }
 
-    pub fn get_addons_list(&self, edition: impl AsRef<str>) -> anyhow::Result<Vec<AddonsGroup>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_addons_list(&self, edition: &str) -> anyhow::Result<Vec<AddonsGroup>> {
         #[inline]
         #[cached::proc_macro::cached(
             key = "String",
-            convert = r##"{ edition.to_string() }"##,
+            convert = r##"{ format!("{_game}{edition}") }"##,
             result
         )]
-        fn get_addons_list(lua: &Lua, standard: IntegrationStandard, edition: &str) -> anyhow::Result<Vec<AddonsGroup>> {
+        fn get_addons_list(lua: &Lua, standard: IntegrationStandard, _game: &str, edition: &str) -> anyhow::Result<Vec<AddonsGroup>> {
             match standard {
                 IntegrationStandard::V1 => {
                     let addons = lua.globals()
@@ -244,41 +259,44 @@ impl Game {
             }
         }
 
-        get_addons_list(&self.lua, self.manifest.script_standard, edition.as_ref())
+        get_addons_list(&self.lua, self.manifest.script_standard, &self.manifest.game_name, edition)
     }
 
-    pub fn is_addon_installed(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<bool> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn is_addon_installed(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_addons_is_installed", (
-                    group_name.as_ref(),
-                    addon_name.as_ref(),
-                    addon_path.as_ref(),
-                    edition.as_ref()
+                    group_name,
+                    addon_name,
+                    addon_path,
+                    edition
                 ))?)
         }
     }
 
-    pub fn get_addon_version(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<String>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_addon_version(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<Option<String>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_addons_get_version", (
-                    group_name.as_ref(),
-                    addon_name.as_ref(),
-                    addon_path.as_ref(),
-                    edition.as_ref()
+                    group_name,
+                    addon_name,
+                    addon_path,
+                    edition
                 ))?)
         }
     }
 
-    pub fn get_addon_download(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Download> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_addon_download(&self, group_name: &str, addon_name: &str, edition: &str) -> anyhow::Result<Download> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let download = self.lua.globals()
                     .call_function("v1_addons_get_download", (
-                        group_name.as_ref(),
-                        addon_name.as_ref(),
-                        edition.as_ref()
+                        group_name,
+                        addon_name,
+                        edition
                     ))?;
 
                 Download::from_table(download, self.manifest.script_standard)
@@ -286,15 +304,16 @@ impl Game {
         }
     }
 
-    pub fn get_addon_diff(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Option<Diff>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_addon_diff(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<Option<Diff>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let diff = self.lua.globals()
                     .call_function("v1_addons_get_diff", (
-                        group_name.as_ref(),
-                        addon_name.as_ref(),
-                        addon_path.as_ref(),
-                        edition.as_ref()
+                        group_name,
+                        addon_name,
+                        addon_path,
+                        edition
                     ))?;
 
                 match diff {
@@ -305,27 +324,29 @@ impl Game {
         }
     }
 
-    pub fn get_addon_paths(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<String>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_addon_paths(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<Vec<String>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_addons_get_paths", (
-                    group_name.as_ref(),
-                    addon_name.as_ref(),
-                    addon_path.as_ref(),
-                    edition.as_ref()
+                    group_name,
+                    addon_name,
+                    addon_path,
+                    edition
                 ))?)
         }
     }
 
-    pub fn get_addon_integrity(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<Vec<IntegrityInfo>> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn get_addon_integrity(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<Vec<IntegrityInfo>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
                 let info = self.lua.globals()
                     .call_function::<_, LuaTable>("v1_addons_get_integrity_info", (
-                        group_name.as_ref(),
-                        addon_name.as_ref(),
-                        addon_path.as_ref(),
-                        edition.as_ref()
+                        group_name,
+                        addon_name,
+                        addon_path,
+                        edition
                     ))?
                     .sequence_values::<LuaTable>()
                     .flatten()
@@ -337,79 +358,89 @@ impl Game {
         }
     }
 
+    #[tracing::instrument(level = "trace", ret)]
     pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_transition")?)
         }
     }
 
-    pub fn run_game_diff_transition(&self, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn run_game_diff_transition(&self, transition_path: &str, edition: &str) -> anyhow::Result<()> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_game_diff_transition", (transition_path.as_ref(), edition.as_ref()))?)
+                .call_function("v1_game_diff_transition", (transition_path, edition))?)
         }
     }
 
+    #[tracing::instrument(level = "trace", ret)]
     pub fn has_game_diff_post_transition(&self) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_post_transition")?)
         }
     }
 
-    pub fn run_game_diff_post_transition(&self, path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn run_game_diff_post_transition(&self, path: &str, edition: &str) -> anyhow::Result<()> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_game_diff_post_transition", (path.as_ref(), edition.as_ref()))?)
+                .call_function("v1_game_diff_post_transition", (path, edition))?)
         }
     }
 
+    #[tracing::instrument(level = "trace", ret)]
     pub fn has_addons_diff_transition(&self) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_addons_diff_transition")?)
         }
     }
 
-    pub fn run_addons_diff_transition(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, transition_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn run_addons_diff_transition(&self, group_name: &str, addon_name: &str, transition_path: &str, edition: &str) -> anyhow::Result<()> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_addons_diff_transition", (
-                    group_name.as_ref(),
-                    addon_name.as_ref(),
-                    transition_path.as_ref(),
-                    edition.as_ref()
+                    group_name,
+                    addon_name,
+                    transition_path,
+                    edition
                 ))?)
         }
     }
 
+    #[tracing::instrument(level = "trace", ret)]
     pub fn has_addons_diff_post_transition(&self) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_addons_diff_post_transition")?)
         }
     }
 
-    pub fn run_addons_diff_post_transition(&self, group_name: impl AsRef<str>, addon_name: impl AsRef<str>, addon_path: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn run_addons_diff_post_transition(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<()> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_addons_diff_post_transition", (
-                    group_name.as_ref(),
-                    addon_name.as_ref(),
-                    addon_path.as_ref(),
-                    edition.as_ref()
+                    group_name,
+                    addon_name,
+                    addon_path,
+                    edition
                 ))?)
         }
     }
 
+    #[tracing::instrument(level = "trace", ret)]
     pub fn has_integrity_hash(&self) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_integrity_hash")?)
         }
     }
 
-    pub fn integrity_hash(&self, algorithm: impl AsRef<str>, data: impl AsRef<[u8]>) -> anyhow::Result<String> {
+    #[tracing::instrument(level = "trace", skip(data), ret)]
+    pub fn integrity_hash(&self, algorithm: &str, data: impl AsRef<[u8]>) -> anyhow::Result<String> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_integrity_hash", (
-                    algorithm.as_ref(),
+                    algorithm,
                     self.lua.create_string(data)?
                 ))?)
         }
