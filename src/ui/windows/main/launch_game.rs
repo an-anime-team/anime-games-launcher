@@ -190,6 +190,7 @@ pub fn prepare_launch_args(config: &config::Config) -> String {
 }
 
 #[inline]
+#[tracing::instrument]
 pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     // Get game driver
     let game = unsafe {
@@ -255,7 +256,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     // Setup environment from the lua script
     command.envs(options.environment);
 
-    // dbg!(&command);
+    tracing::debug!("{:?}", &command);
 
     // Run the game
     command.current_dir(&game_path)
