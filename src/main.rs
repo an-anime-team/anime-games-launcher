@@ -49,6 +49,9 @@ lazy_static::lazy_static! {
 }
 
 fn main() -> anyhow::Result<()> {
+    // Setup custom panic handler
+    human_panic::setup_panic!(human_panic::metadata!());
+
     // Prepare stdout logger
     let stdout = tracing_subscriber::fmt::layer()
         .pretty()
