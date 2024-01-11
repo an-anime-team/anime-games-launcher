@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use relm4::prelude::*;
 use relm4::factory::*;
+use relm4::actions::*;
 
 use gtk::prelude::*;
 use adw::prelude::*;
@@ -17,12 +18,19 @@ use crate::components::dxvk::*;
 
 use crate::config::games::settings::edition_addons::GameEditionAddon;
 
-use crate::ui::windows::preferences::PreferencesApp;
-
 use crate::games::integrations::standards::addons::{
     Addon,
     AddonsGroup
 };
+
+use crate::ui::windows::preferences::PreferencesApp;
+
+use crate::ui::windows::about::{
+    AboutDialog,
+    AboutDialogMsg
+};
+
+use crate::ui::windows::loading::load_app::LoadingResult;
 
 use crate::ui::windows::game_addons_manager::{
     GameAddonsManagerApp,
@@ -51,7 +59,9 @@ use crate::ui::components::tasks_queue::{
     create_prefix_task::CreatePrefixQueuedTask
 };
 
-use super::loading::load_app::LoadingResult;
+use crate::LAUNCHER_FOLDER;
+use crate::CONFIG_FILE;
+use crate::DEBUG_FILE;
 
 pub mod launch_game;
 pub mod download_game_task;
@@ -62,6 +72,7 @@ pub mod verify_game_task;
 pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
 pub static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
 pub static mut GAME_ADDONS_MANAGER_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
+pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
 
 pub struct MainApp {
     leaflet: adw::Leaflet,
@@ -151,11 +162,33 @@ pub enum MainAppMsg {
     }
 }
 
+relm4::new_action_group!(WindowActionGroup, "win");
+
+relm4::new_stateless_action!(LauncherFolder, WindowActionGroup, "launcher_folder");
+relm4::new_stateless_action!(ConfigFile, WindowActionGroup, "config_file");
+relm4::new_stateless_action!(DebugFile, WindowActionGroup, "debug_file");
+
+relm4::new_stateless_action!(About, WindowActionGroup, "about");
+
 #[relm4::component(pub)]
 impl SimpleComponent for MainApp {
     type Init = LoadingResult;
     type Input = MainAppMsg;
     type Output = ();
+
+    menu! {
+        main_menu: {
+            section! {
+                "Launcher folder" => LauncherFolder,
+                "Config file" => ConfigFile,
+                "Debug file" => DebugFile,
+            },
+
+            section! {
+                "About" => About
+            }
+        }
+    }
 
     view! {
         window = adw::ApplicationWindow {
@@ -178,6 +211,11 @@ impl SimpleComponent for MainApp {
                                 set_icon_name: "view-dual-symbolic",
 
                                 connect_clicked => MainAppMsg::ToggleTasksFlap
+                            },
+
+                            pack_end = &gtk::MenuButton {
+                                set_icon_name: "open-menu-symbolic",
+                                set_menu_model: Some(&main_menu)
                             },
 
                             pack_end = &gtk::Button {
@@ -476,6 +514,8 @@ impl SimpleComponent for MainApp {
 
         let widgets = view_output!();
 
+        let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
+
         unsafe {
             WINDOW = Some(widgets.window.clone());
 
@@ -486,7 +526,53 @@ impl SimpleComponent for MainApp {
             GAME_ADDONS_MANAGER_APP = Some(GameAddonsManagerApp::builder()
                 .launch(widgets.window.clone())
                 .forward(sender.input_sender(), std::convert::identity));
+
+            ABOUT_DIALOG = Some(AboutDialog::builder()
+                .transient_for(widgets.window.clone())
+                .launch_with_broker((), &about_dialog_broker)
+                .detach());
         }
+
+        let mut group = RelmActionGroup::<WindowActionGroup>::new();
+
+        group.add_action::<LauncherFolder>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
+            if let Err(err) = open::that(LAUNCHER_FOLDER.as_path()) {
+                sender.input(MainAppMsg::ShowToast {
+                    title: String::from("Failed to open launcher folder"),
+                    message: Some(err.to_string())
+                });
+
+                tracing::error!("Failed to open launcher folder: {err}");
+            }
+        })));
+
+        group.add_action::<ConfigFile>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
+            if let Err(err) = open::that(CONFIG_FILE.as_path()) {
+                sender.input(MainAppMsg::ShowToast {
+                    title: String::from("Failed to open config file"),
+                    message: Some(err.to_string())
+                });
+
+                tracing::error!("Failed to open config file: {err}");
+            }
+        })));
+
+        group.add_action::<DebugFile>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
+            if let Err(err) = open::that(DEBUG_FILE.as_path()) {
+                sender.input(MainAppMsg::ShowToast {
+                    title: String::from("Failed to open debug file"),
+                    message: Some(err.to_string())
+                });
+
+                tracing::error!("Failed to open debug file: {err}");
+            }
+        })));
+
+        group.add_action::<About>(RelmAction::new_stateless(move |_| {
+            about_dialog_broker.send(AboutDialogMsg::Show);
+        }));
+
+        widgets.window.insert_action_group("win", Some(&group.into_action_group()));
 
         if let Some(wine) = init.download_wine {
             sender.input(MainAppMsg::AddDownloadWineTask {
