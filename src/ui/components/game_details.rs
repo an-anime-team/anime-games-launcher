@@ -19,6 +19,7 @@ pub struct GameDetailsComponent {
     pub info: CardInfo,
 
     pub installed: bool,
+    pub running: bool,
     pub status: Option<Status>
 }
 
@@ -26,6 +27,7 @@ pub struct GameDetailsComponent {
 pub enum GameDetailsComponentInput {
     SetInfo(CardInfo),
     SetInstalled(bool),
+    SetRunning(bool),
     SetStatus(Option<Status>),
 
     EditCard(CardComponentInput),
@@ -33,6 +35,7 @@ pub enum GameDetailsComponentInput {
     EmitDownloadGame,
     EmitVerifyGame,
     EmitLaunchGame,
+    EmitKillGame,
     EmitOpenAddonsManager
 }
 
@@ -44,6 +47,7 @@ pub enum GameDetailsComponentOutput {
     DownloadGame(CardInfo),
     VerifyGame(CardInfo),
     LaunchGame(CardInfo),
+    KillGame(CardInfo),
     OpenAddonsManager(CardInfo),
 
     ShowToast {
@@ -125,6 +129,9 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                             },
 
                             #[watch]
+                            set_visible: !model.running,
+
+                            #[watch]
                             set_css_classes: match &model.status {
                                 Some(Status { severity: StatusSeverity::Critical, .. }) => &["pill", "destructive-action"],
                                 Some(Status { severity: StatusSeverity::Warning, .. })  => &["pill", "warning-action"],
@@ -149,12 +156,30 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         },
 
                         gtk::Button {
-                            add_css_class: "pill",
+                            adw::ButtonContent {
+                                set_icon_name: "violence-symbolic",
+                                set_label: "Kill"
+                            },
 
+                            #[watch]
+                            set_visible: model.running,
+
+                            add_css_class: "pill",
+                            add_css_class: "destructive-action",
+
+                            connect_clicked => GameDetailsComponentInput::EmitKillGame
+                        },
+
+                        gtk::Button {
                             adw::ButtonContent {
                                 set_icon_name: "drive-harddisk-ieee1394-symbolic",
                                 set_label: "Verify"
                             },
+
+                            add_css_class: "pill",
+
+                            #[watch]
+                            set_visible: !model.running,
 
                             connect_clicked => GameDetailsComponentInput::EmitVerifyGame
                         }
@@ -167,12 +192,15 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         set_spacing: 8,
 
                         gtk::Button {
-                            add_css_class: "pill",
-
                             adw::ButtonContent {
                                 set_icon_name: "folder-download-symbolic",
                                 set_label: "Manage addons"
                             },
+
+                            add_css_class: "pill",
+
+                            #[watch]
+                            set_visible: !model.running,
 
                             connect_clicked => GameDetailsComponentInput::EmitOpenAddonsManager
                         },
@@ -219,6 +247,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
             info: init,
 
             installed: false,
+            running: false,
             status: None
         };
 
@@ -244,6 +273,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 self.game_card.emit(CardComponentInput::SetInstalled(installed));
             }
 
+            GameDetailsComponentInput::SetRunning(running) => self.running = running,
             GameDetailsComponentInput::SetStatus(status) => self.status = status,
 
             GameDetailsComponentInput::EditCard(message) => self.game_card.emit(message),
@@ -264,8 +294,10 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
             GameDetailsComponentInput::EmitLaunchGame => {
                 sender.output(GameDetailsComponentOutput::LaunchGame(self.info.clone())).unwrap();
+            }
 
-                sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
+            GameDetailsComponentInput::EmitKillGame => {
+                sender.output(GameDetailsComponentOutput::KillGame(self.info.clone())).unwrap();
             }
 
             GameDetailsComponentInput::EmitOpenAddonsManager => {

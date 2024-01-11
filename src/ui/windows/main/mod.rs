@@ -65,6 +65,7 @@ use crate::CONFIG_FILE;
 use crate::DEBUG_FILE;
 
 pub mod launch_game;
+pub mod kill_game;
 pub mod download_game_task;
 pub mod download_addon_task;
 pub mod uninstall_addon_task;
@@ -104,7 +105,8 @@ pub enum MainAppMsg {
 
     OpenDetails {
         info: CardInfo,
-        installed: bool
+        installed: bool,
+        running: bool
     },
 
     HideDetails,
@@ -147,6 +149,7 @@ pub enum MainAppMsg {
     },
 
     LaunchGame(CardInfo),
+    KillGame(CardInfo),
     FinishRunningGame(CardInfo),
 
     ShowToast {
@@ -397,6 +400,9 @@ impl SimpleAsyncComponent for MainApp {
                     GameDetailsComponentOutput::LaunchGame(info)
                         => MainAppMsg::LaunchGame(info),
 
+                    GameDetailsComponentOutput::KillGame(info)
+                        => MainAppMsg::KillGame(info),
+
                     GameDetailsComponentOutput::OpenAddonsManager(info)
                         => MainAppMsg::OpenAddonsManager(info),
 
@@ -416,7 +422,7 @@ impl SimpleAsyncComponent for MainApp {
                 .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
                     match output {
                         CardComponentOutput::CardClicked { info, installed }
-                            => MainAppMsg::OpenDetails { info, installed }
+                            => MainAppMsg::OpenDetails { info, installed, running: true }
                     }
                 }),
 
@@ -425,7 +431,7 @@ impl SimpleAsyncComponent for MainApp {
                 .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
                     match output {
                         CardComponentOutput::CardClicked { info, installed }
-                            => MainAppMsg::OpenDetails { info, installed }
+                            => MainAppMsg::OpenDetails { info, installed, running: false }
                     }
                 }),
 
@@ -435,7 +441,7 @@ impl SimpleAsyncComponent for MainApp {
                 // .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
                 //     match output {
                 //         CardComponentOutput::CardClicked { info, installed }
-                //             => MainAppMsg::OpenDetails { info, installed }
+                //             => MainAppMsg::OpenDetails { info, installed, running: false }
                 //     }
                 // }),
 
@@ -444,7 +450,7 @@ impl SimpleAsyncComponent for MainApp {
                 .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
                     match output {
                         CardComponentOutput::CardClicked { info, installed }
-                            => MainAppMsg::OpenDetails { info, installed }
+                            => MainAppMsg::OpenDetails { info, installed, running: false }
                     }
                 }),
 
@@ -608,11 +614,12 @@ impl SimpleAsyncComponent for MainApp {
                 }
             }
 
-            MainAppMsg::OpenDetails { info, installed } => {
+            MainAppMsg::OpenDetails { info, installed, running } => {
                 self.game_details_info = info.clone();
 
                 self.game_details.emit(GameDetailsComponentInput::SetInfo(info.clone()));
                 self.game_details.emit(GameDetailsComponentInput::SetInstalled(installed));
+                self.game_details.emit(GameDetailsComponentInput::SetRunning(running));
 
                 if !installed {
                     self.game_details.emit(GameDetailsComponentInput::SetStatus(None));
@@ -868,6 +875,10 @@ impl SimpleAsyncComponent for MainApp {
                         self.running_games_indexes.insert(info.clone(), self.running_games.guard().push_back(info.clone()));
                     }
 
+                    if self.game_details_info == info {
+                        self.game_details.emit(GameDetailsComponentInput::SetRunning(true));
+                    }
+
                     std::thread::spawn(move || {
                         if let Err(err) = launch_game::launch_game(&info) {
                             sender.input(MainAppMsg::ShowToast {
@@ -881,6 +892,17 @@ impl SimpleAsyncComponent for MainApp {
                 }
             }
 
+            MainAppMsg::KillGame(info) => {
+                if let Err(err) = kill_game::kill_game(&info) {
+                    sender.input(MainAppMsg::ShowToast {
+                        title: format!("Failed to kill {}", info.get_title()),
+                        message: Some(err.to_string())
+                    });
+                }
+
+                // TODO: set_sensitive(false) for a few seconds
+            }
+
             MainAppMsg::FinishRunningGame(info) => {
                 if let Some(index) = self.running_games_indexes.get(&info) {
                     self.running_games.guard().remove(index.current_index());
@@ -889,8 +911,12 @@ impl SimpleAsyncComponent for MainApp {
 
                     #[allow(clippy::map_entry)]
                     if !self.installed_games_indexes.contains_key(&info) {
-                        self.installed_games_indexes.insert(info.clone(), self.installed_games.guard().push_back(info));
+                        self.installed_games_indexes.insert(info.clone(), self.installed_games.guard().push_back(info.clone()));
                     }
+                }
+
+                if self.game_details_info == info {
+                    self.game_details.emit(GameDetailsComponentInput::SetRunning(false));
                 }
             }
 
