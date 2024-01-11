@@ -44,6 +44,8 @@
 | | `v1_game_get_diff(game_path, edition)` | `Diff \| null` | Get game version diff |
 | | `v1_game_get_status(game_path, edition)` | `Status \| null` | Get installed game status |
 | | `v1_game_get_launch_options(game_path, addons_path, edition)` | `LaunchOptions` | Get launch options for the game |
+| | `v1_game_is_running(game_path, edition)` | `bool` | Check if the game is running |
+| | `v1_game_kill(game_path, edition)` | `bool` | Kill running game |
 | | `v1_game_get_integrity_info(game_path, edition)` | `IntegrityInfo[]` | Get game integrity info |
 | Addons | | | Additional game content manipulations |
 | | `v1_addons_get_list(edition)` | `AddonsGroup[]` | Get list of available addons |

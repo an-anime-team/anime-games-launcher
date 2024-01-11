@@ -221,6 +221,22 @@ impl Game {
     }
 
     #[tracing::instrument(level = "trace", ret)]
+    pub fn is_process_running(&self, game_path: &str, edition: &str) -> anyhow::Result<bool> {
+        match self.manifest.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .call_function("v1_games_is_running", (game_path, edition))?)
+        }
+    }
+
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn kill_process(&self, game_path: &str, edition: &str) -> anyhow::Result<()> {
+        match self.manifest.script_standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .call_function("v1_game_kill", (game_path, edition))?)
+        }
+    }
+
+    #[tracing::instrument(level = "trace", ret)]
     pub fn get_game_integrity(&self, game_path: &str, edition: &str) -> anyhow::Result<Vec<IntegrityInfo>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {

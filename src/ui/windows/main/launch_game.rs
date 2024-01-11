@@ -263,5 +263,10 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
         .spawn()?
         .wait()?;
 
+    // Wait while the game is running
+    while game.is_process_running(&game_path.to_string_lossy(), info.get_edition())? {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    }
+
     Ok(())
 }
