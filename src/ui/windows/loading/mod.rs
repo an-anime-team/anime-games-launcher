@@ -136,10 +136,10 @@ impl SimpleComponent for LoadingApp {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            Self::Input::SetActiveStage(text) => self.active_stage = text,
-            Self::Input::SetProgress(fraction) => self.progress_bar.set_fraction(fraction),
+            LoadingAppMsg::SetActiveStage(text) => self.active_stage = text,
+            LoadingAppMsg::SetProgress(fraction) => self.progress_bar.set_fraction(fraction),
 
-            Self::Input::DisplayError { title, message } => {
+            LoadingAppMsg::DisplayError { title, message } => {
                 let window = unsafe {
                     WINDOW.as_ref().unwrap_unchecked()
                 };

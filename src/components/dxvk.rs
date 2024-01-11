@@ -151,27 +151,19 @@ impl Dxvk {
 
 #[derive(Debug)]
 pub struct DownloadDxvkQueuedTask {
-    pub name: String,
-    pub title: String,
-    pub developer: String,
+    pub card_info: CardInfo,
     pub version: Dxvk
 }
 
 impl QueuedTask for DownloadDxvkQueuedTask {
     #[inline]
     fn get_info(&self) -> CardInfo {
-        CardInfo::Component {
-            name: self.name.clone(),
-            title: self.title.clone(),
-            developer: self.developer.clone()
-        }
+        self.card_info.clone()
     }
 
     fn resolve(self: Box<Self>) -> anyhow::Result<Box<dyn ResolvedTask>> {
         Ok(Box::new(DownloadComponentResolvedTask {
-            name: self.name,
-            title: self.title,
-            developer: self.developer,
+            card_info: self.card_info,
             updater: self.version.download()?
         }))
     }

@@ -8,12 +8,13 @@ use crate::config::components::wine::prefix::Prefix;
 
 use super::*;
 
-const TOTAL_STEPS: f64 = 10.0;
+const TOTAL_STEPS: f64 = 11.0;
 
 #[derive(Debug)]
 pub struct LoadingResult {
     pub download_wine: Option<Wine>,
     pub download_dxvk: Option<Dxvk>,
+    pub apply_dxvk: Option<Dxvk>,
     pub create_prefix: Option<Prefix>,
     pub download_addons: Vec<check_addons::AddonsListEntry>,
 
@@ -81,7 +82,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     sender.input(LoadingAppMsg::SetProgress(6.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking wine version")));
 
-    let download_wine = check_wine::is_downloaded().map_err(|err| LoadingAppMsg::DisplayError {
+    let download_wine = check_wine::get_download().map_err(|err| LoadingAppMsg::DisplayError {
         title: String::from("Failed to check wine version"),
         message: err.to_string()
     })?;
@@ -89,17 +90,25 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     sender.input(LoadingAppMsg::SetProgress(7.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking dxvk version")));
 
-    let download_dxvk = check_dxvk::is_downloaded().map_err(|err| LoadingAppMsg::DisplayError {
+    let download_dxvk = check_dxvk::get_download().map_err(|err| LoadingAppMsg::DisplayError {
         title: String::from("Failed to check dxvk version"),
         message: err.to_string()
     })?;
 
     sender.input(LoadingAppMsg::SetProgress(8.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking applied dxvk version")));
+
+    let apply_dxvk = check_dxvk::get_apply().map_err(|err| LoadingAppMsg::DisplayError {
+        title: String::from("Failed to check dxvk version"),
+        message: err.to_string()
+    })?;
+
+    sender.input(LoadingAppMsg::SetProgress(9.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking wine prefix")));
 
     let create_prefix = check_wine_prefix::check_wine_prefix();
 
-    sender.input(LoadingAppMsg::SetProgress(9.0 / TOTAL_STEPS));
+    sender.input(LoadingAppMsg::SetProgress(10.0 / TOTAL_STEPS));
     sender.input(LoadingAppMsg::SetActiveStage(String::from("Checking games addons")));
 
     let download_addons = check_addons::check_addons(&pool).map_err(|err| LoadingAppMsg::DisplayError {
@@ -117,6 +126,7 @@ pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, L
     Ok(LoadingResult {
         download_wine,
         download_dxvk,
+        apply_dxvk,
         create_prefix,
         download_addons,
 

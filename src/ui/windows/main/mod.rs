@@ -56,6 +56,7 @@ use crate::ui::components::tasks_queue::{
     TasksQueueComponentInput,
     TasksQueueComponentOutput,
 
+    apply_dxvk_task::ApplyDxvkQueuedTask,
     create_prefix_task::CreatePrefixQueuedTask
 };
 
@@ -134,19 +135,9 @@ pub enum MainAppMsg {
         group: AddonsGroup
     },
 
-    AddDownloadWineTask {
-        name: String,
-        title: String,
-        developer: String,
-        version: Wine
-    },
-
-    AddDownloadDxvkTask {
-        name: String,
-        title: String,
-        developer: String,
-        version: Dxvk
-    },
+    AddDownloadWineTask(Wine),
+    AddDownloadDxvkTask(Dxvk),
+    AddApplyDxvkTask(Dxvk),
 
     AddCreatePrefixTask {
         path: PathBuf,
@@ -575,24 +566,17 @@ impl SimpleComponent for MainApp {
         widgets.window.insert_action_group("win", Some(&group.into_action_group()));
 
         if let Some(wine) = init.download_wine {
-            sender.input(MainAppMsg::AddDownloadWineTask {
-                name: wine.name.clone(),
-                title: wine.title.clone(),
-                developer: String::new(),
-                version: wine
-            });
-
+            sender.input(MainAppMsg::AddDownloadWineTask(wine));
             sender.input(MainAppMsg::ShowTasksFlap);
         }
 
         if let Some(dxvk) = init.download_dxvk {
-            sender.input(MainAppMsg::AddDownloadDxvkTask {
-                name: dxvk.name.clone(),
-                title: dxvk.name.clone(), // name > title in case of dxvks
-                developer: String::new(),
-                version: dxvk
-            });
+            sender.input(MainAppMsg::AddDownloadDxvkTask(dxvk));
+            sender.input(MainAppMsg::ShowTasksFlap);
+        }
 
+        if let Some(dxvk) = init.apply_dxvk {
+            sender.input(MainAppMsg::AddApplyDxvkTask(dxvk));
             sender.input(MainAppMsg::ShowTasksFlap);
         }
 
@@ -828,21 +812,37 @@ impl SimpleComponent for MainApp {
                 }
             }
 
-            MainAppMsg::AddDownloadWineTask { name, title, developer, version } => {
+            MainAppMsg::AddDownloadWineTask(version) => {
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadWineQueuedTask {
-                    name,
-                    title,
-                    developer,
+                    card_info: CardInfo::Component {
+                        name: version.name.clone(),
+                        title: version.title.clone(),
+                        developer: String::new()
+                    },
                     version
                 })));
             }
 
-            MainAppMsg::AddDownloadDxvkTask { name, title, developer, version } => {
+            MainAppMsg::AddDownloadDxvkTask(version) => {
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadDxvkQueuedTask {
-                    name,
-                    title,
-                    developer,
+                    card_info: CardInfo::Component {
+                        name: version.name.clone(),
+                        title: version.title.clone(),
+                        developer: String::new()
+                    },
                     version
+                })));
+            }
+
+            MainAppMsg::AddApplyDxvkTask(version) => {
+                self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(ApplyDxvkQueuedTask {
+                    card_info: CardInfo::Component {
+                        name: version.name.clone(),
+                        title: version.title.clone(),
+                        developer: String::new()
+                    },
+                    dxvk_version: version,
+                    prefix_path: config::get().components.wine.prefix.path
                 })));
             }
 

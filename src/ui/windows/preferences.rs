@@ -310,6 +310,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                     adw::ComboRow {
                         set_title: "Wine version",
+                        set_subtitle: "Selected version will be downloaded after restart",
 
                         set_model: Some(&{
                             let strings = gtk::StringList::new(&["latest"]);
@@ -332,6 +333,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                     adw::ComboRow {
                         set_title: "DXVK version",
+                        set_subtitle: "Selected version will be downloaded after restart",
 
                         set_model: Some(&{
                             let strings = gtk::StringList::new(&["latest"]);
@@ -354,6 +356,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                     adw::SwitchRow {
                         set_title: "Install corefonts",
+                        set_subtitle: "Install default windows fonts to the wine prefix",
 
                         set_active: config::get().components.wine.prefix.install_corefonts,
 

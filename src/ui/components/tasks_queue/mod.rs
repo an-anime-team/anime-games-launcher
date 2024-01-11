@@ -23,8 +23,9 @@ use crate::utils::{
 };
 
 pub mod task;
-pub mod download_diff_task;
 pub mod create_prefix_task;
+pub mod apply_dxvk_task;
+pub mod download_diff_task;
 pub mod verify_integrity_task;
 pub mod delete_files_task;
 

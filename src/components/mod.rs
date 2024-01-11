@@ -97,20 +97,14 @@ impl UpdaterExt for Updater {
 
 #[derive(Debug)]
 pub struct DownloadComponentResolvedTask {
-    pub name: String,
-    pub title: String,
-    pub developer: String,
+    pub card_info: CardInfo,
     pub updater: Updater
 }
 
 impl ResolvedTask for DownloadComponentResolvedTask {
     #[inline]
     fn get_info(&self) -> CardInfo {
-        CardInfo::Component {
-            name: self.name.clone(),
-            title: self.title.clone(), 
-            developer: self.developer.clone() 
-        }
+        self.card_info.clone()
     }
 
     #[inline]
