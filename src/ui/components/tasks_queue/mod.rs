@@ -173,14 +173,20 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                 #[watch]
                 set_label: &match &model.current_task {
-                    Some(task) => {
+                    Some(task) if task.get_current() > 0 => {
                         let elapsed_time  = (Instant::now() - model.current_task_progress_start).as_secs_f64();
                         let average_speed = (task.get_current() as f64 / elapsed_time).ceil() as u64;
 
-                        format!("Avg speed: {}/s", pretty_bytes(average_speed))
+                        if task.get_total() > 1024 {
+                            format!("Avg speed: {}/s", pretty_bytes(average_speed))
+                        }
+
+                        else {
+                            format!("Avg speed: {average_speed} p/s")
+                        }
                     }
 
-                    None => String::new()
+                    _ => String::new()
                 }
             },
 
@@ -194,16 +200,23 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                 #[watch]
                 set_label: &match &model.current_task {
-                    Some(task) => {
+                    Some(task) if task.get_current() > 0 => {
                         let elapsed_time = (Instant::now() - model.current_task_progress_start).as_secs_f64();
                         let progress = task.get_progress();
 
                         let expected_total_time = (elapsed_time / progress).ceil() as u64;
+                        let remaining_time = expected_total_time - elapsed_time as u64;
 
-                        format!("Avg ETA: {}", pretty_seconds(expected_total_time - elapsed_time as u64))
+                        if remaining_time < 24 * 60 * 60 {
+                            format!("Avg ETA: {}", pretty_seconds(remaining_time))
+                        }
+
+                        else {
+                            String::new()
+                        }
                     }
 
-                    None => String::new()
+                    _ => String::new()
                 }
             },
 
