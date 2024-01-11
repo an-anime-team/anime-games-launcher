@@ -374,15 +374,15 @@ impl SimpleAsyncComponent for PreferencesApp {
                     );
 
                     dialog.add_response("close", "Close");
-                    // dialog.add_response("save", &tr!("save"));
+                    dialog.add_response("save", "Save");
 
-                    // dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+                    dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
 
-                    // dialog.connect_response(Some("save"), |_, _| {
-                    //     if let Err(err) = open::that(crate::DEBUG_FILE.as_os_str()) {
-                    //         tracing::error!("Failed to open debug file: {err}");
-                    //     }
-                    // });
+                    dialog.connect_response(Some("save"), |_, _| {
+                        if let Err(err) = open::that(crate::DEBUG_FILE.as_path()) {
+                            tracing::error!("Failed to open debug file: {err}");
+                        }
+                    });
 
                     toast.connect_button_clicked(move |_| {
                         dialog.present();
