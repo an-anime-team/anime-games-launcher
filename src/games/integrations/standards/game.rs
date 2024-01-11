@@ -127,7 +127,7 @@ impl LaunchOptions {
                 Ok(Self {
                     executable: table.get::<_, String>("executable")?,
 
-                    options: table.get::<_, LuaTable>("environment")?
+                    options: table.get::<_, LuaTable>("options")?
                         .sequence_values::<String>()
                         .flatten()
                         .collect(),
