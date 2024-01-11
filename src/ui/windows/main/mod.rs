@@ -846,7 +846,7 @@ impl SimpleAsyncComponent for MainApp {
                 self.tasks_queue.emit(TasksQueueComponentInput::AddTask(Box::new(DownloadDxvkQueuedTask {
                     card_info: CardInfo::Component {
                         name: version.name.clone(),
-                        title: version.title.clone(),
+                        title: version.name.clone(), // version.title.clone(),
                         developer: String::new()
                     },
                     version
