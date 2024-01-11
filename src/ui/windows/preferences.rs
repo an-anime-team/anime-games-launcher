@@ -4,17 +4,27 @@ use adw::prelude::*;
 
 use crate::config;
 
+use crate::components::wine::Wine;
+use crate::components::dxvk::Dxvk;
+
 use crate::config::games::wine::prelude::*;
 use crate::config::games::enhancements::prelude::*;
 
 pub static mut WINDOW: Option<adw::PreferencesWindow> = None;
 
 pub struct PreferencesApp {
+    wine_versions: Vec<Wine>,
+    dxvk_versions: Vec<Dxvk>,
 
+    selected_wine: Wine,
+    selected_dxvk: Dxvk
 }
 
 #[derive(Debug, Clone)]
 pub enum PreferencesAppMsg {
+    SelectWineVersion(u32),
+    SelectDxvkVersion(u32),
+
     ShowToast {
         title: String,
         message: Option<String>
@@ -301,17 +311,45 @@ impl SimpleAsyncComponent for PreferencesApp {
                     adw::ComboRow {
                         set_title: "Wine version",
 
-                        set_model: Some(&gtk::StringList::new(&[
-                            "latest"
-                        ]))
+                        set_model: Some(&{
+                            let strings = gtk::StringList::new(&["latest"]);
+
+                            for version in &model.wine_versions {
+                                strings.append(&version.title);
+                            }
+
+                            strings
+                        }),
+
+                        set_selected: model.wine_versions.iter()
+                            .position(|version| version == &model.selected_wine)
+                            .unwrap_or(0) as u32,
+
+                        connect_selected_notify[sender] => move |row| {
+                            sender.input(PreferencesAppMsg::SelectWineVersion(row.selected()));
+                        }
                     },
 
                     adw::ComboRow {
                         set_title: "DXVK version",
 
-                        set_model: Some(&gtk::StringList::new(&[
-                            "latest"
-                        ]))
+                        set_model: Some(&{
+                            let strings = gtk::StringList::new(&["latest"]);
+
+                            for version in &model.dxvk_versions {
+                                strings.append(&version.title);
+                            }
+
+                            strings
+                        }),
+
+                        set_selected: model.dxvk_versions.iter()
+                            .position(|version| version == &model.selected_dxvk)
+                            .unwrap_or(0) as u32,
+
+                        connect_selected_notify[sender] => move |row| {
+                            sender.input(PreferencesAppMsg::SelectDxvkVersion(row.selected()));
+                        }
                     },
 
                     adw::SwitchRow {
@@ -333,13 +371,22 @@ impl SimpleAsyncComponent for PreferencesApp {
         }
     }
 
-    async fn init(
-        parent: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(parent: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
-            // todo
+            wine_versions: Wine::versions()
+                .unwrap()
+                .into_iter()
+                .take(12)
+                .collect(),
+
+            dxvk_versions: Dxvk::versions()
+                .unwrap()
+                .into_iter()
+                .take(12)
+                .collect(),
+
+            selected_wine: Wine::from_config().unwrap(),
+            selected_dxvk: Dxvk::from_config().unwrap()
         };
 
         let widgets = view_output!();
@@ -353,8 +400,38 @@ impl SimpleAsyncComponent for PreferencesApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
+            PreferencesAppMsg::SelectWineVersion(index) => {
+                let version = if index == 0 {
+                    String::from("latest")
+                } else {
+                    self.wine_versions[index as usize - 1].name.clone()
+                };
+
+                if let Err(err) = config::set("components.wine.version", version) {
+                    sender.input(PreferencesAppMsg::ShowToast {
+                        title: String::from("Failed to update property"),
+                        message: Some(err.to_string())
+                    })
+                }
+            }
+
+            PreferencesAppMsg::SelectDxvkVersion(index) => {
+                let version = if index == 0 {
+                    String::from("latest")
+                } else {
+                    self.dxvk_versions[index as usize - 1].name.clone()
+                };
+
+                if let Err(err) = config::set("components.dxvk.version", version) {
+                    sender.input(PreferencesAppMsg::ShowToast {
+                        title: String::from("Failed to update property"),
+                        message: Some(err.to_string())
+                    })
+                }
+            }
+
             PreferencesAppMsg::ShowToast { title, message } => {
                 let window = unsafe {
                     WINDOW.as_ref().unwrap_unchecked()

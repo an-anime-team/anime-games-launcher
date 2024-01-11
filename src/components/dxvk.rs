@@ -34,13 +34,14 @@ pub struct Dxvk {
 }
 
 impl Dxvk {
-    /// Resolve component version from the config file
-    pub fn from_config() -> anyhow::Result<Self> {
+    /// Get selected wine build versions list
+    pub fn versions() -> anyhow::Result<Vec<Self>> {
         let components = config::get().components;
 
         let dxvk_versions = minreq::get(format!("{}/dxvk/{}.json", &components.channel, &components.dxvk.build))
-            .send()?
-            .json::<Vec<Json>>()?;
+            .send()?.json::<Vec<Json>>()?;
+
+        let mut versions = Vec::new();
 
         for dxvk in dxvk_versions {
             let name = dxvk.get("name").and_then(Json::as_str);
@@ -48,13 +49,24 @@ impl Dxvk {
             let uri = dxvk.get("uri").and_then(Json::as_str);
 
             if let (Some(name), Some(title), Some(uri)) = (name, title, uri) {
-                if name.contains(&components.dxvk.version) || components.dxvk.version == "latest" {
-                    return Ok(Self {
-                        name: name.to_owned(),
-                        title: title.to_owned(),
-                        uri: uri.to_owned()
-                    })
-                }
+                versions.push(Self {
+                    name: name.to_owned(),
+                    title: title.to_owned(),
+                    uri: uri.to_owned()
+                });
+            }
+        }
+
+        Ok(versions)
+    }
+
+    /// Resolve component version from the config file
+    pub fn from_config() -> anyhow::Result<Self> {
+        let dxvk_info = config::get().components.dxvk;
+
+        for version in Self::versions()? {
+            if version.name.contains(&dxvk_info.version) || dxvk_info.version == "latest" {
+                return Ok(version);
             }
         }
 

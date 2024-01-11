@@ -42,13 +42,14 @@ pub struct Wine {
 }
 
 impl Wine {
-    /// Resolve component version from the config file
-    pub fn from_config() -> anyhow::Result<Self> {
+    /// Get selected wine build versions list
+    pub fn versions() -> anyhow::Result<Vec<Self>> {
         let components = config::get().components;
 
         let wine_versions = minreq::get(format!("{}/wine/{}.json", &components.channel, &components.wine.build))
-            .send()?
-            .json::<Vec<Json>>()?;
+            .send()?.json::<Vec<Json>>()?;
+
+        let mut versions = Vec::new();
 
         for wine in wine_versions {
             let name = wine.get("name").and_then(Json::as_str);
@@ -56,13 +57,24 @@ impl Wine {
             let uri = wine.get("uri").and_then(Json::as_str);
 
             if let (Some(name), Some(title), Some(uri)) = (name, title, uri) {
-                if name.contains(&components.wine.version) || components.wine.version == "latest" {
-                    return Ok(Self {
-                        name: name.to_owned(),
-                        title: title.to_owned(),
-                        uri: uri.to_owned()
-                    })
-                }
+                versions.push(Self {
+                    name: name.to_owned(),
+                    title: title.to_owned(),
+                    uri: uri.to_owned()
+                });
+            }
+        }
+
+        Ok(versions)
+    }
+
+    /// Resolve component version from the config file
+    pub fn from_config() -> anyhow::Result<Self> {
+        let wine_info = config::get().components.wine;
+
+        for version in Self::versions()? {
+            if version.name.contains(&wine_info.version) || wine_info.version == "latest" {
+                return Ok(version);
             }
         }
 
