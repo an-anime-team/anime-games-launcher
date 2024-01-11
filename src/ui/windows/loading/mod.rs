@@ -15,10 +15,13 @@ pub mod load_app;
 
 use crate::APP_ID;
 
-use super::main::MainApp;
+use super::main::{
+    MainApp,
+    MainAppMsg
+};
 
 pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
-pub static mut MAIN_WINDOW: Option<Controller<MainApp>> = None;
+pub static mut MAIN_APP: Option<AsyncController<MainApp>> = None;
 
 #[derive(Debug)]
 pub struct LoadingApp {
@@ -38,8 +41,8 @@ pub enum LoadingAppMsg {
     }
 }
 
-#[relm4::component(pub)]
-impl SimpleComponent for LoadingApp {
+#[relm4::component(pub, async)]
+impl SimpleAsyncComponent for LoadingApp {
     type Init = ();
     type Input = LoadingAppMsg;
     type Output = ();
@@ -81,7 +84,7 @@ impl SimpleComponent for LoadingApp {
         }
     }
 
-    fn init(_init: Self::Init, root: &Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
+    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             progress_bar: gtk::ProgressBar::new(),
 
@@ -92,8 +95,19 @@ impl SimpleComponent for LoadingApp {
 
         let widgets = view_output!();
 
+        let main_app = MainApp::builder()
+            .launch(())
+            .detach();
+
+        main_app.widget().connect_close_request(|_| {
+            relm4::main_application().quit();
+
+            gtk::glib::Propagation::Proceed
+        });
+
         unsafe {
             WINDOW = Some(widgets.window.clone());
+            MAIN_APP = Some(main_app);
         }
 
         std::thread::spawn(move || {
@@ -101,17 +115,14 @@ impl SimpleComponent for LoadingApp {
                 Ok(result) => {
                     // dbg!(&result);
 
+                    unsafe {
+                        let main_app = MAIN_APP.as_ref()
+                            .unwrap_unchecked();
+
+                        main_app.sender().send(MainAppMsg::InitMainApp(result)).unwrap();
+                    }
+
                     gtk::glib::MainContext::default().spawn(async {
-                        let main_app = MainApp::builder()
-                            .launch(result)
-                            .detach();
-
-                        main_app.widget().connect_close_request(|_| {
-                            relm4::main_application().quit();
-
-                            gtk::glib::Propagation::Proceed
-                        });
-
                         unsafe {
                             let window = WINDOW.as_ref()
                                 .unwrap_unchecked();
@@ -119,10 +130,10 @@ impl SimpleComponent for LoadingApp {
                             window.set_hide_on_close(true);
                             window.close();
 
-                            main_app.widget()
+                            MAIN_APP.as_ref()
+                                .unwrap_unchecked()
+                                .widget()
                                 .present();
-
-                            MAIN_WINDOW = Some(main_app);
                         }
                     });
                 }
@@ -131,10 +142,10 @@ impl SimpleComponent for LoadingApp {
             }
         });
 
-        ComponentParts { model, widgets }
+        AsyncComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             LoadingAppMsg::SetActiveStage(text) => self.active_stage = text,
             LoadingAppMsg::SetProgress(fraction) => self.progress_bar.set_fraction(fraction),

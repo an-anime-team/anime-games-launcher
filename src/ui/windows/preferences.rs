@@ -33,7 +33,7 @@ pub enum PreferencesAppMsg {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for PreferencesApp {
-    type Init = adw::ApplicationWindow;
+    type Init = adw::Window;
     type Input = PreferencesAppMsg;
     type Output = ();
 

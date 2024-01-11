@@ -114,8 +114,8 @@ fn main() -> anyhow::Result<()> {
     // Create the app
     let app = RelmApp::new(APP_ID);
 
-    // Show first run window
-    app.run::<LoadingApp>(());
+    // Show loading window
+    app.run_async::<LoadingApp>(());
 
     Ok(())
 }

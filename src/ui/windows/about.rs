@@ -84,11 +84,7 @@ impl SimpleComponent for AboutDialog {
         }
     }
 
-    fn init(
-        _init: Self::Init,
-        root: &Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
+    fn init(_init: Self::Init, root: &Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
         let model = Self {
             visible: false
         };

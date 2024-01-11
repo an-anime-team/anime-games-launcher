@@ -21,7 +21,7 @@ pub struct LoadingResult {
     pub games_list: init_games::GamesList
 }
 
-pub fn load_app(sender: &ComponentSender<LoadingApp>) -> Result<LoadingResult, LoadingAppMsg> {
+pub fn load_app(sender: &AsyncComponentSender<LoadingApp>) -> Result<LoadingResult, LoadingAppMsg> {
     let begin = std::time::Instant::now();
 
     sender.input(LoadingAppMsg::SetProgress(0.0));

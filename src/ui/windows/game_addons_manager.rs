@@ -25,7 +25,7 @@ use crate::ui::components::game_card::CardInfo;
 
 use super::main::MainAppMsg;
 
-pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
+pub static mut WINDOW: Option<adw::Window> = None;
 
 #[derive(Debug)]
 pub struct GameAddonsManagerApp {
@@ -62,12 +62,12 @@ pub enum GameAddonsManagerAppMsg {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameAddonsManagerApp {
-    type Init = adw::ApplicationWindow;
+    type Init = adw::Window;
     type Input = GameAddonsManagerAppMsg;
     type Output = MainAppMsg;
 
     view! {
-        window = adw::ApplicationWindow {
+        window = adw::Window {
             set_default_size: (700, 560),
             set_title: Some("Game addons"),
 

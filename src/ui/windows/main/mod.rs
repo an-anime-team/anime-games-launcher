@@ -70,7 +70,7 @@ pub mod download_addon_task;
 pub mod uninstall_addon_task;
 pub mod verify_game_task;
 
-pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
+pub static mut WINDOW: Option<adw::Window> = None;
 pub static mut PREFERENCES_APP: Option<AsyncController<PreferencesApp>> = None;
 pub static mut GAME_ADDONS_MANAGER_APP: Option<AsyncController<GameAddonsManagerApp>> = None;
 pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
@@ -100,6 +100,8 @@ pub struct MainApp {
 
 #[derive(Debug)]
 pub enum MainAppMsg {
+    InitMainApp(LoadingResult),
+
     OpenDetails {
         info: CardInfo,
         installed: bool
@@ -161,9 +163,9 @@ relm4::new_stateless_action!(DebugFile, WindowActionGroup, "debug_file");
 
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
 
-#[relm4::component(pub)]
-impl SimpleComponent for MainApp {
-    type Init = LoadingResult;
+#[relm4::component(pub, async)]
+impl SimpleAsyncComponent for MainApp {
+    type Init = ();
     type Input = MainAppMsg;
     type Output = ();
 
@@ -182,7 +184,7 @@ impl SimpleComponent for MainApp {
     }
 
     view! {
-        window = adw::ApplicationWindow {
+        window = adw::Window {
             set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
 
@@ -372,8 +374,8 @@ impl SimpleComponent for MainApp {
         }
     }
 
-    fn init(init: Self::Init, root: &Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
-        let mut model = Self {
+    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+        let  model = Self {
             leaflet: adw::Leaflet::new(),
             flap: adw::Flap::new(),
 
@@ -460,38 +462,6 @@ impl SimpleComponent for MainApp {
                 }),
         };
 
-        for game in init.games_list.available {
-            let card = CardInfo::Game {
-                name: game.game_name.clone(),
-                title: game.game_title.clone(),
-                developer: game.game_developer.clone(),
-                edition: game.edition.name.clone(),
-                picture_uri: game.card_picture.clone()
-            };
-
-            model.available_games_indexes.insert(
-                card.to_owned(),
-                model.available_games.guard().push_back(card.to_owned())
-            );
-        }
-
-        for game in init.games_list.installed {
-            let card = CardInfo::Game {
-                name: game.game_name.clone(),
-                title: game.game_title.clone(),
-                developer: game.game_developer.clone(),
-                edition: game.edition.name.clone(),
-                picture_uri: game.card_picture.clone()
-            };
-
-            model.installed_games_indexes.insert(
-                card.to_owned(),
-                model.installed_games.guard().push_back(card.to_owned())
-            );
-        }
-
-        model.available_games.broadcast(CardComponentInput::SetInstalled(false));
-
         let leaflet = &model.leaflet;
         let flap = &model.flap;
 
@@ -565,45 +535,79 @@ impl SimpleComponent for MainApp {
 
         widgets.window.insert_action_group("win", Some(&group.into_action_group()));
 
-        if let Some(wine) = init.download_wine {
-            sender.input(MainAppMsg::AddDownloadWineTask(wine));
-            sender.input(MainAppMsg::ShowTasksFlap);
-        }
-
-        if let Some(dxvk) = init.download_dxvk {
-            sender.input(MainAppMsg::AddDownloadDxvkTask(dxvk));
-            sender.input(MainAppMsg::ShowTasksFlap);
-        }
-
-        if let Some(dxvk) = init.apply_dxvk {
-            sender.input(MainAppMsg::AddApplyDxvkTask(dxvk));
-            sender.input(MainAppMsg::ShowTasksFlap);
-        }
-
-        if let Some(prefix) = init.create_prefix {
-            sender.input(MainAppMsg::AddCreatePrefixTask {
-                path: prefix.path.clone(),
-                install_corefonts: prefix.install_corefonts
-            });
-
-            sender.input(MainAppMsg::ShowTasksFlap);
-        }
-
-        for addon in init.download_addons {
-            sender.input(MainAppMsg::AddDownloadAddonTask {
-                game_info: addon.game_info,
-                addon: addon.addon,
-                group: addon.group
-            });
-
-            sender.input(MainAppMsg::ShowTasksFlap);
-        }
-
-        ComponentParts { model, widgets }
+        AsyncComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
+            MainAppMsg::InitMainApp(init) => {
+                for game in init.games_list.available {
+                    let card = CardInfo::Game {
+                        name: game.game_name.clone(),
+                        title: game.game_title.clone(),
+                        developer: game.game_developer.clone(),
+                        edition: game.edition.name.clone(),
+                        picture_uri: game.card_picture.clone()
+                    };
+        
+                    self.available_games_indexes.insert(
+                        card.to_owned(),
+                        self.available_games.guard().push_back(card.to_owned())
+                    );
+                }
+        
+                for game in init.games_list.installed {
+                    let card = CardInfo::Game {
+                        name: game.game_name.clone(),
+                        title: game.game_title.clone(),
+                        developer: game.game_developer.clone(),
+                        edition: game.edition.name.clone(),
+                        picture_uri: game.card_picture.clone()
+                    };
+        
+                    self.installed_games_indexes.insert(
+                        card.to_owned(),
+                        self.installed_games.guard().push_back(card.to_owned())
+                    );
+                }
+        
+                self.available_games.broadcast(CardComponentInput::SetInstalled(false));
+
+                if let Some(wine) = init.download_wine {
+                    sender.input(MainAppMsg::AddDownloadWineTask(wine));
+                    sender.input(MainAppMsg::ShowTasksFlap);
+                }
+        
+                if let Some(dxvk) = init.download_dxvk {
+                    sender.input(MainAppMsg::AddDownloadDxvkTask(dxvk));
+                    sender.input(MainAppMsg::ShowTasksFlap);
+                }
+        
+                if let Some(dxvk) = init.apply_dxvk {
+                    sender.input(MainAppMsg::AddApplyDxvkTask(dxvk));
+                    sender.input(MainAppMsg::ShowTasksFlap);
+                }
+        
+                if let Some(prefix) = init.create_prefix {
+                    sender.input(MainAppMsg::AddCreatePrefixTask {
+                        path: prefix.path.clone(),
+                        install_corefonts: prefix.install_corefonts
+                    });
+        
+                    sender.input(MainAppMsg::ShowTasksFlap);
+                }
+        
+                for addon in init.download_addons {
+                    sender.input(MainAppMsg::AddDownloadAddonTask {
+                        game_info: addon.game_info,
+                        addon: addon.addon,
+                        group: addon.group
+                    });
+        
+                    sender.input(MainAppMsg::ShowTasksFlap);
+                }
+            }
+
             MainAppMsg::OpenDetails { info, installed } => {
                 self.game_details_info = info.clone();
 
