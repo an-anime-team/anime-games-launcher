@@ -3,6 +3,8 @@ use gtk::prelude::*;
 use adw::prelude::*;
 
 use crate::tr;
+
+use crate::i18n;
 use crate::config;
 
 use crate::components::wine::Wine;
@@ -55,9 +57,36 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_title: &tr!("general-launcher-language"),
                         set_subtitle: &tr!("general-launcher-language-description"),
 
-                        set_model: Some(&gtk::StringList::new(&[
-                            "English"
-                        ]))
+                        set_model: Some(&{
+                            let model = gtk::StringList::new(&[]);
+
+                            for lang in i18n::SUPPORTED_LANGUAGES {
+                                model.append(&lang.language.to_string());
+                            }
+
+                            model
+                        }),
+
+                        set_selected: {
+                            let selected = config::get().general.language;
+
+                            i18n::SUPPORTED_LANGUAGES.iter()
+                                .position(|lang| lang.language.to_string() == selected)
+                                .unwrap_or(0) as u32
+                        },
+
+                        connect_selected_notify[sender] => move |row| {
+                            let language = i18n::format_lang(i18n::SUPPORTED_LANGUAGES
+                                .get(row.selected() as usize)
+                                .unwrap_or(&i18n::SUPPORTED_LANGUAGES[0]));
+
+                            if let Err(err) = config::set("general.language", language) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: tr!("config-property-update-failed"),
+                                    message: Some(err.to_string())
+                                })
+                            }
+                        }
                     },
 
                     adw::SwitchRow {

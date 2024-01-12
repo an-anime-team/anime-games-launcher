@@ -16,6 +16,7 @@ use prelude::*;
 pub struct General {
     pub transitions: Transitions,
     pub threads: Threads,
+    pub language: String,
     pub verify_games: bool
 }
 
@@ -25,6 +26,7 @@ impl Default for General {
         Self {
             transitions: Transitions::default(),
             threads: Threads::default(),
+            language: crate::i18n::get_default_lang().language.to_string(),
             verify_games: true
         }
     }
@@ -43,6 +45,11 @@ impl From<&Json> for General {
             threads: value.get("threads")
                 .map(Threads::from)
                 .unwrap_or(default.threads),
+
+            language: value.get("language")
+                .and_then(Json::as_str)
+                .map(String::from)
+                .unwrap_or(default.language),
 
             verify_games: value.get("verify_games")
                 .and_then(Json::as_bool)
