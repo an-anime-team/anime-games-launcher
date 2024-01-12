@@ -1,6 +1,6 @@
-| | |
+| Main window | Game details |
 | :-: | :-: |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="repository/main-dark.png"><img src="repository/main.png"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="repository/details-dark.png"><img src="repository/details.png"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="repository/main-dark.png"><img src="repository/main-light.png"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="repository/details-dark.png"><img src="repository/details-light.png"></picture> |
 
 <p align="center">
     <a href="https://discord.gg/ck37X6UWBp">Discord</a> ·
