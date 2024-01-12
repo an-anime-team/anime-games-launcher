@@ -20,3 +20,16 @@ game-get-paths-failed           = Не удалось получить пути 
 game-not-installed              = {$game-title} не установлен
 
 launch-required-addon-unavailable = Дополнение {$addon-title} из группы {$group-title} недоступно или устарело. Вы можете запустить игру без него или продолжить использовать старую версию
+
+loading-preparing-folders-failed     = Не удалось подготовить папки по умолчанию
+loading-initializing-debug-failed    = Не удалось инициализировать отладочный вывод
+loading-preparing-config-failed      = Не удалось подготовить файл настроек
+loading-initializing-locales-failed  = Не удалось инициализировать локализации
+loading-updating-integrations-failed = Не удалось обновить скрипты интеграции
+loading-preparing-games-failed       = Не удалось подготовить игры
+loading-preparing-games-list-failed  = Не удалось подготовить список игр
+loading-registering-styles-failed    = Не удалось зарегистрировать стили игр
+loading-checking-wine-version-failed = Не удалось проверить версию Wine
+loading-checking-dxvk-version-failed = Не удалось проверить версию DXVK
+loading-checking-applied-dxvk-failed = Не удалось проверить установленную версию DXVK
+loading-checking-games-addons-failed = Не удалось проверить дополнения игр

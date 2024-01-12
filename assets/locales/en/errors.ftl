@@ -32,5 +32,5 @@ loading-preparing-games-list-failed  = Failed to prepare games list
 loading-registering-styles-failed    = Failed to register games styles
 loading-checking-wine-version-failed = Failed to check wine version
 loading-checking-dxvk-version-failed = Failed to check dxvk version
-loading-checking-applied-dxvk-failed = Failed to check dxvk version
+loading-checking-applied-dxvk-failed = Failed to check applied dxvk version
 loading-checking-games-addons-failed = Failed to check games addons
