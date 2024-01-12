@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
+use crate::i18n;
+
 pub mod wine;
 pub mod dxvk;
 
@@ -15,7 +17,12 @@ impl Default for Components {
     #[inline]
     fn default() -> Self {
         Self {
-            channel: String::from("https://raw.githubusercontent.com/an-anime-team/components/main"),
+            channel: if i18n::get_system_language() == "zh_cn" {
+                String::from("https://raw.gitmirror.com/an-anime-team/components/main")
+            } else {
+                String::from("https://raw.githubusercontent.com/an-anime-team/components/main")
+            },
+
             wine: wine::Wine::default(),
             dxvk: dxvk::Dxvk::default()
         }
