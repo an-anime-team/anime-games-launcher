@@ -1,6 +1,8 @@
-use crate::games;
+use crate::tr;
 
+use crate::games;
 use crate::config;
+
 use crate::config::games::prelude::*;
 
 use crate::ui::components::game_card::CardInfo;
@@ -26,7 +28,9 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 fn is_installed(game: &Game, game_path: &str, edition: &str) -> HeapResult<bool> {
     game.is_game_installed(game_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to verify {} installation", game.manifest.game_title),
+            title: tr!("game-verify-installation-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
 }
@@ -35,12 +39,16 @@ fn is_installed(game: &Game, game_path: &str, edition: &str) -> HeapResult<bool>
 fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -> HeapResult<DiffInfo> {
     game.get_game_diff(game_path.as_ref(), edition.as_ref())
         .map_err(|err| MainAppMsg::ShowToast {
-            title: format!("Unable to find {} version diff", game.manifest.game_title),
+            title: tr!("game-find-diff-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         })?
         .and_then(|diff| diff.diff)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("{} is not installed", game.manifest.game_title),
+            title: tr!("game-not-installed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: None
         }))
 }
@@ -49,7 +57,9 @@ fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -
 fn get_download(game: &Game, edition: &str) -> HeapResult<DiffInfo> {
     game.get_game_download(edition.as_ref())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} download info", game.manifest.game_title),
+            title: tr!("game-find-download-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
         .map(|download| download.download)
@@ -66,7 +76,9 @@ fn get_diff_or_download(game: &Game, game_path: &str, edition: &str) -> HeapResu
 fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings> {
     config.games.get_game_settings(game)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} settings", game.manifest.game_title),
+            title: tr!("game-get-settings-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
 }
@@ -75,7 +87,9 @@ fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings
 fn get_addons(game: &Game, game_info: &CardInfo, edition: &str, enabled_addons: &[GameEditionAddon]) -> HeapResult<Vec<AddonsListEntry>> {
     get_game_addons_downloads(game_info, game, edition, enabled_addons)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to get {} addons", game.manifest.game_title),
+            title: tr!("game-get-addons-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
 }

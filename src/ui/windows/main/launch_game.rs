@@ -5,6 +5,8 @@ use adw::prelude::*;
 
 use anime_game_core::filesystem::merge::MergeTree;
 
+use crate::tr;
+
 use crate::games;
 use crate::config;
 
@@ -32,7 +34,10 @@ use crate::ui::windows::loading::check_addons::is_addon_enabled;
 
 #[inline]
 pub fn addon_unavailable(addon_title: impl AsRef<str>, group_title: impl AsRef<str>) -> anyhow::Result<String> {
-    let message = format!("Addon {} from group {} is unavailable or outdated. You can launch the game without it or continue to use old version", addon_title.as_ref(), group_title.as_ref());
+    let message = tr!("launch-required-addon-unavailable", {
+        "addon-title" = addon_title.as_ref().to_string(),
+        "group-title" = group_title.as_ref().to_string()
+    });
 
     let (sender, receiver) = std::sync::mpsc::channel();
 
@@ -43,13 +48,13 @@ pub fn addon_unavailable(addon_title: impl AsRef<str>, group_title: impl AsRef<s
 
         let dialog = adw::MessageDialog::new(
             Some(window),
-            Some("Addon is unavailable"),
+            Some(&tr!("addon-unavailable")),
             Some(&message)
         );
 
-        dialog.add_response("stop", "Stop");
-        dialog.add_response("disable", "Disable");
-        dialog.add_response("continue", "Continue");
+        dialog.add_response("stop", &tr!("dialog-stop"));
+        dialog.add_response("disable", &tr!("dialog-disable"));
+        dialog.add_response("continue", &tr!("dialog-continue"));
 
         dialog.set_response_appearance("stop", adw::ResponseAppearance::Suggested);
         dialog.set_response_appearance("disable", adw::ResponseAppearance::Destructive);

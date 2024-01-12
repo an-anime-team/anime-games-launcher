@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
+use crate::i18n;
 use crate::LAUNCHER_FOLDER;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -15,9 +16,15 @@ impl Default for Integrations {
     #[inline]
     fn default() -> Self {
         Self {
-            sources: vec![
-                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/main")
-            ],
+            sources: if i18n::get_system_language() == "zh_cn" {
+                vec![
+                    String::from("https://raw.gitmirror.com/an-anime-team/game-integrations/main")
+                ]
+            } else {
+                vec![
+                    String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/main")
+                ]
+            },
 
             path: LAUNCHER_FOLDER.join("integrations")
         }

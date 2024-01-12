@@ -1,3 +1,6 @@
+// FIXME: get rid of deprecated libadwaita components
+#![allow(deprecated)]
+
 use std::path::PathBuf;
 use std::collections::{HashMap, HashSet};
 
@@ -8,10 +11,10 @@ use relm4::actions::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::{
-    config,
-    games
-};
+use crate::tr;
+
+use crate::config;
+use crate::games;
 
 use crate::components::wine::*;
 use crate::components::dxvk::*;
@@ -176,13 +179,13 @@ impl SimpleAsyncComponent for MainApp {
     menu! {
         main_menu: {
             section! {
-                "Launcher folder" => LauncherFolder,
-                "Config file" => ConfigFile,
-                "Debug file" => DebugFile,
+                &tr!("main-menu-launcher-folder") => LauncherFolder,
+                &tr!("main-menu-config-file")     => ConfigFile,
+                &tr!("main-menu-debug-file")      => DebugFile,
             },
 
             section! {
-                "About" => About
+                &tr!("main-menu-about") => About
             }
         }
     }
@@ -946,7 +949,7 @@ impl SimpleAsyncComponent for MainApp {
                 // toast.set_timeout(7);
 
                 if let Some(message) = message {
-                    toast.set_button_label(Some("Details"));
+                    toast.set_button_label(Some(&tr!("dialog-toast-details")));
 
                     let dialog = adw::MessageDialog::new(
                         Some(window),
@@ -954,8 +957,8 @@ impl SimpleAsyncComponent for MainApp {
                         Some(&message)
                     );
 
-                    dialog.add_response("close", "Close");
-                    dialog.add_response("save", "Save");
+                    dialog.add_response("close", &tr!("dialog-close"));
+                    dialog.add_response("save", &tr!("dialog-save"));
 
                     dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
 

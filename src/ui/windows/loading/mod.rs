@@ -6,6 +6,7 @@ use adw::prelude::*;
 pub mod check_default_dirs;
 pub mod init_debug;
 pub mod init_config;
+pub mod init_locales;
 pub mod update_integrations;
 pub mod init_games;
 pub mod check_wine;
@@ -13,6 +14,8 @@ pub mod check_dxvk;
 pub mod check_wine_prefix;
 pub mod check_addons;
 pub mod load_app;
+
+use crate::tr;
 
 use crate::APP_ID;
 
@@ -69,7 +72,7 @@ impl SimpleAsyncComponent for LoadingApp {
 
                     set_icon_name: Some(APP_ID),
 
-                    set_title: "Loading",
+                    set_title: &tr!("loading"),
 
                     #[watch]
                     set_description: Some(&model.active_stage),
@@ -114,7 +117,7 @@ impl SimpleAsyncComponent for LoadingApp {
         std::thread::spawn(move || {
             match load_app::load_app(&sender) {
                 Ok(result) => {
-                    // dbg!(&result);
+                    tracing::debug!("Launcher loading result: {:?}", result);
 
                     unsafe {
                         let main_app = MAIN_APP.as_ref()
@@ -162,7 +165,7 @@ impl SimpleAsyncComponent for LoadingApp {
                     Some(&message)
                 );
 
-                dialog.add_response("close", "Close");
+                dialog.add_response("close", &tr!("dialog-close"));
                 dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
 
                 dialog.connect_response(None, |_, _| relm4::main_application().quit());

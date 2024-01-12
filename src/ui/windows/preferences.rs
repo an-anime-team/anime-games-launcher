@@ -3,6 +3,8 @@ use gtk::prelude::*;
 use adw::prelude::*;
 
 use crate::tr;
+
+use crate::i18n;
 use crate::config;
 
 use crate::components::wine::Wine;
@@ -55,9 +57,36 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_title: &tr!("general-launcher-language"),
                         set_subtitle: &tr!("general-launcher-language-description"),
 
-                        set_model: Some(&gtk::StringList::new(&[
-                            "English"
-                        ]))
+                        set_model: Some(&{
+                            let model = gtk::StringList::new(&[]);
+
+                            for lang in i18n::SUPPORTED_LANGUAGES {
+                                model.append(&tr!(i18n::format_language(lang).as_str()));
+                            }
+
+                            model
+                        }),
+
+                        set_selected: {
+                            let selected = config::get().general.language;
+
+                            i18n::SUPPORTED_LANGUAGES.iter()
+                                .position(|lang| i18n::format_language(lang) == selected)
+                                .unwrap_or(0) as u32
+                        },
+
+                        connect_selected_notify[sender] => move |row| {
+                            let language = i18n::format_language(i18n::SUPPORTED_LANGUAGES
+                                .get(row.selected() as usize)
+                                .unwrap_or(&i18n::SUPPORTED_LANGUAGES[0]));
+
+                            if let Err(err) = config::set("general.language", language) {
+                                sender.input(PreferencesAppMsg::ShowToast {
+                                    title: tr!("config-property-update-failed"),
+                                    message: Some(err.to_string())
+                                })
+                            }
+                        }
                     },
 
                     adw::SwitchRow {
@@ -69,7 +98,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("general.verify_games", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -119,7 +148,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             if let Err(err) = config::set("games.wine.language", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -153,7 +182,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             if let Err(err) = config::set("games.wine.sync", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -168,7 +197,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("games.wine.borderless", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -205,7 +234,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             if let Err(err) = config::set("games.enhancements.hud", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -225,7 +254,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             connect_active_notify[sender] => move |switch| {
                                 if let Err(err) = config::set("games.enhancements.fsr.enabled", switch.is_active()) {
                                     sender.input(PreferencesAppMsg::ShowToast {
-                                        title: tr!("config-property-update-error"),
+                                        title: tr!("config-property-update-failed"),
                                         message: Some(err.to_string())
                                     })
                                 }
@@ -262,7 +291,7 @@ impl SimpleAsyncComponent for PreferencesApp {
     
                                 if let Err(err) = config::set("games.enhancements.fsr.quality", value) {
                                     sender.input(PreferencesAppMsg::ShowToast {
-                                        title: tr!("config-property-update-error"),
+                                        title: tr!("config-property-update-failed"),
                                         message: Some(err.to_string())
                                     })
                                 }
@@ -281,7 +310,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             connect_value_notify[sender] => move |row| {
                                 if let Err(err) = config::set("games.enhancements.fsr.strength", row.value() as u64) {
                                     sender.input(PreferencesAppMsg::ShowToast {
-                                        title: tr!("config-property-update-error"),
+                                        title: tr!("config-property-update-failed"),
                                         message: Some(err.to_string())
                                     })
                                 }
@@ -298,7 +327,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("games.enhancements.gamemode", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -314,7 +343,9 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_subtitle: &tr!("components-wine-description"),
 
                         set_model: Some(&{
-                            let strings = gtk::StringList::new(&["latest"]);
+                            let strings = gtk::StringList::new(&[]);
+
+                            strings.append(&tr!("components-wine-latest"));
 
                             for version in &model.wine_versions {
                                 strings.append(&version.title);
@@ -337,7 +368,9 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_subtitle: &tr!("components-dxvk-description"),
 
                         set_model: Some(&{
-                            let strings = gtk::StringList::new(&["latest"]);
+                            let strings = gtk::StringList::new(&[]);
+
+                            strings.append(&tr!("components-dxvk-latest"));
 
                             for version in &model.dxvk_versions {
                                 strings.append(&version.name);
@@ -364,7 +397,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("components.wine.prefix.install_corefonts", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: tr!("config-property-update-error"),
+                                    title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -408,14 +441,14 @@ impl SimpleAsyncComponent for PreferencesApp {
         match msg {
             PreferencesAppMsg::SelectWineVersion(index) => {
                 let version = if index == 0 {
-                    String::from("latest")
+                    tr!("components-wine-latest")
                 } else {
                     self.wine_versions[index as usize - 1].name.clone()
                 };
 
                 if let Err(err) = config::set("components.wine.version", version) {
                     sender.input(PreferencesAppMsg::ShowToast {
-                        title: tr!("config-property-update-error"),
+                        title: tr!("config-property-update-failed"),
                         message: Some(err.to_string())
                     })
                 }
@@ -423,14 +456,14 @@ impl SimpleAsyncComponent for PreferencesApp {
 
             PreferencesAppMsg::SelectDxvkVersion(index) => {
                 let version = if index == 0 {
-                    String::from("latest")
+                    tr!("components-dxvk-latest")
                 } else {
                     self.dxvk_versions[index as usize - 1].version.clone()
                 };
 
                 if let Err(err) = config::set("components.dxvk.version", version) {
                     sender.input(PreferencesAppMsg::ShowToast {
-                        title: tr!("config-property-update-error"),
+                        title: tr!("config-property-update-failed"),
                         message: Some(err.to_string())
                     })
                 }
@@ -446,7 +479,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                 // toast.set_timeout(7);
 
                 if let Some(message) = message {
-                    toast.set_button_label(Some("Details"));
+                    toast.set_button_label(Some(&tr!("dialog-toast-details")));
 
                     let dialog = adw::MessageDialog::new(
                         Some(window),
@@ -454,8 +487,8 @@ impl SimpleAsyncComponent for PreferencesApp {
                         Some(&message)
                     );
 
-                    dialog.add_response("close", "Close");
-                    dialog.add_response("save", "Save");
+                    dialog.add_response("close", &tr!("dialog-close"));
+                    dialog.add_response("save", &tr!("dialog-save"));
 
                     dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
 

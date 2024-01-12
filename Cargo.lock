@@ -62,6 +62,7 @@ dependencies = [
 [[package]]
 name = "anime-game-core"
 version = "2.0.0"
+source = "git+https://github.com/an-anime-team/anime-game-core?branch=v2.0.0-rewrite#d2428c0962e85e526805c4c64a249e21c73b536d"
 dependencies = [
  "flume 0.11.0",
  "lazy_static",

@@ -6,6 +6,8 @@ use anime_game_core::updater::{
     Status as BasicStatus
 };
 
+use crate::tr;
+
 use crate::ui::components::game_card::CardInfo;
 
 use super::{
@@ -24,7 +26,7 @@ impl QueuedTask for DeleteFilesQueuedTask {
     fn get_info(&self) -> CardInfo {
         CardInfo::Component {
             name: String::from("delete-files"),
-            title: String::from("Delete files"),
+            title: tr!("tasks-delete-files"),
             developer: String::new()
         }
     }
@@ -64,7 +66,7 @@ impl ResolvedTask for DeleteFilesResolvedTask {
     fn get_info(&self) -> CardInfo {
         CardInfo::Component {
             name: String::from("delete-files"),
-            title: String::from("Delete files"),
+            title: tr!("tasks-delete-files"),
             developer: String::new()
         }
     }

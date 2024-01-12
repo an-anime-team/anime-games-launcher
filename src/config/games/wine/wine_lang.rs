@@ -5,17 +5,17 @@ use serde_json::Value as Json;
 
 lazy_static::lazy_static! {
     static ref LANGS_INFO: HashMap<WineLang, (&'static str, &'static str)> = HashMap::from([
-        (WineLang::System,     ("System",     "")),
-        (WineLang::English,    ("English",    "en_US.UTF-8")),
-        (WineLang::Russian,    ("Russian",    "ru_RU.UTF-8")),
-        (WineLang::German,     ("German",     "de_DE.UTF-8")),
-        (WineLang::Portuguese, ("Portuguese", "pt_PT.UTF-8")),
-        (WineLang::Polish,     ("Polish",     "pl_PL.UTF-8")),
-        (WineLang::French,     ("French",     "fr_FR.UTF-8")),
-        (WineLang::Spanish,    ("Spanish",    "es_ES.UTF-8")),
-        (WineLang::Chinese,    ("Chinese",    "zh_CN.UTF-8")),
-        (WineLang::Japanese,   ("Japanese",   "ja_JP.UTF-8")),
-        (WineLang::Korean,     ("Korean",     "ko_KR.UTF-8"))
+        (WineLang::System,     ("System",    "")),
+        (WineLang::English,    ("English",   "en_US.UTF-8")),
+        (WineLang::Russian,    ("Русский",   "ru_RU.UTF-8")),
+        (WineLang::German,     ("Deutsch",   "de_DE.UTF-8")),
+        (WineLang::Portuguese, ("Português", "pt_PT.UTF-8")),
+        (WineLang::Polish,     ("Polska",    "pl_PL.UTF-8")),
+        (WineLang::French,     ("Français",  "fr_FR.UTF-8")),
+        (WineLang::Spanish,    ("Español",   "es_ES.UTF-8")),
+        (WineLang::Chinese,    ("中国",        "zh_CN.UTF-8")),
+        (WineLang::Japanese,   ("日本語",       "ja_JP.UTF-8")),
+        (WineLang::Korean,     ("한국어",       "ko_KR.UTF-8"))
     ]);
 }
 

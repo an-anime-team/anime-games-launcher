@@ -15,10 +15,10 @@ pub const SUPPORTED_LANGUAGES: &[LanguageIdentifier] = &[
     langid!("zh-cn")
 ];
 
-pub static mut LANG: LanguageIdentifier = langid!("ru-ru");
+static mut LANG: LanguageIdentifier = langid!("en-us");
 
 /// Set launcher language
-pub fn set_lang(lang: LanguageIdentifier) -> anyhow::Result<()> {
+pub fn set_language(lang: LanguageIdentifier) -> anyhow::Result<()> {
     if SUPPORTED_LANGUAGES.iter().any(|item| item.language == lang.language) {
         unsafe {
             LANG = lang
@@ -36,31 +36,36 @@ pub unsafe fn get_lang<'a>() -> &'a LanguageIdentifier {
     &LANG
 }
 
+#[cached::proc_macro::once]
+/// Get current system language
+pub fn get_system_language() -> String {
+    std::env::var("LC_ALL")
+        .unwrap_or_else(|_| std::env::var("LC_MESSAGES")
+        .unwrap_or_else(|_| std::env::var("LANG")
+        .unwrap_or_else(|_| String::from("en_us"))))
+        .to_ascii_lowercase()
+}
+
+#[cached::proc_macro::once]
 /// Get system language or default language if system one is not supported
 /// 
 /// Checks env variables in following order:
 /// - `LC_ALL`
 /// - `LC_MESSAGES`
 /// - `LANG`
-pub fn get_default_lang<'a>() -> &'a LanguageIdentifier {
-    let current = std::env::var("LC_ALL")
-        .unwrap_or_else(|_| std::env::var("LC_MESSAGES")
-        .unwrap_or_else(|_| std::env::var("LANG")
-        .unwrap_or_else(|_| String::from("en_us"))))
-        .to_ascii_lowercase();
+pub fn get_default_language() -> LanguageIdentifier {
+    let current = get_system_language();
 
-    for lang in SUPPORTED_LANGUAGES {
-        if current.starts_with(lang.language.as_str()) {
-            return lang;
-        }
-    }
-
-    unsafe {
-        get_lang()
-    }
+    SUPPORTED_LANGUAGES.iter()
+        .find(|lang| current.starts_with(lang.language.as_str()))
+        .unwrap_or_else(|| unsafe { get_lang() })
+        .clone()
 }
 
-pub fn format_lang(lang: &LanguageIdentifier) -> String {
+/// Format given language to `<language>-<country>` format
+/// 
+/// Example: `en-us`, `ru-ru`
+pub fn format_language(lang: &LanguageIdentifier) -> String {
     format!("{}-{}", lang.language, match lang.region {
         Some(region) => region.to_string().to_ascii_lowercase(),
         None => lang.language.to_string()
@@ -92,7 +97,7 @@ macro_rules! tr {
 
             #[allow(unused_unsafe)]
             $crate::i18n::LOCALES
-                .lookup(unsafe { &$crate::i18n::LANG }, $id)
+                .lookup(unsafe { $crate::i18n::get_lang() }, $id)
                 .expect(&format!("Failed to find a message with given id: {}", stringify!($id)))
         }
     };
@@ -112,7 +117,7 @@ macro_rules! tr {
 
             #[allow(unused_unsafe)]
             $crate::i18n::LOCALES
-                .lookup_complete(unsafe { &$crate::i18n::LANG }, $id, Some(&args))
+                .lookup_complete(unsafe { $crate::i18n::get_lang() }, $id, Some(&args))
                 .expect(&format!("Failed to find a message with given id: {}", stringify!($id)))
         }
     };

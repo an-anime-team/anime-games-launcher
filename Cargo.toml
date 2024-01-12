@@ -37,9 +37,9 @@ version = "0.5.3"
 features = ["v1_4"]
 
 [dependencies.anime-game-core]
-# git = "https://github.com/an-anime-team/anime-game-core"
-# branch = "v2.0.0-rewrite"
-path = "../anime-game-core"
+git = "https://github.com/an-anime-team/anime-game-core"
+branch = "v2.0.0-rewrite"
+# path = "../anime-game-core"
 
 # [dependencies.rfd]
 # version = "0.11"
