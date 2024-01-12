@@ -343,7 +343,9 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_subtitle: &tr!("components-wine-description"),
 
                         set_model: Some(&{
-                            let strings = gtk::StringList::new(&["latest"]);
+                            let strings = gtk::StringList::new(&[]);
+
+                            strings.append(&tr!("components-wine-latest"));
 
                             for version in &model.wine_versions {
                                 strings.append(&version.title);
@@ -366,7 +368,9 @@ impl SimpleAsyncComponent for PreferencesApp {
                         set_subtitle: &tr!("components-dxvk-description"),
 
                         set_model: Some(&{
-                            let strings = gtk::StringList::new(&["latest"]);
+                            let strings = gtk::StringList::new(&[]);
+
+                            strings.append(&tr!("components-dxvk-latest"));
 
                             for version in &model.dxvk_versions {
                                 strings.append(&version.name);
@@ -437,7 +441,7 @@ impl SimpleAsyncComponent for PreferencesApp {
         match msg {
             PreferencesAppMsg::SelectWineVersion(index) => {
                 let version = if index == 0 {
-                    String::from("latest")
+                    tr!("components-wine-latest")
                 } else {
                     self.wine_versions[index as usize - 1].name.clone()
                 };
@@ -452,7 +456,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
             PreferencesAppMsg::SelectDxvkVersion(index) => {
                 let version = if index == 0 {
-                    String::from("latest")
+                    tr!("components-dxvk-latest")
                 } else {
                     self.dxvk_versions[index as usize - 1].version.clone()
                 };

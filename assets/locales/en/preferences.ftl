@@ -50,5 +50,8 @@ components-wine-description = Selected version will be downloaded after restart
 components-dxvk = DXVK version
 components-dxvk-description = Selected version will be downloaded after restart
 
+components-wine-latest = Latest
+components-dxvk-latest = Latest
+
 components-install-corefonts = Install corefonts
 components-install-corefonts-description = Install default windows fonts to the wine prefix

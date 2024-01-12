@@ -50,5 +50,8 @@ components-wine-description = Выбранная версия будет уст�
 components-dxvk = Версия DXVK
 components-dxvk-description = Выбранная версия будет установлена после перезапуска
 
+components-wine-latest = Последняя
+components-dxvk-latest = Последняя
+
 components-install-corefonts = Устанавливать шрифты Windows
 components-install-corefonts-description = Устанавливать стандартные шрифты Windows при создании префикса Wine
