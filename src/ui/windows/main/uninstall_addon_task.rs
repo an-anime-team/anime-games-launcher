@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::tr;
+
 use crate::games;
 
 use crate::games::integrations::standards::addons::{
@@ -18,7 +20,9 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 pub fn get_uninstall_addon_task(game_info: &CardInfo, addon: &Addon, group: &AddonsGroup) -> HeapResult<Box<DeleteFilesQueuedTask>> {
     let addon_path = addon.get_installation_path(&group.name, game_info.get_name(), game_info.get_edition())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon installation path", game_info.get_title()),
+            title: tr!("addon-find-path-failed", {
+                "game-title" = game_info.get_title().to_string()
+            }),
             message: Some(err.to_string())
         }))?;
 
@@ -28,7 +32,9 @@ pub fn get_uninstall_addon_task(game_info: &CardInfo, addon: &Addon, group: &Add
 
     let paths = game.get_addon_paths(&group.name, &addon.name, &addon_path.to_string_lossy(), game_info.get_edition())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon installation path", game_info.get_title()),
+            title: tr!("addon-get-paths-failed", {
+                "game-title" = game_info.get_title().to_string()
+            }),
             message: Some(err.to_string())
         }))?
         .into_iter()

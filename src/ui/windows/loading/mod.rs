@@ -71,7 +71,7 @@ impl SimpleAsyncComponent for LoadingApp {
 
                     set_icon_name: Some(APP_ID),
 
-                    set_title: "Loading",
+                    set_title: &tr!("loading"),
 
                     #[watch]
                     set_description: Some(&model.active_stage),
@@ -116,7 +116,7 @@ impl SimpleAsyncComponent for LoadingApp {
         std::thread::spawn(move || {
             match load_app::load_app(&sender) {
                 Ok(result) => {
-                    // dbg!(&result);
+                    tracing::debug!("Launcher loading result: {:?}", result);
 
                     unsafe {
                         let main_app = MAIN_APP.as_ref()

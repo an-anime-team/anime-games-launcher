@@ -7,14 +7,17 @@ addon-verify-installation-failed = Unable to verify addon installation for {$gam
 addon-find-diff-failed           = Unable to find {$game-title} addon version diff
 addon-find-download-failed       = Unable to find {$game-title} addon download info
 addon-find-path-failed           = Unable to find {$game-title} addon installation path
+addon-get-paths-failed           = Unable to get {$game-title} addon paths
 addon-not-installed              = {$game-title} addon is not installed
 
 game-verify-installation-failed = Unable to verify {$game-title} installation
 game-find-diff-failed           = Unable to find {$game-title} version diff
 game-find-download-failed       = Unable to find {$game-title} download info
+game-find-path-failed           = Unable to find {$game-title} installation path
 game-get-settings-failed        = Unable to get {$game-title} settings
 game-get-addons-failed          = Unable to get {$game-title} addons
 game-get-paths-failed           = Unable to get {$game-title} paths
+game-get-integrity-failed       = Unable to get {$game-title} integrity info
 game-not-installed              = {$game-title} is not installed
 
 launch-required-addon-unavailable = Addon {$addon-title} from group {$group-title} is unavailable or outdated. You can launch the game without it or continue to use old version

@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 
-use crate::games;
+use crate::tr;
 
+use crate::games;
 use crate::config;
+
 use crate::config::games::settings::GameSettings;
 
 use crate::ui::components::game_card::CardInfo;
@@ -19,7 +21,9 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 fn get_integrity_info(game: &Game, game_path: &str, edition: &str) -> HeapResult<Vec<IntegrityInfo>> {
     game.get_game_integrity(game_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to get {} integrity info", game.manifest.game_title),
+            title: tr!("game-get-integrity-failed ", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
 }
@@ -28,7 +32,9 @@ fn get_integrity_info(game: &Game, game_path: &str, edition: &str) -> HeapResult
 fn get_settings(game: &Game, config: &config::Config) -> HeapResult<GameSettings> {
     config.games.get_game_settings(game)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} settings", game.manifest.game_title),
+            title: tr!("game-get-settings-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
 }
@@ -38,7 +44,9 @@ fn get_game_path<'a>(game: &'a Game, edition: &str, config: &'a config::Config) 
     get_settings(game, config)?
         .paths.get(edition)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} installation path", game.manifest.game_title),
+            title: tr!("game-find-path-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: None
         }))
         .map(|paths| paths.game.clone())

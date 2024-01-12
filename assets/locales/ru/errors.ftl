@@ -7,11 +7,13 @@ addon-verify-installation-failed = Не удалось проверить нал
 addon-find-diff-failed           = Не удалось найти обновление дополнения для {$game-title}
 addon-find-download-failed       = Не удалось найти информацию для установки дополнения для {$game-title}
 addon-find-path-failed           = Не удалось найти путь установки дополнения для {$game-title}
+addon-get-paths-failed           = Не удалось получить пути дополнения для {$game-title}
 addon-not-installed              = Дополнение для {$game-title} не установлено
 
 game-verify-installation-failed = Не удалось проверить установку {$game-title}
 game-find-diff-failed           = Не удалось найти обновление {$game-title}
 game-find-download-failed       = Не удалось найти информацию для установки {$game-title}
+game-find-path-failed           = Не удалось найти путь установки {$game-title}
 game-get-settings-failed        = Не удалось получить настройки {$game-title}
 game-get-addons-failed          = Не удалось получить дополнения {$game-title}
 game-get-paths-failed           = Не удалось получить пути для {$game-title}
