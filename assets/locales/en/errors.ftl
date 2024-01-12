@@ -21,3 +21,16 @@ game-get-integrity-failed       = Unable to get {$game-title} integrity info
 game-not-installed              = {$game-title} is not installed
 
 launch-required-addon-unavailable = Addon {$addon-title} from group {$group-title} is unavailable or outdated. You can launch the game without it or continue to use old version
+
+loading-preparing-folders-failed     = Failed to prepare default folders
+loading-initializing-debug-failed    = Failed to initialize debug output
+loading-preparing-config-failed      = Failed to prepare config file
+loading-initializing-locales-failed  = Failed to initialize locales
+loading-updating-integrations-failed = Failed to update integration scripts
+loading-preparing-games-failed       = Failed to prepare games
+loading-preparing-games-list-failed  = Failed to prepare games list
+loading-registering-styles-failed    = Failed to register games styles
+loading-checking-wine-version-failed = Failed to check wine version
+loading-checking-dxvk-version-failed = Failed to check dxvk version
+loading-checking-applied-dxvk-failed = Failed to check dxvk version
+loading-checking-games-addons-failed = Failed to check games addons

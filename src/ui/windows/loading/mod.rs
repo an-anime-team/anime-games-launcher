@@ -6,6 +6,7 @@ use adw::prelude::*;
 pub mod check_default_dirs;
 pub mod init_debug;
 pub mod init_config;
+pub mod init_locales;
 pub mod update_integrations;
 pub mod init_games;
 pub mod check_wine;
