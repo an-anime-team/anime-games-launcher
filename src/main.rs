@@ -2,11 +2,12 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
-pub mod ui;
-pub mod config;
-pub mod components;
-pub mod games;
+pub mod i18n;
 pub mod utils;
+pub mod config;
+pub mod games;
+pub mod components;
+pub mod ui;
 
 use ui::windows::loading::LoadingApp;
 
