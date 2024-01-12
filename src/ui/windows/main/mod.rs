@@ -1,3 +1,6 @@
+// FIXME: get rid of deprecated libadwaita components
+#![allow(deprecated)]
+
 use std::path::PathBuf;
 use std::collections::{HashMap, HashSet};
 
