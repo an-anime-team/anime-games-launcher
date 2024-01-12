@@ -13,10 +13,12 @@
 
 # ♥️ Useful links and thanks
 
-* [macOS launcher](https://github.com/3Shain/yet-another-anime-game-launcher) which contains some additional compatibility components
-* [Releases page](https://github.com/an-anime-team/anime-games-launcher/releases) where you can find latest available version
-* [Changelog](CHANGELOG.md) with chronology of the project
-* [Integration guide](GAMES_INTEGRATION.md) with games integration standard
+- [macOS launcher](https://github.com/3Shain/yet-another-anime-game-launcher) which contains some additional compatibility components
+- [Releases page](https://github.com/an-anime-team/anime-games-launcher/releases) where you can find latest available version
+- [Changelog](CHANGELOG.md) with chronology of the project
+- [Integration guide](GAMES_INTEGRATION.md) with games integration standard
+- [Components repo](https://github.com/an-anime-team/components) with default wine and dxvk versions used in the launcher
+- [Integrations repo](https://github.com/an-anime-team/game-integrations) with default games integrations used in the launcher
 
 <br>
 
