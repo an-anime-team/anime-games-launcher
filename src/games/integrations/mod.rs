@@ -224,7 +224,7 @@ impl Game {
     pub fn is_process_running(&self, game_path: &str, edition: &str) -> anyhow::Result<bool> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
-                .call_function("v1_games_is_running", (game_path, edition))?)
+                .call_function("v1_game_is_running", (game_path, edition))?)
         }
     }
 
