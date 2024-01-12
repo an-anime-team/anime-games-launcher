@@ -61,7 +61,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             let model = gtk::StringList::new(&[]);
 
                             for lang in i18n::SUPPORTED_LANGUAGES {
-                                model.append(&lang.language.to_string());
+                                model.append(&tr!(i18n::format_lang(lang).as_str()));
                             }
 
                             model
@@ -71,7 +71,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             let selected = config::get().general.language;
 
                             i18n::SUPPORTED_LANGUAGES.iter()
-                                .position(|lang| lang.language.to_string() == selected)
+                                .position(|lang| i18n::format_lang(lang) == selected)
                                 .unwrap_or(0) as u32
                         },
 
