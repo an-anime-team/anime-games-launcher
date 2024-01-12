@@ -9,6 +9,8 @@ use relm4::prelude::*;
 
 use gtk::prelude::*;
 
+use crate::tr;
+
 use crate::ui::components::game_card::{
     CardInfo,
     CardComponent,
@@ -125,7 +127,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                 #[watch]
                 set_label: &match &model.current_task {
                     Some(task) => task.get_info().get_title().to_string(),
-                    None => String::from("Nothing to do")
+                    None => tr!("tasks-nothing")
                 }
             },
 
@@ -178,11 +180,17 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         let average_speed = (task.get_current() as f64 / elapsed_time).ceil() as u64;
 
                         if task.get_total() > 1024 * 512 {
-                            format!("Avg speed: {}/s", pretty_bytes(average_speed))
+                            tr!("tasks-avg-speed", {
+                                "format" = "data",
+                                "speed" = pretty_bytes(average_speed)
+                            })
                         }
 
                         else {
-                            format!("Avg speed: {average_speed} p/s")
+                            tr!("tasks-avg-speed", {
+                                "format" = "items",
+                                "speed" = average_speed
+                            })
                         }
                     }
 
@@ -208,7 +216,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                         let remaining_time = expected_total_time - elapsed_time as u64;
 
                         if remaining_time < 24 * 60 * 60 {
-                            format!("Avg ETA: {}", pretty_seconds(remaining_time))
+                            tr!("tasks-avg-eta", {
+                                "eta" = pretty_seconds(remaining_time)
+                            })
                         }
 
                         else {
@@ -288,7 +298,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                         Err(err) => {
                             sender.output(TasksQueueComponentOutput::ShowToast {
-                                title: String::from("Failed to resolve queued task"),
+                                title: tr!("tasks-resolve-queued-failed"),
                                 message: Some(err.to_string())
                             }).unwrap();
                         }
@@ -311,7 +321,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                     if task.is_finished() {
                         if let Err(err) = task.get_status() {
                             sender.output(TasksQueueComponentOutput::ShowToast {
-                                title: format!("Failed to download {}", task.get_info().get_title()),
+                                title: tr!("tasks-get-status-failed", {
+                                    "game-title" = task.get_info().get_title().to_string()
+                                }),
                                 message: Some(err.to_string())
                             }).unwrap();
                         }
@@ -342,7 +354,7 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                                 Err(err) => {
                                     sender.output(TasksQueueComponentOutput::ShowToast {
-                                        title: String::from("Failed to resolve queued task"),
+                                        title: tr!("tasks-resolve-queued-failed"),
                                         message: Some(err.to_string())
                                     }).unwrap();
                                 }
@@ -373,27 +385,27 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                         if let Ok(status) = task.get_status() {
                             let (pulse, title) = match status {
-                                TaskStatus::Pending => (true, String::from("Pending")),
+                                TaskStatus::Pending => (true, tr!("tasks-pending")),
 
-                                TaskStatus::PreparingTransition => (true, String::from("Preparing transition...")),
-                                TaskStatus::FinishingTransition => (true, String::from("Finishing transition...")),
+                                TaskStatus::PreparingTransition => (true, tr!("tasks-preparing-transition")),
+                                TaskStatus::FinishingTransition => (true, tr!("tasks-finishing-transition")),
 
-                                TaskStatus::Downloading => (false, String::from("Downloading...")),
-                                TaskStatus::Unpacking   => (false, String::from("Unpacking...")),
+                                TaskStatus::Downloading => (false, tr!("tasks-downloading")),
+                                TaskStatus::Unpacking   => (false, tr!("tasks-unpacking")),
 
-                                TaskStatus::DeletingFiles => (true, String::from("Deleting files...")),
+                                TaskStatus::DeletingFiles => (true, tr!("tasks-deleting-files")),
 
-                                TaskStatus::RunTransitionCode     => (false, String::from("Starting transition code...")),
-                                TaskStatus::RunPostTransitionCode => (false, String::from("Starting post-transition code...")),
+                                TaskStatus::RunTransitionCode     => (false, tr!("tasks-transition-code")),
+                                TaskStatus::RunPostTransitionCode => (false, tr!("tasks-post-transition-code")),
 
-                                TaskStatus::CreatingPrefix  => (true, String::from("Creating prefix...")),
-                                TaskStatus::InstallingDxvk  => (true, String::from("Installing DXVK...")),
-                                TaskStatus::InstallingFonts => (false, String::from("Installing fonts...")),
+                                TaskStatus::CreatingPrefix  => (true, tr!("tasks-creating-prefix")),
+                                TaskStatus::InstallingDxvk  => (true, tr!("tasks-installing-dxvk")),
+                                TaskStatus::InstallingFonts => (false, tr!("tasks-installing-fonts")),
 
-                                TaskStatus::VerifyingFiles => (false, String::from("Verifying files...")),
-                                TaskStatus::RepairingFiles => (false, String::from("Repairing files...")),
+                                TaskStatus::VerifyingFiles => (false, tr!("tasks-verifying-files")),
+                                TaskStatus::RepairingFiles => (false, tr!("tasks-repairing-files")),
 
-                                TaskStatus::Finished => (true, String::from("Finished"))
+                                TaskStatus::Finished => (true, tr!("tasks-finished"))
                             };
 
                             self.current_task_progress_pulse = pulse;
