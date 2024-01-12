@@ -2,6 +2,7 @@ use relm4::prelude::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
+use crate::tr;
 use crate::config;
 
 use crate::components::wine::Wine;
@@ -40,7 +41,7 @@ impl SimpleAsyncComponent for PreferencesApp {
     view! {
         window = adw::PreferencesWindow {
             set_default_size: (700, 560),
-            set_title: Some("Preferences"),
+            set_title: Some(&tr!("preferences")),
 
             set_modal: true,
             set_hide_on_close: true,
@@ -48,11 +49,11 @@ impl SimpleAsyncComponent for PreferencesApp {
 
             add = &adw::PreferencesPage {
                 add = &adw::PreferencesGroup {
-                    set_title: "General",
+                    set_title: &tr!("preferences--general"),
 
                     adw::ComboRow {
-                        set_title: "Launcher language",
-                        set_subtitle: "Changes after restart",
+                        set_title: &tr!("general-launcher-language"),
+                        set_subtitle: &tr!("general-launcher-language-description"),
 
                         set_model: Some(&gtk::StringList::new(&[
                             "English"
@@ -60,15 +61,15 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::SwitchRow {
-                        set_title: "Verify games",
-                        set_subtitle: "Verify games installations after installation or updating",
+                        set_title: &tr!("general-verify-games"),
+                        set_subtitle: &tr!("general-verify-games-description"),
 
                         set_active: config::get().general.verify_games,
 
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("general.verify_games", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -95,11 +96,11 @@ impl SimpleAsyncComponent for PreferencesApp {
                 },
 
                 add = &adw::PreferencesGroup {
-                    set_title: "Wine",
+                    set_title: &tr!("preferences--wine"),
 
                     adw::ComboRow {
-                        set_title: "Language",
-                        set_subtitle: "Language used in the wine environment. Can fix keyboard layout issues",
+                        set_title: &tr!("wine-language"),
+                        set_subtitle: &tr!("wine-language-description"),
 
                         set_model: Some(&gtk::StringList::new({
                             WineLang::list()
@@ -118,7 +119,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             if let Err(err) = config::set("games.wine.language", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -126,8 +127,8 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::ComboRow {
-                        set_title: "Synchronization",
-                        set_subtitle: "Technology used to synchronize inner wine events",
+                        set_title: &tr!("wine-sync"),
+                        set_subtitle: &tr!("wine-sync-description"),
 
                         set_model: Some(&gtk::StringList::new(&[
                             "None",
@@ -152,7 +153,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             if let Err(err) = config::set("games.wine.sync", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -160,14 +161,14 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::SwitchRow {
-                        set_title: "Borderless window",
+                        set_title: &tr!("wine-borderless"),
 
                         set_active: config::get().games.wine.borderless,
 
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("games.wine.borderless", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -176,10 +177,10 @@ impl SimpleAsyncComponent for PreferencesApp {
                 },
 
                 add = &adw::PreferencesGroup {
-                    set_title: "Gaming",
+                    set_title: &tr!("preferences--gaming"),
 
                     adw::ComboRow {
-                        set_title: "HUD",
+                        set_title: &tr!("game-hud"),
 
                         set_model: Some(&gtk::StringList::new(&[
                             "None",
@@ -204,7 +205,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                             if let Err(err) = config::set("games.enhancements.hud", value) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -212,19 +213,19 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::ExpanderRow {
-                        set_title: "FSR",
-                        set_subtitle: "Upscales game to your monitor size. To use select lower resolution in the game's settings and press Alt+Enter",
+                        set_title: &tr!("game-fsr"),
+                        set_subtitle: &tr!("game-fsr-description"),
 
                         add_row = &adw::SwitchRow {
-                            set_title: "Enabled",
-                            set_subtitle: "Render the game in lower resolution and upscale it",
+                            set_title: &tr!("game-fsr-enabled"),
+                            set_subtitle: &tr!("game-fsr-enabled-description"),
 
                             set_active: config::get().games.enhancements.fsr.enabled,
 
                             connect_active_notify[sender] => move |switch| {
                                 if let Err(err) = config::set("games.enhancements.fsr.enabled", switch.is_active()) {
                                     sender.input(PreferencesAppMsg::ShowToast {
-                                        title: String::from("Failed to update property"),
+                                        title: tr!("config-property-update-error"),
                                         message: Some(err.to_string())
                                     })
                                 }
@@ -232,14 +233,14 @@ impl SimpleAsyncComponent for PreferencesApp {
                         },
 
                         add_row = &adw::ComboRow {
-                            set_title: "Quality",
-                            set_subtitle: "Specifies game rendering resolution. Ultra quality renders the game in 1.3 smaller resolution, while preformance in 2.0 smaller",
+                            set_title: &tr!("game-fsr-quality"),
+                            set_subtitle: &tr!("game-fsr-quality-description"),
 
                             set_model: Some(&gtk::StringList::new(&[
-                                "Ultra quality",
-                                "Quality",
-                                "Balanced",
-                                "Performance"
+                                &tr!("game-fsr-quality-ultra"),
+                                &tr!("game-fsr-quality-quality"),
+                                &tr!("game-fsr-quality-balanced"),
+                                &tr!("game-fsr-quality-performance")
                             ])),
 
                             set_selected: match config::get().games.enhancements.fsr.quality {
@@ -261,7 +262,7 @@ impl SimpleAsyncComponent for PreferencesApp {
     
                                 if let Err(err) = config::set("games.enhancements.fsr.quality", value) {
                                     sender.input(PreferencesAppMsg::ShowToast {
-                                        title: String::from("Failed to update property"),
+                                        title: tr!("config-property-update-error"),
                                         message: Some(err.to_string())
                                     })
                                 }
@@ -269,8 +270,8 @@ impl SimpleAsyncComponent for PreferencesApp {
                         },
 
                         add_row = &adw::SpinRow {
-                            set_title: "Sharpening strength",
-                            set_subtitle: "Image sharpening strength where 0 is maximal sharpness",
+                            set_title: &tr!("game-fsr-strength"),
+                            set_subtitle: &tr!("game-fsr-strength-description"),
 
                             set_adjustment: Some(&gtk::Adjustment::new(
                                 config::get().games.enhancements.fsr.strength as f64,
@@ -280,7 +281,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             connect_value_notify[sender] => move |row| {
                                 if let Err(err) = config::set("games.enhancements.fsr.strength", row.value() as u64) {
                                     sender.input(PreferencesAppMsg::ShowToast {
-                                        title: String::from("Failed to update property"),
+                                        title: tr!("config-property-update-error"),
                                         message: Some(err.to_string())
                                     })
                                 }
@@ -289,15 +290,15 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::SwitchRow {
-                        set_title: "Gamemode",
-                        set_subtitle: "Prioritize the game over the rest of the processes",
+                        set_title: &tr!("game-gamemode"),
+                        set_subtitle: &tr!("game-gamemode-description"),
 
                         set_active: config::get().games.enhancements.gamemode,
 
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("games.enhancements.gamemode", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -306,11 +307,11 @@ impl SimpleAsyncComponent for PreferencesApp {
                 },
 
                 add = &adw::PreferencesGroup {
-                    set_title: "Components",
+                    set_title: &tr!("preferences--components"),
 
                     adw::ComboRow {
-                        set_title: "Wine version",
-                        set_subtitle: "Selected version will be downloaded after restart",
+                        set_title: &tr!("components-wine"),
+                        set_subtitle: &tr!("components-wine-description"),
 
                         set_model: Some(&{
                             let strings = gtk::StringList::new(&["latest"]);
@@ -332,8 +333,8 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::ComboRow {
-                        set_title: "DXVK version",
-                        set_subtitle: "Selected version will be downloaded after restart",
+                        set_title: &tr!("components-dxvk"),
+                        set_subtitle: &tr!("components-dxvk-description"),
 
                         set_model: Some(&{
                             let strings = gtk::StringList::new(&["latest"]);
@@ -355,15 +356,15 @@ impl SimpleAsyncComponent for PreferencesApp {
                     },
 
                     adw::SwitchRow {
-                        set_title: "Install corefonts",
-                        set_subtitle: "Install default windows fonts to the wine prefix",
+                        set_title: &tr!("components-install-corefonts"),
+                        set_subtitle: &tr!("components-install-corefonts-description"),
 
                         set_active: config::get().components.wine.prefix.install_corefonts,
 
                         connect_active_notify[sender] => move |switch| {
                             if let Err(err) = config::set("components.wine.prefix.install_corefonts", switch.is_active()) {
                                 sender.input(PreferencesAppMsg::ShowToast {
-                                    title: String::from("Failed to update property"),
+                                    title: tr!("config-property-update-error"),
                                     message: Some(err.to_string())
                                 })
                             }
@@ -414,7 +415,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                 if let Err(err) = config::set("components.wine.version", version) {
                     sender.input(PreferencesAppMsg::ShowToast {
-                        title: String::from("Failed to update property"),
+                        title: tr!("config-property-update-error"),
                         message: Some(err.to_string())
                     })
                 }
@@ -429,7 +430,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
                 if let Err(err) = config::set("components.dxvk.version", version) {
                     sender.input(PreferencesAppMsg::ShowToast {
-                        title: String::from("Failed to update property"),
+                        title: tr!("config-property-update-error"),
                         message: Some(err.to_string())
                     })
                 }
