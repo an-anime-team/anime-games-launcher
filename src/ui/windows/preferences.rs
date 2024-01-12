@@ -446,7 +446,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                 // toast.set_timeout(7);
 
                 if let Some(message) = message {
-                    toast.set_button_label(Some("Details"));
+                    toast.set_button_label(Some(&tr!("dialog-toast-details")));
 
                     let dialog = adw::MessageDialog::new(
                         Some(window),
@@ -454,8 +454,8 @@ impl SimpleAsyncComponent for PreferencesApp {
                         Some(&message)
                     );
 
-                    dialog.add_response("close", "Close");
-                    dialog.add_response("save", "Save");
+                    dialog.add_response("close", &tr!("dialog-close"));
+                    dialog.add_response("save", &tr!("dialog-save"));
 
                     dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
 

@@ -48,13 +48,13 @@ pub fn addon_unavailable(addon_title: impl AsRef<str>, group_title: impl AsRef<s
 
         let dialog = adw::MessageDialog::new(
             Some(window),
-            Some("Addon is unavailable"),
+            Some(&tr!("addon-unavailable")),
             Some(&message)
         );
 
-        dialog.add_response("stop", "Stop");
-        dialog.add_response("disable", "Disable");
-        dialog.add_response("continue", "Continue");
+        dialog.add_response("stop", &tr!("dialog-stop"));
+        dialog.add_response("disable", &tr!("dialog-disable"));
+        dialog.add_response("continue", &tr!("dialog-continue"));
 
         dialog.set_response_appearance("stop", adw::ResponseAppearance::Suggested);
         dialog.set_response_appearance("disable", adw::ResponseAppearance::Destructive);

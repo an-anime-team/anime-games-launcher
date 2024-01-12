@@ -14,6 +14,8 @@ pub mod check_wine_prefix;
 pub mod check_addons;
 pub mod load_app;
 
+use crate::tr;
+
 use crate::APP_ID;
 
 use super::main::{
@@ -162,7 +164,7 @@ impl SimpleAsyncComponent for LoadingApp {
                     Some(&message)
                 );
 
-                dialog.add_response("close", "Close");
+                dialog.add_response("close", &tr!("dialog-close"));
                 dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
 
                 dialog.connect_response(None, |_, _| relm4::main_application().quit());
