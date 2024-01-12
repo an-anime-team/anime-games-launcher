@@ -1,5 +1,7 @@
 use crate::games;
 
+use crate::tr;
+
 use crate::ui::components::game_card::CardInfo;
 
 use crate::ui::components::tasks_queue::download_diff_task::{
@@ -23,7 +25,9 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 fn is_installed(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<bool> {
     game.is_addon_installed(group_name, addon_name, addon_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to verify addon installation for {}", game.manifest.game_title),
+            title: tr!("addon-verify-installation-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
 }
@@ -32,12 +36,16 @@ fn is_installed(game: &Game, group_name: &str, addon_name: &str, addon_path: &st
 fn get_diff(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<DiffInfo> {
     game.get_addon_diff(group_name, addon_name, addon_path, edition)
         .map_err(|err| MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon version diff", game.manifest.game_title),
+            title: tr!("addon-find-diff-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         })?
         .and_then(|diff| diff.diff)
         .ok_or_else(|| Box::new(MainAppMsg::ShowToast {
-            title: format!("{} addon is not installed", game.manifest.game_title),
+            title: tr!("addon-not-installed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: None
         }))
 }
@@ -46,7 +54,9 @@ fn get_diff(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, e
 fn get_download(game: &Game, group_name: &str, addon_name: &str, edition: &str) -> HeapResult<DiffInfo> {
     game.get_addon_download(group_name, addon_name, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon download info", game.manifest.game_title),
+            title: tr!("addon-find-download-failed", {
+                "game-title" = game.manifest.game_title.clone()
+            }),
             message: Some(err.to_string())
         }))
         .map(|download| download.download)
@@ -63,7 +73,9 @@ fn get_diff_or_download(game: &Game, group_name: &str, addon_name: &str, addon_p
 pub fn get_download_addon_task(game_info: &CardInfo, addon: &Addon, group: &AddonsGroup) -> HeapResult<Box<DownloadDiffQueuedTask>> {
     let download_path = addon.get_installation_path(&group.name, game_info.get_name(), game_info.get_edition())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
-            title: format!("Unable to find {} addon installation path", game_info.get_title()),
+            title: tr!("addon-find-path-failed", {
+                "game-title" = game_info.get_title().to_owned()
+            }),
             message: Some(err.to_string())
         }))?;
 
