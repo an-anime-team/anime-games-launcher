@@ -61,7 +61,7 @@ impl SimpleAsyncComponent for PreferencesApp {
                             let model = gtk::StringList::new(&[]);
 
                             for lang in i18n::SUPPORTED_LANGUAGES {
-                                model.append(&tr!(i18n::format_lang(lang).as_str()));
+                                model.append(&tr!(i18n::format_language(lang).as_str()));
                             }
 
                             model
@@ -71,12 +71,12 @@ impl SimpleAsyncComponent for PreferencesApp {
                             let selected = config::get().general.language;
 
                             i18n::SUPPORTED_LANGUAGES.iter()
-                                .position(|lang| i18n::format_lang(lang) == selected)
+                                .position(|lang| i18n::format_language(lang) == selected)
                                 .unwrap_or(0) as u32
                         },
 
                         connect_selected_notify[sender] => move |row| {
-                            let language = i18n::format_lang(i18n::SUPPORTED_LANGUAGES
+                            let language = i18n::format_language(i18n::SUPPORTED_LANGUAGES
                                 .get(row.selected() as usize)
                                 .unwrap_or(&i18n::SUPPORTED_LANGUAGES[0]));
 

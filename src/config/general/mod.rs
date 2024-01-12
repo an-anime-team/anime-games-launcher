@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
 use serde_json::Value as Json;
 
+use crate::i18n;
+
 pub mod transitions;
 pub mod threads;
 
@@ -26,7 +28,7 @@ impl Default for General {
         Self {
             transitions: Transitions::default(),
             threads: Threads::default(),
-            language: crate::i18n::get_default_lang().language.to_string(),
+            language: i18n::format_language(&i18n::get_default_language()),
             verify_games: true
         }
     }
