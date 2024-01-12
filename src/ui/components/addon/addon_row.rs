@@ -1,6 +1,8 @@
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use crate::tr;
+
 use crate::games::integrations::standards::addons::{
     Addon,
     AddonsGroup
@@ -48,10 +50,10 @@ impl SimpleAsyncComponent for AddonRowComponent {
         adw::ActionRow {
             set_title: &model.addon_info.title,
 
-            set_subtitle: if model.addon_info.required {
-                "Required"
+            set_subtitle: &if model.addon_info.required {
+                tr!("addon-required")
             } else {
-                ""
+                String::new()
             },
 
             add_suffix = &gtk::Button {
@@ -72,10 +74,10 @@ impl SimpleAsyncComponent for AddonRowComponent {
                         "folder-download-symbolic"
                     },
 
-                    set_label: if model.installed {
-                        "Uninstall"
+                    set_label: &if model.installed {
+                        tr!("addon-uninstall")
                     } else {
-                        "Install"
+                        tr!("addon-install")
                     }
                 },
 
