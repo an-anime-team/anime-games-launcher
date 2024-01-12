@@ -32,7 +32,7 @@ impl SimpleComponent for AboutDialog {
 
     view! {
         dialog = adw::AboutWindow {
-            set_application_name: "An Anime Game Launcher",
+            set_application_name: "Anime Games Launcher",
             set_application_icon: APP_ID,
 
             set_website: "https://github.com/an-anime-team/anime-games-launcher",
@@ -55,7 +55,7 @@ impl SimpleComponent for AboutDialog {
             ]),
 
             set_artists: &[
-                "@nightany https://pinterest.com/pin/356206651788051017"
+                "@wisteriamemory_ https://twitter.com/wisteriamemory_/status/1699797096902361403"
             ],
 
             set_debug_info: &[
