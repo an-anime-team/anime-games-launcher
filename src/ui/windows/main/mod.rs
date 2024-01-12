@@ -179,13 +179,13 @@ impl SimpleAsyncComponent for MainApp {
     menu! {
         main_menu: {
             section! {
-                "Launcher folder" => LauncherFolder,
-                "Config file" => ConfigFile,
-                "Debug file" => DebugFile,
+                &tr!("main-menu-launcher-folder") => LauncherFolder,
+                &tr!("main-menu-config-file")     => ConfigFile,
+                &tr!("main-menu-debug-file")      => DebugFile,
             },
 
             section! {
-                "About" => About
+                &tr!("main-menu-about") => About
             }
         }
     }
