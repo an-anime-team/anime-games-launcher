@@ -236,7 +236,7 @@ impl Game {
         }
     }
 
-    #[tracing::instrument(level = "trace", ret)]
+    #[tracing::instrument(level = "trace")]
     pub fn get_game_integrity(&self, game_path: &str, edition: &str) -> anyhow::Result<Vec<IntegrityInfo>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
@@ -353,7 +353,7 @@ impl Game {
         }
     }
 
-    #[tracing::instrument(level = "trace", ret)]
+    #[tracing::instrument(level = "trace")]
     pub fn get_addon_integrity(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<Vec<IntegrityInfo>> {
         match self.manifest.script_standard {
             IntegrationStandard::V1 => {
