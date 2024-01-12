@@ -18,6 +18,7 @@ use crate::components::dxvk::*;
 
 use crate::config::games::settings::edition_addons::GameEditionAddon;
 
+use crate::games::metadata::LauncherMetadata;
 use crate::games::integrations::standards::addons::{
     Addon,
     AddonsGroup
@@ -637,6 +638,10 @@ impl SimpleAsyncComponent for MainApp {
                         .get(info.get_edition())
                         .unwrap();
 
+                    let metadata = LauncherMetadata::load_for_game(info.get_name(), info.get_edition()).unwrap();
+
+                    self.game_details.emit(GameDetailsComponentInput::SetMetadata(metadata));
+
                     match game.get_game_status(&paths.game.to_string_lossy(), info.get_edition()) {
                         Ok(status) => {
                             self.game_details.emit(GameDetailsComponentInput::SetStatus(status));
@@ -924,7 +929,10 @@ impl SimpleAsyncComponent for MainApp {
                 }
 
                 if self.game_details_info == info {
+                    let metadata = LauncherMetadata::load_for_game(info.get_name(), info.get_edition()).unwrap();
+
                     self.game_details.emit(GameDetailsComponentInput::SetRunning(false));
+                    self.game_details.emit(GameDetailsComponentInput::SetMetadata(metadata));
                 }
             }
 

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::config;
 
 pub mod integrations;
+pub mod metadata;
 
 static mut GAMES_SINGLETON: Option<HashMap<String, integrations::Game>> = None;
 

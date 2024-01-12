@@ -129,7 +129,7 @@ pub fn load_app(sender: &AsyncComponentSender<LoadingApp>) -> Result<LoadingResu
     // TODO: pulse progress bar before it's joined
     pool.join();
 
-    println!("Launcher loading time: {} ms", begin.elapsed().as_millis());
+    tracing::info!("Launcher loaded in {} ms", begin.elapsed().as_millis());
 
     Ok(LoadingResult {
         download_wine,

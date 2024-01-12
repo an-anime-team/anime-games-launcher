@@ -1,6 +1,7 @@
 use relm4::prelude::*;
 use gtk::prelude::*;
 
+use crate::games::metadata::LauncherMetadata;
 use crate::games::integrations::standards::game::{
     Status,
     StatusSeverity
@@ -17,6 +18,7 @@ pub struct GameDetailsComponent {
     pub game_card: AsyncController<CardComponent>,
 
     pub info: CardInfo,
+    pub metadata: LauncherMetadata,
 
     pub installed: bool,
     pub running: bool,
@@ -26,6 +28,7 @@ pub struct GameDetailsComponent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsComponentInput {
     SetInfo(CardInfo),
+    SetMetadata(LauncherMetadata),
     SetInstalled(bool),
     SetRunning(bool),
     SetStatus(Option<Status>),
@@ -107,13 +110,15 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     gtk::Label {
                         set_halign: gtk::Align::Start,
 
-                        set_label: "Played: 4,837 hours"
+                        #[watch]
+                        set_label: &format!("Played: {}", model.metadata.get_total_playtime_text())
                     },
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
 
-                        set_label: "Last played: yesterday"
+                        #[watch]
+                        set_label: &format!("Last played: {}", model.metadata.get_last_played_text())
                     },
 
                     gtk::Box {
@@ -245,6 +250,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                 .detach(),
 
             info: init,
+            metadata: LauncherMetadata::default(),
 
             installed: false,
             running: false,
@@ -266,6 +272,8 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                 self.game_card.emit(CardComponentInput::SetInfo(info));
             }
+
+            GameDetailsComponentInput::SetMetadata(metadata) => self.metadata = metadata,
 
             GameDetailsComponentInput::SetInstalled(installed) => {
                 self.installed = installed;

@@ -13,6 +13,11 @@ use crate::games::integrations::standards::prelude::*;
 
 use crate::components::wine::Wine;
 
+use crate::games::metadata::{
+    LauncherMetadata,
+    GameLastLaunchMetadata
+};
+
 use crate::games::integrations::Game;
 
 use crate::games::integrations::standards::diff::{
@@ -258,6 +263,9 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
 
     tracing::debug!("{:?}", &command);
 
+    // Get game starting timestamp
+    let started_at = chrono::Utc::now().timestamp();
+
     // Run the game
     command.current_dir(&game_path)
         .spawn()?
@@ -267,6 +275,23 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     while game.is_process_running(&game_path.to_string_lossy(), info.get_edition())? {
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
+
+    // Get game stopping timestamp
+    let stopped_at = chrono::Utc::now().timestamp();
+
+    // Get launcher metadata for the game
+    let mut launcher_metadata = LauncherMetadata::load_for_game(info.get_name(), info.get_edition())?;
+
+    // Update metadata values
+    launcher_metadata.launches.last_launch = Some(GameLastLaunchMetadata {
+        started_at,
+        stopped_at
+    });
+
+    launcher_metadata.launches.total_playtime += u64::try_from(stopped_at - started_at)?;
+
+    // Update metadata file
+    launcher_metadata.save_for_game(info.get_name(), info.get_edition())?;
 
     Ok(())
 }
