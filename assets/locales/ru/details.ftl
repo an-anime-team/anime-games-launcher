@@ -1,0 +1,9 @@
+details-developer = Разработчик: {$developer}
+details-played = Время в игре: {$played}
+details-last-played = Последний запуск: {$last-played}
+
+details-play = Играть
+details-kill = Убить
+details-verify = Проверить игру
+details-manage-addons = Настройка дополнений
+details-download = Установить

@@ -5,10 +5,12 @@ use relm4::prelude::*;
 use gtk::prelude::*;
 use adw::prelude::*;
 
-use crate::config;
-use crate::config::games::settings::edition_addons::GameEditionAddon;
+use crate::tr;
 
+use crate::config;
 use crate::games;
+
+use crate::config::games::settings::edition_addons::GameEditionAddon;
 
 use crate::games::integrations::standards::addons::{
     Addon,
@@ -69,7 +71,7 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
     view! {
         window = adw::Window {
             set_default_size: (700, 560),
-            set_title: Some("Game addons"),
+            set_title: Some(&tr!("game-addons")),
 
             set_hide_on_close: true,
             set_modal: true,

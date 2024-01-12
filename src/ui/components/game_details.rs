@@ -1,6 +1,8 @@
 use relm4::prelude::*;
 use gtk::prelude::*;
 
+use crate::tr;
+
 use crate::games::metadata::LauncherMetadata;
 use crate::games::integrations::standards::game::{
     Status,
@@ -96,7 +98,9 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                     set_margin_top: 8,
 
                     #[watch]
-                    set_label: &format!("Developer: {}", model.info.get_developer())
+                    set_label: &tr!("details-developer", {
+                        "developer" = model.info.get_developer()
+                    })
                 },
 
                 gtk::Box {
@@ -109,16 +113,24 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
+                        
+                        // TODO: translate "hours" / "minutes" / "seconds" / "Never"
 
                         #[watch]
-                        set_label: &format!("Played: {}", model.metadata.get_total_playtime_text())
+                        set_label: &tr!("details-played", {
+                            "played" = model.metadata.get_total_playtime_text()
+                        })
                     },
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
 
+                        // TODO: translate "Today" / "Yesterday" / "Never"
+
                         #[watch]
-                        set_label: &format!("Last played: {}", model.metadata.get_last_played_text())
+                        set_label: &tr!("details-last-played", {
+                            "last-played" = model.metadata.get_last_played_text()
+                        })
                     },
 
                     gtk::Box {
@@ -130,7 +142,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         gtk::Button {
                             adw::ButtonContent {
                                 set_icon_name: "media-playback-start-symbolic",
-                                set_label: "Play"
+                                set_label: &tr!("details-play")
                             },
 
                             #[watch]
@@ -163,7 +175,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         gtk::Button {
                             adw::ButtonContent {
                                 set_icon_name: "violence-symbolic",
-                                set_label: "Kill"
+                                set_label: &tr!("details-kill")
                             },
 
                             #[watch]
@@ -178,7 +190,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         gtk::Button {
                             adw::ButtonContent {
                                 set_icon_name: "drive-harddisk-ieee1394-symbolic",
-                                set_label: "Verify"
+                                set_label: &tr!("details-verify")
                             },
 
                             add_css_class: "pill",
@@ -199,7 +211,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
                         gtk::Button {
                             adw::ButtonContent {
                                 set_icon_name: "folder-download-symbolic",
-                                set_label: "Manage addons"
+                                set_label: &tr!("details-manage-addons")
                             },
 
                             add_css_class: "pill",
@@ -232,7 +244,7 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                             adw::ButtonContent {
                                 set_icon_name: "folder-download-symbolic",
-                                set_label: "Download"
+                                set_label: &tr!("details-download")
                             },
 
                             connect_clicked => GameDetailsComponentInput::EmitDownloadGame
