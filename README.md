@@ -18,7 +18,7 @@
 | [macOS launcher](https://github.com/3Shain/yet-another-anime-game-launcher) | Another launcher with special macOS-compatible components |
 | [Releases page](https://github.com/an-anime-team/anime-games-launcher/releases) | Launcher releases list |
 | [Changelog](CHANGELOG.md) | Launcher updates chronology |
-| [Integration guide](GAMES_INTEGRATION.md) | Games integration standard |
+| [Integration guide](repository/integrations) | Games integration standard |
 | [Components repo](https://github.com/an-anime-team/components) | Repository with default wine and dxvk versions used in the launcher |
 | [Integrations repo](https://github.com/an-anime-team/game-integrations) | Repository with default games integrations used in the launcher |
 
