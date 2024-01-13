@@ -18,7 +18,7 @@ wine-sync-description = 同步 Wine 内部事件的技术
 
 wine-borderless = 无边框窗口
 
-preferences--gaming = Gaming
+preferences--gaming = 游戏
 
 game-hud = HUD
 
@@ -42,13 +42,16 @@ game-fsr-strength-description = 图像锐化强度, 其中 0 表示最大锐度
 game-gamemode = 游戏模式
 game-gamemode-description = 提升游戏相对其他程序的优先级
 
-preferences--components = Components
+preferences--components = 组件
 
 components-wine = Wine 版本
 components-wine-description = 重启后将下载所选版本
 
 components-dxvk = DXVK 版本
 components-dxvk-description = 重启后将下载所选版本
+
+components-wine-latest = 最新
+components-dxvk-latest = 最新
 
 components-install-corefonts = 安装 corefonts
 components-install-corefonts-description = 将默认的 Windows 字体安装到 wine prefix

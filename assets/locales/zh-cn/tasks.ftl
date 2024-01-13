@@ -5,7 +5,7 @@ tasks-avg-speed = {$format ->
     *[data] 平均速度: {$speed}/s
 }
 
-tasks-avg-eta = 平均时间: {$eta}
+tasks-avg-eta = 剩余时间: {$eta}
 
 tasks-pending              = 待处理
 tasks-preparing-transition = 准备转换
