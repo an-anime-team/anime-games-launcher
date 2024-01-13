@@ -3,20 +3,20 @@ config-property-update-error = 更新属性失败
 tasks-resolve-queued-failed = 无法解决正在进行中的任务
 tasks-get-status-failed = 无法获取 {$game-title} 任务状态
 
-addon-verify-installation-failed = 无法验证 {$game-title} 的拓展
+addon-verify-installation-failed = 无法验证 {$game-title} 的语言文件
 addon-find-diff-failed           = 无法找到 {$game-title} addon version diff
 addon-find-download-failed       = 无法找到 {$game-title} addon download info
 addon-find-path-failed           = 无法找到 {$game-title} addon installation path
 addon-get-paths-failed           = 无法获取 {$game-title} addon paths
-addon-not-installed              = {$game-title} 拓展未安装
+addon-not-installed              = {$game-title} 语言文件未安装
 
 game-verify-installation-failed = 无法验证 {$game-title} 的安装
 game-find-diff-failed           = 无法找到 {$game-title} version diff
 game-find-download-failed       = 无法找到 {$game-title} 的下载详情
 game-find-path-failed           = 无法找到 {$game-title} 的安装路径
 game-get-settings-failed        = 无法获取 {$game-title} 的设置
-game-get-addons-failed          = 无法获取 {$game-title} 的拓展
-game-get-paths-failed           = 无法获取 {$game-title} paths
+game-get-addons-failed          = 无法获取 {$game-title} 的语言文件
+game-get-paths-failed           = 无法获取 {$game-title} 的路径
 game-get-integrity-failed       = 无法获取 {$game-title} integrity info
 game-not-installed              = {$game-title} 未安装
 
