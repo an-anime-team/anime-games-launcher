@@ -19,7 +19,7 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 
 #[inline]
 fn get_integrity_info(game: &Game, game_path: &str, edition: &str) -> HeapResult<Vec<IntegrityInfo>> {
-    game.get_game_integrity(game_path, edition)
+    game.driver.get_game_integrity(game_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: tr!("game-get-integrity-failed ", {
                 "game-title" = game.manifest.game_title.clone()

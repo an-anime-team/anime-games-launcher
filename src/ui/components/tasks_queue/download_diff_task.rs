@@ -243,10 +243,10 @@ impl QueuedTask for DownloadDiffQueuedTask {
                     // Run transition code
 
                     match &diff_origin {
-                        DiffOrigin::Game if game.has_game_diff_transition()? => {
+                        DiffOrigin::Game if game.driver.has_game_diff_transition()? => {
                             sender.send((Status::RunTransitionCode, 0, 1))?;
 
-                            game.run_game_diff_transition(
+                            game.driver.run_game_diff_transition(
                                 &transition.transition_path().to_string_lossy(),
                                 &game_edition
                             )?;
@@ -254,10 +254,10 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             sender.send((Status::RunTransitionCode, 1, 1))?;
                         }
 
-                        DiffOrigin::Addon { group_name, addon_name } if game.has_addons_diff_transition()? => {
+                        DiffOrigin::Addon { group_name, addon_name } if game.driver.has_addons_diff_transition()? => {
                             sender.send((Status::RunTransitionCode, 0, 1))?;
 
-                            game.run_addons_diff_transition(
+                            game.driver.run_addons_diff_transition(
                                 group_name,
                                 addon_name,
                                 &transition.transition_path().to_string_lossy(),
@@ -281,10 +281,10 @@ impl QueuedTask for DownloadDiffQueuedTask {
                     // Run post-transition code
 
                     match &diff_origin {
-                        DiffOrigin::Game if game.has_game_diff_post_transition()? => {
+                        DiffOrigin::Game if game.driver.has_game_diff_post_transition()? => {
                             sender.send((Status::RunPostTransitionCode, 0, 1))?;
 
-                            game.run_game_diff_post_transition(
+                            game.driver.run_game_diff_post_transition(
                                 &transition.original_path().to_string_lossy(),
                                 &game_edition
                             )?;
@@ -292,10 +292,10 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             sender.send((Status::RunPostTransitionCode, 1, 1))?;
                         }
 
-                        DiffOrigin::Addon { group_name, addon_name } if game.has_addons_diff_post_transition()? => {
+                        DiffOrigin::Addon { group_name, addon_name } if game.driver.has_addons_diff_post_transition()? => {
                             sender.send((Status::RunPostTransitionCode, 0, 1))?;
 
-                            game.run_addons_diff_post_transition(
+                            game.driver.run_addons_diff_post_transition(
                                 group_name,
                                 addon_name,
                                 &transition.original_path().to_string_lossy(),

@@ -78,14 +78,14 @@ pub fn prepare_folders(game: &Game, info: &CardInfo, paths: &GameEditionPaths, e
     let mut has_merged_layers = false;
 
     // Go through game addons list
-    for group in game.get_addons_list(info.get_edition())? {
+    for group in game.driver.get_addons_list(info.get_edition())? {
         for addon in &group.addons {
             let addon_path = addon.get_installation_path(&group.name, info.get_name(), info.get_edition())?;
 
             // Is the addon is enabled in the settings
             if is_addon_enabled(enabled_addons, addon, &group) {
                 // Get its version diff
-                let diff = game.get_addon_diff(&group.name, &addon.name, &addon_path.to_string_lossy(), info.get_edition())?;
+                let diff = game.driver.get_addon_diff(&group.name, &addon.name, &addon_path.to_string_lossy(), info.get_edition())?;
 
                 // If the addon is installed and its version is latest
                 if let Some(Diff { status: DiffStatus::Latest, .. }) = diff {
@@ -227,7 +227,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
     };
 
     // Request game launch options
-    let options = game.get_launch_options(
+    let options = game.driver.get_launch_options(
         &game_path.to_string_lossy(),
         &addons_path.to_string_lossy(),
         info.get_edition()
@@ -277,7 +277,7 @@ pub fn launch_game(info: &CardInfo) -> anyhow::Result<()> {
         .wait()?;
 
     // Wait while the game is running
-    while game.is_process_running(&game_path.to_string_lossy(), info.get_edition())? {
+    while game.driver.is_process_running(&game_path.to_string_lossy(), info.get_edition())? {
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
 

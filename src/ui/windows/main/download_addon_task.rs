@@ -23,7 +23,7 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 
 #[inline]
 fn is_installed(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<bool> {
-    game.is_addon_installed(group_name, addon_name, addon_path, edition)
+    game.driver.is_addon_installed(group_name, addon_name, addon_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: tr!("addon-verify-installation-failed", {
                 "game-title" = game.manifest.game_title.clone()
@@ -34,7 +34,7 @@ fn is_installed(game: &Game, group_name: &str, addon_name: &str, addon_path: &st
 
 #[inline]
 fn get_diff(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> HeapResult<DiffInfo> {
-    game.get_addon_diff(group_name, addon_name, addon_path, edition)
+    game.driver.get_addon_diff(group_name, addon_name, addon_path, edition)
         .map_err(|err| MainAppMsg::ShowToast {
             title: tr!("addon-find-diff-failed", {
                 "game-title" = game.manifest.game_title.clone()
@@ -52,7 +52,7 @@ fn get_diff(game: &Game, group_name: &str, addon_name: &str, addon_path: &str, e
 
 #[inline]
 fn get_download(game: &Game, group_name: &str, addon_name: &str, edition: &str) -> HeapResult<DiffInfo> {
-    game.get_addon_download(group_name, addon_name, edition)
+    game.driver.get_addon_download(group_name, addon_name, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: tr!("addon-find-download-failed", {
                 "game-title" = game.manifest.game_title.clone()

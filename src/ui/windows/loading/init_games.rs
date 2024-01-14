@@ -27,9 +27,9 @@ pub fn init_games() -> anyhow::Result<()> {
 
 #[inline]
 fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(bool, GameListEntry)>> {
-    game.get_game_editions_list()?
+    game.driver.get_game_editions_list()?
         .into_iter()
-        .map(|edition| game.get_card_picture(&edition.name)
+        .map(|edition| game.driver.get_card_picture(&edition.name)
         .map(|card_picture| GameListEntry {
             game_name: game.manifest.game_name.clone(),
             game_title: game.manifest.game_title.clone(),
@@ -38,7 +38,7 @@ fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(
             edition
         })
         .and_then(|entry| {
-            game.is_game_installed(&settings.paths[&entry.edition.name].game.to_string_lossy(), &entry.edition.name)
+            game.driver.is_game_installed(&settings.paths[&entry.edition.name].game.to_string_lossy(), &entry.edition.name)
                 .map(|installed| (installed, entry))
         }))
         .collect::<anyhow::Result<Vec<_>>>()
@@ -47,9 +47,9 @@ fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(
 #[inline]
 pub fn register_games_styles() -> anyhow::Result<()> {
     let sus = games::list()?.iter()
-        .map(|(name, game)| game.get_game_editions_list()
+        .map(|(name, game)| game.driver.get_game_editions_list()
             .map(|editions| editions.into_iter()
-                .map(|edition| game.get_details_background_style(&edition.name)
+                .map(|edition| game.driver.get_details_background_style(&edition.name)
                 .map(|style| (name, edition.name, style)))
                 .collect::<Result<Vec<_>, _>>()))
         .collect::<Result<Result<Vec<_>, _>, _>>()??;

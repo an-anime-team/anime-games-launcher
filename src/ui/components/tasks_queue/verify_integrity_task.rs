@@ -72,7 +72,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                     };
 
                     // Check if lua script support custom hashes
-                    let has_integrity_hash = game.has_integrity_hash()?;
+                    let has_integrity_hash = game.driver.has_integrity_hash()?;
 
                     // Create transition
 
@@ -157,7 +157,7 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                                     }
 
                                     HashType::Custom(name) if has_integrity_hash => {
-                                        game.integrity_hash(&name, data)?
+                                        game.driver.integrity_hash(&name, data)?
                                     }
 
                                     _ => unimplemented!()

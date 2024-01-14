@@ -645,7 +645,7 @@ impl SimpleAsyncComponent for MainApp {
 
                     self.game_details.emit(GameDetailsComponentInput::SetMetadata(metadata));
 
-                    match game.get_game_status(&paths.game.to_string_lossy(), info.get_edition()) {
+                    match game.driver.get_game_status(&paths.game.to_string_lossy(), info.get_edition()) {
                         Ok(status) => {
                             self.game_details.emit(GameDetailsComponentInput::SetStatus(status));
                         }
@@ -679,7 +679,7 @@ impl SimpleAsyncComponent for MainApp {
 
                 let game = games::get_unsafe(game_info.get_name());
 
-                match game.get_addons_list(game_info.get_edition()) {
+                match game.driver.get_addons_list(game_info.get_edition()) {
                     Ok(addons) => {
                         controller.emit(GameAddonsManagerAppMsg::SetGameInfo {
                             game_info,

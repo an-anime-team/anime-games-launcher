@@ -83,7 +83,7 @@ impl From<&Json> for Games {
 
 impl Games {
     pub fn get_game_settings(&self, game: &Game) -> anyhow::Result<GameSettings> {
-        let editions = game
+        let editions = game.driver
             .get_game_editions_list()?
             .into_iter()
             .map(|edition| edition.name);

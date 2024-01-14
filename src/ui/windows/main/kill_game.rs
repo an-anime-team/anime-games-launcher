@@ -21,7 +21,7 @@ pub fn kill_game(info: &CardInfo) -> anyhow::Result<()> {
     };
 
     // Kill game process
-    game.kill_process(&paths.game.to_string_lossy(), info.get_edition())?;
+    game.driver.kill_process(&paths.game.to_string_lossy(), info.get_edition())?;
 
     Ok(())
 }

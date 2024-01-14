@@ -26,7 +26,7 @@ type HeapResult<T> = Result<T, Box<MainAppMsg>>;
 
 #[inline]
 fn is_installed(game: &Game, game_path: &str, edition: &str) -> HeapResult<bool> {
-    game.is_game_installed(game_path, edition)
+    game.driver.is_game_installed(game_path, edition)
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: tr!("game-verify-installation-failed", {
                 "game-title" = game.manifest.game_title.clone()
@@ -37,7 +37,7 @@ fn is_installed(game: &Game, game_path: &str, edition: &str) -> HeapResult<bool>
 
 #[inline]
 fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -> HeapResult<DiffInfo> {
-    game.get_game_diff(game_path.as_ref(), edition.as_ref())
+    game.driver.get_game_diff(game_path.as_ref(), edition.as_ref())
         .map_err(|err| MainAppMsg::ShowToast {
             title: tr!("game-find-diff-failed", {
                 "game-title" = game.manifest.game_title.clone()
@@ -55,7 +55,7 @@ fn get_diff(game: &Game, edition: impl AsRef<str>, game_path: impl AsRef<str>) -
 
 #[inline]
 fn get_download(game: &Game, edition: &str) -> HeapResult<DiffInfo> {
-    game.get_game_download(edition.as_ref())
+    game.driver.get_game_download(edition.as_ref())
         .map_err(|err| Box::new(MainAppMsg::ShowToast {
             title: tr!("game-find-download-failed", {
                 "game-title" = game.manifest.game_title.clone()
