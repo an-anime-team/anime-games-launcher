@@ -18,6 +18,13 @@ wine-sync-description = 同步 Wine 内部事件的技术
 
 wine-borderless = 无边框窗口
 
+wine-virtual-desktop = Virtual desktop
+wine-virtual-desktop-description = Create virtual windows desktop with fixed size and run the game in it
+
+wine-virtual-desktop-enabled = Enabled
+wine-virtual-desktop-width   = Width
+wine-virtual-desktop-height  = Height
+
 preferences--gaming = 游戏
 
 game-hud = HUD

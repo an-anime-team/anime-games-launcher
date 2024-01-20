@@ -58,6 +58,11 @@ impl SimpleComponent for AboutDialog {
                 "@wisteriamemory_ https://twitter.com/wisteriamemory_/status/1699797096902361403"
             ],
 
+            set_translator_credits: &[
+                "Русский, English — Nikita Podvirnyy https://github.com/krypt0nn",
+                "简体中文 — TsubakiDev https://github.com/TsubakiDev"
+            ].join("\n"),
+
             set_debug_info: &[
                 format!("Anime Game Core: {CORE_VERSION}"),
                 String::new(),
