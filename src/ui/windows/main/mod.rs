@@ -290,7 +290,7 @@ impl SimpleAsyncComponent for MainApp {
                                         #[watch]
                                         set_visible: !model.installed_games.is_empty(),
 
-                                        set_label: "Installed games"
+                                        set_label: &tr!("main-installed-games")
                                     },
 
                                     #[local_ref]
@@ -314,7 +314,7 @@ impl SimpleAsyncComponent for MainApp {
                                         #[watch]
                                         set_visible: !model.queued_games.is_empty(),
 
-                                        set_label: "Queued games"
+                                        set_label: &tr!("main-queued-games")
                                     },
 
                                     #[local_ref]
@@ -338,7 +338,7 @@ impl SimpleAsyncComponent for MainApp {
                                         #[watch]
                                         set_visible: !model.outdated_games.is_empty(),
 
-                                        set_label: "Outdated games"
+                                        set_label: &tr!("main-outdated-games")
                                     },
 
                                     #[local_ref]
@@ -362,7 +362,7 @@ impl SimpleAsyncComponent for MainApp {
                                         #[watch]
                                         set_visible: !model.available_games.is_empty(),
 
-                                        set_label: "Available games"
+                                        set_label: &tr!("main-available-games")
                                     },
 
                                     #[local_ref]
@@ -548,7 +548,7 @@ impl SimpleAsyncComponent for MainApp {
         group.add_action::<LauncherFolder>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
             if let Err(err) = open::that(LAUNCHER_FOLDER.as_path()) {
                 sender.input(MainAppMsg::ShowToast {
-                    title: String::from("Failed to open launcher folder"),
+                    title: tr!("main-open-launcher-folder-failed"),
                     message: Some(err.to_string())
                 });
 
@@ -559,7 +559,7 @@ impl SimpleAsyncComponent for MainApp {
         group.add_action::<ConfigFile>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
             if let Err(err) = open::that(CONFIG_FILE.as_path()) {
                 sender.input(MainAppMsg::ShowToast {
-                    title: String::from("Failed to open config file"),
+                    title: tr!("main-open-config-file-failed"),
                     message: Some(err.to_string())
                 });
 
@@ -570,7 +570,7 @@ impl SimpleAsyncComponent for MainApp {
         group.add_action::<DebugFile>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
             if let Err(err) = open::that(DEBUG_FILE.as_path()) {
                 sender.input(MainAppMsg::ShowToast {
-                    title: String::from("Failed to open debug file"),
+                    title: tr!("main-open-debug-file-failed"),
                     message: Some(err.to_string())
                 });
 
@@ -707,7 +707,9 @@ impl SimpleAsyncComponent for MainApp {
 
                         Err(err) => {
                             sender.input(MainAppMsg::ShowToast {
-                                title: format!("Unable to get {} status", info.get_title()),
+                                title: tr!("game-get-status-failed", {
+                                    "game-title" = info.get_title()
+                                }),
                                 message: Some(err.to_string())
                             });
                         }
@@ -746,7 +748,9 @@ impl SimpleAsyncComponent for MainApp {
 
                     Err(err) => {
                         sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to get {} addons list", game_info.get_title()),
+                            title: tr!("game-get-addons-failed", {
+                                "game-title" = game_info.get_title()
+                            }),
                             message: Some(err.to_string())
                         });
                     }
@@ -955,7 +959,9 @@ impl SimpleAsyncComponent for MainApp {
                     std::thread::spawn(move || {
                         if let Err(err) = launch_game::launch_game(&info) {
                             sender.input(MainAppMsg::ShowToast {
-                                title: format!("Failed to launch {}", info.get_title()),
+                                title: tr!("game-launch-failed", {
+                                    "game-title" = info.get_title()
+                                }),
                                 message: Some(err.to_string())
                             });
                         }
@@ -968,7 +974,9 @@ impl SimpleAsyncComponent for MainApp {
             MainAppMsg::KillGame(info) => {
                 if let Err(err) = kill_game::kill_game(&info) {
                     sender.input(MainAppMsg::ShowToast {
-                        title: format!("Failed to kill {}", info.get_title()),
+                        title: tr!("game-kill-failed", {
+                            "game-title" = info.get_title()
+                        }),
                         message: Some(err.to_string())
                     });
                 }

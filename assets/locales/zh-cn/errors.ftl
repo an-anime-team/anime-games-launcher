@@ -18,7 +18,10 @@ game-get-settings-failed        = 无法获取 {$game-title} 的设置
 game-get-addons-failed          = 无法获取 {$game-title} 的语言文件
 game-get-paths-failed           = 无法获取 {$game-title} 的路径
 game-get-integrity-failed       = 无法获取 {$game-title} integrity info
+game-get-status-failed          = Unable to get {$game-title} status
 game-not-installed              = {$game-title} 未安装
+game-launch-failed              = Failed to launch {$game-title}
+game-kill-failed                = Failed to kill {$game-title}
 
 launch-required-addon-unavailable = Addon {$addon-title} from group {$group-title} is unavailable or outdated. You can launch the game without it or continue to use old version
 
@@ -34,3 +37,7 @@ loading-checking-wine-version-failed = 无法检查 Wine 版本
 loading-checking-dxvk-version-failed = 无法检查 DXVK 版本
 loading-checking-applied-dxvk-failed = Failed to check applied dxvk version
 loading-checking-games-addons-failed = Failed to check games addons
+
+main-open-launcher-folder-failed = Failed to open launcher folder
+main-open-config-file-failed     = Failed to open config file
+main-open-debug-file-failed      = Failed to open debug file

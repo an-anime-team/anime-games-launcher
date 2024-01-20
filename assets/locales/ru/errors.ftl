@@ -17,7 +17,11 @@ game-find-path-failed           = Не удалось найти путь уст
 game-get-settings-failed        = Не удалось получить настройки {$game-title}
 game-get-addons-failed          = Не удалось получить дополнения {$game-title}
 game-get-paths-failed           = Не удалось получить пути для {$game-title}
+game-get-integrity-failed       = Не удалось получить информацию для проверки файлов {$game-title}
+game-get-status-failed          = Не удалось получить статус {$game-title}
 game-not-installed              = {$game-title} не установлен
+game-launch-failed              = Не удалось запустить {$game-title}
+game-kill-failed                = Не удалось убить процесс {$game-title}
 
 launch-required-addon-unavailable = Дополнение {$addon-title} из группы {$group-title} недоступно или устарело. Вы можете запустить игру без него или продолжить использовать старую версию
 
@@ -33,3 +37,7 @@ loading-checking-wine-version-failed = Не удалось проверить в
 loading-checking-dxvk-version-failed = Не удалось проверить версию DXVK
 loading-checking-applied-dxvk-failed = Не удалось проверить установленную версию DXVK
 loading-checking-games-addons-failed = Не удалось проверить дополнения игр
+
+main-open-launcher-folder-failed = Не удалось открыть папку лаунчера
+main-open-config-file-failed     = Не удалось открыть файл настроек
+main-open-debug-file-failed      = Не удалось открыть файл отладки
