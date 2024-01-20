@@ -17,9 +17,34 @@ impl Driver {
 
         match standard {
             IntegrationStandard::V1 => {
-                lua.globals().set("v1_network_http_get", lua.create_function(|lua, uri: String| {
-                    anime_game_core::network::minreq::get(uri)
-                        .send()
+                lua.globals().set("v1_network_fetch", lua.create_function(|lua, (uri, options): (String, Option<RequestOptions>)| {
+                    let (method, headers, body, timeout) = match options {
+                        Some(options) => {
+                            let method = options.method.unwrap_or(RequestMethod::Get);
+
+                            (method, options.headers, options.body, options.timeout)
+                        }
+
+                        None => (RequestMethod::Get, None, None, None)
+                    };
+
+                    let mut request = anime_game_core::network::minreq::Request::new(method, uri);
+
+                    if let Some(headers) = headers {
+                        for (key, value) in headers {
+                            request = request.with_header(key, value);
+                        }
+                    }
+
+                    if let Some(body) = body {
+                        request = request.with_body(body);
+                    }
+
+                    if let Some(timeout) = timeout {
+                        request = request.with_timeout(timeout);
+                    }
+
+                    request.send()
                         .map(|response| {
                             let result = lua.create_table()?;
                             let headers = lua.create_table()?;

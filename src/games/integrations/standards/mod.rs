@@ -3,6 +3,7 @@ pub mod addons;
 pub mod diff;
 pub mod download;
 pub mod integrity;
+pub mod network;
 
 pub mod prelude {
     pub use super::game::{
@@ -15,6 +16,7 @@ pub mod prelude {
     pub use super::diff::*;
     pub use super::download::*;
     pub use super::integrity::*;
+    pub use super::network::*;
 
     pub use super::IntegrationStandard;
 }
