@@ -170,14 +170,30 @@ impl SimpleAsyncComponent for CardComponent {
                         set_visible: model.clickable,
 
                         connect_clicked => CardComponentInput::EmitCardClick
-
-                        // #[watch]
-                        // set_icon_name: if model.installed {
-                        //     "media-playback-start-symbolic"
-                        // } else {
-                        //     "folder-download-symbolic"
-                        // }
                     }
+
+                    // add_overlay = &gtk::Overlay {
+                    //     gtk::Picture {
+                    //         set_valign: gtk::Align::Start,
+                    //         set_halign: gtk::Align::End,
+
+                    //         set_margin_top: 16,
+                    //         set_margin_end: 16,
+
+                    //         set_size_request: (24, 24),
+
+                    //         set_resource: Some(&format!("{}/icons/scalable/actions/software-update-urgent-symbolic.svg", crate::APP_RESOURCE_PREFIX))
+                    //     },
+
+                    //     add_overlay = &gtk::Button {
+                    //         add_css_class: "flat",
+
+                    //         #[watch]
+                    //         set_visible: model.clickable,
+
+                    //         connect_clicked => CardComponentInput::EmitCardClick
+                    //     }
+                    // }
                 },
 
                 gtk::Box {

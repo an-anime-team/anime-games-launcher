@@ -43,8 +43,10 @@
 | Visual | | | |
 | | `v1_visual_get_details_background_css(edition)` | `string` | Get CSS styles for game details page background |
 | Hooks | | | |
+| | `v1_game_diff_pre_transition(game_path, edition)` | | Process game files before creating transition |
 | | `v1_game_diff_transition(transition_path, edition)` | | Process game diff files before finishing transition |
 | | `v1_game_diff_post_transition(game_path, edition)` | | Process game diff files after finishing transition |
+| | `v1_addons_diff_pre_transition(group_name, addon_name, addon_path, edition)` | | Process addons files before creating transition |
 | | `v1_addons_diff_transition(group_name, addon_name, transition_path, edition)` | | Process addons diff files before finishing transition |
 | | `v1_addons_diff_post_transition(group_name, addon_name, addon_path, edition)` | | Process addons diff files after finishing transition |
 | Integrity | | | |
@@ -186,7 +188,7 @@ type IntegrityInfo = {
 ### HashType
 
 ```ts
-type HashType = 'md5' | 'sha1' | 'crc32' | 'xxhash32' | 'xxhash64';
+type HashType = 'md5' | 'sha1' | 'crc32' | 'xxhash32' | 'xxhash64' | 'xxhash3/64' | 'xxhash3/128';
 ```
 
 Launcher will try to use `v1_integrity_hash` if given hash doesn't belong to the `HashType` type

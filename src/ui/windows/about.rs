@@ -58,6 +58,11 @@ impl SimpleComponent for AboutDialog {
                 "@wisteriamemory_ https://twitter.com/wisteriamemory_/status/1699797096902361403"
             ],
 
+            set_translator_credits: &[
+                "Русский, English — Nikita Podvirnyy https://github.com/krypt0nn",
+                "简体中文 — TsubakiDev https://github.com/TsubakiDev"
+            ].join("\n"),
+
             set_debug_info: &[
                 format!("Anime Game Core: {CORE_VERSION}"),
                 String::new(),
@@ -68,7 +73,17 @@ impl SimpleComponent for AboutDialog {
             ].join("\n"),
 
             set_release_notes_version: &APP_VERSION,
-            // set_release_notes: &[].join("\n"),
+            set_release_notes: &[
+                "<p>Added</p>",
+
+                "<ul>",
+                    "<li>Added outdated games category</li>",
+                    "<li>Added virtual desktop preference</li>",
+                    "<li>Added Chinese</li>",
+                    "<li>Added xxhash support</li>",
+                    "<li>Added pre_transition optional API</li>",
+                "</ul>"
+            ].join("\n"),
 
             set_modal: true,
             set_hide_on_close: true,

@@ -110,6 +110,8 @@ impl Driver {
         get_details_background_style(&self.lua, self.standard, &self.game_name, edition)
     }
 
+    // Game
+
     #[inline]
     #[tracing::instrument(level = "trace", ret)]
     pub fn get_game_editions_list(&self) -> anyhow::Result<Vec<GameEdition>> {
@@ -248,6 +250,8 @@ impl Driver {
         }
     }
 
+    // Addons
+
     #[inline]
     #[tracing::instrument(level = "trace", ret)]
     pub fn get_addons_list(&self, edition: &str) -> anyhow::Result<Vec<AddonsGroup>> {
@@ -377,6 +381,25 @@ impl Driver {
         }
     }
 
+    // Game transitions
+
+    #[inline]
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn has_game_diff_pre_transition(&self) -> anyhow::Result<bool> {
+        match self.standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_game_diff_pre_transition")?)
+        }
+    }
+
+    #[inline]
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn run_game_diff_pre_transition(&self, path: &str, edition: &str) -> anyhow::Result<()> {
+        match self.standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .call_function("v1_game_diff_pre_transition", (path, edition))?)
+        }
+    }
+
     #[inline]
     #[tracing::instrument(level = "trace", ret)]
     pub fn has_game_diff_transition(&self) -> anyhow::Result<bool> {
@@ -408,6 +431,30 @@ impl Driver {
         match self.standard {
             IntegrationStandard::V1 => Ok(self.lua.globals()
                 .call_function("v1_game_diff_post_transition", (path, edition))?)
+        }
+    }
+
+    // Addons transitions
+
+    #[inline]
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn has_addons_diff_pre_transition(&self) -> anyhow::Result<bool> {
+        match self.standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals().contains_key("v1_addons_diff_pre_transition")?)
+        }
+    }
+
+    #[inline]
+    #[tracing::instrument(level = "trace", ret)]
+    pub fn run_addons_diff_pre_transition(&self, group_name: &str, addon_name: &str, addon_path: &str, edition: &str) -> anyhow::Result<()> {
+        match self.standard {
+            IntegrationStandard::V1 => Ok(self.lua.globals()
+                .call_function("v1_addons_diff_pre_transition", (
+                    group_name,
+                    addon_name,
+                    addon_path,
+                    edition
+                ))?)
         }
     }
 
@@ -454,6 +501,8 @@ impl Driver {
                 ))?)
         }
     }
+
+    // Hashes
 
     #[inline]
     #[tracing::instrument(level = "trace", ret)]

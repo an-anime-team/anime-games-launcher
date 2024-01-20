@@ -93,11 +93,13 @@ pub struct MainApp {
     running_games: FactoryVecDeque<CardFactory>,
     installed_games: FactoryVecDeque<CardFactory>,
     queued_games: FactoryVecDeque<CardFactory>,
+    outdated_games: FactoryVecDeque<CardFactory>,
     available_games: FactoryVecDeque<CardFactory>,
 
     running_games_indexes: HashMap<CardInfo, DynamicIndex>,
     installed_games_indexes: HashMap<CardInfo, DynamicIndex>,
     queued_games_indexes: HashMap<CardInfo, DynamicIndex>,
+    outdated_games_indexes: HashMap<CardInfo, DynamicIndex>,
     available_games_indexes: HashMap<CardInfo, DynamicIndex>,
 
     tasks_queue: AsyncController<TasksQueueComponent>
@@ -195,6 +197,8 @@ impl SimpleAsyncComponent for MainApp {
             set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
 
+            add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
             #[local_ref]
             leaflet -> adw::Leaflet {
                 set_can_unfold: false,
@@ -286,7 +290,7 @@ impl SimpleAsyncComponent for MainApp {
                                         #[watch]
                                         set_visible: !model.installed_games.is_empty(),
 
-                                        set_label: "Installed games"
+                                        set_label: &tr!("main-installed-games")
                                     },
 
                                     #[local_ref]
@@ -310,7 +314,7 @@ impl SimpleAsyncComponent for MainApp {
                                         #[watch]
                                         set_visible: !model.queued_games.is_empty(),
 
-                                        set_label: "Queued games"
+                                        set_label: &tr!("main-queued-games")
                                     },
 
                                     #[local_ref]
@@ -332,9 +336,33 @@ impl SimpleAsyncComponent for MainApp {
                                         add_css_class: "title-4",
 
                                         #[watch]
+                                        set_visible: !model.outdated_games.is_empty(),
+
+                                        set_label: &tr!("main-outdated-games")
+                                    },
+
+                                    #[local_ref]
+                                    outdated_games_flow_box -> gtk::FlowBox {
+                                        set_row_spacing: 12,
+                                        set_column_spacing: 12,
+
+                                        #[watch]
+                                        set_margin_all: if model.outdated_games.is_empty() { 0 } else { 16 },
+
+                                        set_homogeneous: true,
+                                        set_selection_mode: gtk::SelectionMode::None
+                                    },
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
+                                        set_margin_start: 24,
+                                        add_css_class: "title-4",
+
+                                        #[watch]
                                         set_visible: !model.available_games.is_empty(),
 
-                                        set_label: "Available games"
+                                        set_label: &tr!("main-available-games")
                                     },
 
                                     #[local_ref]
@@ -419,6 +447,7 @@ impl SimpleAsyncComponent for MainApp {
             running_games_indexes: HashMap::new(),
             installed_games_indexes: HashMap::new(),
             queued_games_indexes: HashMap::new(),
+            outdated_games_indexes: HashMap::new(),
             available_games_indexes: HashMap::new(),
 
             running_games: FactoryVecDeque::builder()
@@ -448,6 +477,15 @@ impl SimpleAsyncComponent for MainApp {
                 //             => MainAppMsg::OpenDetails { info, installed, running: false }
                 //     }
                 // }),
+
+            outdated_games: FactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |output: CardComponentOutput| -> MainAppMsg {
+                    match output {
+                        CardComponentOutput::CardClicked { info, installed: _ }
+                            => MainAppMsg::OpenDetails { info, installed: false, running: false }
+                    }
+                }),
 
             available_games: FactoryVecDeque::builder()
                 .launch_default()
@@ -481,6 +519,7 @@ impl SimpleAsyncComponent for MainApp {
         let running_games_flow_box = model.running_games.widget();
         let installed_games_flow_box = model.installed_games.widget();
         let queued_games_flow_box = model.queued_games.widget();
+        let outdated_games_flow_box = model.outdated_games.widget();
         let available_games_flow_box = model.available_games.widget();
 
         let widgets = view_output!();
@@ -509,7 +548,7 @@ impl SimpleAsyncComponent for MainApp {
         group.add_action::<LauncherFolder>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
             if let Err(err) = open::that(LAUNCHER_FOLDER.as_path()) {
                 sender.input(MainAppMsg::ShowToast {
-                    title: String::from("Failed to open launcher folder"),
+                    title: tr!("main-open-launcher-folder-failed"),
                     message: Some(err.to_string())
                 });
 
@@ -520,7 +559,7 @@ impl SimpleAsyncComponent for MainApp {
         group.add_action::<ConfigFile>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
             if let Err(err) = open::that(CONFIG_FILE.as_path()) {
                 sender.input(MainAppMsg::ShowToast {
-                    title: String::from("Failed to open config file"),
+                    title: tr!("main-open-config-file-failed"),
                     message: Some(err.to_string())
                 });
 
@@ -531,7 +570,7 @@ impl SimpleAsyncComponent for MainApp {
         group.add_action::<DebugFile>(RelmAction::new_stateless(gtk::glib::clone!(@strong sender => move |_| {
             if let Err(err) = open::that(DEBUG_FILE.as_path()) {
                 sender.input(MainAppMsg::ShowToast {
-                    title: String::from("Failed to open debug file"),
+                    title: tr!("main-open-debug-file-failed"),
                     message: Some(err.to_string())
                 });
 
@@ -559,13 +598,13 @@ impl SimpleAsyncComponent for MainApp {
                         edition: game.edition.name.clone(),
                         picture_uri: game.card_picture.clone()
                     };
-        
+
                     self.available_games_indexes.insert(
                         card.to_owned(),
                         self.available_games.guard().push_back(card.to_owned())
                     );
                 }
-        
+
                 for game in init.games_list.installed {
                     let card = CardInfo::Game {
                         name: game.game_name.clone(),
@@ -574,46 +613,62 @@ impl SimpleAsyncComponent for MainApp {
                         edition: game.edition.name.clone(),
                         picture_uri: game.card_picture.clone()
                     };
-        
+
                     self.installed_games_indexes.insert(
                         card.to_owned(),
                         self.installed_games.guard().push_back(card.to_owned())
                     );
                 }
-        
+
+                for game in init.games_list.outdated {
+                    let card = CardInfo::Game {
+                        name: game.game_name.clone(),
+                        title: game.game_title.clone(),
+                        developer: game.game_developer.clone(),
+                        edition: game.edition.name.clone(),
+                        picture_uri: game.card_picture.clone()
+                    };
+
+                    self.outdated_games_indexes.insert(
+                        card.to_owned(),
+                        self.outdated_games.guard().push_back(card.to_owned())
+                    );
+                }
+
                 self.available_games.broadcast(CardComponentInput::SetInstalled(false));
+                self.outdated_games.broadcast(CardComponentInput::SetInstalled(false));
 
                 if let Some(wine) = init.download_wine {
                     sender.input(MainAppMsg::AddDownloadWineTask(wine));
                     sender.input(MainAppMsg::ShowTasksFlap);
                 }
-        
+
                 if let Some(dxvk) = init.download_dxvk {
                     sender.input(MainAppMsg::AddDownloadDxvkTask(dxvk));
                     sender.input(MainAppMsg::ShowTasksFlap);
                 }
-        
+
                 if let Some(dxvk) = init.apply_dxvk {
                     sender.input(MainAppMsg::AddApplyDxvkTask(dxvk));
                     sender.input(MainAppMsg::ShowTasksFlap);
                 }
-        
+
                 if let Some(prefix) = init.create_prefix {
                     sender.input(MainAppMsg::AddCreatePrefixTask {
                         path: prefix.path.clone(),
                         install_corefonts: prefix.install_corefonts
                     });
-        
+
                     sender.input(MainAppMsg::ShowTasksFlap);
                 }
-        
+
                 for addon in init.download_addons {
                     sender.input(MainAppMsg::AddDownloadAddonTask {
                         game_info: addon.game_info,
                         addon: addon.addon,
                         group: addon.group
                     });
-        
+
                     sender.input(MainAppMsg::ShowTasksFlap);
                 }
             }
@@ -652,7 +707,9 @@ impl SimpleAsyncComponent for MainApp {
 
                         Err(err) => {
                             sender.input(MainAppMsg::ShowToast {
-                                title: format!("Unable to get {} status", info.get_title()),
+                                title: tr!("game-get-status-failed", {
+                                    "game-title" = info.get_title()
+                                }),
                                 message: Some(err.to_string())
                             });
                         }
@@ -691,7 +748,9 @@ impl SimpleAsyncComponent for MainApp {
 
                     Err(err) => {
                         sender.input(MainAppMsg::ShowToast {
-                            title: format!("Unable to get {} addons list", game_info.get_title()),
+                            title: tr!("game-get-addons-failed", {
+                                "game-title" = game_info.get_title()
+                            }),
                             message: Some(err.to_string())
                         });
                     }
@@ -729,16 +788,20 @@ impl SimpleAsyncComponent for MainApp {
 
                         if let Some(index) = self.available_games_indexes.get(&game_info) {
                             self.available_games.guard().remove(index.current_index());
-
                             self.available_games_indexes.remove(&game_info);
+                        }
 
-                            #[allow(clippy::map_entry)]
-                            if !self.queued_games_indexes.contains_key(&game_info) {
-                                self.queued_games_indexes.insert(game_info.clone(), self.queued_games.guard().push_back(game_info.clone()));
+                        else if let Some(index) = self.outdated_games_indexes.get(&game_info) {
+                            self.outdated_games.guard().remove(index.current_index());
+                            self.outdated_games_indexes.remove(&game_info);
+                        }
 
-                                self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
-                                self.queued_games.broadcast(CardComponentInput::SetClickable(false));
-                            }
+                        #[allow(clippy::map_entry)]
+                        if !self.queued_games_indexes.contains_key(&game_info) {
+                            self.queued_games_indexes.insert(game_info.clone(), self.queued_games.guard().push_back(game_info.clone()));
+
+                            self.queued_games.broadcast(CardComponentInput::SetInstalled(false));
+                            self.queued_games.broadcast(CardComponentInput::SetClickable(false));
                         }
 
                         if config.general.verify_games {
@@ -767,7 +830,6 @@ impl SimpleAsyncComponent for MainApp {
 
                         if let Some(index) = self.installed_games_indexes.get(&game_info) {
                             self.installed_games.guard().remove(index.current_index());
-
                             self.installed_games_indexes.remove(&game_info);
 
                             #[allow(clippy::map_entry)]
@@ -787,7 +849,6 @@ impl SimpleAsyncComponent for MainApp {
             MainAppMsg::FinishQueuedTask(info) => {
                 if let Some(index) = self.queued_games_indexes.get(&info) {
                     self.queued_games.guard().remove(index.current_index());
-
                     self.queued_games_indexes.remove(&info);
 
                     #[allow(clippy::map_entry)]
@@ -898,7 +959,9 @@ impl SimpleAsyncComponent for MainApp {
                     std::thread::spawn(move || {
                         if let Err(err) = launch_game::launch_game(&info) {
                             sender.input(MainAppMsg::ShowToast {
-                                title: format!("Failed to launch {}", info.get_title()),
+                                title: tr!("game-launch-failed", {
+                                    "game-title" = info.get_title()
+                                }),
                                 message: Some(err.to_string())
                             });
                         }
@@ -911,7 +974,9 @@ impl SimpleAsyncComponent for MainApp {
             MainAppMsg::KillGame(info) => {
                 if let Err(err) = kill_game::kill_game(&info) {
                     sender.input(MainAppMsg::ShowToast {
-                        title: format!("Failed to kill {}", info.get_title()),
+                        title: tr!("game-kill-failed", {
+                            "game-title" = info.get_title()
+                        }),
                         message: Some(err.to_string())
                     });
                 }
