@@ -18,7 +18,11 @@ game-get-settings-failed        = Foi impossível encontrar as configurações p
 game-get-addons-failed          = Não foi possível listar os complementos de {$game-title}
 game-get-paths-failed           = Erro ao checar o diretório de instalação de {$game-title}
 game-get-integrity-failed       = Foi impossível conseguir dados de integridade de {$game-title}
+game-get-status-failed          = Não foi possível conseguir o status de {$game-title}
 game-not-installed              = O título {$game-title} não está instalado
+
+game-launch-failed              = Não foi possível iniciar {$game-title}
+game-kill-failed                = Não foi possível matar o processo de {$game-title}
 
 launch-required-addon-unavailable = O complemento {$addon-title} do grupo {$group-title} está indisponível ou desatualizado. Você pode iniciar o jogo sem ele ou permanecer com a versão antiga.
 
@@ -34,3 +38,7 @@ loading-checking-wine-version-failed = Erro ao detectar a versão do Wine
 loading-checking-dxvk-version-failed = Erro ao detectar a versão do DXVK
 loading-checking-applied-dxvk-failed = Erro ao verificar versão do DXVK instalado
 loading-checking-games-addons-failed = Erro ao verificar os complementos do jogo
+
+main-open-launcher-folder-failed = Falha ao abrir a pasta do launcher
+main-open-config-file-failed     = Falha ao abrir arquivo de configurações
+main-open-debug-file-failed      = Falha ao abrir o arquivo de debug
