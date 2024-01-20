@@ -10,6 +10,7 @@ fluent_templates::static_loader! {
 
 /// Map of supported languages
 pub const SUPPORTED_LANGUAGES: &[LanguageIdentifier] = &[
+    langid!("de-de")
     langid!("en-us"),
     langid!("ru-ru"),
     langid!("pt-br"),
