@@ -18,6 +18,13 @@ wine-sync-description = Технология, используемая для с
 
 wine-borderless = Безрамочное окно
 
+wine-virtual-desktop = Виртуальный рабочий стол
+wine-virtual-desktop-description = Создать виртуальный рабочий стол Windows с фиксированным размером и запустить игру в нём
+
+wine-virtual-desktop-enabled = Включен
+wine-virtual-desktop-width   = Ширина
+wine-virtual-desktop-height  = Высота
+
 preferences--gaming = Игра
 
 game-hud = HUD
