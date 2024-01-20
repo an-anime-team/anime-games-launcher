@@ -76,6 +76,8 @@ impl SimpleAsyncComponent for GameAddonsManagerApp {
             set_hide_on_close: true,
             set_modal: true,
 
+            add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 

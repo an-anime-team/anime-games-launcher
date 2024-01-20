@@ -49,6 +49,8 @@ impl SimpleAsyncComponent for PreferencesApp {
             set_hide_on_close: true,
             set_search_enabled: true,
 
+            add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
             add = &adw::PreferencesPage {
                 add = &adw::PreferencesGroup {
                     set_title: &tr!("preferences--general"),

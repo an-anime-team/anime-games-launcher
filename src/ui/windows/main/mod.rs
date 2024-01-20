@@ -197,6 +197,8 @@ impl SimpleAsyncComponent for MainApp {
             set_default_size: (1200, 800),
             set_title: Some("Anime Games Launcher"),
 
+            add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
             #[local_ref]
             leaflet -> adw::Leaflet {
                 set_can_unfold: false,
