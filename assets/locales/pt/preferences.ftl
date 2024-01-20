@@ -18,12 +18,19 @@ wine-sync-description = Tecnologia utilizada para sincronizar eventos internos d
 
 wine-borderless = Janela sem bordas
 
+wine-virtual-desktop = Área de Trabalho virtual
+wine-virtual-desktop-description = Cria uma área de trabalho virtual do windows com tamanho fixo e executa o jogo nela
+
+wine-virtual-desktop-enabled = Ativado
+wine-virtual-desktop-width   = Largura
+wine-virtual-desktop-height  = Altura
+
 preferences--gaming = Jogo
 
 game-hud = HUD
 
 game-fsr = FSR
-game-fsr-description = Upscales game to your monitor size. To use select lower resolution in the game's settings and press Alt + Enter
+game-fsr-description = Renderiza o jogo em resolução menor e aumenta a escala, selecione uma resolução menor no jogo e pressione Alt+Enter para ativar
 
 game-fsr-enabled = Ativado
 game-fsr-enabled-description = Renderiza o jogo em resolução menor e aumenta a escala, fazendo com que o desempenho aumente.
