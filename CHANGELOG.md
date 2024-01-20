@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added Chinese
 - Added Portuguese
+- Added German
 - Added outdated games category
 - Added virtual desktop preference
 - Added xxhash support

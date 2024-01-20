@@ -80,6 +80,7 @@ impl SimpleComponent for AboutDialog {
                 "<ul>",
                     "<li>Added Chinese</li>",
                     "<li>Added Portuguese</li>",
+                    "<li>Added German</li>",
                     "<li>Added outdated games category</li>",
                     "<li>Added virtual desktop preference</li>",
                     "<li>Added xxhash support</li>",

@@ -11,7 +11,6 @@ general-verify-games-description = Verifiziere Spielinstallationen nach Installa
 preferences--wine = Wine
 
 wine-language = Sprache
-wine-language-description = Language used in the wine environment. Can fix keyboard layout issues
 wine-language-description = Verwendete Sprache in der Wine Umgebung. Kann Probleme mit Tastaturlayouts beheben
 
 wine-sync = Synchronisation
