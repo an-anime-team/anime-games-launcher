@@ -7,7 +7,7 @@
 | Network | | | Work with the network |
 | | `v1_network_http_get(uri)` | `Response` | Perform GET request to the given URI |
 | JSON | | | Work with JSON |
-| | `v1_json_decode(json)` | `table` | Decode JSON string |
+| | `v1_json_decode(json)` | `object` | Decode JSON string |
 
 ## Required APIs (should be implemented by the maintainer)
 
