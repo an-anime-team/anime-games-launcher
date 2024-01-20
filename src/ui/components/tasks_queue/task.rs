@@ -5,6 +5,7 @@ use crate::ui::components::game_card::CardInfo;
 pub enum TaskStatus {
     Pending,
     PreparingTransition,
+    RunPreTransitionCode,
     Downloading,
     Unpacking,
     RunTransitionCode,

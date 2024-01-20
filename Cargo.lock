@@ -104,6 +104,7 @@ dependencies = [
  "tracing-subscriber",
  "unic-langid",
  "wincompatlib",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -2615,6 +2616,12 @@ checksum = "b7cf47b659b318dccbd69cc4797a39ae128f533dce7902a1096044d1967b9c16"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53be06678ed9e83edb1745eb72efc0bbcd7b5c3c35711a860906aed827a13d61"
 
 [[package]]
 name = "zerocopy"

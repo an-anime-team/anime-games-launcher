@@ -18,6 +18,13 @@ wine-sync-description = Technology used to synchronize inner wine events
 
 wine-borderless = Borderless window
 
+wine-virtual-desktop = Virtual desktop
+wine-virtual-desktop-description = Create virtual windows desktop with fixed size and run the game in it
+
+wine-virtual-desktop-enabled = Enabled
+wine-virtual-desktop-width   = Width
+wine-virtual-desktop-height  = Height
+
 preferences--gaming = Gaming
 
 game-hud = HUD

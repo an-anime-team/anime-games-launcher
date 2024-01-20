@@ -18,7 +18,10 @@ game-get-settings-failed        = Unable to get {$game-title} settings
 game-get-addons-failed          = Unable to get {$game-title} addons
 game-get-paths-failed           = Unable to get {$game-title} paths
 game-get-integrity-failed       = Unable to get {$game-title} integrity info
+game-get-status-failed          = Unable to get {$game-title} status
 game-not-installed              = {$game-title} is not installed
+game-launch-failed              = Failed to launch {$game-title}
+game-kill-failed                = Failed to kill {$game-title}
 
 launch-required-addon-unavailable = Addon {$addon-title} from group {$group-title} is unavailable or outdated. You can launch the game without it or continue to use old version
 
@@ -34,3 +37,7 @@ loading-checking-wine-version-failed = Failed to check wine version
 loading-checking-dxvk-version-failed = Failed to check dxvk version
 loading-checking-applied-dxvk-failed = Failed to check applied dxvk version
 loading-checking-games-addons-failed = Failed to check games addons
+
+main-open-launcher-folder-failed = Failed to open launcher folder
+main-open-config-file-failed     = Failed to open config file
+main-open-debug-file-failed      = Failed to open debug file

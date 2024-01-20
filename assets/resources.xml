@@ -53,5 +53,6 @@
     <!-- Additional icons icons -->
 
     <file preprocess="xml-stripblanks" alias="violence-symbolic.svg">images/icons/violence-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="software-update-urgent-symbolic.svg">images/icons/software-update-urgent-symbolic.svg</file>
   </gresource>
 </gresources>

@@ -156,6 +156,11 @@ impl QueuedTask for VerifyIntegrityQueuedTask {
                                         hasher.finalize().to_string()
                                     }
 
+                                    HashType::Xxhash32    => format!("{:x}", xxhash_rust::xxh32::xxh32(&data, 0)),
+                                    HashType::Xxhash64    => format!("{:x}", xxhash_rust::xxh64::xxh64(&data, 0)),
+                                    HashType::Xxhash3_64  => format!("{:x}", xxhash_rust::xxh3::xxh3_64(&data)),
+                                    HashType::Xxhash3_128 => format!("{:x}", xxhash_rust::xxh3::xxh3_128(&data)),
+
                                     HashType::Custom(name) if has_integrity_hash => {
                                         game.driver.integrity_hash(&name, data)?
                                     }

@@ -49,6 +49,8 @@ impl SimpleAsyncComponent for PreferencesApp {
             set_hide_on_close: true,
             set_search_enabled: true,
 
+            add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
             add = &adw::PreferencesPage {
                 add = &adw::PreferencesGroup {
                     set_title: &tr!("preferences--general"),
@@ -200,6 +202,62 @@ impl SimpleAsyncComponent for PreferencesApp {
                                     title: tr!("config-property-update-failed"),
                                     message: Some(err.to_string())
                                 })
+                            }
+                        }
+                    },
+
+                    adw::ExpanderRow {
+                        set_title: &tr!("wine-virtual-desktop"),
+                        set_subtitle: &tr!("wine-virtual-desktop-description"),
+
+                        add_row = &adw::SwitchRow {
+                            set_title: &tr!("wine-virtual-desktop-enabled"),
+
+                            set_active: config::get().games.wine.virtual_desktop.enabled,
+
+                            connect_active_notify[sender] => move |switch| {
+                                if let Err(err) = config::set("games.wine.virtual_desktop.enabled", switch.is_active()) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: tr!("config-property-update-failed"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
+                        },
+
+                        add_row = &adw::SpinRow {
+                            set_title: &tr!("wine-virtual-desktop-width"),
+
+                            set_adjustment: Some(&gtk::Adjustment::new(
+                                config::get().games.wine.virtual_desktop.width as f64,
+                                0.0, 4096.0, 10.0, 1.0, 0.0
+                            )),
+
+                            connect_value_notify[sender] => move |row| {
+                                if let Err(err) = config::set("games.wine.virtual_desktop.width", row.value() as u64) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: tr!("config-property-update-failed"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
+                            }
+                        },
+
+                        add_row = &adw::SpinRow {
+                            set_title: &tr!("wine-virtual-desktop-height"),
+
+                            set_adjustment: Some(&gtk::Adjustment::new(
+                                config::get().games.wine.virtual_desktop.height as f64,
+                                0.0, 4096.0, 10.0, 1.0, 0.0
+                            )),
+
+                            connect_value_notify[sender] => move |row| {
+                                if let Err(err) = config::set("games.wine.virtual_desktop.height", row.value() as u64) {
+                                    sender.input(PreferencesAppMsg::ShowToast {
+                                        title: tr!("config-property-update-failed"),
+                                        message: Some(err.to_string())
+                                    })
+                                }
                             }
                         }
                     }

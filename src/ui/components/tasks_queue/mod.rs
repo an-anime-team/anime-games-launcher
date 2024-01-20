@@ -395,8 +395,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
 
                                 TaskStatus::DeletingFiles => (true, tr!("tasks-deleting-files")),
 
-                                TaskStatus::RunTransitionCode     => (false, tr!("tasks-transition-code")),
-                                TaskStatus::RunPostTransitionCode => (false, tr!("tasks-post-transition-code")),
+                                TaskStatus::RunPreTransitionCode  => (true, tr!("tasks-pre-transition-code")),
+                                TaskStatus::RunTransitionCode     => (true, tr!("tasks-transition-code")),
+                                TaskStatus::RunPostTransitionCode => (true, tr!("tasks-post-transition-code")),
 
                                 TaskStatus::CreatingPrefix  => (true, tr!("tasks-creating-prefix")),
                                 TaskStatus::InstallingDxvk  => (true, tr!("tasks-installing-dxvk")),
