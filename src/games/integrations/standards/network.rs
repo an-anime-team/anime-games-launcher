@@ -60,7 +60,19 @@ impl<'lua> FromLua<'lua> for RequestOptions {
                 .transpose()?,
 
             body: table.contains_key("body")?
-                .then(|| table.get("body"))
+                .then(|| {
+                    if let Ok(string) = table.get::<_, LuaString>("body") {
+                        Ok(string.as_bytes().to_vec())
+                    }
+
+                    else if let Ok(table) = table.get::<_, LuaTable>("body") {
+                        Ok(table.sequence_values::<u8>().flatten().collect())
+                    }
+
+                    else {
+                        Err(LuaError::UserDataTypeMismatch)
+                    }
+                })
                 .transpose()?,
 
             timeout: table.contains_key("timeout")?
