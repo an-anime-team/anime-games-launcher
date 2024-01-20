@@ -188,7 +188,7 @@ type IntegrityInfo = {
 ### HashType
 
 ```ts
-type HashType = 'md5' | 'sha1' | 'crc32' | 'xxhash32' | 'xxhash64';
+type HashType = 'md5' | 'sha1' | 'crc32' | 'xxhash32' | 'xxhash64' | 'xxhash3/64' | 'xxhash3/128';
 ```
 
 Launcher will try to use `v1_integrity_hash` if given hash doesn't belong to the `HashType` type

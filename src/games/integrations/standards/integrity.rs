@@ -43,8 +43,15 @@ pub enum HashType {
     Md5,
     Sha1,
     Crc32,
+
+    // Older generation xxhash-es
     Xxhash32,
     Xxhash64,
+
+    // New generation xxhash-es
+    Xxhash3_64,
+    Xxhash3_128,
+
     Custom(String)
 }
 
@@ -53,11 +60,13 @@ impl HashType {
         match standard {
             IntegrationStandard::V1 => {
                 match value.as_ref() {
-                    "md5"      => Ok(Self::Md5),
-                    "sha1"     => Ok(Self::Sha1),
-                    "crc32"    => Ok(Self::Crc32),
-                    "xxhash32" => Ok(Self::Xxhash32),
-                    "xxhash64" => Ok(Self::Xxhash64),
+                    "md5"         => Ok(Self::Md5),
+                    "sha1"        => Ok(Self::Sha1),
+                    "crc32"       => Ok(Self::Crc32),
+                    "xxhash32"    => Ok(Self::Xxhash32),
+                    "xxhash64"    => Ok(Self::Xxhash64),
+                    "xxhash3/64"  => Ok(Self::Xxhash3_64),
+                    "xxhash3/128" => Ok(Self::Xxhash3_128),
 
                     name => Ok(Self::Custom(name.to_string()))
                 }
@@ -69,11 +78,13 @@ impl HashType {
         match standard {
             IntegrationStandard::V1 => {
                 match self {
-                    Self::Md5      => "md5",
-                    Self::Sha1     => "sha1",
-                    Self::Crc32    => "crc32",
-                    Self::Xxhash32 => "xxhash32",
-                    Self::Xxhash64 => "xxhash64",
+                    Self::Md5         => "md5",
+                    Self::Sha1        => "sha1",
+                    Self::Crc32       => "crc32",
+                    Self::Xxhash32    => "xxhash32",
+                    Self::Xxhash64    => "xxhash64",
+                    Self::Xxhash3_64  => "xxhash3/64",
+                    Self::Xxhash3_128 => "xxhash3/128",
 
                     Self::Custom(name) => name
                 }
