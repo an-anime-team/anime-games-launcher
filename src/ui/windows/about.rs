@@ -60,7 +60,8 @@ impl SimpleComponent for AboutDialog {
 
             set_translator_credits: &[
                 "Русский, English — Nikita Podvirnyy https://github.com/krypt0nn",
-                "简体中文 — TsubakiDev https://github.com/TsubakiDev"
+                "简体中文 — TsubakiDev https://github.com/TsubakiDev",
+                "Português — João Dias https://github.com/retrozinndev"
             ].join("\n"),
 
             set_debug_info: &[
@@ -77,11 +78,18 @@ impl SimpleComponent for AboutDialog {
                 "<p>Added</p>",
 
                 "<ul>",
+                    "<li>Added Chinese</li>",
+                    "<li>Added Portuguese</li>",
                     "<li>Added outdated games category</li>",
                     "<li>Added virtual desktop preference</li>",
-                    "<li>Added Chinese</li>",
                     "<li>Added xxhash support</li>",
                     "<li>Added pre_transition optional API</li>",
+                "</ul>",
+
+                "<p>Changed</p>",
+
+                "<ul>",
+                    "<li>Updated v1_network_http_get standard</li>",
                 "</ul>"
             ].join("\n"),
 

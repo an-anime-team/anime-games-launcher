@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added Chinese
+- Added Portuguese
 - Added outdated games category
 - Added virtual desktop preference
-- Added Chinese
 - Added xxhash support
 - Added `pre_transition` optional API
+
+### Changed
+
+- Updated `v1_network_http_get` standard
 
 ## [1.0.0] - 13.01.2024
 

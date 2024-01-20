@@ -1,4 +1,4 @@
 en-us = English
 ru-ru = Русский
-zh-cn = 简体中文
 pt-br = Português
+zh-cn = 简体中文

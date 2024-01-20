@@ -20,7 +20,6 @@ game-get-paths-failed           = Erro ao checar o diretório de instalação de
 game-get-integrity-failed       = Foi impossível conseguir dados de integridade de {$game-title}
 game-get-status-failed          = Não foi possível conseguir o status de {$game-title}
 game-not-installed              = O título {$game-title} não está instalado
-
 game-launch-failed              = Não foi possível iniciar {$game-title}
 game-kill-failed                = Não foi possível matar o processo de {$game-title}
 
