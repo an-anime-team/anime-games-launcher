@@ -12,7 +12,8 @@ fluent_templates::static_loader! {
 pub const SUPPORTED_LANGUAGES: &[LanguageIdentifier] = &[
     langid!("en-us"),
     langid!("ru-ru"),
-    langid!("zh-cn")
+    langid!("zh-cn"),
+    langid!("pt-br")
 ];
 
 static mut LANG: LanguageIdentifier = langid!("en-us");
