@@ -44,6 +44,7 @@ pub enum DiffOrigin {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Status {
     PreparingTransition,
+    RunPreTransitionCode,
     Downloading,
     Unpacking,
     RunTransitionCode,
@@ -96,6 +97,36 @@ impl QueuedTask for DownloadDiffQueuedTask {
                     )?;
 
                     sender.send((Status::PreparingTransition, 1, 1))?;
+
+                    // Run pre-transition code
+
+                    match &diff_origin {
+                        DiffOrigin::Game if game.driver.has_game_diff_pre_transition()? => {
+                            sender.send((Status::RunPreTransitionCode, 0, 1))?;
+
+                            game.driver.run_game_diff_pre_transition(
+                                &transition.original_path().to_string_lossy(),
+                                &game_edition
+                            )?;
+
+                            sender.send((Status::RunPreTransitionCode, 1, 1))?;
+                        }
+
+                        DiffOrigin::Addon { group_name, addon_name } if game.driver.has_addons_diff_pre_transition()? => {
+                            sender.send((Status::RunPreTransitionCode, 0, 1))?;
+
+                            game.driver.run_addons_diff_pre_transition(
+                                group_name,
+                                addon_name,
+                                &transition.original_path().to_string_lossy(),
+                                &game_edition
+                            )?;
+
+                            sender.send((Status::RunPreTransitionCode, 1, 1))?;
+                        }
+
+                        _ => ()
+                    }
 
                     // Download and extract diff files
 
@@ -353,6 +384,7 @@ impl ResolvedTask for DownloadDiffResolvedTask {
                 BasicStatus::Pending => TaskStatus::Pending,
 
                 BasicStatus::Working(Status::PreparingTransition)   => TaskStatus::PreparingTransition,
+                BasicStatus::Working(Status::RunPreTransitionCode)  => TaskStatus::RunPreTransitionCode,
                 BasicStatus::Working(Status::Downloading)           => TaskStatus::Downloading,
                 BasicStatus::Working(Status::Unpacking)             => TaskStatus::Unpacking,
                 BasicStatus::Working(Status::RunTransitionCode)     => TaskStatus::RunTransitionCode,
