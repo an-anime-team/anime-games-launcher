@@ -5,7 +5,7 @@
 | API | Method | Output | Description |
 | - | - | - | - |
 | Network | | | Work with the network |
-| | `v1_network_http_get(uri)` | `Response` | Perform GET request to the given URI |
+| | `v1_network_fetch(uri: string, options: RequestOptions \| null)` | `Response` | Perform GET request to the given URI |
 | JSON | | | Work with JSON |
 | | `v1_json_decode(json)` | `object` | Decode JSON string |
 
@@ -55,6 +55,26 @@
 ## Types
 
 For syntax highlighting types definition is written on typescript
+
+### RequestOptions
+
+```ts
+type RequestOptions = {
+	// Accepted variants: "get", "post", "head", "put", "delete",
+	// "connect", "options", "trace", "patch", null
+	// or any other string (custom request method?)
+	method?: string,
+
+	// Request headers
+	headers?: [key: string]: string,
+
+	// Request body
+	body?: string,
+
+	// Request timeout, in seconds
+	timeout?: number
+};
+```
 
 ### Response
 

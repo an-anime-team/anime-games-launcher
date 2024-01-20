@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 21.01.2024
+
+### Changed
+
+- Fixed German
+- Replaced `v1_network_http_get` with more powerful `v1_network_fetch`
+
 ## [1.0.1] - 20.01.2024
 
 ### Added
@@ -29,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.1...master
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.2...master
+[1.0.2]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/an-anime-team/anime-games-launcher/releases/tag/1.0.0

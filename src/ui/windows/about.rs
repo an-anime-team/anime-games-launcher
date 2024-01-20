@@ -76,22 +76,11 @@ impl SimpleComponent for AboutDialog {
 
             set_release_notes_version: &APP_VERSION,
             set_release_notes: &[
-                "<p>Added</p>",
-
-                "<ul>",
-                    "<li>Added Chinese</li>",
-                    "<li>Added Portuguese</li>",
-                    "<li>Added German</li>",
-                    "<li>Added outdated games category</li>",
-                    "<li>Added virtual desktop preference</li>",
-                    "<li>Added xxhash support</li>",
-                    "<li>Added pre_transition optional API</li>",
-                "</ul>",
-
                 "<p>Changed</p>",
 
                 "<ul>",
-                    "<li>Updated v1_network_http_get standard</li>",
+                    "<li>Fixed German</li>",
+                    "<li>Replaced v1_network_http_get with more powerful v1_network_fetch</li>",
                 "</ul>"
             ].join("\n"),
 
