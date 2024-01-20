@@ -4,6 +4,7 @@ use crate::config::games::settings::GameSettings;
 use crate::games;
 use crate::games::integrations::Game;
 use crate::games::integrations::standards::game::Edition;
+use crate::games::integrations::standards::diff::{Diff, DiffStatus};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameListEntry {
@@ -17,7 +18,8 @@ pub struct GameListEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GamesList {
     pub installed: Vec<GameListEntry>,
-    pub available: Vec<GameListEntry>
+    pub available: Vec<GameListEntry>,
+    pub outdated: Vec<GameListEntry>
 }
 
 #[inline]
@@ -26,7 +28,7 @@ pub fn init_games() -> anyhow::Result<()> {
 }
 
 #[inline]
-fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(bool, GameListEntry)>> {
+fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(GameListEntry, Option<Diff>)>> {
     game.driver.get_game_editions_list()?
         .into_iter()
         .map(|edition| game.driver.get_card_picture(&edition.name)
@@ -38,8 +40,10 @@ fn get_game_entries(game: &Game, settings: GameSettings) -> anyhow::Result<Vec<(
             edition
         })
         .and_then(|entry| {
-            game.driver.is_game_installed(&settings.paths[&entry.edition.name].game.to_string_lossy(), &entry.edition.name)
-                .map(|installed| (installed, entry))
+            let path = settings.paths[&entry.edition.name].game.to_string_lossy();
+
+            game.driver.get_game_diff(&path, &entry.edition.name)
+                .map(|diff| (entry, diff))
         }))
         .collect::<anyhow::Result<Vec<_>>>()
 }
@@ -79,6 +83,7 @@ pub fn get_games_list() -> anyhow::Result<GamesList> {
 
     let mut installed = Vec::new();
     let mut available = Vec::with_capacity(games.len());
+    let mut outdated = Vec::new();
 
     for game in games.values() {
         let settings = settings.get_game_settings(game)?;
@@ -86,19 +91,38 @@ pub fn get_games_list() -> anyhow::Result<GamesList> {
         let entries = get_game_entries(game, settings)?;
 
         let installed_entries = entries.iter()
-            .filter_map(|(installed, entry)| installed.then_some(entry))
+            .filter_map(|(entry, diff)| {
+                match diff {
+                    Some(Diff { status: DiffStatus::Latest, .. }) => Some(entry),
+                    _ => None
+                }
+            })
             .cloned();
 
         let available_entries = entries.iter()
-            .filter_map(|(installed, entry)| (!installed).then_some(entry))
+            .filter_map(|(entry, diff)| {
+                diff.is_none().then_some(entry)
+            })
+            .cloned();
+
+        // TODO: handle "unavailable" status
+        let outdated_entries = entries.iter()
+            .filter_map(|(entry, diff)| {
+                match diff {
+                    Some(Diff { status: DiffStatus::Outdated, .. }) => Some(entry),
+                    _ => None
+                }
+            })
             .cloned();
 
         installed.extend(installed_entries);
         available.extend(available_entries);
+        outdated.extend(outdated_entries);
     }
 
     Ok(GamesList {
         installed,
-        available
+        available,
+        outdated
     })
 }
