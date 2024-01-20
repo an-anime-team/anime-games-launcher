@@ -20,7 +20,29 @@ impl Driver {
                 lua.globals().set("v1_network_http_get", lua.create_function(|lua, uri: String| {
                     anime_game_core::network::minreq::get(uri)
                         .send()
-                        .map(|result| lua.create_string(result.as_bytes()))
+                        .map(|response| {
+                            let result = lua.create_table()?;
+                            let headers = lua.create_table()?;
+
+                            for (key, value) in &response.headers {
+                                headers.set(key.as_str(), value.as_str())?;
+                            }
+
+                            result.set("url", response.url.as_str())?;
+                            result.set("status", response.status_code)?;
+                            result.set("statusText", response.reason_phrase.as_str())?;
+                            result.set("ok", (200..300).contains(&response.status_code))?;
+                            result.set("headers", headers)?;
+                            result.set("body", lua.create_string(response.as_bytes())?)?;
+
+                            result.set("json", lua.create_function(move |lua, _: ()| {
+                                response.json::<Json>()
+                                    .map(|value| lua.to_value(&value))
+                                    .map_err(LuaError::external)
+                            })?)?;
+
+                            Ok::<LuaTable<'_>, mlua::Error>(result)
+                        })
                         .map_err(LuaError::external)
                 })?)?;
         

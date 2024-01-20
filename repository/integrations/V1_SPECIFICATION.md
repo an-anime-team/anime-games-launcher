@@ -2,12 +2,12 @@
 
 ## Built-in APIs
 
-| API | Methods | Description |
-| - | - | - |
-| Network | | Work with the network |
-| | `v1_network_http_get(uri)` | Perform GET request to the given URI |
-| JSON | | Work with JSON |
-| | `v1_json_decode(json)` | Decode JSON string |
+| API | Method | Output | Description |
+| - | - | - | - |
+| Network | | | Work with the network |
+| | `v1_network_http_get(uri)` | `Response` | Perform GET request to the given URI |
+| JSON | | | Work with JSON |
+| | `v1_json_decode(json)` | `table` | Decode JSON string |
 
 ## Required APIs (should be implemented by the maintainer)
 
@@ -40,21 +40,48 @@
 
 | API | Method | Output | Description |
 | - | - | - | - |
-| Visual | | | |
+| Visual | | | Visual representation of the game in the launcher |
 | | `v1_visual_get_details_background_css(edition)` | `string` | Get CSS styles for game details page background |
-| Hooks | | | |
+| Hooks | | | Launcher actions in different scenarios |
 | | `v1_game_diff_pre_transition(game_path, edition)` | | Process game files before creating transition |
 | | `v1_game_diff_transition(transition_path, edition)` | | Process game diff files before finishing transition |
 | | `v1_game_diff_post_transition(game_path, edition)` | | Process game diff files after finishing transition |
 | | `v1_addons_diff_pre_transition(group_name, addon_name, addon_path, edition)` | | Process addons files before creating transition |
 | | `v1_addons_diff_transition(group_name, addon_name, transition_path, edition)` | | Process addons diff files before finishing transition |
 | | `v1_addons_diff_post_transition(group_name, addon_name, addon_path, edition)` | | Process addons diff files after finishing transition |
-| Integrity | | | |
+| Integrity | | | Verification of game or addons files |
 | | `v1_integrity_hash(algorithm, data)` | `string` | Hash input data |
 
 ## Types
 
 For syntax highlighting types definition is written on typescript
+
+### Response
+
+```ts
+type Response = {
+	// Requested URL
+	url: string,
+
+	// Response status code
+	status: number,
+
+	// Response status text (error reason)
+	statusText: string,
+
+	// A boolean indicating whether the response was successful (status in the range 200 – 299) or not
+	ok: boolean,
+
+	// Response headers
+	headers: [key: string]: string,
+
+	// Raw response output (in bytes) encoded as a lua string
+	body: string,
+
+	// A lambda function which will try to decode the body as json
+	json: () => object
+};
+```
 
 ### Edition
 
