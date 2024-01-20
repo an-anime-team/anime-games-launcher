@@ -2,7 +2,7 @@ name: Compile release build
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "ci-fix-libcurl-not-found" ]
     paths: [ "src/**" ]
 
   release:
