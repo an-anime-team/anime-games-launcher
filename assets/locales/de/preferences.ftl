@@ -55,7 +55,7 @@ components-wine = Wine Version
 components-wine-description = Ausgewählte Wine Version wird nach einem Neustart heruntergeladen
 
 components-dxvk = DXVK Version
-components-wine-description = Ausgewählte DXVK Version wird nach einem Neustart heruntergeladen
+components-dxvk-description = Ausgewählte DXVK Version wird nach einem Neustart heruntergeladen
 
 components-wine-latest = Neuste
 components-dxvk-latest = Neuste
