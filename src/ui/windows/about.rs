@@ -60,8 +60,9 @@ impl SimpleComponent for AboutDialog {
 
             set_translator_credits: &[
                 "Русский, English — Nikita Podvirnyy https://github.com/krypt0nn",
-                "简体中文 — TsubakiDev https://github.com/TsubakiDev",
-                "Português — João Dias https://github.com/retrozinndev"
+                "简体中文 — @TsubakiDev https://github.com/TsubakiDev",
+                "Português — João Dias https://github.com/retrozinndev",
+                "German — @c4em https://github.com/c4em"
             ].join("\n"),
 
             set_debug_info: &[
