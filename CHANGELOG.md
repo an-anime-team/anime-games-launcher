@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added outdated games category
+- Added virtual desktop preference
+- Added Chinese
+- Added xxhash support
+- Added `pre_transition` optional API
+
 ## [1.0.0] - 13.01.2024
 
 🚀 Initial release

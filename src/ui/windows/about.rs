@@ -73,7 +73,17 @@ impl SimpleComponent for AboutDialog {
             ].join("\n"),
 
             set_release_notes_version: &APP_VERSION,
-            // set_release_notes: &[].join("\n"),
+            set_release_notes: &[
+                "<p>Added</p>",
+
+                "<ul>",
+                    "<li>Added outdated games category</li>",
+                    "<li>Added virtual desktop preference</li>",
+                    "<li>Added Chinese</li>",
+                    "<li>Added xxhash support</li>",
+                    "<li>Added pre_transition optional API</li>",
+                "</ul>"
+            ].join("\n"),
 
             set_modal: true,
             set_hide_on_close: true,
