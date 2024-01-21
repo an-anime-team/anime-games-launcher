@@ -48,6 +48,7 @@ pub enum Status {
     RunPreTransitionCode,
     Downloading,
     Unpacking,
+    StreamUnpacking,
     RunTransitionCode,
     FinishingTransition,
     RunPostTransitionCode
@@ -140,7 +141,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                                     // TODO: add timeouts
 
                                     sender.send((
-                                        Status::Downloading,
+                                        Status::StreamUnpacking,
                                         updater.current(),
                                         updater.total()
                                     ))?;
@@ -198,7 +199,7 @@ impl QueuedTask for DownloadDiffQueuedTask {
                                     // TODO: add timeouts
 
                                     sender.send((
-                                        Status::Downloading,
+                                        Status::StreamUnpacking,
                                         updater.current(),
                                         updater.total()
                                     ))?;
@@ -419,6 +420,7 @@ impl ResolvedTask for DownloadDiffResolvedTask {
                 BasicStatus::Working(Status::RunPreTransitionCode)  => TaskStatus::RunPreTransitionCode,
                 BasicStatus::Working(Status::Downloading)           => TaskStatus::Downloading,
                 BasicStatus::Working(Status::Unpacking)             => TaskStatus::Unpacking,
+                BasicStatus::Working(Status::StreamUnpacking)       => TaskStatus::StreamUnpacking,
                 BasicStatus::Working(Status::RunTransitionCode)     => TaskStatus::RunTransitionCode,
                 BasicStatus::Working(Status::FinishingTransition)   => TaskStatus::FinishingTransition,
                 BasicStatus::Working(Status::RunPostTransitionCode) => TaskStatus::RunPostTransitionCode,

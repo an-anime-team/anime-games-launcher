@@ -8,6 +8,7 @@ pub enum TaskStatus {
     RunPreTransitionCode,
     Downloading,
     Unpacking,
+    StreamUnpacking,
     RunTransitionCode,
     FinishingTransition,
     RunPostTransitionCode,
