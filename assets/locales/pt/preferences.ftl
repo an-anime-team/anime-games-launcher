@@ -39,8 +39,8 @@ game-fsr-quality = Qualidade do FSR
 game-fsr-quality-description = Especifica a escala de renderização. Ultra renderiza o jogo com resolução menor em 1.3, enquanto a performance em 2.0 é menor.
 
 game-fsr-quality-quality = Qualidade
-game-fsr-quality-ultra = Ultra
-game-fsr-quality-balanced = Balanciada
+game-fsr-quality-ultra = Alta Qualidade
+game-fsr-quality-balanced = Balanceada
 game-fsr-quality-performance = Desempenho
 
 game-fsr-strength = Força da pixelização
