@@ -134,8 +134,16 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     match diff_info {
                         DiffInfo::Archive { size: _, uri } => {
+                            let downloader = Downloader::new(&uri);
+
                             if let Ok(sa) = StreamArchive::from_uri(&uri) {
-                                let mut updater = sa.stream_unpack(transition.transition_path())?;
+                                let mut status_file = downloader.file_name();
+                                status_file.push_str(".progress");
+
+                                let mut updater = sa.stream_unpack(
+                                    transition.transition_path(),
+                                    status_file
+                                )?;
 
                                 while !updater.is_finished() {
                                     // TODO: add timeouts
@@ -149,7 +157,6 @@ impl QueuedTask for DownloadDiffQueuedTask {
                             } else {
                                 // Download archive
 
-                                let downloader = Downloader::new(&uri);
                                 let archive = transition.transition_path()
                                     .join(downloader.file_name());
 
@@ -193,7 +200,13 @@ impl QueuedTask for DownloadDiffQueuedTask {
                                 .collect::<Vec<_>>();
 
                             if let Ok(sa) = StreamArchive::from_uris(&uris, true) {
-                                let mut updater = sa.stream_unpack(transition.transition_path())?;
+                                let mut status_file = Downloader::new(uris[0]).file_name();
+                                status_file.push_str(".progress");
+
+                                let mut updater = sa.stream_unpack(
+                                    transition.transition_path(),
+                                    status_file
+                                )?;
 
                                 while !updater.is_finished() {
                                     // TODO: add timeouts
