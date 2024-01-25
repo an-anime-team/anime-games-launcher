@@ -10,6 +10,6 @@ loading-preparing-games-list  = 初始化游戏列表
 loading-registering-styles    = 注册游戏风格
 loading-checking-wine-version = 正在检查 wine 的版本
 loading-checking-dxvk-version = 正在检查 dxvk 的版本
-loading-checking-applied-dxvk = 正在检查 applied dxvk 的版本
+loading-checking-applied-dxvk = 正在检查应用 dxvk 的版本
 loading-checking-wine-prefix  = 正在检查 wine prefix
 loading-checking-games-addons = 正在检查游戏拓展
