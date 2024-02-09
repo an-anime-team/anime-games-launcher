@@ -1,6 +1,11 @@
 use gtk::prelude::*;
 use relm4::prelude::*;
 
+// 10:14
+pub const DEFAULT_SIZE: (i32, i32) = (240, 336);
+pub const MEDIUM_SIZE: (i32, i32)  = (160, 224);
+pub const SMALL_SIZE: (i32, i32)   = (40, 56);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardComponentInput {
     SetImage(Option<String>),
@@ -39,9 +44,8 @@ impl Default for CardComponent {
             image: None,
             title: None,
 
-            // 10:14
-            width: 240,
-            height: 336,
+            width: DEFAULT_SIZE.0,
+            height: DEFAULT_SIZE.1,
 
             clickable: false,
             blurred: false
@@ -53,9 +57,8 @@ impl CardComponent {
     #[inline]
     pub fn medium() -> Self {
         Self {
-            // 10:14
-            width: 160,
-            height: 224,
+            width: MEDIUM_SIZE.0,
+            height: MEDIUM_SIZE.1,
 
             ..Self::default()
         }
@@ -64,9 +67,8 @@ impl CardComponent {
     #[inline]
     pub fn small() -> Self {
         Self {
-            // 10:14
-            width: 40,
-            height: 56,
+            width: SMALL_SIZE.0,
+            height: SMALL_SIZE.1,
 
             ..Self::default()
         }

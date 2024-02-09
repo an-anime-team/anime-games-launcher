@@ -1,10 +1,7 @@
 use gtk::prelude::*;
 use relm4::prelude::*;
 
-use crate::ui::components::prelude::{
-    CardComponent,
-    CardComponentInput
-};
+use crate::ui::components::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameDetailsInit {
@@ -46,19 +43,22 @@ impl SimpleAsyncComponent for GameDetails {
 
                 gtk::Overlay {
                     #[wrap(Some)]
-                    set_child = &gtk::Picture {
+                    set_child = &adw::Clamp {
                         set_height_request: 340,
+                        set_tightening_threshold: 600,
 
-                        set_content_fit: gtk::ContentFit::Cover,
+                        gtk::Picture {
+                            set_content_fit: gtk::ContentFit::Cover,
 
-                        add_css_class: "card",
+                            add_css_class: "card",
 
-                        #[watch]
-                        set_filename: Some(&model.background_image)
+                            #[watch]
+                            set_filename: Some(&model.background_image)
+                        }
                     },
 
                     add_overlay = &gtk::Box {
-                        set_margin_top: 220,
+                        set_margin_top: 234,
                         set_margin_start: 16,
                         set_margin_end: 16,
                         set_spacing: 16,
@@ -66,30 +66,85 @@ impl SimpleAsyncComponent for GameDetails {
                         model.card.widget(),
 
                         gtk::Box {
-                            set_margin_top: 140,
-
                             set_orientation: gtk::Orientation::Vertical,
+                            set_valign: gtk::Align::End,
 
                             gtk::Label {
                                 set_halign: gtk::Align::Start,
 
                                 add_css_class: "title-1",
-    
+
                                 #[watch]
                                 set_label: &model.title
                             },
-    
+
                             gtk::Label {
                                 set_halign: gtk::Align::Start,
 
                                 set_label: "Hoyoverse"
+                            },
+
+                            gtk::Label {
+                                set_margin_top: 16,
+
+                                set_halign: gtk::Align::Start,
+
+                                set_label: "Played for 317 hours"
+                            },
+
+                            gtk::Label {
+                                set_halign: gtk::Align::Start,
+
+                                set_label: "Last played yesterday"
                             }
                         }
                     }
                 },
 
                 gtk::Box {
-                    set_margin_top: 128,
+                    set_margin_top: 140,
+                    set_margin_start: 16,
+                    set_margin_end: 16,
+                    set_spacing: 8,
+
+                    set_valign: gtk::Align::Start,
+
+                    gtk::Box {
+                        set_spacing: 8,
+
+                        set_orientation: gtk::Orientation::Vertical,
+
+                        gtk::Button {
+                            set_width_request: CARD_MEDIUM_SIZE.0,
+
+                            add_css_class: "pill",
+                            add_css_class: "suggested-action",
+
+                            set_label: "Play"
+                        },
+
+                        gtk::DropDown {
+                            add_css_class: "flat",
+
+                            set_model: Some(&gtk::StringList::new(&[
+                                "Global",
+                                "China"
+                            ]))
+                        }
+                    },
+
+                    gtk::Button {
+                        set_valign: gtk::Align::Start,
+
+                        add_css_class: "pill",
+
+                        set_label: "Verify"
+                    },
+                },
+
+                gtk::Box {
+                    set_margin_top: 32,
+                    set_spacing: 16,
 
                     set_orientation: gtk::Orientation::Vertical,
 

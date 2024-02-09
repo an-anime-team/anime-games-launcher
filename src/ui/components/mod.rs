@@ -6,7 +6,10 @@ pub mod prelude {
     pub use super::card::{
         CardComponent,
         CardComponentInput,
-        CardComponentOutput
+        CardComponentOutput,
+        DEFAULT_SIZE as CARD_DEFAULT_SIZE,
+        MEDIUM_SIZE as CARD_MEDIUM_SIZE,
+        SMALL_SIZE as CARD_SMALL_SIZE
     };
 
     pub use super::cards_list::{
