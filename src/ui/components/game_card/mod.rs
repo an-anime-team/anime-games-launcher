@@ -10,6 +10,7 @@ pub enum CardInfo {
         edition: String,
         picture_uri: String
     },
+
     Component {
         name: String,
         title: String,

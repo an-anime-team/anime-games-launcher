@@ -6,10 +6,8 @@ pub mod i18n;
 pub mod utils;
 pub mod config;
 pub mod games;
-pub mod components;
+pub mod profiles;
 pub mod ui;
-
-use ui::windows::loading::LoadingApp;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
@@ -83,7 +81,7 @@ fn main() -> anyhow::Result<()> {
     let app = RelmApp::new(APP_ID);
 
     // Show loading window
-    app.run_async::<LoadingApp>(());
+    app.run_async::<ui::windows::prelude::MainApp>(());
 
     Ok(())
 }
