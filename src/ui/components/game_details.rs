@@ -84,62 +84,58 @@ impl SimpleAsyncComponent for GameDetails {
                                 set_label: "Hoyoverse"
                             },
 
-                            gtk::Label {
+                            gtk::Box {
                                 set_margin_top: 16,
 
-                                set_halign: gtk::Align::Start,
+                                set_hexpand: true,
 
-                                set_label: "Played for 317 hours"
-                            },
+                                gtk::Box {
+                                    set_orientation: gtk::Orientation::Vertical,
 
-                            gtk::Label {
-                                set_halign: gtk::Align::Start,
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
 
-                                set_label: "Last played yesterday"
+                                        set_label: "Played for 317 hours"
+                                    },
+
+                                    gtk::Label {
+                                        set_halign: gtk::Align::Start,
+
+                                        set_label: "Last played yesterday"
+                                    }
+                                },
+
+                                gtk::Button {
+                                    set_hexpand: true,
+
+                                    set_halign: gtk::Align::End,
+
+                                    add_css_class: "pill",
+                                    add_css_class: "suggested-action",
+
+                                    set_label: "Play"
+                                }
                             }
                         }
                     }
                 },
 
                 gtk::Box {
-                    set_margin_top: 140,
+                    set_margin_top: 130,
                     set_margin_start: 16,
                     set_margin_end: 16,
                     set_spacing: 8,
 
-                    set_valign: gtk::Align::Start,
+                    gtk::DropDown {
+                        set_width_request: CARD_MEDIUM_SIZE.0,
 
-                    gtk::Box {
-                        set_spacing: 8,
+                        add_css_class: "flat",
 
-                        set_orientation: gtk::Orientation::Vertical,
-
-                        gtk::Button {
-                            set_width_request: CARD_MEDIUM_SIZE.0,
-
-                            add_css_class: "pill",
-                            add_css_class: "suggested-action",
-
-                            set_label: "Play"
-                        },
-
-                        gtk::DropDown {
-                            add_css_class: "flat",
-
-                            set_model: Some(&gtk::StringList::new(&[
-                                "Global",
-                                "China"
-                            ]))
-                        }
-                    },
-
-                    gtk::Button {
-                        set_valign: gtk::Align::Start,
-
-                        add_css_class: "pill",
-
-                        set_label: "Verify"
-                    },
+                        set_model: Some(&gtk::StringList::new(&[
+                            "Global",
+                            "China"
+                        ]))
+                    }
                 },
 
                 gtk::Box {
