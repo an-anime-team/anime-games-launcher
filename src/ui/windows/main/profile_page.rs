@@ -2,14 +2,14 @@ use gtk::prelude::*;
 use adw::prelude::*;
 use relm4::prelude::*;
 
-#[derive(Debug)]
-pub struct ProfilePageApp {
-
-}
-
 #[derive(Debug, Clone)]
 pub enum ProfilePageAppMsg {
     
+}
+
+#[derive(Debug)]
+pub struct ProfilePageApp {
+
 }
 
 #[relm4::component(pub, async)]
@@ -19,7 +19,8 @@ impl SimpleAsyncComponent for ProfilePageApp {
     type Output = ();
 
     view! {
-        root = adw::PreferencesPage {
+        #[root]
+        adw::PreferencesPage {
             add = &adw::PreferencesGroup {
                 set_title: "Wine profiles",
 

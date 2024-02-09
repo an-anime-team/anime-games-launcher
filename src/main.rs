@@ -64,14 +64,6 @@ fn main() -> anyhow::Result<()> {
 
     // Set global css
     relm4::set_global_css("
-        .game-card {
-            transition: transform 0.2s ease;
-        }
-
-        .game-card:hover {
-            transform: scale(1.03);
-        }
-
         .warning-action {
             background-color: #BFB04D;
         }

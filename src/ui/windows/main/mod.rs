@@ -12,16 +12,16 @@ pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
 
 pub static mut WINDOW: Option<adw::Window> = None;
 
+#[derive(Debug, Clone)]
+pub enum MainAppMsg {
+    
+}
+
 #[derive(Debug)]
 pub struct MainApp {
     store_page: AsyncController<StorePageApp>,
     library_page: AsyncController<LibraryPageApp>,
     profile_page: AsyncController<ProfilePageApp>
-}
-
-#[derive(Debug, Clone)]
-pub enum MainAppMsg {
-    
 }
 
 #[relm4::component(pub, async)]
@@ -31,6 +31,7 @@ impl SimpleAsyncComponent for MainApp {
     type Output = ();
 
     view! {
+        #[root]
         window = adw::Window {
             set_size_request: (1200, 800),
             set_title: Some("Anime Games Launcher"),
@@ -53,21 +54,30 @@ impl SimpleAsyncComponent for MainApp {
 
                 #[name = "view_stack"]
                 adw::ViewStack {
-                    add = &adw::Clamp {
+                    add = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
                         model.store_page.widget(),
                     } -> {
                         set_title: Some("Store"),
                         set_icon_name: Some("folder-download-symbolic")
                     },
 
-                    add = &adw::Clamp {
+                    add = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
                         model.library_page.widget(),
                     } -> {
                         set_title: Some("Library"),
                         set_icon_name: Some("applications-games-symbolic")
                     },
 
-                    add = &adw::Clamp {
+                    add = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
                         model.profile_page.widget(),
                     } -> {
                         set_title: Some("Profile"),
