@@ -7,7 +7,10 @@
     <a href="https://matrix.to/#/#an-anime-game:envs.net">Matrix</a>
 </p>
 
-<p align="center">Universal linux launcher for anime games</p>
+<p align="center">
+    <b>PROOF OF CONCEPT - NOT FOR EVERYDAY USE</b></br>
+    Universal linux launcher for anime games
+</p>
 
 <br>
 
