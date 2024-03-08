@@ -390,8 +390,9 @@ impl SimpleAsyncComponent for TasksQueueComponent {
                                 TaskStatus::PreparingTransition => (true, tr!("tasks-preparing-transition")),
                                 TaskStatus::FinishingTransition => (true, tr!("tasks-finishing-transition")),
 
-                                TaskStatus::Downloading => (false, tr!("tasks-downloading")),
-                                TaskStatus::Unpacking   => (false, tr!("tasks-unpacking")),
+                                TaskStatus::Downloading     => (false, tr!("tasks-downloading")),
+                                TaskStatus::Unpacking       => (false, tr!("tasks-unpacking")),
+                                TaskStatus::StreamUnpacking => (false, tr!("tasks-stream-unpacking")),
 
                                 TaskStatus::DeletingFiles => (true, tr!("tasks-deleting-files")),
 

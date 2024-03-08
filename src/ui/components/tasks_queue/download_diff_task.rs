@@ -5,6 +5,7 @@ use std::sync::atomic::{
     Ordering
 };
 
+use anime_game_core::archive::stream::StreamArchive;
 use anime_game_core::updater::{
     UpdaterExt,
     BasicUpdater,
@@ -47,6 +48,7 @@ pub enum Status {
     RunPreTransitionCode,
     Downloading,
     Unpacking,
+    StreamUnpacking,
     RunTransitionCode,
     FinishingTransition,
     RunPostTransitionCode
@@ -132,96 +134,140 @@ impl QueuedTask for DownloadDiffQueuedTask {
 
                     match diff_info {
                         DiffInfo::Archive { size: _, uri } => {
-                            // Download archive
+                            let downloader = Downloader::new(&uri);
 
-                            let downloader = Downloader::new(uri);
+                            if let Ok(sa) = StreamArchive::from_uri(&uri) {
+                                let mut status_file = downloader.file_name();
+                                status_file.push_str(".progress");
 
-                            let archive = transition.transition_path()
-                                .join(downloader.file_name());
+                                let mut updater = sa.stream_unpack(
+                                    transition.transition_path(),
+                                    status_file
+                                )?;
 
-                            let mut updater = downloader.download(&archive)?;
+                                while !updater.is_finished() {
+                                    // TODO: add timeouts
 
-                            while !updater.is_finished() {
-                                // TODO: add timeouts
-
-                                sender.send((
-                                    Status::Downloading,
-                                    updater.current(),
-                                    updater.total()
-                                ))?;
-                            }
-
-                            // Extract archive
-
-                            let Some(mut updater) = archive::extract(&archive, transition.transition_path()) else {
-                                anyhow::bail!("Failed to extract files from the archive: {:?}", archive);
-                            };
-
-                            while let Ok(false) = updater.status() {
-                                // TODO: add timeouts
-
-                                sender.send((
-                                    Status::Unpacking,
-                                    updater.current(),
-                                    updater.total()
-                                ))?;
-                            }
-
-                            // Delete archive
-
-                            std::fs::remove_file(archive)?;
-                        }
-
-                        DiffInfo::Segments { size, segments } => {
-                            // Download segments
-
-                            let mut archives = vec![];
-                            let mut downloaded = 0;
-
-                            for uri in segments {
-                                let downloader = Downloader::new(uri);
+                                    sender.send((
+                                        Status::StreamUnpacking,
+                                        updater.current(),
+                                        updater.total()
+                                    ))?;
+                                }
+                            } else {
+                                // Download archive
 
                                 let archive = transition.transition_path()
                                     .join(downloader.file_name());
 
                                 let mut updater = downloader.download(&archive)?;
 
-                                archives.push(archive);
-
                                 while !updater.is_finished() {
                                     // TODO: add timeouts
 
                                     sender.send((
                                         Status::Downloading,
-                                        downloaded + updater.current(),
-                                        size
-                                        // updater.total()
+                                        updater.current(),
+                                        updater.total()
                                     ))?;
                                 }
 
-                                downloaded += updater.total();
-                            }
+                                // Extract archive
 
-                            // Extract segments
+                                let Some(mut updater) = archive::extract(&archive, transition.transition_path()) else {
+                                    anyhow::bail!("Failed to extract files from the archive: {:?}", archive);
+                                };
 
-                            let Some(mut updater) = archive::extract(&archives[0], transition.transition_path()) else {
-                                anyhow::bail!("Failed to extract files from segmented archive: {:?}", archives[0]);
-                            };
+                                while let Ok(false) = updater.status() {
+                                    // TODO: add timeouts
 
-                            while let Ok(false) = updater.status() {
-                                // TODO: add timeouts
+                                    sender.send((
+                                        Status::Unpacking,
+                                        updater.current(),
+                                        updater.total()
+                                    ))?;
+                                }
 
-                                sender.send((
-                                    Status::Unpacking,
-                                    updater.current(),
-                                    updater.total()
-                                ))?;
-                            }
+                                // Delete archive
 
-                            // Delete segments
-
-                            for archive in archives {
                                 std::fs::remove_file(archive)?;
+                            }
+                        }
+
+                        DiffInfo::Segments { size, segments } => {
+                            let uris = segments.iter()
+                                .map(|s| s.as_str())
+                                .collect::<Vec<_>>();
+
+                            if let Ok(sa) = StreamArchive::from_uris(&uris, true) {
+                                let mut status_file = Downloader::new(uris[0]).file_name();
+                                status_file.push_str(".progress");
+
+                                let mut updater = sa.stream_unpack(
+                                    transition.transition_path(),
+                                    status_file
+                                )?;
+
+                                while !updater.is_finished() {
+                                    // TODO: add timeouts
+
+                                    sender.send((
+                                        Status::StreamUnpacking,
+                                        updater.current(),
+                                        updater.total()
+                                    ))?;
+                                }
+                            } else {
+                                // Download segments
+
+                                let mut archives = vec![];
+                                let mut downloaded = 0;
+
+                                for uri in uris {
+                                    let downloader = Downloader::new(uri);
+
+                                    let archive = transition.transition_path()
+                                        .join(downloader.file_name());
+
+                                    let mut updater = downloader.download(&archive)?;
+
+                                    archives.push(archive);
+
+                                    while !updater.is_finished() {
+                                        // TODO: add timeouts
+
+                                        sender.send((
+                                            Status::Downloading,
+                                            downloaded + updater.current(),
+                                            size
+                                            // updater.total()
+                                        ))?;
+                                    }
+
+                                    downloaded += updater.total();
+                                }
+
+                                // Extract segments
+
+                                let Some(mut updater) = archive::extract(&archives[0], transition.transition_path()) else {
+                                    anyhow::bail!("Failed to extract files from segmented archive: {:?}", archives[0]);
+                                };
+
+                                while let Ok(false) = updater.status() {
+                                    // TODO: add timeouts
+
+                                    sender.send((
+                                        Status::Unpacking,
+                                        updater.current(),
+                                        updater.total()
+                                    ))?;
+                                }
+
+                                // Delete segments
+
+                                for archive in archives {
+                                    std::fs::remove_file(archive)?;
+                                }
                             }
                         }
 
@@ -387,6 +433,7 @@ impl ResolvedTask for DownloadDiffResolvedTask {
                 BasicStatus::Working(Status::RunPreTransitionCode)  => TaskStatus::RunPreTransitionCode,
                 BasicStatus::Working(Status::Downloading)           => TaskStatus::Downloading,
                 BasicStatus::Working(Status::Unpacking)             => TaskStatus::Unpacking,
+                BasicStatus::Working(Status::StreamUnpacking)       => TaskStatus::StreamUnpacking,
                 BasicStatus::Working(Status::RunTransitionCode)     => TaskStatus::RunTransitionCode,
                 BasicStatus::Working(Status::FinishingTransition)   => TaskStatus::FinishingTransition,
                 BasicStatus::Working(Status::RunPostTransitionCode) => TaskStatus::RunPostTransitionCode,
