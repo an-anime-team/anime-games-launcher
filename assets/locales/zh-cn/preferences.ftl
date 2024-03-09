@@ -1,6 +1,6 @@
 preferences = 优先
 
-preferences--general = General
+preferences--general = 全局
 
 general-launcher-language = 启动器语言
 general-launcher-language-description = 将在下次重启后使用
@@ -18,12 +18,12 @@ wine-sync-description = 同步 Wine 内部事件的技术
 
 wine-borderless = 无边框窗口
 
-wine-virtual-desktop = Virtual desktop
-wine-virtual-desktop-description = Create virtual windows desktop with fixed size and run the game in it
+wine-virtual-desktop = 虚拟桌面
+wine-virtual-desktop-description = 创建固定大小的虚拟Windows桌面并在其中运行游戏
 
-wine-virtual-desktop-enabled = Enabled
-wine-virtual-desktop-width   = Width
-wine-virtual-desktop-height  = Height
+wine-virtual-desktop-enabled = 开启
+wine-virtual-desktop-width   = 宽
+wine-virtual-desktop-height  = 高
 
 preferences--gaming = 游戏
 

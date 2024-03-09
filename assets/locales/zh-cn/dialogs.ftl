@@ -1,4 +1,4 @@
-dialog-toast-details = Details
+dialog-toast-details = 细节
 
 dialog-stop     = 停止
 dialog-disable  = 关闭
