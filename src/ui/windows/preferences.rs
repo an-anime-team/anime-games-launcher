@@ -499,7 +499,7 @@ impl SimpleAsyncComponent for PreferencesApp {
         match msg {
             PreferencesAppMsg::SelectWineVersion(index) => {
                 let version = if index == 0 {
-                    tr!("components-wine-latest")
+                    "latest".to_owned()
                 } else {
                     self.wine_versions[index as usize - 1].name.clone()
                 };
@@ -514,7 +514,7 @@ impl SimpleAsyncComponent for PreferencesApp {
 
             PreferencesAppMsg::SelectDxvkVersion(index) => {
                 let version = if index == 0 {
-                    tr!("components-dxvk-latest")
+                    "latest".to_owned()
                 } else {
                     self.dxvk_versions[index as usize - 1].version.clone()
                 };
