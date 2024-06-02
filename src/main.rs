@@ -63,13 +63,6 @@ fn main() -> anyhow::Result<()> {
     gtk::glib::set_application_name("Anime Games Launcher");
     gtk::glib::set_program_name(Some("Anime Games Launcher"));
 
-    // Set global css
-    relm4::set_global_css("
-        .warning-action {
-            background-color: #BFB04D;
-        }
-    ");
-
     // --------------------------------------------------------------------------------------
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -91,6 +84,13 @@ fn main() -> anyhow::Result<()> {
 
     // Create the app
     let app = RelmApp::new(APP_ID);
+
+    // Set global css
+    app.set_global_css("
+        .warning-action {
+            background-color: #BFB04D;
+        }
+    ");
 
     // Show loading window
     app.run_async::<ui::windows::prelude::MainApp>(());
