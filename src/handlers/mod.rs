@@ -1,6 +1,7 @@
 use crate::updater::Updater;
 
 pub mod http;
+pub mod file;
 
 pub trait HandlerExt {
     type Output;
@@ -26,7 +27,8 @@ pub trait HandlerExt {
 
 pub struct UriHandler {
     http: http::HttpHandler,
-    https: http::HttpsHandler
+    https: http::HttpsHandler,
+    file: file::FileHandler
 }
 
 impl UriHandler {
@@ -35,7 +37,9 @@ impl UriHandler {
         Ok(Self {
             // TODO: respect proxy and timeout settings
             http: http::HttpHandler::new(None, None)?,
-            https: http::HttpsHandler::new(None, None)?
+            https: http::HttpsHandler::new(None, None)?,
+
+            file: file::FileHandler
         })
     }
 
@@ -43,7 +47,9 @@ impl UriHandler {
     pub fn can_handle(&self, uri: impl AsRef<str>) -> bool {
         let uri = uri.as_ref();
 
-        self.https.can_handle(uri) || self.http.can_handle(uri)
+        self.https.can_handle(uri) ||
+        self.http.can_handle(uri) ||
+        self.file.can_handle(uri)
     }
 
     /// Handle given URI
@@ -63,6 +69,14 @@ impl UriHandler {
 
             Ok(Updater::spawn(|_| async move {
                 Ok(updater.join().await??.bytes().await?.to_vec())
+            }))
+        }
+
+        else if self.file.can_handle(uri) {
+            let updater = self.file.handle(uri);
+
+            Ok(Updater::spawn(|_| async move {
+                Ok(updater.join().await??)
             }))
         }
 
