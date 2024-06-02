@@ -85,3 +85,20 @@ impl UriHandler {
         }
     }
 }
+
+lazy_static::lazy_static! {
+    static ref HANDLER: UriHandler = UriHandler::new()
+        .expect("Failed to register global URI handler");
+}
+
+#[inline]
+/// Check if global handler can process given URI
+pub fn can_handle(uri: impl AsRef<str>) -> bool {
+    HANDLER.can_handle(uri)
+}
+
+#[inline]
+/// Process given URI using global handler
+pub fn handle(uri: impl AsRef<str>) -> anyhow::Result<Updater<Vec<u8>, anyhow::Error, ()>> {
+    HANDLER.handle(uri)
+}

@@ -68,26 +68,16 @@ async fn main() -> anyhow::Result<()> {
 
     // --------------------------------------------------------------------------------------
 
-    // let storage = packages::storage::Storage::new("storage")
-    //     .await.unwrap();
+    let storage = packages::storage::Storage::new("storage")
+        .await.unwrap();
 
-    // let package = packages::package::Package::fetch("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact")
-    //     .await.unwrap();
+    let package = packages::package::Package::fetch("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact")
+        .await.unwrap();
 
-    // storage.install(package, |curr, total, name| {
-    //         println!("[{curr}/{total}] Installing {name}");
-    //     })
-    //     .await.unwrap();
-
-    let handler = handlers::UriHandler::new().unwrap();
-
-    let result = handler.handle("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact/manifest.json")
-        .unwrap()
-        .join().await
-        .unwrap()
-        .unwrap();
-
-    dbg!(String::from_utf8_lossy(&result));
+    storage.install(package, |curr, total, name| {
+            println!("[{curr}/{total}] Installing {name}");
+        })
+        .await.unwrap();
 
     // --------------------------------------------------------------------------------------
 

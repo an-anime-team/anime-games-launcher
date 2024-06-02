@@ -5,7 +5,7 @@ use serde_json::Value as Json;
 use crate::packages::prelude::*;
 
 /// Parse manifest v1 file from given JSON object
-pub async fn parse_v1(manifest: &Json, uri: String, client: &reqwest::Client) -> anyhow::Result<Manifest> {
+pub async fn parse_v1(manifest: &Json, uri: String) -> anyhow::Result<Manifest> {
     let Some(game) = manifest.get("game") else {
         anyhow::bail!("Incorrect manifest v1 file format: `game` field is missing")
     };
@@ -30,13 +30,9 @@ pub async fn parse_v1(manifest: &Json, uri: String, client: &reqwest::Client) ->
         anyhow::bail!("Incorrect manifest v1 file format: `script.standard` field is missing")
     };
 
-    let response = client.get(format!("{uri}/{script_path}")).send().await?;
-
-    if !response.status().is_success() {
-        anyhow::bail!("Failed to request package's integration script: HTTP code {}", response.status().as_u16());
-    }
-
-    let script_body = response.bytes().await?;
+    let script_body = crate::handlers::handle(format!("{uri}/{script_path}"))?
+        .join().await?
+        .map_err(|err| anyhow::anyhow!("Failed to request package's integration script: {err}"))?;
 
     Ok(Manifest {
         manifest_version: 1,

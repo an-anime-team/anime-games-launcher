@@ -91,27 +91,31 @@ impl Storage {
 
         let total_install_total = dependencies.len();
 
-        let client = reqwest::Client::new();
-
         // Install dependencies
         for (installed_count, dependency) in dependencies.into_iter().enumerate() {
             callback(installed_count, total_install_total, dependency.name());
 
             // If this dependency is not installed in the current storage
             if dependency.resolve(self).await?.is_none() {
-                // Fetch dependency body
-                let response = client.get(dependency.uri())
-                    .send().await?;
+                // Fetch dependency content
+                // TODO: input files can weight a lot
+                let dependency_content = crate::handlers::handle(dependency.uri())?
+                    .join().await?
+                    .map_err(|err| anyhow::anyhow!("Failed to fetch '{}' from '{}': {err}", dependency.name(), dependency.uri()));
 
-                // Return immediately if failed
-                if !response.status().is_success() {
-                    // Packages as inputs are special case
-                    let is_package = matches!(dependency, Dependency::Input { input: ManifestInput { format: ManifestInputFormat::Package, .. }, .. });
+                let dependency_content = match dependency_content {
+                    Ok(content) => content,
+                    Err(err) => {
+                        // Packages as inputs are special case
+                        let is_package = matches!(dependency, Dependency::Input { input: ManifestInput { format: ManifestInputFormat::Package, .. }, .. });
 
-                    if !is_package {
-                        anyhow::bail!("Failed to fetch '{}' from '{}': HTTP code {}", dependency.name(), dependency.uri(), response.status().as_u16());
+                        if !is_package {
+                            return Err(err);
+                        }
+
+                        vec![]
                     }
-                }
+                };
 
                 // Otherwise install it to the storage
                 match dependency {
@@ -120,8 +124,7 @@ impl Storage {
 
                         match input.format {
                             ManifestInputFormat::File => {
-                                // TODO: input files can weight a lot, there should be another callback, or better - a Downloader
-                                tokio::fs::write(path, response.bytes().await?).await?;
+                                tokio::fs::write(path, dependency_content).await?;
                             }
 
                             ManifestInputFormat::Package => {
@@ -140,7 +143,7 @@ impl Storage {
 
                         // Outputs are lua scripts - launcher integrations or arbitrary packages
                         // We don't really care about their size or specific installation methods here
-                        tokio::fs::write(path, response.bytes().await?).await?;
+                        tokio::fs::write(path, dependency_content).await?;
                     }
                 }
             }
