@@ -45,7 +45,7 @@ pub async fn parse_v1(manifest: &Json, uri: String) -> anyhow::Result<Manifest> 
             ManifestOutput {
                 format: ManifestOutputFormat::Integration,
                 path: script_path.to_string(),
-                hash: Hash::from_slice(HashAlgorithm::Xxh3, &script_body),
+                hash: Hash::from_slice(HashAlgorithm::Xxh3, script_body),
                 metadata: ManifestOutputMetadata {
                     uuid: Uuid::new_from_str(game_name),
                     name: game_name.to_string(),

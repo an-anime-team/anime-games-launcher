@@ -2,6 +2,11 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::filter::*;
+
+use clap::Parser;
+
 pub mod i18n;
 pub mod utils;
 pub mod updater;
@@ -10,6 +15,7 @@ pub mod packages;
 pub mod config;
 pub mod games;
 pub mod profiles;
+pub mod cli;
 pub mod ui;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
@@ -52,47 +58,90 @@ async fn main() -> anyhow::Result<()> {
     // Setup custom panic handler
     human_panic::setup_panic!(human_panic::metadata!());
 
-    adw::init().expect("Libadwaita initialization failed");
-
-    // Register and include resources
-    gtk::gio::resources_register_include!("resources.gresource")
-        .expect("Failed to register resources");
-
-    // Set icons search path
-    gtk::IconTheme::for_display(&gtk::gdk::Display::default().unwrap())
-        .add_resource_path(&format!("{APP_RESOURCE_PREFIX}/icons"));
-
-    // Set application's title
-    gtk::glib::set_application_name("Anime Games Launcher");
-    gtk::glib::set_program_name(Some("Anime Games Launcher"));
-
-    // --------------------------------------------------------------------------------------
-
-    let storage = packages::storage::Storage::new("storage")
-        .await.unwrap();
-
-    let package = packages::package::Package::fetch("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact")
-        .await.unwrap();
-
-    storage.install(package, |curr, total, name| {
-            println!("[{curr}/{total}] Installing {name}");
+    // Prepare stdout logger
+    let stdout = tracing_subscriber::fmt::layer()
+        // .pretty()
+        .with_filter({
+            if *APP_DEBUG {
+                LevelFilter::TRACE
+            } else {
+                LevelFilter::WARN
+            }
         })
-        .await.unwrap();
+        .with_filter(filter_fn(move |metadata| {
+            !metadata.target().contains("rustls")
+        }));
 
-    // --------------------------------------------------------------------------------------
+    // Prepare debug file logger
+    let file = std::fs::File::create(DEBUG_FILE.as_path())?;
 
-    // Create the app
-    let app = RelmApp::new(APP_ID);
+    let debug_log = tracing_subscriber::fmt::layer()
+        .pretty()
+        .with_ansi(false)
+        .with_writer(std::sync::Arc::new(file))
+        .with_filter(filter_fn(|metadata| {
+            !metadata.target().contains("rustls")
+        }));
 
-    // Set global css
-    app.set_global_css("
-        .warning-action {
-            background-color: #BFB04D;
-        }
-    ");
+    // Setup loggers
+    tracing_subscriber::registry()
+        .with(stdout)
+        .with(debug_log)
+        .init();
 
-    // Show loading window
-    app.run_async::<ui::windows::prelude::MainApp>(());
+    // Try to parse and execute CLI command
+    if std::env::args().len() > 1 {
+        cli::Cli::parse()
+            .execute()
+            .await?;
+    }
+
+    // Otherwise start GUI app
+    else {
+        tracing::info!("Starting application ({APP_VERSION})");
+
+        adw::init().expect("Libadwaita initialization failed");
+
+        // Register and include resources
+        gtk::gio::resources_register_include!("resources.gresource")
+            .expect("Failed to register resources");
+
+        // Set icons search path
+        gtk::IconTheme::for_display(&gtk::gdk::Display::default().unwrap())
+            .add_resource_path(&format!("{APP_RESOURCE_PREFIX}/icons"));
+
+        // Set application's title
+        gtk::glib::set_application_name("Anime Games Launcher");
+        gtk::glib::set_program_name(Some("Anime Games Launcher"));
+
+        // --------------------------------------------------------------------------------------
+
+        let storage = packages::storage::Storage::new("storage")
+            .await.unwrap();
+
+        let package = packages::package::Package::fetch("file:///home/observer/projects/new-anime-core/game-integrations/test/jadeite")
+            .await.unwrap();
+
+        storage.install(package, |curr, total, name| {
+                println!("[{curr}/{total}] Installing {name}");
+            })
+            .await.unwrap();
+
+        // --------------------------------------------------------------------------------------
+
+        // Create the app
+        let app = RelmApp::new(APP_ID);
+
+        // Set global css
+        app.set_global_css("
+            .warning-action {
+                background-color: #BFB04D;
+            }
+        ");
+
+        // Show loading window
+        app.run_async::<ui::windows::prelude::MainApp>(());
+    }
 
     Ok(())
 }

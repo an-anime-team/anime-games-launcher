@@ -93,7 +93,13 @@ pub fn parse_v2(manifest: &Json) -> anyhow::Result<Manifest> {
                                 uuid: metadata.get("uuid")
                                     .and_then(Json::as_str)
                                     .map(Uuid::try_from)
-                                    .unwrap_or_else(|| Ok(Uuid::new_from_str(&name)))?,
+                                    .unwrap_or_else(|| {
+                                        let uuid = Uuid::new_from_str(&name);
+
+                                        tracing::warn!("No UUID specified for package output. Generating using name '{name}': {uuid}");
+
+                                        Ok(uuid)
+                                    })?,
 
                                 title: metadata.get("title")
                                     .and_then(Json::as_str)
