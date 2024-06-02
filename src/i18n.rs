@@ -29,22 +29,22 @@ pub fn set_language(lang: LanguageIdentifier) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    anyhow::bail!("Language '{lang}' is not supported")
+    anyhow::bail!("Language '{lang}' is not supported");
 }
 
 #[allow(clippy::missing_safety_doc)]
 /// Get launcher language
 pub unsafe fn get_lang<'a>() -> &'a LanguageIdentifier {
-    &LANG
+    LANG.as_ref()
 }
 
 #[cached::proc_macro::once]
 /// Get current system language
 pub fn get_system_language() -> String {
     std::env::var("LC_ALL")
-        .unwrap_or_else(|_| std::env::var("LC_MESSAGES")
-        .unwrap_or_else(|_| std::env::var("LANG")
-        .unwrap_or_else(|_| String::from("en_us"))))
+        .or_else(|_| std::env::var("LC_MESSAGES"))
+        .or_else(|_| std::env::var("LANG"))
+        .unwrap_or_else(|_| String::from("en_us"))
         .to_ascii_lowercase()
 }
 
