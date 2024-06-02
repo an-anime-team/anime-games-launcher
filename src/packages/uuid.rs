@@ -19,7 +19,7 @@ impl Uuid {
     /// 
     /// Same seed will always generate the same value
     pub fn new_from_hash(hash: &Hash) -> Self {
-        Self::new_from_slice(hash.bytes())
+        Self::new_from_slice(&hash.value().to_be_bytes())
     }
 
     /// Build UUID using given bytes slice as a seed
@@ -28,8 +28,14 @@ impl Uuid {
     pub fn new_from_slice(slice: &[u8]) -> Self {
         let mut bytes = [0; 16];
 
-        for (i, byte) in slice.iter().enumerate() {
+        let n = std::cmp::max(slice.len() - 1, 15);
+
+        for (i, byte) in slice.iter().cycle().enumerate() {
             bytes[i % 16] ^= *byte;
+
+            if i == n {
+                break;
+            }
         }
 
         Self(uuid::Uuid::from_bytes(bytes))
