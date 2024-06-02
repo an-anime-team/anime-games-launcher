@@ -4,6 +4,7 @@ use relm4::prelude::*;
 
 pub mod i18n;
 pub mod utils;
+pub mod packages;
 pub mod config;
 pub mod games;
 pub mod profiles;
@@ -68,6 +69,25 @@ fn main() -> anyhow::Result<()> {
             background-color: #BFB04D;
         }
     ");
+
+    // --------------------------------------------------------------------------------------
+
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+
+    runtime.spawn(async {
+        let storage = packages::storage::Storage::new("storage")
+            .await.unwrap();
+
+        let package = packages::package::Package::fetch("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact")
+            .await.unwrap();
+
+        storage.install(package, |curr, total, name| {
+                println!("[{curr}/{total}] Installing {name}");
+            })
+            .await.unwrap();
+    });
+
+    // --------------------------------------------------------------------------------------
 
     // Create the app
     let app = RelmApp::new(APP_ID);

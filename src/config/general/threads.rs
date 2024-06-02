@@ -13,7 +13,8 @@ pub struct Threads {
 impl Default for Threads {
     #[inline]
     fn default() -> Self {
-        let cores = num_cpus::get() as u64;
+        // let cores = num_cpus::get() as u64;
+        let cores = 4;
 
         Self {
             number: cores,
