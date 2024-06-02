@@ -4,6 +4,8 @@ use relm4::prelude::*;
 
 pub mod i18n;
 pub mod utils;
+pub mod updater;
+pub mod handlers;
 pub mod packages;
 pub mod config;
 pub mod games;
@@ -45,7 +47,8 @@ lazy_static::lazy_static! {
     pub static ref DEBUG_FILE: PathBuf = LAUNCHER_FOLDER.join("debug.log");
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     // Setup custom panic handler
     human_panic::setup_panic!(human_panic::metadata!());
 
@@ -65,20 +68,26 @@ fn main() -> anyhow::Result<()> {
 
     // --------------------------------------------------------------------------------------
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
+    // let storage = packages::storage::Storage::new("storage")
+    //     .await.unwrap();
 
-    runtime.spawn(async {
-        let storage = packages::storage::Storage::new("storage")
-            .await.unwrap();
+    // let package = packages::package::Package::fetch("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact")
+    //     .await.unwrap();
 
-        let package = packages::package::Package::fetch("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact")
-            .await.unwrap();
+    // storage.install(package, |curr, total, name| {
+    //         println!("[{curr}/{total}] Installing {name}");
+    //     })
+    //     .await.unwrap();
 
-        storage.install(package, |curr, total, name| {
-                println!("[{curr}/{total}] Installing {name}");
-            })
-            .await.unwrap();
-    });
+    let handler = handlers::UriHandler::new().unwrap();
+
+    let result = handler.handle("https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/genshin-impact/manifest.json")
+        .unwrap()
+        .join().await
+        .unwrap()
+        .unwrap();
+
+    dbg!(String::from_utf8_lossy(&result));
 
     // --------------------------------------------------------------------------------------
 
