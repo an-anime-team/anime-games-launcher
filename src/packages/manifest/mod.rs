@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use super::hash::Hash;
-use super::uuid::Uuid;
 
 mod v1;
 mod v2;
@@ -21,7 +20,7 @@ pub struct Manifest {
     pub inputs: HashMap<String, ManifestInput>,
 
     /// Outputs from this package
-    pub outputs: Vec<ManifestOutput>
+    pub outputs: HashMap<String, ManifestOutput>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -44,13 +43,13 @@ pub struct ManifestInput {
     /// Input's format
     pub format: ManifestInputFormat,
 
-    /// URI to the input file
-    pub uri: String,
-
     /// Expected input's hash
     /// 
     /// Read about hash formats in the `ManifestOutput` docs
-    pub hash: Hash
+    pub hash: Hash,
+
+    /// URI to the input file
+    pub uri: String
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -59,12 +58,6 @@ pub struct ManifestOutput {
     /// 
     /// Optional field. By default equals to `OutputFormat::Package`
     pub format: ManifestOutputFormat,
-
-    /// Relative path to the output's entry point
-    /// 
-    /// Must be a path to existing lua script - either
-    /// package or integration script's entry
-    pub path: String,
 
     /// Announced output's hash
     /// 
@@ -84,39 +77,25 @@ pub struct ManifestOutput {
     /// to hash all the files
     pub hash: Hash,
 
+    /// Relative path to the output's entry point
+    /// 
+    /// Must be a path to existing lua script - either
+    /// package or integration script's entry
+    pub path: String,
+
     /// Output's metadata (name, title, etc.)
     pub metadata: ManifestOutputMetadata
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ManifestOutputMetadata {
-    /// Output's universal identifier
-    /// 
-    /// Used to identify packages and integration scripts
-    /// by the launcher in config files, logs, etc.
-    /// 
-    /// UUID must follow [RFC4122](http://tools.ietf.org/html/rfc4122) format
-    /// 
-    /// This value is automatically calculated from the `name`
-    /// field if absent, but it's recommended to set it manually
-    /// to prevent possible compatibility issues
-    pub uuid: Uuid,
-
-    /// Output's name
-    /// 
-    /// Required field. Used to produce both
-    /// `title` and `uuid` if they're absent
-    pub name: String,
-
     /// Output's title
     /// 
     /// Mostly needed for game integration scripts
-    pub title: String,
+    pub title: Option<String>,
 
     /// Integration script standard
-    /// 
-    /// Optional field. Latest value is used by default
-    pub standard: u64
+    pub standard: Option<u64>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

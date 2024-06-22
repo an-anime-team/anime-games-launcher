@@ -97,58 +97,74 @@ impl Storage {
 
             // If this dependency is not installed in the current storage
             if dependency.resolve(self).await?.is_none() {
-                // Fetch dependency content
-                // TODO: input files can weight a lot
-                let dependency_content = crate::handlers::handle(dependency.uri())?
-                    .join().await?
-                    .map_err(|err| anyhow::anyhow!("Failed to fetch '{}' from '{}': {err}", dependency.name(), dependency.uri()));
-
-                let dependency_content = match dependency_content {
-                    Ok(content) => content,
-                    Err(err) => {
-                        // Packages as inputs are special case
-                        let is_package = matches!(dependency, Dependency::Input { input: ManifestInput { format: ManifestInputFormat::Package, .. }, .. });
-
-                        if !is_package {
-                            return Err(err);
-                        }
-
-                        vec![]
-                    }
-                };
-
                 // Otherwise install it to the storage
                 match dependency {
-                    Dependency::Input { input, name, .. } => {
+                    Dependency::Input { input, name, uri, .. } => {
                         let path = self.build_path(&name, &input.hash);
 
                         match input.format {
                             ManifestInputFormat::File => {
-                                tokio::fs::write(path, dependency_content).await?;
+                                // TODO: input files can weight a lot
+                                let content = crate::handlers::handle(&uri)?
+                                    .join().await?
+                                    .map_err(|err| anyhow::anyhow!("Failed to fetch input file '{name}' from '{uri}': {err}"))?;
+
+                                tokio::fs::write(path, content).await?;
                             }
 
                             ManifestInputFormat::Package => {
-                                // This is a little special case. Package inputs reference to the
-                                // package's root, e.g. "https://raw.githubusercontent.com/an-anime-team/game-integrations/main/games/an-anime-game"
-                                // so they will always return 404 or something like this
-                                // We don't need to download here anything (I think)
+                                let manifest = crate::handlers::handle(format!("{uri}/manifest.json"))?
+                                    .join().await?
+                                    .map_err(|err| anyhow::anyhow!("Failed to fetch input package '{name}' manifest from '{uri}/manifest.json': {err}"))?;
+
+                                tokio::fs::create_dir_all(&path).await?;
+
+                                tokio::fs::write(path.join("manifest.json"), manifest).await?;
                             }
 
                             _ => unimplemented!()
                         }
                     }
 
-                    Dependency::Output { output, .. } => {
-                        let path = self.build_path(&output.metadata.name, &output.hash);
+                    Dependency::Output { output, name, uri, manifest } => {
+                        let path = self.build_path(&name, &output.hash);
+
+                        tokio::fs::create_dir_all(&path).await?;
+
+                        tokio::fs::write(path.join("manifest.json"), manifest).await?;
 
                         // Outputs are lua scripts - launcher integrations or arbitrary packages
                         // We don't really care about their size or specific installation methods here
-                        tokio::fs::write(path, dependency_content).await?;
+                        match output.format {
+                            ManifestOutputFormat::Integration => {
+                                let uri = format!("{uri}/{}", output.path);
+
+                                let content = crate::handlers::handle(&uri)?
+                                    .join().await?
+                                    .map_err(|err| anyhow::anyhow!("Failed to fetch output integration '{name}' from '{uri}': {err}"))?;
+
+                                tokio::fs::write(path.join("integration.lua"), content).await?;
+                            }
+
+                            ManifestOutputFormat::Package => {
+                                let uri = format!("{uri}/{}", output.path);
+
+                                let content = crate::handlers::handle(&uri)?
+                                    .join().await?
+                                    .map_err(|err| anyhow::anyhow!("Failed to fetch output package '{name}' from '{uri}': {err}"))?;
+
+                                tokio::fs::write(path.join("package.lua"), content).await?;
+                            }
+                        }
                     }
                 }
             }
         }
 
         Ok(())
+    }
+
+    pub fn hash_package(&self, package: Package) {
+
     }
 }

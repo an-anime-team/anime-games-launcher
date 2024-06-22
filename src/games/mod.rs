@@ -29,7 +29,7 @@ pub fn init() -> anyhow::Result<()> {
 
 pub fn get<'a>(name: impl AsRef<str>) -> anyhow::Result<Option<&'a integrations::Game>> {
     unsafe {
-        let Some(singleton) = &mut GAMES_SINGLETON else {
+        let Some(singleton) = GAMES_SINGLETON.as_mut() else {
             init()?;
 
             return get(name);
@@ -56,7 +56,7 @@ pub unsafe fn get_unsafe<'a>(name: impl AsRef<str>) -> &'a integrations::Game {
 
 pub fn list<'a>() -> anyhow::Result<&'a HashMap<String, integrations::Game>> {
     unsafe {
-        match &GAMES_SINGLETON {
+        match GAMES_SINGLETON.as_ref() {
             Some(singleton) => Ok(singleton),
             None => {
                 init()?;

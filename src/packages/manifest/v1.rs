@@ -41,18 +41,16 @@ pub async fn parse_v1(manifest: &Json, uri: String) -> anyhow::Result<Manifest> 
             maintainers: None
         },
         inputs: HashMap::new(),
-        outputs: vec![
+        outputs: HashMap::from([(game_name.to_string(), {
             ManifestOutput {
                 format: ManifestOutputFormat::Integration,
                 path: script_path.to_string(),
                 hash: Hash::from_slice(HashAlgorithm::Xxh3, script_body),
                 metadata: ManifestOutputMetadata {
-                    uuid: Uuid::new_from_str(game_name),
-                    name: game_name.to_string(),
-                    title: game_title.to_string(),
-                    standard: script_standard.parse::<u64>()?
+                    title: Some(game_title.to_string()),
+                    standard: Some(script_standard.parse::<u64>()?)
                 }
             }
-        ]
+        })])
     })
 }

@@ -8,12 +8,15 @@ pub enum Dependency {
     Input {
         name: String,
         input: ManifestInput,
-        uri: String
+        uri: String,
+        manifest: Vec<u8>
     },
 
     Output {
+        name: String,
         output: ManifestOutput,
-        uri: String
+        uri: String,
+        manifest: Vec<u8>
     }
 }
 
@@ -22,8 +25,8 @@ impl Dependency {
     /// Get dependency name
     pub fn name(&self) -> &str {
         match self {
-            Self::Input { name, .. } => name,
-            Self::Output { output, .. } => &output.metadata.name
+            Self::Input { name, .. } |
+            Self::Output { name, .. } => name
         }
     }
 
@@ -33,6 +36,15 @@ impl Dependency {
         match self {
             Self::Input { uri, .. } |
             Self::Output { uri, .. } => uri
+        }
+    }
+
+    #[inline]
+    /// Get dependency manifest
+    pub fn manifest(&self) -> &[u8] {
+        match self {
+            Self::Input { manifest, .. } |
+            Self::Output { manifest, .. } => manifest
         }
     }
 
@@ -85,15 +97,18 @@ impl Resolver {
 
                 dependencies.insert(Dependency::Input {
                     uri: input.uri.clone(),
+                    manifest: package.plain_manifest().to_vec(),
                     name,
                     input
                 });
             }
 
             // Go through the package's outputs
-            for output in package.manifest().outputs.clone() {
+            for (name, output) in package.manifest().outputs.clone() {
                 dependencies.insert(Dependency::Output {
-                    uri: format!("{}/{}", package.uri(), output.path),
+                    uri: package.uri().to_string(),
+                    manifest: package.plain_manifest().to_vec(),
+                    name,
                     output
                 });
             }

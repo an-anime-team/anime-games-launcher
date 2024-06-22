@@ -68,6 +68,12 @@ impl Package {
     pub fn plain_manifest(&self) -> &[u8] {
         &self.plain_manifest
     }
+
+    #[inline]
+    /// Calculate hash of the package's manifest
+    pub fn get_manifest_hash(&self) -> Hash {
+        Hash::from_slice(HashAlgorithm::default(), &self.plain_manifest)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

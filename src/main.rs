@@ -67,10 +67,7 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 LevelFilter::WARN
             }
-        })
-        .with_filter(filter_fn(move |metadata| {
-            !metadata.target().contains("rustls")
-        }));
+        });
 
     // Prepare debug file logger
     let file = std::fs::File::create(DEBUG_FILE.as_path())?;
@@ -78,10 +75,7 @@ async fn main() -> anyhow::Result<()> {
     let debug_log = tracing_subscriber::fmt::layer()
         .pretty()
         .with_ansi(false)
-        .with_writer(std::sync::Arc::new(file))
-        .with_filter(filter_fn(|metadata| {
-            !metadata.target().contains("rustls")
-        }));
+        .with_writer(std::sync::Arc::new(file));
 
     // Setup loggers
     tracing_subscriber::registry()
@@ -113,21 +107,6 @@ async fn main() -> anyhow::Result<()> {
         // Set application's title
         gtk::glib::set_application_name("Anime Games Launcher");
         gtk::glib::set_program_name(Some("Anime Games Launcher"));
-
-        // --------------------------------------------------------------------------------------
-
-        let storage = packages::storage::Storage::new("storage")
-            .await.unwrap();
-
-        let package = packages::package::Package::fetch("file:///home/observer/projects/new-anime-core/game-integrations/test/jadeite")
-            .await.unwrap();
-
-        storage.install(package, |curr, total, name| {
-                println!("[{curr}/{total}] Installing {name}");
-            })
-            .await.unwrap();
-
-        // --------------------------------------------------------------------------------------
 
         // Create the app
         let app = RelmApp::new(APP_ID);
