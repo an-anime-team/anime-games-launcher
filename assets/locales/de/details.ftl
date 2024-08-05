@@ -7,3 +7,11 @@ details-kill = Beenden
 details-verify = Verifizieren
 details-manage-addons = Erweiterungen verwalten
 details-download = Herunterladen
+
+details-never = Niemals
+details-hours = Stunden
+details-minutes = Minuten
+details-seconds = Sekunden
+
+details-today = Heute
+details-yesterday = Gestern

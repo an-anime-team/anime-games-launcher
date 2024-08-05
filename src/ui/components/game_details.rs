@@ -1,19 +1,12 @@
-use relm4::prelude::*;
 use gtk::prelude::*;
+use relm4::prelude::*;
 
 use crate::tr;
 
+use crate::games::integrations::standards::game::{Status, StatusSeverity};
 use crate::games::metadata::LauncherMetadata;
-use crate::games::integrations::standards::game::{
-    Status,
-    StatusSeverity
-};
 
-use crate::ui::components::game_card::{
-    CardInfo,
-    CardComponent,
-    CardComponentInput
-};
+use crate::ui::components::game_card::{CardComponent, CardComponentInput, CardInfo};
 
 #[derive(Debug)]
 pub struct GameDetailsComponent {
@@ -24,7 +17,7 @@ pub struct GameDetailsComponent {
 
     pub installed: bool,
     pub running: bool,
-    pub status: Option<Status>
+    pub status: Option<Status>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +34,7 @@ pub enum GameDetailsComponentInput {
     EmitVerifyGame,
     EmitLaunchGame,
     EmitKillGame,
-    EmitOpenAddonsManager
+    EmitOpenAddonsManager,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,8 +50,8 @@ pub enum GameDetailsComponentOutput {
 
     ShowToast {
         title: String,
-        message: Option<String>
-    }
+        message: Option<String>,
+    },
 }
 
 #[relm4::component(pub, async)]
@@ -113,8 +106,6 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
-                        
-                        // TODO: translate "hours" / "minutes" / "seconds" / "Never"
 
                         #[watch]
                         set_label: &tr!("details-played", {
@@ -124,8 +115,6 @@ impl SimpleAsyncComponent for GameDetailsComponent {
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
-
-                        // TODO: translate "Today" / "Yesterday" / "Never"
 
                         #[watch]
                         set_label: &tr!("details-last-played", {
@@ -255,22 +244,28 @@ impl SimpleAsyncComponent for GameDetailsComponent {
         }
     }
 
-    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
-            game_card: CardComponent::builder()
-                .launch(init.clone())
-                .detach(),
+            game_card: CardComponent::builder().launch(init.clone()).detach(),
 
             info: init,
             metadata: LauncherMetadata::default(),
 
             installed: false,
             running: false,
-            status: None
+            status: None,
         };
 
-        model.game_card.emit(CardComponentInput::SetClickable(false));
-        model.game_card.emit(CardComponentInput::SetDisplayTitle(false));
+        model
+            .game_card
+            .emit(CardComponentInput::SetClickable(false));
+        model
+            .game_card
+            .emit(CardComponentInput::SetDisplayTitle(false));
 
         let widgets = view_output!();
 
@@ -290,7 +285,8 @@ impl SimpleAsyncComponent for GameDetailsComponent {
             GameDetailsComponentInput::SetInstalled(installed) => {
                 self.installed = installed;
 
-                self.game_card.emit(CardComponentInput::SetInstalled(installed));
+                self.game_card
+                    .emit(CardComponentInput::SetInstalled(installed));
             }
 
             GameDetailsComponentInput::SetRunning(running) => self.running = running,
@@ -299,29 +295,49 @@ impl SimpleAsyncComponent for GameDetailsComponent {
             GameDetailsComponentInput::EditCard(message) => self.game_card.emit(message),
 
             GameDetailsComponentInput::EmitDownloadGame => {
-                sender.output(GameDetailsComponentOutput::DownloadGame(self.info.clone())).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::DownloadGame(self.info.clone()))
+                    .unwrap();
 
-                sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
-                sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::HideDetails)
+                    .unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::ShowTasksFlap)
+                    .unwrap();
             }
 
             GameDetailsComponentInput::EmitVerifyGame => {
-                sender.output(GameDetailsComponentOutput::VerifyGame(self.info.clone())).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::VerifyGame(self.info.clone()))
+                    .unwrap();
 
-                sender.output(GameDetailsComponentOutput::HideDetails).unwrap();
-                sender.output(GameDetailsComponentOutput::ShowTasksFlap).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::HideDetails)
+                    .unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::ShowTasksFlap)
+                    .unwrap();
             }
 
             GameDetailsComponentInput::EmitLaunchGame => {
-                sender.output(GameDetailsComponentOutput::LaunchGame(self.info.clone())).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::LaunchGame(self.info.clone()))
+                    .unwrap();
             }
 
             GameDetailsComponentInput::EmitKillGame => {
-                sender.output(GameDetailsComponentOutput::KillGame(self.info.clone())).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::KillGame(self.info.clone()))
+                    .unwrap();
             }
 
             GameDetailsComponentInput::EmitOpenAddonsManager => {
-                sender.output(GameDetailsComponentOutput::OpenAddonsManager(self.info.clone())).unwrap();
+                sender
+                    .output(GameDetailsComponentOutput::OpenAddonsManager(
+                        self.info.clone(),
+                    ))
+                    .unwrap();
             }
         }
     }
