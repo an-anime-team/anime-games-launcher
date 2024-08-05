@@ -1,20 +1,20 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
 use chrono::Datelike;
 
-use crate::LAUNCHER_FOLDER;
+use crate::{tr, LAUNCHER_FOLDER};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LauncherMetadata {
-    pub launches: GameLaunchesMetadata
+    pub launches: GameLaunchesMetadata,
 }
 
 impl Default for LauncherMetadata {
     #[inline]
     fn default() -> Self {
         Self {
-            launches: GameLaunchesMetadata::default()
+            launches: GameLaunchesMetadata::default(),
         }
     }
 }
@@ -24,9 +24,10 @@ impl From<&Json> for LauncherMetadata {
         let default = Self::default();
 
         Self {
-            launches: value.get("launches")
+            launches: value
+                .get("launches")
                 .map(GameLaunchesMetadata::from)
-                .unwrap_or(default.launches)
+                .unwrap_or(default.launches),
         }
     }
 }
@@ -48,7 +49,11 @@ impl LauncherMetadata {
         Ok(Self::from(&value))
     }
 
-    pub fn save_for_game(&self, game: impl AsRef<str>, edition: impl AsRef<str>) -> anyhow::Result<()> {
+    pub fn save_for_game(
+        &self,
+        game: impl AsRef<str>,
+        edition: impl AsRef<str>,
+    ) -> anyhow::Result<()> {
         let folder_path = LAUNCHER_FOLDER
             .join("games")
             .join(game.as_ref())
@@ -67,7 +72,7 @@ impl LauncherMetadata {
 
     pub fn get_last_played_text(&self) -> String {
         let Some(last_launch) = self.launches.last_launch else {
-            return String::from("Never");
+            return tr!("details-never");
         };
 
         let last_launch = chrono::DateTime::from_timestamp(last_launch.stopped_at, 0).unwrap();
@@ -76,10 +81,10 @@ impl LauncherMetadata {
         let last_run = last_launch.num_days_from_ce();
 
         match today - last_run {
-            1 => String::from("Yesterday"),
-            0 => String::from("Today"),
+            1 => tr!("details-yesterday"),
+            0 => tr!("details-today"),
 
-            _ => format!("{}", last_launch.format("%d/%m/%Y"))
+            _ => format!("{}", last_launch.format("%d/%m/%Y")),
         }
     }
 
@@ -96,35 +101,34 @@ impl LauncherMetadata {
 
         if hours > 0 {
             if hours < 999 {
-                return format!("{hours} hours");
+                return format!("{hours} {}", &tr!("details-hours"));
             }
 
-            let hours = hours.to_string().as_bytes()
-                .rchunks(3).rev()
+            let hours = hours
+                .to_string()
+                .as_bytes()
+                .rchunks(3)
+                .rev()
                 .map(std::str::from_utf8)
                 .collect::<Result<Vec<&str>, _>>()
                 .unwrap()
                 .join(",");
 
-            return format!("{hours} hours");
+            return format!("{hours} {}", &tr!("details-hours"));
+        } else if minutes > 0 {
+            return format!("{minutes} {}", &tr!("details-minutes"));
+        } else if seconds > 0 {
+            return format!("{seconds} {}", &tr!("details-seconds"));
         }
 
-        else if minutes > 0 {
-            return format!("{minutes} minutes");
-        }
-
-        else if seconds > 0 {
-            return format!("{seconds} seconds");
-        }
-
-        String::from("Never")
+        tr!("details-never")
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GameLaunchesMetadata {
     pub last_launch: Option<GameLastLaunchMetadata>,
-    pub total_playtime: u64
+    pub total_playtime: u64,
 }
 
 impl Default for GameLaunchesMetadata {
@@ -132,7 +136,7 @@ impl Default for GameLaunchesMetadata {
     fn default() -> Self {
         Self {
             last_launch: None,
-            total_playtime: 0
+            total_playtime: 0,
         }
     }
 }
@@ -142,7 +146,8 @@ impl From<&Json> for GameLaunchesMetadata {
         let default = Self::default();
 
         Self {
-            last_launch: value.get("last_launch")
+            last_launch: value
+                .get("last_launch")
                 .map(|value| {
                     if value.is_null() {
                         None
@@ -152,9 +157,10 @@ impl From<&Json> for GameLaunchesMetadata {
                 })
                 .unwrap_or(default.last_launch),
 
-            total_playtime: value.get("total_playtime")
+            total_playtime: value
+                .get("total_playtime")
                 .and_then(Json::as_u64)
-                .unwrap_or(default.total_playtime)
+                .unwrap_or(default.total_playtime),
         }
     }
 }
@@ -162,7 +168,7 @@ impl From<&Json> for GameLaunchesMetadata {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GameLastLaunchMetadata {
     pub started_at: i64,
-    pub stopped_at: i64
+    pub stopped_at: i64,
 }
 
 impl Default for GameLastLaunchMetadata {
@@ -172,7 +178,7 @@ impl Default for GameLastLaunchMetadata {
 
         Self {
             started_at: now,
-            stopped_at: now
+            stopped_at: now,
         }
     }
 }
@@ -182,13 +188,15 @@ impl From<&Json> for GameLastLaunchMetadata {
         let default = Self::default();
 
         Self {
-            started_at: value.get("started_at")
+            started_at: value
+                .get("started_at")
                 .and_then(Json::as_i64)
                 .unwrap_or(default.started_at),
 
-            stopped_at: value.get("stopped_at")
+            stopped_at: value
+                .get("stopped_at")
                 .and_then(Json::as_i64)
-                .unwrap_or(default.stopped_at)
+                .unwrap_or(default.stopped_at),
         }
     }
 }
