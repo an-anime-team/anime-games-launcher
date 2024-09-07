@@ -1,27 +1,28 @@
-use gtk::prelude::*;
 use adw::prelude::*;
+use gtk::prelude::*;
 use relm4::prelude::*;
 
-pub mod store_page;
+pub mod downloads_page;
 pub mod library_page;
 pub mod profile_page;
+pub mod store_page;
 
-pub use store_page::{StorePageApp, StorePageAppMsg};
+pub use downloads_page::{DownloadsPageApp, DownloadsPageAppMsg};
 pub use library_page::{LibraryPageApp, LibraryPageAppMsg};
 pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
+pub use store_page::{StorePageApp, StorePageAppMsg};
 
 pub static mut WINDOW: Option<adw::Window> = None;
 
 #[derive(Debug, Clone)]
-pub enum MainAppMsg {
-    
-}
+pub enum MainAppMsg {}
 
 #[derive(Debug)]
 pub struct MainApp {
     store_page: AsyncController<StorePageApp>,
     library_page: AsyncController<LibraryPageApp>,
-    profile_page: AsyncController<ProfilePageApp>
+    profile_page: AsyncController<ProfilePageApp>,
+    downloads_page: AsyncController<DownloadsPageApp>,
 }
 
 #[relm4::component(pub, async)]
@@ -78,6 +79,16 @@ impl SimpleAsyncComponent for MainApp {
                         set_vexpand: true,
                         set_hexpand: true,
 
+                        model.downloads_page.widget(),
+                    } -> {
+                        set_title: Some("Downloads"),
+                        set_icon_name: Some("download-symbolic"),
+                    },
+
+                    add = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
                         model.profile_page.widget(),
                     } -> {
                         set_title: Some("Profile"),
@@ -88,19 +99,19 @@ impl SimpleAsyncComponent for MainApp {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
-            store_page: StorePageApp::builder()
-                .launch(())
-                .detach(),
+            store_page: StorePageApp::builder().launch(()).detach(),
 
-            library_page: LibraryPageApp::builder()
-                .launch(())
-                .detach(),
+            library_page: LibraryPageApp::builder().launch(()).detach(),
 
-            profile_page: ProfilePageApp::builder()
-                .launch(())
-                .detach()
+            profile_page: ProfilePageApp::builder().launch(()).detach(),
+
+            downloads_page: DownloadsPageApp::builder().launch(()).detach(),
         };
 
         let widgets = view_output!();
@@ -113,8 +124,6 @@ impl SimpleAsyncComponent for MainApp {
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
-        match msg {
-            
-        }
+        match msg {}
     }
 }
