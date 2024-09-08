@@ -16,6 +16,7 @@ pub struct Graph {
     width: i32,
     height: i32,
     max_y: f64,
+    current_mean: f64,
     points: VecDeque<f64>,
     handler: DrawHandler,
 }
@@ -53,9 +54,9 @@ impl Graph {
         cx.stroke().expect("Failed to draw Y axis");
         */
 
-        // Scale FIXME
-        let x_scale = OFFSET;
-        let y_scale = OFFSET;
+        // Scale
+        let x_scale = (width - 2.0 * OFFSET) / (MAX_POINTS as f64 + 1.0);
+        let y_scale = (height - 2.0 * OFFSET) / self.max_y;
 
         // Draw Graph
         cx.set_source_rgba(100.0, 100.0, 100.0, 1.0);
@@ -66,7 +67,6 @@ impl Graph {
             let y = height - OFFSET - point * y_scale;
 
             cx.line_to(x, y);
-            cx.move_to(x, y);
         }
         cx.stroke().expect("Failed to draw graph line");
 
@@ -112,6 +112,7 @@ impl AsyncComponent for Graph {
             width: 800,
             height: 250,
             max_y: 10.0,
+            current_mean: 0.0,
             points: VecDeque::from_iter(vec![0.0; MAX_POINTS]),
             handler: DrawHandler::new(),
         };
@@ -151,6 +152,28 @@ impl AsyncComponent for Graph {
                 }
             }
         }
+
+        // Calculate and update current_mean
+        let (sum, count) = self
+            .points
+            .iter()
+            .filter(|&&x| x != 0.0)
+            .fold((0.0, 0), |(sum, count), &x| (sum + x, count + 1));
+        self.current_mean = if sum > 0.0 {
+            // Round up to the nearest 0.5
+            (sum / count as f64 * 2.0).round() / 2.0
+        } else {
+            0.0
+        };
+
+        // Calculate and update max_y
+        let max = self.points.iter().fold(f64::MIN, |a, &b| a.max(b));
+        self.max_y = if max > 0.0 {
+            // Round up to the nearest 0.5
+            (max * 2.0).round() / 2.0
+        } else {
+            1.0
+        };
 
         let cx = self.handler.get_context();
         self.draw(&cx);
