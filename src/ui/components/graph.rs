@@ -1,6 +1,7 @@
 use adw::prelude::*;
 use gtk::{glib, prelude::*, subclass::prelude::*};
 
+use relm4::abstractions::DrawHandler;
 use relm4::prelude::*;
 
 use plotters::{
@@ -28,15 +29,12 @@ pub struct Graph {
 
 impl Default for Graph {
     fn default() -> Self {
-        let mut empty = VecDeque::with_capacity(MAX_DATA_POINTS);
-        for _ in 0..MAX_DATA_POINTS {
-            empty.push_back(0.0);
-        }
+        let empty = VecDeque::from_iter(vec![0.1; MAX_DATA_POINTS]);
 
         Self {
             data_points: RefCell::new(empty),
             max_y: Cell::new(Some(1.0)),
-            graph_color: Cell::new(RGBColor(250, 97, 0)),
+            graph_color: Cell::new(RGBColor(100, 100, 100)),
         }
     }
 }
@@ -53,7 +51,7 @@ impl Graph {
 
         let root = backend.into_drawing_area();
 
-        root.fill(&self.graph_color.get().mix(0.1))?;
+        root.fill(&self.graph_color.get().mix(0.5))?;
 
         let y_max = self.max_y.get().unwrap_or_else(|| {
             let max = *data_points
@@ -68,7 +66,7 @@ impl Graph {
         });
 
         let mut chart = ChartBuilder::on(&root)
-            .build_cartesian_2d(0f64..MAX_DATA_POINTS as f64 - 1.0, 0f64..y_max)?;
+            .build_cartesian_2d(0f64..MAX_DATA_POINTS as f64, 0f64..y_max)?;
 
         chart.draw_series(
             AreaSeries::new(
@@ -76,7 +74,7 @@ impl Graph {
                     .zip(data_points.range(start_point..MAX_DATA_POINTS))
                     .map(|(x, y)| (x as f64, *y)),
                 0.0,
-                color.mix(0.4),
+                color.mix(0.8),
             )
             .border_style(color),
         )?;
@@ -89,6 +87,7 @@ impl Graph {
 #[derive(Debug)]
 pub struct GraphComponent {
     graph: Arc<Graph>,
+    drawing_area: gtk::DrawingArea,
 }
 
 #[derive(Clone, Debug)]
@@ -109,6 +108,8 @@ impl SimpleAsyncComponent for GraphComponent {
             set_orientation: gtk::Orientation::Horizontal,
             #[local_ref]
             drawing_area -> gtk::DrawingArea {
+                set_content_width: 1000,
+                set_content_height: 300,
                 set_draw_func => move |_, cr, width, height| {
                     let backend = CairoBackend::new(&cr, (width as u32, height as u32)).unwrap();
                     graph.plot_graph(backend).unwrap();
@@ -124,12 +125,11 @@ impl SimpleAsyncComponent for GraphComponent {
     ) -> AsyncComponentParts<Self> {
         let model = GraphComponent {
             graph: Arc::new(Graph::default()),
+            drawing_area: gtk::DrawingArea::new(),
         };
-        let drawing_area = gtk::DrawingArea::builder()
-            .width_request(1000)
-            .height_request(300)
-            .build();
-        let graph: Arc<Graph> = Arc::clone(&model.graph);
+
+        let graph = model.graph.clone();
+        let drawing_area = model.drawing_area.clone();
 
         let widgets = view_output!();
 
@@ -152,5 +152,6 @@ impl SimpleAsyncComponent for GraphComponent {
                 }
             }
         }
+        self.drawing_area.queue_draw();
     }
 }
