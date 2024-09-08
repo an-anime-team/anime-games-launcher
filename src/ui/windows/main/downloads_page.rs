@@ -6,11 +6,11 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::graph::{GraphComponent, GraphComponentMsg};
+use crate::ui::components::graph::{Graph, GraphMsg};
 
 #[derive(Debug)]
 pub struct DownloadsPageApp {
-    pub graph: AsyncController<GraphComponent>,
+    pub graph: AsyncController<Graph>,
 }
 
 #[derive(Debug, Clone)]
@@ -39,7 +39,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            graph: GraphComponent::builder().launch(()).detach(),
+            graph: Graph::builder().launch(()).detach(),
         };
         let widgets = view_output!();
 
@@ -47,14 +47,10 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             .graph
             .borrow()
             .sender()
-            .send(GraphComponentMsg::PushPoint(10.0))
-            .unwrap();
-
-        model
-            .graph
-            .borrow()
-            .sender()
-            .send(GraphComponentMsg::PushPoint(5.0))
+            .send(GraphMsg::PushPoints(vec![
+                5.1, 10.9, 12.0, 6.0, 3.0, 3.0, 4.0, 5.0, 9.0, 7.0, 1.0, 1.0, 2.5, 6.8, 6.6, 15.5,
+                17.1, 0.9, 6.6,
+            ]))
             .unwrap();
 
         AsyncComponentParts { model, widgets }

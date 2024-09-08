@@ -1,120 +1,105 @@
+use std::collections::VecDeque;
+
 use adw::prelude::*;
-use gtk::{glib, prelude::*, subclass::prelude::*};
+use gtk::prelude::*;
+
+use gtk::cairo::{Context, Operator};
 
 use relm4::abstractions::DrawHandler;
 use relm4::prelude::*;
 
-use plotters::{
-    prelude::*,
-    series::AreaSeries,
-    style::{Color, RGBColor},
-};
-use plotters_cairo::CairoBackend;
+const MAX_POINTS: usize = 300;
+const OFFSET: f64 = 10.0;
 
-use std::{
-    cell::{Cell, RefCell},
-    collections::VecDeque,
-    error::Error,
-    sync::Arc,
-};
-
-const MAX_DATA_POINTS: usize = 300;
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Graph {
-    pub data_points: RefCell<VecDeque<f64>>,
-    pub max_y: Cell<Option<f64>>,
-    pub graph_color: Cell<RGBColor>,
-}
-
-impl Default for Graph {
-    fn default() -> Self {
-        let empty = VecDeque::from_iter(vec![0.1; MAX_DATA_POINTS]);
-
-        Self {
-            data_points: RefCell::new(empty),
-            max_y: Cell::new(Some(1.0)),
-            graph_color: Cell::new(RGBColor(100, 100, 100)),
-        }
-    }
+    width: i32,
+    height: i32,
+    max_y: f64,
+    points: VecDeque<f64>,
+    handler: DrawHandler,
 }
 
 impl Graph {
-    pub fn plot_graph<'a, DB>(&self, backend: DB) -> Result<(), Box<dyn Error + 'a>>
-    where
-        DB: DrawingBackend + 'a,
-    {
-        let data_points = self.data_points.borrow();
-        let color = self.graph_color.get();
+    fn draw(&self, cx: &Context) {
+        let height = self.height as f64;
+        let width = self.width as f64;
 
-        let start_point = MAX_DATA_POINTS as usize;
+        // Clear
+        cx.set_operator(Operator::Clear);
+        cx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+        cx.paint().expect("Couldn't clear buffer");
 
-        let root = backend.into_drawing_area();
+        cx.set_operator(Operator::Add);
 
-        root.fill(&self.graph_color.get().mix(0.5))?;
+        // Background
+        cx.set_source_rgba(100.0, 100.0, 100.0, 0.1);
+        cx.paint().expect("Failed to paint background");
 
-        let y_max = self.max_y.get().unwrap_or_else(|| {
-            let max = *data_points
-                .range(start_point..MAX_DATA_POINTS)
-                .max_by(|x, y| x.total_cmp(y))
-                .unwrap_or(&0.0);
-            if max == 0.0 {
-                f64::EPSILON
-            } else {
-                max
-            }
-        });
+        // Graph lines
+        cx.set_line_width(2.0);
 
-        let mut chart = ChartBuilder::on(&root)
-            .build_cartesian_2d(0f64..MAX_DATA_POINTS as f64, 0f64..y_max)?;
+        /*
+        // X axis
+        cx.set_source_rgba(10.0, 0.0, 0.0, 1.0);
+        cx.move_to(OFFSET, height - OFFSET);
+        cx.line_to(width - OFFSET, height - OFFSET);
+        cx.stroke().expect("Failed to draw X axis");
 
-        chart.draw_series(
-            AreaSeries::new(
-                (0..)
-                    .zip(data_points.range(start_point..MAX_DATA_POINTS))
-                    .map(|(x, y)| (x as f64, *y)),
-                0.0,
-                color.mix(0.8),
-            )
-            .border_style(color),
-        )?;
+        // Y axis
+        cx.set_source_rgba(0.0, 0.0, 100.0, 1.0);
+        cx.move_to(OFFSET, OFFSET);
+        cx.line_to(OFFSET, height - OFFSET);
+        cx.stroke().expect("Failed to draw Y axis");
+        */
 
-        root.present()?;
-        Ok(())
+        // Scale FIXME
+        let x_scale = OFFSET;
+        let y_scale = OFFSET;
+
+        // Draw Graph
+        cx.set_source_rgba(100.0, 100.0, 100.0, 1.0);
+        cx.move_to(OFFSET, height - OFFSET);
+
+        for (i, point) in self.points.iter().enumerate() {
+            let x = OFFSET + x_scale * (i as f64 + 1.0);
+            let y = height - OFFSET - point * y_scale;
+
+            cx.line_to(x, y);
+            cx.stroke().expect("Failed to connect points");
+            cx.move_to(x, y);
+        }
+
+        // AA
+        cx.antialias();
     }
 }
 
 #[derive(Debug)]
-pub struct GraphComponent {
-    graph: Arc<Graph>,
-    drawing_area: gtk::DrawingArea,
-}
-
-#[derive(Clone, Debug)]
-pub enum GraphComponentMsg {
+pub enum GraphMsg {
     PushPoint(f64),
     PushPoints(Vec<f64>),
 }
 
+#[derive(Debug)]
+pub struct UpdateGraphMsg;
+
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for GraphComponent {
-    type Input = GraphComponentMsg;
-    type Output = ();
+impl AsyncComponent for Graph {
     type Init = ();
+    type Input = GraphMsg;
+    type Output = ();
+    type CommandOutput = UpdateGraphMsg;
 
     view! {
         #[root]
         gtk::Box {
             set_orientation: gtk::Orientation::Horizontal,
             #[local_ref]
-            drawing_area -> gtk::DrawingArea {
-                set_content_width: 1000,
-                set_content_height: 300,
-                set_draw_func => move |_, cr, width, height| {
-                    let backend = CairoBackend::new(&cr, (width as u32, height as u32)).unwrap();
-                    graph.plot_graph(backend).unwrap();
-                }
-            },
+            area -> gtk::DrawingArea {
+                set_content_width: model.width,
+                set_content_height: model.height,
+            }
         }
     }
 
@@ -123,35 +108,61 @@ impl SimpleAsyncComponent for GraphComponent {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let model = GraphComponent {
-            graph: Arc::new(Graph::default()),
-            drawing_area: gtk::DrawingArea::new(),
+        let model = Graph {
+            width: 800,
+            height: 250,
+            max_y: 10.0,
+            points: VecDeque::from_iter(vec![0.0; MAX_POINTS]),
+            handler: DrawHandler::new(),
         };
 
-        let graph = model.graph.clone();
-        let drawing_area = model.drawing_area.clone();
-
+        let area = model.handler.drawing_area();
         let widgets = view_output!();
+
+        sender.command(|out, shutdown| {
+            shutdown
+                .register(async move {
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                        out.send(UpdateGraphMsg).unwrap();
+                    }
+                })
+                .drop_on_shutdown()
+        });
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        sender: AsyncComponentSender<Self>,
+        root: &Self::Root,
+    ) {
         match msg {
-            GraphComponentMsg::PushPoint(point) => {
-                let mut graph = self.graph.data_points.borrow_mut();
-                graph.pop_back();
-                graph.push_front(point);
+            GraphMsg::PushPoint(p) => {
+                self.points.pop_back();
+                self.points.push_front(p);
             }
-            GraphComponentMsg::PushPoints(points) => {
-                let mut graph = self.graph.data_points.borrow_mut();
-                let mut iter = points.iter();
-                while let Some(point) = iter.next() {
-                    graph.pop_back();
-                    graph.push_front(*point);
+            GraphMsg::PushPoints(ps) => {
+                for p in ps {
+                    self.points.pop_back();
+                    self.points.push_front(p);
                 }
             }
         }
-        self.drawing_area.queue_draw();
+
+        let cx = self.handler.get_context();
+        self.draw(&cx);
+    }
+
+    async fn update_cmd(
+        &mut self,
+        _: UpdateGraphMsg,
+        _: AsyncComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
+        let cx = self.handler.get_context();
+        self.draw(&cx);
     }
 }
