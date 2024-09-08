@@ -18,6 +18,7 @@ pub struct Graph {
     max_y: f64,
     current_mean: f64,
     points: VecDeque<f64>,
+    color: (f64, f64, f64),
     handler: DrawHandler,
 }
 
@@ -25,6 +26,7 @@ impl Graph {
     fn draw(&self, cx: &Context) {
         let height = self.height as f64;
         let width = self.width as f64;
+        let (red, green, blue) = self.color.clone();
 
         // Clear
         cx.set_operator(Operator::Clear);
@@ -34,7 +36,7 @@ impl Graph {
         cx.set_operator(Operator::Add);
 
         // Background
-        cx.set_source_rgba(100.0, 100.0, 100.0, 0.1);
+        cx.set_source_rgba(red, green, blue, 0.1);
         cx.paint().expect("Failed to paint background");
 
         // Graph lines
@@ -79,7 +81,7 @@ impl Graph {
             cx.line_to(x, y);
         }
 
-        cx.set_source_rgba(100.0, 100.0, 100.0, 0.2);
+        cx.set_source_rgba(red, green, blue, 0.2);
         cx.fill().expect("Failed to fill under graph");
 
         // Draw Graph
@@ -92,7 +94,7 @@ impl Graph {
             cx.line_to(x, y);
         }
 
-        cx.set_source_rgba(100.0, 100.0, 100.0, 1.0);
+        cx.set_source_rgba(red, green, blue, 1.0);
         cx.stroke().expect("Failed to draw graph line");
 
         // AA
@@ -139,6 +141,7 @@ impl AsyncComponent for Graph {
             max_y: 10.0,
             current_mean: 0.0,
             points: VecDeque::from_iter(vec![0.0; MAX_POINTS]),
+            color: (100.0, 100.0, 100.0),
             handler: DrawHandler::new(),
         };
 
