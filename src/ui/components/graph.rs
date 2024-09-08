@@ -29,7 +29,7 @@ impl Graph {
         // Clear
         cx.set_operator(Operator::Clear);
         cx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-        cx.paint().expect("Couldn't clear buffer");
+        cx.paint().expect("Failed to clear buffer");
 
         cx.set_operator(Operator::Add);
 
@@ -39,6 +39,21 @@ impl Graph {
 
         // Graph lines
         cx.set_line_width(2.0);
+
+        // Scale
+        let x_scale = (width - 2.0 * OFFSET) / (MAX_POINTS as f64 + 1.0);
+        let y_scale = (height - 2.0 * OFFSET) / self.max_y;
+
+        // Mean line
+        cx.set_dash(&[4.0, 4.0], 0.0);
+        cx.move_to(OFFSET, height - (OFFSET + y_scale * self.current_mean));
+        cx.line_to(
+            width - OFFSET,
+            height - (OFFSET + y_scale * self.current_mean),
+        );
+        cx.stroke().expect("Failed to draw mean line");
+
+        cx.set_dash(&[], 0.0); // Undash line
 
         /*
         // X axis
@@ -54,10 +69,6 @@ impl Graph {
         cx.stroke().expect("Failed to draw Y axis");
         */
 
-        // Scale
-        let x_scale = (width - 2.0 * OFFSET) / (MAX_POINTS as f64 + 1.0);
-        let y_scale = (height - 2.0 * OFFSET) / self.max_y;
-
         // Draw Graph
         cx.set_source_rgba(100.0, 100.0, 100.0, 1.0);
         cx.move_to(OFFSET, height - OFFSET);
@@ -71,7 +82,7 @@ impl Graph {
         cx.stroke().expect("Failed to draw graph line");
 
         // AA
-        cx.antialias();
+        cx.set_antialias(gtk::cairo::Antialias::Good);
     }
 }
 
@@ -175,6 +186,7 @@ impl AsyncComponent for Graph {
             1.0
         };
 
+        // Draw context
         let cx = self.handler.get_context();
         self.draw(&cx);
     }
@@ -185,6 +197,7 @@ impl AsyncComponent for Graph {
         _: AsyncComponentSender<Self>,
         _root: &Self::Root,
     ) {
+        // Draw context
         let cx = self.handler.get_context();
         self.draw(&cx);
     }
