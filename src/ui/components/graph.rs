@@ -66,9 +66,9 @@ impl Graph {
             let y = height - OFFSET - point * y_scale;
 
             cx.line_to(x, y);
-            cx.stroke().expect("Failed to connect points");
             cx.move_to(x, y);
         }
+        cx.stroke().expect("Failed to draw graph line");
 
         // AA
         cx.antialias();
