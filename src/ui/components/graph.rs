@@ -184,12 +184,7 @@ impl AsyncComponent for Graph {
             .iter()
             .filter(|&&x| x != 0.0)
             .fold((0.0, 0), |(sum, count), &x| (sum + x, count + 1));
-        self.current_mean = if sum > 0.0 {
-            // Round up to the nearest 0.5
-            (sum / count as f64 * 2.0).round() / 2.0
-        } else {
-            0.0
-        };
+        self.current_mean = if sum > 0.0 { sum / count as f64 } else { 0.0 };
 
         // Calculate and update max_y
         let max = self.points.iter().fold(f64::MIN, |a, &b| a.max(b));
