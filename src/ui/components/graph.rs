@@ -69,8 +69,7 @@ impl Graph {
         cx.stroke().expect("Failed to draw Y axis");
         */
 
-        // Draw Graph
-        cx.set_source_rgba(100.0, 100.0, 100.0, 1.0);
+        // Draw under Graph
         cx.move_to(OFFSET, height - OFFSET);
 
         for (i, point) in self.points.iter().enumerate() {
@@ -79,6 +78,21 @@ impl Graph {
 
             cx.line_to(x, y);
         }
+
+        cx.set_source_rgba(100.0, 100.0, 100.0, 0.2);
+        cx.fill().expect("Failed to fill under graph");
+
+        // Draw Graph
+        cx.move_to(OFFSET, height - OFFSET);
+
+        for (i, point) in self.points.iter().enumerate() {
+            let x = OFFSET + x_scale * (i as f64 + 1.0);
+            let y = height - OFFSET - point * y_scale;
+
+            cx.line_to(x, y);
+        }
+
+        cx.set_source_rgba(100.0, 100.0, 100.0, 1.0);
         cx.stroke().expect("Failed to draw graph line");
 
         // AA
