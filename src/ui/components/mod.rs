@@ -1,7 +1,7 @@
 pub mod card;
 pub mod cards_grid;
 pub mod cards_list;
-pub mod downloads_list;
+pub mod downloads_row;
 pub mod game_details;
 pub mod graph;
 
