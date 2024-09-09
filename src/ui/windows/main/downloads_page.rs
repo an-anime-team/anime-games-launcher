@@ -4,13 +4,16 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::downloads_list::DownloadsRow;
+use crate::ui::components::downloads_row::{
+    DownloadsRow, DownloadsRowFactory, DownloadsRowFactoryMsg, DownloadsRowInit,
+};
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 
 #[derive(Debug)]
 pub struct DownloadsPageApp {
     pub graph: AsyncController<Graph>,
-    pub active_download: AsyncController<DownloadsRow>,
+    pub active: AsyncController<DownloadsRow>,
+    pub scheduled: AsyncFactoryVecDeque<DownloadsRowFactory>,
 }
 
 #[derive(Debug, Clone)]
@@ -32,16 +35,28 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             },
             add = &adw::PreferencesGroup {
                 set_title: "Download",
-                #[local_ref]
-                grid -> gtk::Grid,
+                gtk::Grid {
+                    attach[0, 0, 1, 1] = &adw::ActionRow {
+                        set_title: "Current speed:",
+                        add_suffix = &gtk::Label {
+                            set_text: "2.5 MB/s",
+                        }
+                    },
+                    attach[1, 0, 1, 1] = &adw::ActionRow {
+                        set_title: "Avg. speed:",
+                        add_suffix = &gtk::Label {
+                            set_text: "2.2 MB/s",
+                        }
+                    },
+                },
             },
             add = &adw::PreferencesGroup {
-                set_title: "Current",
-                model.active_download.widget(),
+                set_title: "active",
+                model.active.widget(),
             },
-            add = &adw::PreferencesGroup {
+            add = model.scheduled.widget() {
                 set_title: "Scheduled",
-            }
+            },
         }
     }
 
@@ -50,25 +65,22 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             graph: Graph::builder()
                 .launch(GraphInit::new(800, 150, (1.0, 1.0, 1.0)))
                 .detach(),
-            active_download: DownloadsRow::builder().launch(()).detach(),
+            active: DownloadsRow::builder()
+                .launch(DownloadsRowInit::new(
+                    String::from("/path/to/card.jpg"),
+                    "Genshin Impact",
+                    "5.0.0",
+                    "Global",
+                    64500000000,
+                    true,
+                ))
+                .detach(),
+            scheduled: AsyncFactoryVecDeque::builder().launch_default().detach(),
         };
-
-        let grid = gtk::Grid::new();
-
-        let current_speed = adw::ActionRow::builder().title("Current. speed:").build();
-        current_speed.add_suffix(&gtk::Label::new(Some("2.5 MB")));
-
-        let avg_speed = adw::ActionRow::builder().title("Avg. speed:").build();
-        avg_speed.add_suffix(&gtk::Label::new(Some("2.2 MB")));
-
-        grid.attach(&current_speed, 0, 0, 1, 1);
-        grid.attach(&avg_speed, 1, 0, 1, 1);
-
-        let widgets = view_output!();
 
         model
             .graph
@@ -78,6 +90,25 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                 17.1, 0.9, 6.6,
             ]))
             .unwrap();
+
+        model.scheduled.guard().push_back(DownloadsRowInit::new(
+            String::from("/path/to/card.jpg"),
+            "Honkai Impact 3rd",
+            "69.0.1",
+            "China",
+            6868696990,
+            false,
+        ));
+        model.scheduled.guard().push_back(DownloadsRowInit::new(
+            String::from("/path/to/card.jpg"),
+            "Honkai Impact 3rd",
+            "420.amogus-rc12",
+            "Global",
+            6969696969,
+            false,
+        ));
+
+        let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
