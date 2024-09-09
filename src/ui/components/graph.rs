@@ -72,7 +72,7 @@ impl Graph {
 
         // Scale
         let x_scale = (width - 2.0 * OFFSET) / (MAX_POINTS as f64 + 1.0);
-        let y_scale = (height - 2.0 * OFFSET) / self.max_y;
+        let y_scale = (height - 3.0 * OFFSET) / self.max_y;
 
         // Mean line
         cx.set_dash(&[4.0, 4.0], 0.0);
@@ -84,20 +84,6 @@ impl Graph {
         cx.stroke().expect("Failed to draw mean line");
 
         cx.set_dash(&[], 0.0); // Undash line
-
-        /*
-        // X axis
-        cx.set_source_rgba(10.0, 0.0, 0.0, 1.0);
-        cx.move_to(OFFSET, height - OFFSET);
-        cx.line_to(width - OFFSET, height - OFFSET);
-        cx.stroke().expect("Failed to draw X axis");
-
-        // Y axis
-        cx.set_source_rgba(0.0, 0.0, 100.0, 1.0);
-        cx.move_to(OFFSET, OFFSET);
-        cx.line_to(OFFSET, height - OFFSET);
-        cx.stroke().expect("Failed to draw Y axis");
-        */
 
         // Draw Graph
         cx.move_to(OFFSET, height - OFFSET);
