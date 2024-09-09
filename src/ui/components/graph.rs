@@ -54,7 +54,7 @@ impl Graph {
     fn draw(&self, cx: &Context) {
         let height = self.height as f64;
         let width = self.width as f64;
-        let (red, green, blue) = self.color.clone();
+        let (red, green, blue) = self.color;
 
         // Clear
         cx.set_operator(Operator::Clear);
