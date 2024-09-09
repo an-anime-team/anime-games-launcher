@@ -38,10 +38,6 @@ impl DownloadsRowInit {
     }
 }
 
-/// DownloadsRow will by itself display a single row for the current download
-/// DownloadsListFactory will create a List of DownloadsRow for the scheduled downloads
-///
-/// TODO: Create controller for active download and vecdequeue for scheduled
 #[derive(Debug)]
 pub struct DownloadsRow {
     pub card: AsyncController<CardComponent>,
@@ -162,11 +158,16 @@ pub enum DownloadsRowFactoryMsg {
     SetDownloading,
 }
 
+#[derive(Debug)]
+pub enum DownloadsRowFactoryOutput {
+    QueueDownload(DynamicIndex),
+}
+
 #[relm4::factory(pub, async)]
 impl AsyncFactoryComponent for DownloadsRowFactory {
     type Init = DownloadsRowInit;
     type Input = DownloadsRowFactoryMsg;
-    type Output = ();
+    type Output = DownloadsRowFactoryOutput;
     type CommandOutput = ();
     type ParentWidget = adw::PreferencesGroup;
 
@@ -245,6 +246,9 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
     async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
         match msg {
             DownloadsRowFactoryMsg::SetDownloading => {
+                sender
+                    .output(DownloadsRowFactoryOutput::QueueDownload(self.index.clone()))
+                    .unwrap();
                 println!("{:?}", self.index);
                 todo!("Output index to request download change");
             }
