@@ -1,4 +1,6 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::Duration};
+
+use tokio::time::sleep;
 
 use adw::prelude::*;
 use gtk::prelude::*;
@@ -8,16 +10,42 @@ use gtk::cairo::{Context, Operator};
 use relm4::abstractions::DrawHandler;
 use relm4::prelude::*;
 
+#[derive(Debug)]
+pub struct GraphInit {
+    /// width of DrawingArea
+    width: i32,
+    /// height of DrawingArea
+    height: i32,
+    /// rgb as decimal
+    color: (f64, f64, f64),
+}
+
+impl GraphInit {
+    pub fn new(width: i32, height: i32, color: (f64, f64, f64)) -> Self {
+        Self {
+            width,
+            height,
+            color,
+        }
+    }
+}
+
 const MAX_POINTS: usize = 300;
 const OFFSET: f64 = 10.0;
 
 #[derive(Debug)]
 pub struct Graph {
+    /// width of DrawingArea
     width: i32,
+    /// height of DrawingArea
     height: i32,
+    /// max of points rounded up to the nearest 0.5
     max_y: f64,
+    /// mean calculated from points
     current_mean: f64,
+    /// points on graph
     points: VecDeque<f64>,
+    /// rgb as decimal
     color: (f64, f64, f64),
     handler: DrawHandler,
 }
@@ -103,7 +131,7 @@ pub struct UpdateGraphMsg;
 
 #[relm4::component(pub, async)]
 impl AsyncComponent for Graph {
-    type Init = ();
+    type Init = GraphInit;
     type Input = GraphMsg;
     type Output = ();
     type CommandOutput = UpdateGraphMsg;
@@ -126,12 +154,12 @@ impl AsyncComponent for Graph {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Graph {
-            width: 800,
-            height: 250,
-            max_y: 10.0,
+            width: init.width,
+            height: init.height,
+            max_y: 0.0,
             current_mean: 0.0,
             points: VecDeque::from_iter(vec![0.0; MAX_POINTS]),
-            color: (100.0, 100.0, 100.0),
+            color: init.color,
             handler: DrawHandler::new(),
         };
 
@@ -142,7 +170,7 @@ impl AsyncComponent for Graph {
             shutdown
                 .register(async move {
                     loop {
-                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                        sleep(Duration::from_millis(20)).await;
                         out.send(UpdateGraphMsg).unwrap();
                     }
                 })

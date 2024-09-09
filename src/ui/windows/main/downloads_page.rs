@@ -6,7 +6,7 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::graph::{Graph, GraphMsg};
+use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 
 #[derive(Debug)]
 pub struct DownloadsPageApp {
@@ -39,7 +39,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
-            graph: Graph::builder().launch(()).detach(),
+            graph: Graph::builder()
+                .launch(GraphInit::new(800, 250, (1.0, 1.0, 1.0)))
+                .detach(),
         };
         let widgets = view_output!();
 
