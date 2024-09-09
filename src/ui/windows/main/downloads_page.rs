@@ -29,6 +29,32 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                 gtk::Box {
                     model.graph.widget(),
                 }
+            },
+            add = &adw::PreferencesGroup {
+                set_title: "Current",
+                gtk::ListBox {
+                    set_hexpand: true,
+                    gtk::ListBoxRow {
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_margin_all: 16,
+                            append = &gtk::Label {
+                                set_text: "Genshin Impact",
+                            },
+                            append = &gtk::Box {
+                                set_orientation: gtk::Orientation::Horizontal,
+                                set_hexpand: true,
+                            },
+                            append = &gtk::ProgressBar {
+                                set_align: gtk::Align::Center,
+                                set_fraction: 0.69,
+                            },
+                        }
+                    }
+                },
+            },
+            add = &adw::PreferencesGroup {
+                set_title: "Scheduled",
             }
         }
     }
