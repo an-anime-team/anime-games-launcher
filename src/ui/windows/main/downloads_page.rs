@@ -5,19 +5,32 @@ use relm4::factory::*;
 use relm4::prelude::*;
 
 use crate::ui::components::downloads_row::{
-    DownloadsRow, DownloadsRowFactory, DownloadsRowFactoryMsg, DownloadsRowInit,
+    DownloadsRow, DownloadsRowFactory, DownloadsRowFactoryOutput, DownloadsRowInit,
 };
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
+
+#[derive(Debug)]
+pub enum DownloadsAppState {
+    None,
+    Downloading,
+    Extracting,
+    Verifying,
+}
 
 #[derive(Debug)]
 pub struct DownloadsPageApp {
     pub graph: AsyncController<Graph>,
     pub active: AsyncController<DownloadsRow>,
     pub scheduled: AsyncFactoryVecDeque<DownloadsRowFactory>,
+    pub state: DownloadsAppState,
 }
 
 #[derive(Debug, Clone)]
-pub enum DownloadsPageAppMsg {}
+pub enum DownloadsPageAppMsg {
+    StartDownloading,
+    StartExtracting,
+    StartVerifying,
+}
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for DownloadsPageApp {
@@ -28,32 +41,79 @@ impl SimpleAsyncComponent for DownloadsPageApp {
     view! {
         #[root]
         adw::PreferencesPage {
+            // A bit more space before graph
             add = &adw::PreferencesGroup {
                 gtk::Box {
-                    model.graph.widget(),
+                    set_height_request: 16,
                 }
             },
+
             add = &adw::PreferencesGroup {
-                set_title: "Download",
-                gtk::Grid {
-                    attach[0, 0, 1, 1] = &adw::ActionRow {
-                        set_title: "Current speed:",
-                        add_suffix = &gtk::Label {
-                            set_text: "2.5 MB/s",
-                        }
-                    },
-                    attach[1, 0, 1, 1] = &adw::ActionRow {
-                        set_title: "Avg. speed:",
-                        add_suffix = &gtk::Label {
-                            set_text: "2.2 MB/s",
-                        }
-                    },
-                },
+                model.graph.widget(),
             },
+
             add = &adw::PreferencesGroup {
-                set_title: "active",
+                #[watch]
+                set_visible: match model.state {
+                    DownloadsAppState::None => false,
+                    _ => true,
+                },
+                #[watch]
+                set_title: match model.state {
+                    DownloadsAppState::None => "",
+                    DownloadsAppState::Downloading => "Downloading",
+                    DownloadsAppState::Extracting => "Extracting",
+                    DownloadsAppState::Verifying => "Verifying",
+                },
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_hexpand: true,
+                    set_halign: gtk::Align::Fill,
+                    set_spacing: 16,
+                    adw::PreferencesGroup {
+                        adw::ActionRow {
+                            set_title: "Current speed",
+                            set_subtitle: "2.50 MB/s",
+                        }
+                    },
+                    adw::PreferencesGroup {
+                        adw::ActionRow {
+                            set_title: "Average speed",
+                            set_subtitle: "2.20 MB/s",
+                        }
+                    },
+                    adw::PreferencesGroup {
+                        adw::ActionRow {
+                            set_title: "Time elapsed",
+                            set_subtitle: "02:12",
+                        }
+                    },
+                    adw::PreferencesGroup {
+                        adw::ActionRow {
+                            set_title: "Current ETA",
+                            set_subtitle: "12 hours",
+                        }
+                    },
+                    adw::PreferencesGroup {
+                        adw::ActionRow {
+                            #[watch]
+                            set_title: match model.state {
+                                DownloadsAppState::None => "",
+                                DownloadsAppState::Downloading => "Total download",
+                                DownloadsAppState::Extracting => "Total extracted",
+                                DownloadsAppState::Verifying => "Total verified",
+                            },
+                            set_subtitle: "69.42 GB",
+                        }
+                    },
+                }
+            },
+
+            add = &adw::PreferencesGroup {
+                set_title: "Active",
                 model.active.widget(),
             },
+
             add = model.scheduled.widget() {
                 set_title: "Scheduled",
             },
@@ -80,6 +140,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                 ))
                 .detach(),
             scheduled: AsyncFactoryVecDeque::builder().launch_default().detach(),
+            state: DownloadsAppState::None,
         };
 
         model
@@ -108,12 +169,36 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
 
+        sender.input(DownloadsPageAppMsg::StartExtracting);
+
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
-        match msg {}
+        match msg {
+            DownloadsPageAppMsg::StartDownloading => {
+                self.graph
+                    .sender()
+                    .send(GraphMsg::SetColor((0.0, 0.0, 1.0)))
+                    .unwrap();
+                self.state = DownloadsAppState::Downloading;
+            }
+            DownloadsPageAppMsg::StartExtracting => {
+                self.graph
+                    .sender()
+                    .send(GraphMsg::SetColor((0.0, 1.0, 0.0)))
+                    .unwrap();
+                self.state = DownloadsAppState::Extracting;
+            }
+            DownloadsPageAppMsg::StartVerifying => {
+                self.graph
+                    .sender()
+                    .send(GraphMsg::SetColor((1.0, 1.0, 0.0)))
+                    .unwrap();
+                self.state = DownloadsAppState::Verifying;
+            }
+        }
     }
 }
