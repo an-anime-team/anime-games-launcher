@@ -111,6 +111,7 @@ pub enum GraphMsg {
     PushPoint(f64),
     PushPoints(Vec<f64>),
     SetColor((f64, f64, f64)),
+    Clear,
 }
 
 #[derive(Debug)]
@@ -186,6 +187,9 @@ impl AsyncComponent for Graph {
             }
             GraphMsg::SetColor((r, g, b)) => {
                 self.color = (r, g, b);
+            }
+            GraphMsg::Clear => {
+                self.points = VecDeque::from_iter(vec![0.0; MAX_POINTS]);
             }
         }
 
