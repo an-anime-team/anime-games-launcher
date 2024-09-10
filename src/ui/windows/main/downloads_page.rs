@@ -28,6 +28,7 @@ pub struct DownloadsPageApp {
 
 #[derive(Debug, Clone)]
 pub enum DownloadsPageAppMsg {
+    SetNone,
     StartDownloading,
     StartExtracting,
     StartStreamUnpacking,
@@ -173,7 +174,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
 
-        sender.input(DownloadsPageAppMsg::StartStreamUnpacking);
+        sender.input(DownloadsPageAppMsg::SetNone);
 
         let widgets = view_output!();
 
@@ -182,6 +183,13 @@ impl SimpleAsyncComponent for DownloadsPageApp {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
+            DownloadsPageAppMsg::SetNone => {
+                self.graph
+                    .sender()
+                    .send(GraphMsg::SetColor((1.0, 1.0, 1.0)))
+                    .unwrap();
+                self.state = DownloadsAppState::None;
+            }
             DownloadsPageAppMsg::StartDownloading => {
                 self.graph
                     .sender()
