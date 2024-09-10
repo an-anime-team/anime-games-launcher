@@ -64,7 +64,7 @@ impl Graph {
         cx.set_operator(Operator::Add);
 
         // Background
-        cx.set_source_rgba(red, green, blue, 0.1);
+        cx.set_source_rgba(1.0, 1.0, 1.0, 0.05);
         cx.paint().expect("Failed to paint background");
 
         // Graph lines
@@ -75,6 +75,7 @@ impl Graph {
         let y_scale = (height - 3.0 * OFFSET) / self.max_y;
 
         // Mean line
+        cx.set_source_rgba(1.0, 1.0, 1.0, 0.15);
         cx.set_dash(&[4.0, 4.0], 0.0);
         cx.move_to(OFFSET, height - (OFFSET + y_scale * self.current_mean));
         cx.line_to(
