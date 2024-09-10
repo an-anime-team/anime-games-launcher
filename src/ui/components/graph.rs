@@ -110,6 +110,7 @@ impl Graph {
 pub enum GraphMsg {
     PushPoint(f64),
     PushPoints(Vec<f64>),
+    SetColor((f64, f64, f64)),
 }
 
 #[derive(Debug)]
@@ -182,6 +183,9 @@ impl AsyncComponent for Graph {
                     self.points.pop_back();
                     self.points.push_front(p);
                 }
+            }
+            GraphMsg::SetColor((r, g, b)) => {
+                self.color = (r, g, b);
             }
         }
 
