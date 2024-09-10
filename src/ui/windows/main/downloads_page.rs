@@ -13,6 +13,7 @@ use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 pub enum DownloadsAppState {
     None,
     Downloading,
+    StreamUnpacking,
     Extracting,
     Verifying,
 }
@@ -29,6 +30,7 @@ pub struct DownloadsPageApp {
 pub enum DownloadsPageAppMsg {
     StartDownloading,
     StartExtracting,
+    StartStreamUnpacking,
     StartVerifying,
 }
 
@@ -63,6 +65,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                     DownloadsAppState::None => "",
                     DownloadsAppState::Downloading => "Downloading",
                     DownloadsAppState::Extracting => "Extracting",
+                    DownloadsAppState::StreamUnpacking => "Stream unpacking",
                     DownloadsAppState::Verifying => "Verifying",
                 },
                 gtk::Box {
@@ -101,6 +104,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                                 DownloadsAppState::None => "",
                                 DownloadsAppState::Downloading => "Total download",
                                 DownloadsAppState::Extracting => "Total extracted",
+                                DownloadsAppState::StreamUnpacking => "Total unpacked",
                                 DownloadsAppState::Verifying => "Total verified",
                             },
                             set_subtitle: "69.42 GB",
@@ -169,7 +173,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
 
-        sender.input(DownloadsPageAppMsg::StartExtracting);
+        sender.input(DownloadsPageAppMsg::StartStreamUnpacking);
 
         let widgets = view_output!();
 
@@ -191,6 +195,13 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                     .send(GraphMsg::SetColor((0.0, 1.0, 0.0)))
                     .unwrap();
                 self.state = DownloadsAppState::Extracting;
+            }
+            DownloadsPageAppMsg::StartStreamUnpacking => {
+                self.graph
+                    .sender()
+                    .send(GraphMsg::SetColor((1.0, 0.0, 0.0)))
+                    .unwrap();
+                self.state = DownloadsAppState::StreamUnpacking;
             }
             DownloadsPageAppMsg::StartVerifying => {
                 self.graph
