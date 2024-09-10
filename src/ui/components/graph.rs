@@ -86,10 +86,10 @@ impl Graph {
         cx.set_dash(&[], 0.0); // Undash line
 
         // Draw Graph
-        cx.move_to(OFFSET, height - OFFSET);
+        cx.move_to(width - OFFSET, height - OFFSET);
 
         for (i, point) in self.points.iter().enumerate() {
-            let x = OFFSET + x_scale * (i as f64 + 1.0);
+            let x = width - (OFFSET + x_scale * (i as f64 + 1.0));
             let y = height - OFFSET - point * y_scale;
 
             cx.line_to(x, y);
