@@ -16,7 +16,7 @@ pub struct GraphInit {
     width: i32,
     /// height of DrawingArea
     height: i32,
-    /// rgb as decimal
+    /// rgb 0.0 to 1.0
     color: (f64, f64, f64),
 }
 
@@ -45,7 +45,7 @@ pub struct Graph {
     current_mean: f64,
     /// points on graph
     points: VecDeque<f64>,
-    /// rgb as decimal
+    /// rgb 0.0 to 1.0
     color: (f64, f64, f64),
     handler: DrawHandler,
 }
