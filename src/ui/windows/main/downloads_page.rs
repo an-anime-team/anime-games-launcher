@@ -44,13 +44,6 @@ impl SimpleAsyncComponent for DownloadsPageApp {
     view! {
         #[root]
         adw::PreferencesPage {
-            // A bit more space before graph
-            adw::PreferencesGroup {
-                gtk::Box {
-                    set_height_request: 16,
-                }
-            },
-
             adw::PreferencesGroup {
                 model.graph.widget(),
             },
@@ -133,8 +126,8 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                 .launch(GraphInit::new(800, 150, (1.0, 1.0, 1.0)))
                 .detach(),
             active: DownloadsRow::builder()
-                .launch(DownloadsRowInit::new(
-                    String::from("/path/to/card.jpg"),
+                .launch(DownloadsRowInit::new(String::from(
+                    "/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg"),
                     "Genshin Impact",
                     "5.0.0",
                     "Global",
@@ -156,7 +149,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             .unwrap();
 
         model.scheduled.guard().push_back(DownloadsRowInit::new(
-            String::from("/path/to/card.jpg"),
+            String::from(
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
+            ),
             "Honkai Impact 3rd",
             "69.0.1",
             "China",
@@ -164,7 +159,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
         model.scheduled.guard().push_back(DownloadsRowInit::new(
-            String::from("/path/to/card.jpg"),
+            String::from(
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
+            ),
             "Honkai Impact 3rd",
             "420.amogus-rc12",
             "Global",

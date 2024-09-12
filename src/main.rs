@@ -2,21 +2,21 @@ use std::path::PathBuf;
 
 use relm4::prelude::*;
 
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::filter::*;
+use tracing_subscriber::prelude::*;
 
 use clap::Parser;
 
-pub mod i18n;
-pub mod utils;
-pub mod updater;
-pub mod handlers;
-pub mod packages;
+pub mod cli;
 pub mod config;
 pub mod games;
+pub mod handlers;
+pub mod i18n;
+pub mod packages;
 pub mod profiles;
-pub mod cli;
 pub mod ui;
+pub mod updater;
+pub mod utils;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
@@ -26,9 +26,9 @@ lazy_static::lazy_static! {
     pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
 
     /// Path to the launcher's data folder
-    /// 
+    ///
     /// Resolution order:
-    /// 
+    ///
     /// - `$LAUNCHER_FOLDER`
     /// - `$XDG_DATA_HOME/anime-games-launcher`
     /// - `$HOME/.local/share/anime-games-launcher`
@@ -85,11 +85,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Try to parse and execute CLI command
     if std::env::args().len() > 1 {
-        cli::Cli::parse()
-            .execute()
-            .await?;
+        cli::Cli::parse().execute().await?;
     }
-
     // Otherwise start GUI app
     else {
         tracing::info!("Starting application ({APP_VERSION})");
@@ -112,11 +109,13 @@ async fn main() -> anyhow::Result<()> {
         let app = RelmApp::new(APP_ID);
 
         // Set global css
-        app.set_global_css("
+        relm4::set_global_css(
+            "
             .warning-action {
                 background-color: #BFB04D;
             }
-        ");
+            ",
+        );
 
         // Show loading window
         app.run_async::<ui::windows::prelude::MainApp>(());

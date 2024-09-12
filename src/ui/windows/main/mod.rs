@@ -22,7 +22,6 @@ pub struct MainApp {
     store_page: AsyncController<StorePageApp>,
     library_page: AsyncController<LibraryPageApp>,
     profile_page: AsyncController<ProfilePageApp>,
-    downloads_page: AsyncController<DownloadsPageApp>,
 }
 
 #[relm4::component(pub, async)]
@@ -79,16 +78,6 @@ impl SimpleAsyncComponent for MainApp {
                         set_vexpand: true,
                         set_hexpand: true,
 
-                        model.downloads_page.widget(),
-                    } -> {
-                        set_title: Some("Downloads"),
-                        set_icon_name: Some("download-symbolic"),
-                    },
-
-                    add = &gtk::Box {
-                        set_vexpand: true,
-                        set_hexpand: true,
-
                         model.profile_page.widget(),
                     } -> {
                         set_title: Some("Profile"),
@@ -110,8 +99,6 @@ impl SimpleAsyncComponent for MainApp {
             library_page: LibraryPageApp::builder().launch(()).detach(),
 
             profile_page: ProfilePageApp::builder().launch(()).detach(),
-
-            downloads_page: DownloadsPageApp::builder().launch(()).detach(),
         };
 
         let widgets = view_output!();
