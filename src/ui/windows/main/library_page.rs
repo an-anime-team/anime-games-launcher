@@ -35,54 +35,55 @@ impl SimpleAsyncComponent for LibraryPageApp {
         #[root]
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
-            adw::NavigationSplitView {
-                #[watch]
-                set_visible: !model.show_downloads,
-                set_vexpand: true,
-                set_hexpand: true,
-
-                #[wrap(Some)]
-                set_sidebar = &adw::NavigationPage {
-                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
-                    set_title: "Games",
-
-                    #[wrap(Some)]
-                    set_child = model.cards_list.widget(),
-                },
-
-                #[wrap(Some)]
-                set_content = &adw::NavigationPage {
-                    set_hexpand: true,
-
-                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
-                    set_title: "Details",
-
-                    #[wrap(Some)]
-                    set_child = model.game_details.widget(),
+            #[transition(Crossfade)]
+            append = if model.show_downloads {
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    gtk::Button {
+                        set_icon_name: "draw-arrow-back-symbolic",
+                        set_halign: gtk::Align::Start,
+                        set_margin_all: 16,
+                        connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
+                    },
+                    model.downloads_page.widget(),
                 }
-            },
-            adw::PreferencesPage {
-                #[watch]
-                set_visible: !model.show_downloads,
-                adw::PreferencesGroup {
-                    model.active_download.widget() {
-                        set_width_request: 1000,
-                        set_activatable: true,
-                        connect_activated => LibraryPageAppMsg::ToggleDownloadsPage,
+            } else {
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    adw::NavigationSplitView {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
+                        #[wrap(Some)]
+                        set_sidebar = &adw::NavigationPage {
+                            // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
+                            set_title: "Games",
+
+                            #[wrap(Some)]
+                            set_child = model.cards_list.widget(),
+                        },
+
+                        #[wrap(Some)]
+                        set_content = &adw::NavigationPage {
+                            set_hexpand: true,
+
+                            // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
+                            set_title: "Details",
+
+                            #[wrap(Some)]
+                            set_child = model.game_details.widget(),
+                        }
+                    },
+                    adw::PreferencesPage {
+                        adw::PreferencesGroup {
+                            model.active_download.widget() {
+                                set_width_request: 1000,
+                                set_activatable: true,
+                                connect_activated => LibraryPageAppMsg::ToggleDownloadsPage,
+                            }
+                        }
                     }
                 }
-            },
-            gtk::Box {
-                #[watch]
-                set_visible: model.show_downloads,
-                set_orientation: gtk::Orientation::Vertical,
-                gtk::Button {
-                    set_icon_name: "draw-arrow-back-symbolic",
-                    set_halign: gtk::Align::Start,
-                    set_margin_all: 16,
-                    connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
-                },
-                model.downloads_page.widget(),
             }
         },
     }
@@ -126,6 +127,36 @@ impl SimpleAsyncComponent for LibraryPageApp {
                 row.emit_activate();
             }
         });
+
+        model
+            .cards_list
+            .guard()
+            .push_back(CardsListFactoryInit::new(
+                "Genshin Impact",
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg",
+            ));
+        model
+            .cards_list
+            .guard()
+            .push_back(CardsListFactoryInit::new(
+                "Honkai Impact 3rd",
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
+            ));
+        model
+            .cards_list
+            .guard()
+            .push_back(CardsListFactoryInit::new(
+                "Honkai: Star Rail",
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/star-rail/card.jpg",
+            ));
+        model
+            .cards_list
+            .guard()
+            .push_back(CardsListFactoryInit::new(
+                "Punishing: Gray Raven",
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/pgr/card.jpg",
+            ));
+
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
@@ -138,8 +169,8 @@ impl SimpleAsyncComponent for LibraryPageApp {
                     self.game_details
                         .emit(GameDetailsInput::Update(GameDetailsInit {
                             title: details.title.clone(),
-                            card_image: String::from("/path/to/card.jpg"),
-                            background_image: String::from("/path/to/background.jpg"),
+                            card_image: String::from("/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg"),
+                            background_image: String::from("/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/background.jpg")
                         }));
                 }
             }
