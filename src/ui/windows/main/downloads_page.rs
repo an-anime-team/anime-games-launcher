@@ -45,17 +45,17 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         #[root]
         adw::PreferencesPage {
             // A bit more space before graph
-            add = &adw::PreferencesGroup {
+            adw::PreferencesGroup {
                 gtk::Box {
                     set_height_request: 16,
                 }
             },
 
-            add = &adw::PreferencesGroup {
+            adw::PreferencesGroup {
                 model.graph.widget(),
             },
 
-            add = &adw::PreferencesGroup {
+            adw::PreferencesGroup {
                 #[watch]
                 set_visible: match model.state {
                     DownloadsAppState::None => false,
@@ -71,8 +71,6 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
-                    set_hexpand: true,
-                    set_halign: gtk::Align::Fill,
                     set_spacing: 16,
                     adw::PreferencesGroup {
                         adw::ActionRow {
@@ -114,12 +112,12 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                 }
             },
 
-            add = &adw::PreferencesGroup {
+            adw::PreferencesGroup {
                 set_title: "Active",
                 model.active.widget(),
             },
 
-            add = model.scheduled.widget() {
+            model.scheduled.widget() {
                 set_title: "Scheduled",
             },
         }
@@ -174,7 +172,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
 
-        sender.input(DownloadsPageAppMsg::SetNone);
+        sender.input(DownloadsPageAppMsg::StartDownloading);
 
         let widgets = view_output!();
 
@@ -182,6 +180,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+        // https://developer.gnome.org/hig/reference/palette.html
         match msg {
             DownloadsPageAppMsg::SetNone => {
                 self.graph
@@ -193,28 +192,28 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             DownloadsPageAppMsg::StartDownloading => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((0.0, 0.0, 1.0)))
+                    .send(GraphMsg::SetColor((0.6, 0.757, 0.945)))
                     .unwrap();
                 self.state = DownloadsAppState::Downloading;
             }
             DownloadsPageAppMsg::StartExtracting => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((0.0, 1.0, 0.0)))
+                    .send(GraphMsg::SetColor((0.341, 0.89, 0.537)))
                     .unwrap();
                 self.state = DownloadsAppState::Extracting;
             }
             DownloadsPageAppMsg::StartStreamUnpacking => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((1.0, 0.0, 0.0)))
+                    .send(GraphMsg::SetColor((0.929, 0.2, 0.231)))
                     .unwrap();
                 self.state = DownloadsAppState::StreamUnpacking;
             }
             DownloadsPageAppMsg::StartVerifying => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((1.0, 1.0, 0.0)))
+                    .send(GraphMsg::SetColor((0.976, 0.941, 0.42)))
                     .unwrap();
                 self.state = DownloadsAppState::Verifying;
             }
