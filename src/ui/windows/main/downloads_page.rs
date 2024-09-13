@@ -3,11 +3,13 @@ use gtk::prelude::*;
 
 use relm4::factory::*;
 use relm4::prelude::*;
+use tracing::Instrument;
 
 use crate::ui::components::downloads_row::{
     DownloadsRow, DownloadsRowFactory, DownloadsRowFactoryOutput, DownloadsRowInit,
 };
-use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
+use crate::ui::components::graph::{Graph, GraphInit, GraphMsg, GraphOutput};
+use crate::utils::{pretty_bytes, pretty_seconds};
 
 #[derive(Debug)]
 pub enum DownloadsAppState {
@@ -24,22 +26,36 @@ pub struct DownloadsPageApp {
     pub active: AsyncController<DownloadsRow>,
     pub scheduled: AsyncFactoryVecDeque<DownloadsRowFactory>,
     pub state: DownloadsAppState,
+
+    // Graph
+    pub speed: u64,
+    pub avg_speed: u64,
+    pub total: u64,
+    pub elapsed: u64,
 }
 
 #[derive(Debug, Clone)]
 pub enum DownloadsPageAppMsg {
+    SetActive(DynamicIndex),
     SetNone,
-    StartDownloading,
-    StartExtracting,
-    StartStreamUnpacking,
-    StartVerifying,
+    SetDownloading,
+    SetExtracting,
+    SetStreamUnpacking,
+    SetVerifying,
+
+    // Graph
+    PushGraph(u64),
+    UpdateMean(u64),
 }
+
+#[derive(Debug)]
+pub enum DownloadsPageAppOutput {}
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for DownloadsPageApp {
     type Init = ();
     type Input = DownloadsPageAppMsg;
-    type Output = ();
+    type Output = DownloadsPageAppOutput;
 
     view! {
         #[root]
@@ -68,25 +84,28 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                     adw::PreferencesGroup {
                         adw::ActionRow {
                             set_title: "Current speed",
-                            set_subtitle: "2.50 MB/s",
+                            #[watch]
+                            set_subtitle: &format!("{}/s", pretty_bytes(model.speed)),
                         }
                     },
                     adw::PreferencesGroup {
                         adw::ActionRow {
                             set_title: "Average speed",
-                            set_subtitle: "2.20 MB/s",
+                            #[watch]
+                            set_subtitle: &format!("{}/s", pretty_bytes(model.avg_speed)),
                         }
                     },
                     adw::PreferencesGroup {
                         adw::ActionRow {
                             set_title: "Time elapsed",
-                            set_subtitle: "02:12",
+                            #[watch]
+                            set_subtitle: &pretty_seconds(model.elapsed),
                         }
                     },
                     adw::PreferencesGroup {
                         adw::ActionRow {
                             set_title: "Current ETA",
-                            set_subtitle: "12 hours",
+                            set_subtitle: "amogus",
                         }
                     },
                     adw::PreferencesGroup {
@@ -99,7 +118,8 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                                 DownloadsAppState::StreamUnpacking => "Total unpacked",
                                 DownloadsAppState::Verifying => "Total verified",
                             },
-                            set_subtitle: "69.42 GB",
+                            #[watch]
+                            set_subtitle: &pretty_bytes(model.total),
                         }
                     },
                 }
@@ -124,7 +144,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         let mut model = Self {
             graph: Graph::builder()
                 .launch(GraphInit::new(800, 150, (1.0, 1.0, 1.0)))
-                .detach(),
+                .forward(sender.input_sender(), |msg| match msg {
+                    GraphOutput::UpdateMean(mean) => DownloadsPageAppMsg::UpdateMean(mean)
+                }),
             active: DownloadsRow::builder()
                 .launch(DownloadsRowInit::new(String::from(
                     "/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg"),
@@ -135,16 +157,49 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                     true,
                 ))
                 .detach(),
-            scheduled: AsyncFactoryVecDeque::builder().launch_default().detach(),
+            scheduled: AsyncFactoryVecDeque::builder().launch_default().forward(sender.input_sender(), |msg| match msg {
+                DownloadsRowFactoryOutput::Queue(index) => DownloadsPageAppMsg::SetActive(index),
+            }),
             state: DownloadsAppState::None,
+            speed: 0,
+            avg_speed: 0,
+            total: 0,
+            elapsed: 0,
         };
 
         model
             .graph
             .sender()
             .send(GraphMsg::PushPoints(vec![
-                5.1, 10.9, 12.0, 6.0, 3.0, 3.0, 4.0, 5.0, 9.0, 7.0, 1.0, 1.0, 2.5, 6.8, 6.6, 15.5,
-                17.1, 0.9, 6.6,
+                452904458, 777220094, 526592924, 426636796, 55706776, 466556367, 627206652,
+                569798866, 787685971, 844515495, 455001528, 573125330, 281186686, 270649229,
+                269895417, 738853220, 808851483, 284943234, 394286493, 102257847, 298817512,
+                134789158, 411591134, 570248522, 376836031, 733191506, 647243898, 20064546,
+                71899336, 308387460, 426337509, 954825850, 582178251, 477989262, 526292385,
+                985058876, 591576225, 741071822, 835657398, 642072403, 203395692, 36618218,
+                430474183, 118050934, 320472918, 980503848, 261719052, 869404642, 548574685,
+                123899716, 708913548, 68543217, 26470188, 582797287, 597725069, 114298253,
+                538887098, 691888414, 692313962, 650691223, 366081763, 951507556, 740370818,
+                889678510, 467961836, 306535248, 338989600, 247635488, 382553911, 141272676,
+                202169419, 793615757, 727655586, 814807597, 343162717, 636274439, 980003775,
+                462723132, 60623157, 368616204, 68203759, 812854107, 816411328, 176272232,
+                133554123, 46871030, 979449449, 955908633, 231917883, 864525004, 361324818,
+                764085453, 688441572, 15607384, 417882545, 729230332, 930415001, 732634987,
+                398998026, 542747212, 710945136, 163321328, 246550246, 412162156, 941365870,
+                969007376, 499733967, 579997158, 235054989, 376817421, 363769278, 884677738,
+                407359888, 496772160, 572000509, 606011370, 320182380, 453670032, 980451841,
+                623097551, 446886241, 875198569, 892212680, 741131490, 269979849, 888089509,
+                344921416, 169832084, 937979311, 495754357, 941159130, 416680453, 172892222,
+                569899913, 600207900, 818665275, 620662303, 244007114, 274570744, 884232940,
+                845198408, 901314588, 3480684, 758698412, 522948809, 666529434, 822910389,
+                817039622, 95285823, 579982733, 978308146, 941480666, 877187712, 53513477,
+                28232160, 926517104, 325215439, 186264697, 796805569, 954038814, 252809913,
+                368305204, 91573137, 937745378, 518250698, 933410773, 745392663, 489911761,
+                760767021, 159508754, 866679635, 389648061, 760131838, 547049442, 238544489,
+                864558969, 407592895, 707924883, 261370446, 801808253, 632801191, 387502075,
+                571185268, 318911598, 546977930, 697134392, 379699234, 670421531, 586621788,
+                239806623, 531908386, 652938349, 879474224, 631865484, 331509897, 594835618,
+                699535467, 163176811, 86562844, 104910415,
             ]))
             .unwrap();
 
@@ -169,7 +224,8 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
 
-        sender.input(DownloadsPageAppMsg::StartDownloading);
+        sender.input(DownloadsPageAppMsg::SetVerifying);
+        sender.input(DownloadsPageAppMsg::PushGraph(879474224));
 
         let widgets = view_output!();
 
@@ -178,7 +234,11 @@ impl SimpleAsyncComponent for DownloadsPageApp {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         // https://developer.gnome.org/hig/reference/palette.html
+        // https://rgbcolorpicker.com/0-1
         match msg {
+            DownloadsPageAppMsg::SetActive(index) => {
+                println!("Selected {}", index.current_index());
+            }
             DownloadsPageAppMsg::SetNone => {
                 self.graph
                     .sender()
@@ -186,33 +246,43 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                     .unwrap();
                 self.state = DownloadsAppState::None;
             }
-            DownloadsPageAppMsg::StartDownloading => {
+            DownloadsPageAppMsg::SetDownloading => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((0.6, 0.757, 0.945)))
+                    .send(GraphMsg::SetColor((0.101, 0.373, 0.706))) // Blue 5
                     .unwrap();
                 self.state = DownloadsAppState::Downloading;
             }
-            DownloadsPageAppMsg::StartExtracting => {
+            DownloadsPageAppMsg::SetExtracting => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((0.341, 0.89, 0.537)))
+                    .send(GraphMsg::SetColor((0.149, 0.635, 0.412))) // Green 5
                     .unwrap();
                 self.state = DownloadsAppState::Extracting;
             }
-            DownloadsPageAppMsg::StartStreamUnpacking => {
+            DownloadsPageAppMsg::SetStreamUnpacking => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((0.929, 0.2, 0.231)))
+                    .send(GraphMsg::SetColor((0.647, 0.114, 0.176))) // Red 5
                     .unwrap();
                 self.state = DownloadsAppState::StreamUnpacking;
             }
-            DownloadsPageAppMsg::StartVerifying => {
+            DownloadsPageAppMsg::SetVerifying => {
                 self.graph
                     .sender()
-                    .send(GraphMsg::SetColor((0.976, 0.941, 0.42)))
+                    .send(GraphMsg::SetColor((0.976, 0.941, 0.42))) // Yellow 1
                     .unwrap();
                 self.state = DownloadsAppState::Verifying;
+            }
+            DownloadsPageAppMsg::PushGraph(point) => {
+                self.graph
+                    .sender()
+                    .send(GraphMsg::PushPoint(point))
+                    .unwrap();
+                self.speed = point;
+            }
+            DownloadsPageAppMsg::UpdateMean(mean) => {
+                self.avg_speed = mean;
             }
         }
     }

@@ -41,12 +41,18 @@ impl DownloadsRowInit {
 #[derive(Debug)]
 pub struct DownloadsRow {
     pub card: AsyncController<CardComponent>,
+    /// Name of component
     pub title: Option<&'static str>,
+    /// Version of component
     pub version: Option<&'static str>,
+    /// `Global`, `China`, `TKG`, etc
     pub edition: Option<&'static str>,
+    /// Total amount in bytes
     pub size: Option<u64>,
-    pub downloaded: Option<u64>,
-    pub downloading: bool,
+    /// Processed amount in bytes
+    pub current_size: Option<u64>,
+    /// Indicates if the user has not paused the action
+    pub active: bool,
 }
 
 #[derive(Debug)]
@@ -74,7 +80,7 @@ impl SimpleAsyncComponent for DownloadsRow {
 
             add_suffix = &gtk::Label {
                 #[watch]
-                set_label: &format!("{} / {}", pretty_bytes(model.downloaded.unwrap_or(0)), pretty_bytes(model.size.unwrap_or(0))),
+                set_label: &format!("{} / {}", pretty_bytes(model.current_size.unwrap_or(0)), pretty_bytes(model.size.unwrap_or(0))),
             },
 
             add_suffix = &gtk::Box {
@@ -84,7 +90,7 @@ impl SimpleAsyncComponent for DownloadsRow {
             add_suffix = &gtk::ProgressBar {
                 set_align: gtk::Align::Center,
                 #[watch]
-                set_fraction: model.downloaded.unwrap_or(0) as f64 / model.size.unwrap_or(0) as f64,
+                set_fraction: model.current_size.unwrap_or(0) as f64 / model.size.unwrap_or(0) as f64,
             },
 
             add_suffix = &gtk::Box {
@@ -93,7 +99,7 @@ impl SimpleAsyncComponent for DownloadsRow {
 
             add_suffix = &gtk::Label {
                 #[watch]
-                set_label: &format!("{:.2}%", model.downloaded.unwrap_or(0) as f64 / model.size.unwrap_or(0) as f64 * 100.0),
+                set_label: &format!("{:.2}%", model.current_size.unwrap_or(0) as f64 / model.size.unwrap_or(0) as f64 * 100.0),
             },
 
             add_suffix = &gtk::Box {
@@ -103,7 +109,7 @@ impl SimpleAsyncComponent for DownloadsRow {
             add_suffix = &gtk::Button {
                 set_align: gtk::Align::Center,
                 #[watch]
-                set_icon_name: if model.downloading {"media-playback-pause-symbolic"} else {"media-playback-start-symbolic"},
+                set_icon_name: if model.active {"media-playback-pause-symbolic"} else {"media-playback-start-symbolic"},
                 connect_clicked => DownloadsRowMsg::ToggleDownloading,
             }
         }
@@ -126,8 +132,8 @@ impl SimpleAsyncComponent for DownloadsRow {
             version: init.version,
             edition: init.edition,
             size: init.size,
-            downloaded: None,
-            downloading: init.start_download,
+            current_size: None,
+            active: init.start_download,
         };
         let widgets = view_output!();
 
@@ -136,8 +142,8 @@ impl SimpleAsyncComponent for DownloadsRow {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            DownloadsRowMsg::SetDownloaded(d) => self.downloaded = Some(d),
-            DownloadsRowMsg::ToggleDownloading => self.downloading = !self.downloading,
+            DownloadsRowMsg::SetDownloaded(d) => self.current_size = Some(d),
+            DownloadsRowMsg::ToggleDownloading => self.active = !self.active,
         }
     }
 }
@@ -149,18 +155,19 @@ pub struct DownloadsRowFactory {
     pub version: Option<&'static str>,
     pub edition: Option<&'static str>,
     pub size: Option<u64>,
-    pub downloaded: Option<u64>,
+    pub current_size: Option<u64>,
     index: DynamicIndex,
 }
 
 #[derive(Debug)]
 pub enum DownloadsRowFactoryMsg {
-    SetDownloading,
+    SetActive,
+    UpdateCurrentSize(u64),
 }
 
 #[derive(Debug)]
 pub enum DownloadsRowFactoryOutput {
-    QueueDownload(DynamicIndex),
+    Queue(DynamicIndex),
 }
 
 #[relm4::factory(pub, async)]
@@ -186,7 +193,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
 
             add_suffix = &gtk::Label {
                 #[watch]
-                set_label: &format!("{} / {}", pretty_bytes(self.downloaded.unwrap_or(0)), pretty_bytes(self.size.unwrap_or(0))),
+                set_label: &format!("{} / {}", pretty_bytes(self.current_size.unwrap_or(0)), pretty_bytes(self.size.unwrap_or(0))),
             },
 
             add_suffix = &gtk::Box {
@@ -196,7 +203,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
             add_suffix = &gtk::ProgressBar {
                 set_align: gtk::Align::Center,
                 #[watch]
-                set_fraction: self.downloaded.unwrap_or(0) as f64 / self.size.unwrap_or(0) as f64,
+                set_fraction: self.current_size.unwrap_or(0) as f64 / self.size.unwrap_or(0) as f64,
             },
 
             add_suffix = &gtk::Box {
@@ -205,7 +212,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
 
             add_suffix = &gtk::Label {
                 #[watch]
-                set_label: &format!("{:.2}%", self.downloaded.unwrap_or(0) as f64 / self.size.unwrap_or(0) as f64 * 100.0),
+                set_label: &format!("{:.2}%", self.current_size.unwrap_or(0) as f64 / self.size.unwrap_or(0) as f64 * 100.0),
             },
 
             add_suffix = &gtk::Box {
@@ -216,7 +223,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
                 set_align: gtk::Align::Center,
                 #[watch]
                 set_icon_name: "download-symbolic",
-                connect_clicked => DownloadsRowFactoryMsg::SetDownloading,
+                connect_clicked => DownloadsRowFactoryMsg::SetActive,
             }
         }
     }
@@ -238,19 +245,20 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
             version: init.version,
             edition: init.edition,
             size: init.size,
-            downloaded: None,
+            current_size: None,
             index: index.clone(),
         }
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
         match msg {
-            DownloadsRowFactoryMsg::SetDownloading => {
+            DownloadsRowFactoryMsg::SetActive => {
                 sender
-                    .output(DownloadsRowFactoryOutput::QueueDownload(self.index.clone()))
+                    .output(DownloadsRowFactoryOutput::Queue(self.index.clone()))
                     .unwrap();
-                println!("{:?}", self.index);
-                todo!("Output index to request download change");
+            }
+            DownloadsRowFactoryMsg::UpdateCurrentSize(size) => {
+                self.current_size = Some(size);
             }
         }
     }

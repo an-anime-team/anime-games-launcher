@@ -30,7 +30,7 @@ impl GraphInit {
     }
 }
 
-const MAX_POINTS: usize = 300;
+const MAX_POINTS: usize = 200;
 const OFFSET: f64 = 10.0;
 
 #[derive(Debug)]
@@ -40,11 +40,11 @@ pub struct Graph {
     /// height of DrawingArea
     height: i32,
     /// max of points rounded up to the nearest 0.5
-    max_y: f64,
+    max_y: u64,
     /// mean calculated from points
-    current_mean: f64,
+    current_mean: u64,
     /// points on graph
-    points: VecDeque<f64>,
+    points: VecDeque<u64>,
     /// rgb 0.0 to 1.0
     color: (f64, f64, f64),
     handler: DrawHandler,
@@ -72,15 +72,18 @@ impl Graph {
 
         // Scale
         let x_scale = (width - 2.0 * OFFSET) / (MAX_POINTS as f64 + 1.0);
-        let y_scale = (height - 3.0 * OFFSET) / self.max_y;
+        let y_scale = (height - 3.0 * OFFSET) / self.max_y as f64;
 
         // Mean line
         cx.set_source_rgba(1.0, 1.0, 1.0, 0.15);
         cx.set_dash(&[4.0, 4.0], 0.0);
-        cx.move_to(OFFSET, height - (OFFSET + y_scale * self.current_mean));
+        cx.move_to(
+            OFFSET,
+            height - (OFFSET + y_scale * self.current_mean as f64),
+        );
         cx.line_to(
             width - OFFSET,
-            height - (OFFSET + y_scale * self.current_mean),
+            height - (OFFSET + y_scale * self.current_mean as f64),
         );
         cx.stroke().expect("Failed to draw mean line");
 
@@ -91,16 +94,26 @@ impl Graph {
 
         for (i, point) in self.points.iter().enumerate() {
             let x = width - (OFFSET + x_scale * (i as f64 + 1.0));
-            let y = height - OFFSET - point * y_scale;
+            let y = height - OFFSET - *point as f64 * y_scale;
 
             cx.line_to(x, y);
         }
+        cx.line_to(OFFSET, height - OFFSET);
 
         cx.set_source_rgba(red, green, blue, 0.2);
         cx.fill_preserve().expect("Failed to fill under graph");
 
         cx.set_source_rgba(red, green, blue, 1.0);
         cx.stroke().expect("Failed to draw graph line");
+
+        // Remove out of bounds draws
+        cx.set_operator(Operator::Clear);
+        cx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
+        cx.move_to(OFFSET - 2.0, height - OFFSET - 2.0);
+        cx.line_to(width - (OFFSET + 2.0), height - OFFSET - 2.0);
+        cx.line_to(width, height);
+        cx.line_to(0.0, height);
+        cx.fill().expect("Failed to remove out of bounds draws");
 
         // AA
         cx.set_antialias(gtk::cairo::Antialias::Good);
@@ -109,10 +122,15 @@ impl Graph {
 
 #[derive(Debug)]
 pub enum GraphMsg {
-    PushPoint(f64),
-    PushPoints(Vec<f64>),
+    PushPoint(u64),
+    PushPoints(Vec<u64>),
     SetColor((f64, f64, f64)),
     Clear,
+}
+
+#[derive(Debug)]
+pub enum GraphOutput {
+    UpdateMean(u64),
 }
 
 #[derive(Debug)]
@@ -122,7 +140,7 @@ pub struct UpdateGraphMsg;
 impl AsyncComponent for Graph {
     type Init = GraphInit;
     type Input = GraphMsg;
-    type Output = ();
+    type Output = GraphOutput;
     type CommandOutput = UpdateGraphMsg;
 
     view! {
@@ -145,9 +163,9 @@ impl AsyncComponent for Graph {
         let model = Graph {
             width: init.width,
             height: init.height,
-            max_y: 0.0,
-            current_mean: 0.0,
-            points: VecDeque::from_iter(vec![0.0; MAX_POINTS]),
+            max_y: 0,
+            current_mean: 0,
+            points: VecDeque::from_iter(vec![0; MAX_POINTS]),
             color: init.color,
             handler: DrawHandler::new(),
         };
@@ -190,7 +208,7 @@ impl AsyncComponent for Graph {
                 self.color = (r, g, b);
             }
             GraphMsg::Clear => {
-                self.points = VecDeque::from_iter(vec![0.0; MAX_POINTS]);
+                self.points = VecDeque::from_iter(vec![0; MAX_POINTS]);
             }
         }
 
@@ -198,18 +216,16 @@ impl AsyncComponent for Graph {
         let (sum, count) = self
             .points
             .iter()
-            .filter(|&&x| x != 0.0)
-            .fold((0.0, 0), |(sum, count), &x| (sum + x, count + 1));
-        self.current_mean = if sum > 0.0 { sum / count as f64 } else { 0.0 };
+            .filter(|&&x| x != 0)
+            .fold((0, 0), |(sum, count), &x| (sum + x, count + 1));
+        self.current_mean = sum / count;
+        sender
+            .output(GraphOutput::UpdateMean(self.current_mean))
+            .unwrap();
 
         // Calculate and update max_y
-        let max = self.points.iter().fold(f64::MIN, |a, &b| a.max(b));
-        self.max_y = if max > 0.0 {
-            // Round up to the nearest 0.5
-            (max * 2.0).round() / 2.0
-        } else {
-            1.0
-        };
+        let max = self.points.iter().fold(0, |a, &b| a.max(b));
+        self.max_y = max;
 
         // Draw context
         let cx = self.handler.get_context();
