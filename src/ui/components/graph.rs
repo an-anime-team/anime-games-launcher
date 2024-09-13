@@ -168,6 +168,8 @@ impl AsyncComponent for Graph {
             shutdown
                 .register(async move {
                     loop {
+                        // Update frequency, you can remove this if you want
+                        // to call updates from outside with a sender.
                         sleep(Duration::from_millis(20)).await;
                         out.send(UpdateGraphMsg).unwrap();
                     }
