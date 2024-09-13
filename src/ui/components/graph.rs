@@ -39,7 +39,7 @@ pub struct Graph {
     width: i32,
     /// height of DrawingArea
     height: i32,
-    /// max of points rounded up to the nearest 0.5
+    /// max of points
     max_y: u64,
     /// mean calculated from points
     current_mean: u64,
