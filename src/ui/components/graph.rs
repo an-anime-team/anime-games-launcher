@@ -106,15 +106,6 @@ impl Graph {
         cx.set_source_rgba(red, green, blue, 1.0);
         cx.stroke().expect("Failed to draw graph line");
 
-        // Remove out of bounds draws
-        cx.set_operator(Operator::Clear);
-        cx.set_source_rgba(0.0, 0.0, 0.0, 0.0);
-        cx.move_to(OFFSET - 2.0, height - OFFSET - 2.0);
-        cx.line_to(width - (OFFSET + 2.0), height - OFFSET - 2.0);
-        cx.line_to(width, height);
-        cx.line_to(0.0, height);
-        cx.fill().expect("Failed to remove out of bounds draws");
-
         // AA
         cx.set_antialias(gtk::cairo::Antialias::Good);
     }
@@ -236,7 +227,7 @@ impl AsyncComponent for Graph {
         &mut self,
         _: UpdateGraphMsg,
         _: AsyncComponentSender<Self>,
-        _root: &Self::Root,
+        _: &Self::Root,
     ) {
         // Draw context
         let cx = self.handler.get_context();
