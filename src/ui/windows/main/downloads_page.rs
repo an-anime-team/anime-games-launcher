@@ -150,9 +150,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             active: DownloadsRow::builder()
                 .launch(DownloadsRowInit::new(String::from(
                     "/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg"),
-                    "Genshin Impact",
-                    "5.0.0",
-                    "Global",
+                    String::from("Genshin Impact"),
+                    String::from("5.0.0"),
+                    String::from("Global"),
                     64500000000,
                     true,
                 ))
@@ -204,22 +204,20 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             .unwrap();
 
         model.scheduled.guard().push_back(DownloadsRowInit::new(
-            String::from(
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
-            ),
-            "Honkai Impact 3rd",
-            "69.0.1",
-            "China",
+            String::from("/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg"),
+            String::from("Honkai Impact 3rd"),
+            String::from("69.0.1"),
+            String::from("China"),
             6868696990,
             false,
         ));
         model.scheduled.guard().push_back(DownloadsRowInit::new(
             String::from(
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg"
             ),
-            "Honkai Impact 3rd",
-            "420.amogus-rc12",
-            "Global",
+            String::from("Honkai Impact 3rd"),
+            String::from("420.amogus-rc12"),
+            String::from("Global"),
             6969696969,
             false,
         ));

@@ -106,9 +106,9 @@ impl SimpleAsyncComponent for LibraryPageApp {
             active_download: DownloadsRow::builder()
                 .launch(DownloadsRowInit::new(
                     "/home/dylan/Repos/anime-games-launcher/assets/images/games/pgr/card.jpg",
-                    "Punishing: Gray Raven",
-                    "69.42.0",
-                    "Global",
+                    String::from("Punishing: Gray Raven"),
+                    String::from("69.42.0"),
+                    String::from("Global"),
                     696969696969,
                     true,
                 ))

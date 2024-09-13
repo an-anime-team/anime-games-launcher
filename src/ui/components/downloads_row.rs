@@ -10,22 +10,22 @@ use crate::utils::pretty_bytes;
 #[derive(Debug)]
 pub struct DownloadsRowInit {
     pub card_image: Option<String>,
-    pub title: Option<&'static str>,
-    pub version: Option<&'static str>,
-    pub edition: Option<&'static str>,
+    pub title: Option<String>,
+    pub version: Option<String>,
+    pub edition: Option<String>,
     pub size: Option<u64>,
-    pub start_download: bool,
+    pub start: bool,
 }
 
 impl DownloadsRowInit {
     #[inline]
     pub fn new(
         card_image: impl ToString,
-        title: &'static str,
-        version: &'static str,
-        edition: &'static str,
+        title: String,
+        version: String,
+        edition: String,
         size: u64,
-        start_download: bool,
+        start: bool,
     ) -> Self {
         Self {
             card_image: Some(card_image.to_string()),
@@ -33,7 +33,7 @@ impl DownloadsRowInit {
             version: Some(version),
             edition: Some(edition),
             size: Some(size),
-            start_download,
+            start,
         }
     }
 }
@@ -42,11 +42,11 @@ impl DownloadsRowInit {
 pub struct DownloadsRow {
     pub card: AsyncController<CardComponent>,
     /// Name of component
-    pub title: Option<&'static str>,
+    pub title: Option<String>,
     /// Version of component
-    pub version: Option<&'static str>,
+    pub version: Option<String>,
     /// `Global`, `China`, `TKG`, etc
-    pub edition: Option<&'static str>,
+    pub edition: Option<String>,
     /// Total amount in bytes
     pub size: Option<u64>,
     /// Processed amount in bytes
@@ -73,10 +73,10 @@ impl SimpleAsyncComponent for DownloadsRow {
             add_prefix = model.card.widget(),
 
             #[watch]
-            set_title?: model.title,
+            set_title?: &model.title,
 
             #[watch]
-            set_subtitle: &format!("{} ∙ {}", model.edition.unwrap_or("N/A"), model.version.unwrap_or("N/A")),
+            set_subtitle: &format!("{} ∙ {}", model.edition.clone().unwrap_or(String::from("N/A")), model.version.clone().unwrap_or(String::from("N/A"))),
 
             add_suffix = &gtk::Label {
                 #[watch]
@@ -133,7 +133,7 @@ impl SimpleAsyncComponent for DownloadsRow {
             edition: init.edition,
             size: init.size,
             current_size: None,
-            active: init.start_download,
+            active: init.start,
         };
         let widgets = view_output!();
 
@@ -151,9 +151,9 @@ impl SimpleAsyncComponent for DownloadsRow {
 #[derive(Debug)]
 pub struct DownloadsRowFactory {
     pub card: AsyncController<CardComponent>,
-    pub title: Option<&'static str>,
-    pub version: Option<&'static str>,
-    pub edition: Option<&'static str>,
+    pub title: Option<String>,
+    pub version: Option<String>,
+    pub edition: Option<String>,
     pub size: Option<u64>,
     pub current_size: Option<u64>,
     index: DynamicIndex,
@@ -186,10 +186,10 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
             },
 
             #[watch]
-            set_title?: self.title,
+            set_title?: &self.title,
 
             #[watch]
-            set_subtitle: &format!("{} ∙ {}", self.edition.unwrap_or("N/A"), self.version.unwrap_or("N/A")),
+            set_subtitle: &format!("{} ∙ {}", self.edition.clone().unwrap_or(String::from("N/A")), self.version.clone().unwrap_or(String::from("N/A"))),
 
             add_suffix = &gtk::Label {
                 #[watch]
