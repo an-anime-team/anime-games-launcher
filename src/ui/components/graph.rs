@@ -191,7 +191,7 @@ impl AsyncComponent for Graph {
         &mut self,
         msg: Self::Input,
         sender: AsyncComponentSender<Self>,
-        root: &Self::Root,
+        _root: &Self::Root,
     ) {
         match msg {
             GraphMsg::PushPoint(p) => {

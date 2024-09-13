@@ -3,7 +3,6 @@ use gtk::prelude::*;
 
 use relm4::factory::*;
 use relm4::prelude::*;
-use tracing::Instrument;
 
 use crate::ui::components::downloads_row::{
     DownloadsRow, DownloadsRowFactory, DownloadsRowFactoryOutput, DownloadsRowInit,
@@ -137,7 +136,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
     }
 
     async fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
@@ -204,7 +203,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             .unwrap();
 
         model.scheduled.guard().push_back(DownloadsRowInit::new(
-            String::from("/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg"),
+            String::from(
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
+            ),
             String::from("Honkai Impact 3rd"),
             String::from("69.0.1"),
             String::from("China"),
@@ -213,7 +214,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         ));
         model.scheduled.guard().push_back(DownloadsRowInit::new(
             String::from(
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg"
+                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
             ),
             String::from("Honkai Impact 3rd"),
             String::from("420.amogus-rc12"),
@@ -230,7 +231,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         // https://developer.gnome.org/hig/reference/palette.html
         // https://rgbcolorpicker.com/0-1
         match msg {

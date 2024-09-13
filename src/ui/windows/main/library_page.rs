@@ -6,7 +6,7 @@ use relm4::prelude::*;
 
 use crate::ui::components::downloads_row::DownloadsRow;
 use crate::ui::components::downloads_row::DownloadsRowInit;
-use crate::ui::components::{cards_list, game_details::GameDetailsInit, prelude::*};
+use crate::ui::components::{game_details::GameDetailsInit, prelude::*};
 
 use super::DownloadsPageApp;
 
@@ -162,7 +162,7 @@ impl SimpleAsyncComponent for LibraryPageApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             LibraryPageAppMsg::ShowGameDetails(index) => {
                 if let Some(details) = self.cards_list.get(index.current_index()) {

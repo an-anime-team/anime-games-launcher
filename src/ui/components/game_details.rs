@@ -170,7 +170,7 @@ impl SimpleAsyncComponent for GameDetails {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             GameDetailsInput::Update(init) => {
                 self.card

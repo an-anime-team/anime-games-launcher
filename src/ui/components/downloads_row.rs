@@ -140,7 +140,7 @@ impl SimpleAsyncComponent for DownloadsRow {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             DownloadsRowMsg::SetDownloaded(d) => self.current_size = Some(d),
             DownloadsRowMsg::ToggleDownloading => self.active = !self.active,
@@ -231,7 +231,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
     async fn init_model(
         init: Self::Init,
         index: &DynamicIndex,
-        sender: AsyncFactorySender<Self>,
+        _sender: AsyncFactorySender<Self>,
     ) -> Self {
         Self {
             card: CardComponent::builder()

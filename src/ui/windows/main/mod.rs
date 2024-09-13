@@ -91,7 +91,7 @@ impl SimpleAsyncComponent for MainApp {
     async fn init(
         _init: Self::Init,
         root: Self::Root,
-        sender: AsyncComponentSender<Self>,
+        _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             store_page: StorePageApp::builder().launch(()).detach(),
