@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use relm4::prelude::*;
 
 use tracing_subscriber::prelude::*;
@@ -7,14 +5,14 @@ use tracing_subscriber::filter::*;
 
 use clap::Parser;
 
+pub mod consts;
+pub mod core;
+pub mod config;
+pub mod packages;
+
 pub mod i18n;
 pub mod utils;
-pub mod updater;
-pub mod handlers;
-pub mod packages;
-pub mod config;
 pub mod games;
-pub mod profiles;
 pub mod cli;
 pub mod ui;
 
@@ -24,41 +22,14 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static::lazy_static! {
     pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
-
-    /// Path to the launcher's data folder
-    /// 
-    /// Resolution order:
-    /// 
-    /// - `$LAUNCHER_FOLDER`
-    /// - `$XDG_DATA_HOME/anime-games-launcher`
-    /// - `$HOME/.local/share/anime-games-launcher`
-    pub static ref LAUNCHER_FOLDER: PathBuf = {
-        std::env::var("LAUNCHER_FOLDER")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| std::env::var("XDG_DATA_HOME")
-                .map(|data| PathBuf::from(data).join("anime-games-launcher"))
-                .unwrap_or_else(|_| std::env::var("HOME")
-                    .map(|home| PathBuf::from(home).join(".local/share/anime-games-launcher"))
-                    .expect("Failed to locate launcher data folder")
-                ))
-    };
-
-    /// Launcher components folder
-    pub static ref COMPONENTS_FOLDER: PathBuf = LAUNCHER_FOLDER.join("components");
-
-    /// Path to the launcher's config file
-    pub static ref CONFIG_FILE: PathBuf = LAUNCHER_FOLDER.join("config.json");
-
-    /// Path to launcher's debug log file
-    pub static ref DEBUG_FILE: PathBuf = LAUNCHER_FOLDER.join("debug.log");
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Setup custom panic handler
+    // Setup custom panic handler.
     human_panic::setup_panic!(human_panic::metadata!());
 
-    // Prepare stdout logger
+    // Prepare stdout logger.
     let stdout = tracing_subscriber::fmt::layer()
         // .pretty()
         .with_filter({
@@ -69,13 +40,13 @@ async fn main() -> anyhow::Result<()> {
             }
         });
 
-    // Prepare debug file logger
-    let file = std::fs::File::create(DEBUG_FILE.as_path())?;
+    // Prepare debug file logger.
+    let file = std::fs::File::create(consts::DEBUG_FILE.as_path())?;
 
     let debug_log = tracing_subscriber::fmt::layer()
         .pretty()
         .with_ansi(false)
-        .with_writer(std::sync::Arc::new(file));
+        .with_writer(file);
 
     // Setup loggers
     tracing_subscriber::registry()

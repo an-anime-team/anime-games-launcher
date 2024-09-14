@@ -1,61 +1,34 @@
 use serde::{Serialize, Deserialize};
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 
-use crate::i18n;
+use crate::core::prelude::*;
 
-pub mod transitions;
-pub mod threads;
-
-pub mod prelude {
-    pub use super::transitions::Transitions;
-    pub use super::threads::Threads;
-    pub use super::General;
-}
-
-use prelude::*;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct General {
-    pub transitions: Transitions,
-    pub threads: Threads,
-    pub language: String,
     pub verify_games: bool
 }
 
 impl Default for General {
-    #[inline]
     fn default() -> Self {
         Self {
-            transitions: Transitions::default(),
-            threads: Threads::default(),
-            language: i18n::format_language(&i18n::get_default_language()),
             verify_games: true
         }
     }
 }
 
-impl From<&Json> for General {
-    #[inline]
-    fn from(value: &Json) -> Self {
-        let default = Self::default();
+impl AsJson for General {
+    fn to_json(&self) -> Result<Json, AsJsonError> {
+        Ok(json!({
+            "verify_games": self.verify_games
+        }))
+    }
 
-        Self {
-            transitions: value.get("transitions")
-                .map(Transitions::from)
-                .unwrap_or(default.transitions),
-
-            threads: value.get("threads")
-                .map(Threads::from)
-                .unwrap_or(default.threads),
-
-            language: value.get("language")
-                .and_then(Json::as_str)
-                .map(String::from)
-                .unwrap_or(default.language),
-
-            verify_games: value.get("verify_games")
-                .and_then(Json::as_bool)
-                .unwrap_or(default.verify_games)
-        }
+    fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        Ok(Self {
+            verify_games: json.get("verify_games")
+                .ok_or_else(|| AsJsonError::FieldNotFound("general.verify_games"))?
+                .as_bool()
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.verify_games"))?
+        })
     }
 }

@@ -1,25 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/moe/launcher/anime-games-launcher/images/games/genshin">
-    <file alias="card">images/games/genshin/card.jpg</file>
-    <file alias="icon">images/games/genshin/icon.jpg</file>
-  </gresource>
-
-  <gresource prefix="/moe/launcher/anime-games-launcher/images/games/honkai">
-    <file alias="card">images/games/honkai/card.jpg</file>
-    <file alias="icon">images/games/honkai/icon.jpg</file>
-  </gresource>
-
-  <gresource prefix="/moe/launcher/anime-games-launcher/images/games/star-rail">
-    <file alias="card">images/games/star-rail/card.jpg</file>
-    <file alias="icon">images/games/star-rail/icon.jpg</file>
-  </gresource>
-
-  <gresource prefix="/moe/launcher/anime-games-launcher/images/games/pgr">
-    <file alias="card">images/games/pgr/card.jpg</file>
-    <file alias="icon">images/games/pgr/icon.jpg</file>
-  </gresource>
-
   <gresource prefix="/moe/launcher/anime-games-launcher">
     <file>images/component.png</file>
   </gresource>

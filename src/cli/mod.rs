@@ -10,6 +10,7 @@ pub struct Cli {
 }
 
 impl Cli {
+    #[inline]
     pub async fn execute(self) -> anyhow::Result<()> {
         self.command.execute().await
     }
@@ -17,10 +18,10 @@ impl Cli {
 
 #[derive(Subcommand)]
 pub enum CliCommands {
-    /// Manipulate packages storage
-    Storage {
+    /// Packages system commands.
+    Store {
         #[arg(short, long)]
-        /// Path to the storage
+        /// Path to the resources store.
         path: Option<PathBuf>,
 
         #[command(subcommand)]
@@ -29,9 +30,10 @@ pub enum CliCommands {
 }
 
 impl CliCommands {
+    #[inline]
     pub async fn execute(self) -> anyhow::Result<()> {
         match self {
-            Self::Storage { path, subcommand }
+            Self::Store { path, subcommand }
                 => subcommand.execute(path).await
         }
     }
@@ -39,49 +41,22 @@ impl CliCommands {
 
 #[derive(Subcommand)]
 pub enum CliStorageCommands {
-    /// Generate hash for given URI
-    Hash {
-        #[arg(short, long)]
-        /// File URI
-        uri: String,
 
-        #[arg(short, long)]
-        /// Hashing algorithm
-        algorithm: Option<String>
-    }
 }
 
 impl CliStorageCommands {
-    pub async fn execute(self, storage_path: Option<PathBuf>) -> anyhow::Result<()> {
-        let storage_path = match storage_path {
+    pub async fn execute(self, store: Option<PathBuf>) -> anyhow::Result<()> {
+        let store_path = match store {
             Some(path) => path,
             None => {
-                tracing::info!("No storage path given. Using config value");
+                tracing::info!("No store path given. Using config value");
 
                 // FIXME
-                PathBuf::from("storage")
+                PathBuf::from("store")
             }
         };
 
         tracing::info!("Loading packages storage");
-
-        let storage = crate::packages::storage::Storage::new(storage_path).await?;
-
-        match self {
-            Self::Hash { uri, algorithm } => {
-                tracing::info!("Fetching URI content: {uri}");
-
-                let content = crate::handlers::handle(uri)?.join().await??;
-
-                let algorithm = algorithm
-                    .and_then(crate::packages::hash::HashAlgorithm::from_str)
-                    .unwrap_or_default();
-
-                let hash = crate::packages::hash::Hash::from_slice(algorithm, content);
-
-                tracing::info!("Calculated hash: {hash}");
-            }
-        }
 
         Ok(())
     }

@@ -33,6 +33,7 @@
                     gobject-introspection
 
                     libadwaita
+                    openssl
                 ];
             };
         };

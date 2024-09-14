@@ -1,49 +1,41 @@
 use serde::{Serialize, Deserialize};
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
+
+use crate::core::prelude::*;
+use crate::consts::CONFIG_FILE;
 
 pub mod general;
-pub mod components;
-pub mod games;
 
-use crate::CONFIG_FILE;
-
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
-    pub general: general::General,
-    pub components: components::Components,
-    pub games: games::Games
+    pub general: general::General
 }
 
-impl From<&Json> for Config {
-    #[inline]
-    fn from(value: &Json) -> Self {
-        let default = Self::default();
+impl AsJson for Config {
+    fn to_json(&self) -> Result<Json, AsJsonError> {
+        Ok(json!({
+            "general": self.general.to_json()?
+        }))
+    }
 
-        Self {
-            general: value.get("general")
-                .map(general::General::from)
-                .unwrap_or(default.general),
-
-            components: value.get("components")
-                .map(components::Components::from)
-                .unwrap_or(default.components),
-
-            games: value.get("games")
-                .map(games::Games::from)
-                .unwrap_or(default.games),
-        }
+    fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        Ok(Self {
+            general: json.get("general")
+                .map(general::General::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("general"))??
+        })
     }
 }
 
-/// Read configuration from the file
+/// Read configuration from the file.
 pub fn get() -> Config {
     std::fs::read(CONFIG_FILE.as_path()).ok()
         .and_then(|config| serde_json::from_slice::<Json>(&config).ok())
-        .map(|config| Config::from(&config))
+        .and_then(|config| Config::from_json(&config).ok())
         .unwrap_or_default()
 }
 
-/// Update configuration file's value
+/// Change configuration file field's value.
 pub fn set(property: impl AsRef<str>, value: impl Into<Json>) -> anyhow::Result<()> {
     let mut config = std::fs::read(CONFIG_FILE.as_path()).ok()
         .and_then(|config| serde_json::from_slice::<Json>(&config).ok())
@@ -51,8 +43,9 @@ pub fn set(property: impl AsRef<str>, value: impl Into<Json>) -> anyhow::Result<
 
     let mut nested_config = &mut config;
 
-    for property in property.as_ref().split('.') {
-        nested_config = &mut nested_config[property];
+    for field in property.as_ref().split('.') {
+        nested_config = nested_config.get_mut(field)
+            .ok_or_else(|| anyhow::anyhow!("Failed to index '{field}' in '{}'", property.as_ref()))?;
     }
 
     *nested_config = value.into();
