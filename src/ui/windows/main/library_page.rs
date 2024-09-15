@@ -6,7 +6,7 @@ use relm4::prelude::*;
 
 use crate::ui::components::downloads_row::DownloadsRow;
 use crate::ui::components::downloads_row::DownloadsRowInit;
-use crate::ui::components::{game_details::GameDetailsInit, prelude::*};
+use crate::ui::components::prelude::*;
 
 use super::DownloadsPageApp;
 
@@ -93,7 +93,9 @@ impl SimpleAsyncComponent for LibraryPageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let mut model = Self {
+        let TEST_PATH = "card.jpg";
+
+        let model = Self {
             cards_list: AsyncFactoryVecDeque::builder().launch_default().forward(
                 sender.input_sender(),
                 |msg| match msg {
@@ -105,7 +107,7 @@ impl SimpleAsyncComponent for LibraryPageApp {
             game_details: GameDetails::builder().launch(()).detach(),
             active_download: DownloadsRow::builder()
                 .launch(DownloadsRowInit::new(
-                    "/home/dylan/Repos/anime-games-launcher/assets/images/games/pgr/card.jpg",
+                    TEST_PATH,
                     String::from("Punishing: Gray Raven"),
                     String::from("69.42.0"),
                     String::from("Global"),
@@ -128,35 +130,6 @@ impl SimpleAsyncComponent for LibraryPageApp {
             }
         });
 
-        model
-            .cards_list
-            .guard()
-            .push_back(CardsListFactoryInit::new(
-                "Genshin Impact",
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg",
-            ));
-        model
-            .cards_list
-            .guard()
-            .push_back(CardsListFactoryInit::new(
-                "Honkai Impact 3rd",
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
-            ));
-        model
-            .cards_list
-            .guard()
-            .push_back(CardsListFactoryInit::new(
-                "Honkai: Star Rail",
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/star-rail/card.jpg",
-            ));
-        model
-            .cards_list
-            .guard()
-            .push_back(CardsListFactoryInit::new(
-                "Punishing: Gray Raven",
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/pgr/card.jpg",
-            ));
-
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
@@ -166,12 +139,7 @@ impl SimpleAsyncComponent for LibraryPageApp {
         match msg {
             LibraryPageAppMsg::ShowGameDetails(index) => {
                 if let Some(details) = self.cards_list.get(index.current_index()) {
-                    self.game_details
-                        .emit(GameDetailsInput::Update(GameDetailsInit {
-                            title: details.title.clone(),
-                            card_image: String::from("/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg"),
-                            background_image: String::from("/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/background.jpg")
-                        }));
+                    todo!("{:?}", details);
                 }
             }
             LibraryPageAppMsg::ToggleDownloadsPage => {

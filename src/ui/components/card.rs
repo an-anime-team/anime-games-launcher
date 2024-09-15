@@ -3,8 +3,8 @@ use relm4::prelude::*;
 
 // 10:14
 pub const DEFAULT_SIZE: (i32, i32) = (240, 336);
-pub const MEDIUM_SIZE: (i32, i32)  = (160, 224);
-pub const SMALL_SIZE: (i32, i32)   = (40, 56);
+pub const MEDIUM_SIZE: (i32, i32) = (160, 224);
+pub const SMALL_SIZE: (i32, i32) = (40, 56);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardComponentInput {
@@ -17,12 +17,12 @@ pub enum CardComponentInput {
     SetClickable(bool),
     SetBlurred(bool),
 
-    EmitClick
+    EmitClick,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardComponentOutput {
-    Clicked
+    Clicked,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +34,7 @@ pub struct CardComponent {
     pub height: i32,
 
     pub clickable: bool,
-    pub blurred: bool
+    pub blurred: bool,
 }
 
 impl Default for CardComponent {
@@ -48,7 +48,7 @@ impl Default for CardComponent {
             height: DEFAULT_SIZE.1,
 
             clickable: false,
-            blurred: false
+            blurred: false,
         }
     }
 }
@@ -149,7 +149,11 @@ impl SimpleAsyncComponent for CardComponent {
         }
     }
 
-    async fn init(model: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        model: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
@@ -160,15 +164,13 @@ impl SimpleAsyncComponent for CardComponent {
             CardComponentInput::SetTitle(title) => self.title = title,
             CardComponentInput::SetImage(image) => self.image = image,
 
-            CardComponentInput::SetWidth(width)   => self.width  = width,
+            CardComponentInput::SetWidth(width) => self.width = width,
             CardComponentInput::SetHeight(height) => self.height = height,
 
             CardComponentInput::SetClickable(clickable) => self.clickable = clickable,
-            CardComponentInput::SetBlurred(blurred)     => self.blurred   = blurred,
+            CardComponentInput::SetBlurred(blurred) => self.blurred = blurred,
 
-            CardComponentInput::EmitClick => {
-                sender.output(CardComponentOutput::Clicked).unwrap()
-            }
+            CardComponentInput::EmitClick => sender.output(CardComponentOutput::Clicked).unwrap(),
         }
     }
 }

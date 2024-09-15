@@ -140,15 +140,17 @@ impl SimpleAsyncComponent for DownloadsPageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
+        let TEST_PATH = String::from("card.jpg");
+
         let mut model = Self {
             graph: Graph::builder()
                 .launch(GraphInit::new(800, 150, (1.0, 1.0, 1.0)))
                 .forward(sender.input_sender(), |msg| match msg {
-                    GraphOutput::UpdateMean(mean) => DownloadsPageAppMsg::UpdateMean(mean)
+                    GraphOutput::UpdateMean(mean) => DownloadsPageAppMsg::UpdateMean(mean),
                 }),
             active: DownloadsRow::builder()
-                .launch(DownloadsRowInit::new(String::from(
-                    "/home/dylan/Repos/anime-games-launcher/assets/images/games/genshin/card.jpg"),
+                .launch(DownloadsRowInit::new(
+                    TEST_PATH.clone(),
                     String::from("Genshin Impact"),
                     String::from("5.0.0"),
                     String::from("Global"),
@@ -156,9 +158,14 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                     true,
                 ))
                 .detach(),
-            scheduled: AsyncFactoryVecDeque::builder().launch_default().forward(sender.input_sender(), |msg| match msg {
-                DownloadsRowFactoryOutput::Queue(index) => DownloadsPageAppMsg::SetActive(index),
-            }),
+            scheduled: AsyncFactoryVecDeque::builder().launch_default().forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    DownloadsRowFactoryOutput::Queue(index) => {
+                        DownloadsPageAppMsg::SetActive(index)
+                    }
+                },
+            ),
             state: DownloadsAppState::None,
             speed: 0,
             avg_speed: 0,
@@ -203,9 +210,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             .unwrap();
 
         model.scheduled.guard().push_back(DownloadsRowInit::new(
-            String::from(
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
-            ),
+            TEST_PATH.clone(),
             String::from("Honkai Impact 3rd"),
             String::from("69.0.1"),
             String::from("China"),
@@ -213,9 +218,7 @@ impl SimpleAsyncComponent for DownloadsPageApp {
             false,
         ));
         model.scheduled.guard().push_back(DownloadsRowInit::new(
-            String::from(
-                "/home/dylan/Repos/anime-games-launcher/assets/images/games/honkai/card.jpg",
-            ),
+            TEST_PATH.clone(),
             String::from("Honkai Impact 3rd"),
             String::from("420.amogus-rc12"),
             String::from("Global"),
