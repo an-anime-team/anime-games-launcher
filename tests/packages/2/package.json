@@ -1,6 +1,6 @@
 {
     "inputs": {
-        "recursive-reference": "../1",
+        "recursive-reference": "../1/",
         "file-reference": {
             "uri": "package.json",
             "format": "file"
