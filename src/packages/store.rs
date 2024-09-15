@@ -24,6 +24,13 @@ pub struct Store {
 
 impl Store {
     #[inline]
+    pub fn new(folder: impl Into<PathBuf>) -> Self {
+        Self {
+            folder: folder.into()
+        }
+    }
+
+    #[inline]
     /// Get path to the store folder.
     pub fn folder(&self) -> &Path {
         self.folder.as_path()

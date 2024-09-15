@@ -53,10 +53,10 @@ impl LockFile {
 
     #[inline]
     /// Create new lock file with given root packages URLs.
-    pub fn with_packages(store: Store, packages: impl IntoIterator<Item = String>) -> Self {
+    pub fn with_packages<T: Into<String>>(store: Store, packages: impl IntoIterator<Item = T>) -> Self {
         Self {
             store,
-            root_packages: HashSet::from_iter(packages),
+            root_packages: HashSet::from_iter(packages.into_iter().map(T::into)),
         }
     }
 
@@ -78,24 +78,65 @@ impl LockFile {
     /// Since this function will download (potentially) many
     /// files and archives you should run it in a separate thread.
     pub async fn build(&self) -> Result<LockFileManifest, LockFileError> {
-        let mut packages = self.root_packages.clone();
+        let mut packages = self.root_packages.iter()
+            .cloned()
+            .map(|url| (url, true))
+            .collect::<HashSet<_>>();
+
         let mut lock_resources = Vec::with_capacity(packages.len());
+        let mut lock_root = HashSet::with_capacity(packages.len());
         let mut requested_urls = HashSet::with_capacity(packages.len());
+
+        #[inline]
+        /// Normalize given URL.
+        fn normalize_url(url: impl AsRef<str>) -> String {
+            let url = url.as_ref()
+                .replace('\\', "/")
+                .replace("/./", "/")
+                .replace("//", "/");
+
+            let url = url.split('/')
+                .collect::<Vec<_>>();
+
+            let mut clean_parts = Vec::with_capacity(url.len());
+
+            let mut i = 0;
+            let n = url.len() - 1;
+
+            while i < n {
+                if url[i + 1] == ".." {
+                    i += 2;
+
+                    continue;
+                }
+
+                clean_parts.push(url[i]);
+
+                i += 1;
+            }
+
+            clean_parts.push(url[n]);
+
+            clean_parts.join("/")
+        }
 
         // Keep downloading stuff while we have packages to process.
         while !packages.is_empty() {
             let mut packages_contexts = Vec::with_capacity(packages.len());
 
             // Go through the list of packages to process.
-            for mut package_url in packages.drain() {
+            for (mut package_url, is_root) in packages.drain() {
                 // Append "package.json" to the end of the URL
                 // if it's missing.
                 if !package_url.ends_with("/package.json") {
                     package_url += "/package.json";
                 }
 
+                // Normalize URL.
+                package_url = normalize_url(package_url);
+
                 // Skip packages which already were requested.
-                if requested_urls.contains(&package_url) {
+                if requested_urls.contains(&(package_url.clone(), PackageResourceFormat::Package)) {
                     continue;
                 }
 
@@ -116,14 +157,14 @@ impl LockFile {
                     .download(|_, _, _| {})
                     .await?;
 
-                requested_urls.insert(package_url.clone());
-                packages_contexts.push((tmp_path, package_url, root_url, context));
+                requested_urls.insert((package_url.clone(), PackageResourceFormat::Package));
+                packages_contexts.push((tmp_path, package_url, root_url, context, is_root));
             }
 
             let mut resources = Vec::new();
 
             // Go through the list of queued packages.
-            for (tmp_path, package_url, root_url, context) in packages_contexts.drain(..) {
+            for (tmp_path, package_url, root_url, context, is_root) in packages_contexts.drain(..) {
                 // Await package downloading.
                 context.wait()?;
 
@@ -152,6 +193,10 @@ impl LockFile {
                     }),
                     outputs: Some(HashMap::with_capacity(manifest.outputs.len()))
                 });
+
+                if is_root {
+                    lock_root.insert(manifest_hash);
+                }
 
                 // Process inputs if there are some.
                 if let Some(inputs) = manifest.inputs {
@@ -194,21 +239,24 @@ impl LockFile {
                 }
 
                 // Prepare URL to the resource.
-                let resource_url = if resource.uri.starts_with("http") {
+                let mut resource_url = if resource.uri.starts_with("http") {
                     resource.uri.clone()
                 } else {
                     format!("{root_url}/{}", resource.uri)
                 };
 
+                // Normalize URL.
+                resource_url = normalize_url(resource_url);
+
                 // Skip resources which already were requested.
-                if requested_urls.contains(&resource_url) {
+                if requested_urls.contains(&(resource_url.clone(), resource.format)) {
                     continue;
                 }
 
                 // If the resource is another package - queue it to the full processing.
                 // Otherwise process the resource by downloading and extracting it.
                 if resource.format == PackageResourceFormat::Package {
-                    packages.insert(resource_url);
+                    packages.insert((resource_url, false));
 
                     continue;
                 }
@@ -228,7 +276,7 @@ impl LockFile {
                     .download(|_, _, _| {})
                     .await?;
 
-                requested_urls.insert(resource_url.clone());
+                requested_urls.insert((resource_url.clone(), resource.format));
                 resources_contexts.push((tmp_path, resource_url, resource, context, lock_resource_name, lock_resource_index, is_input));
             }
 
@@ -387,8 +435,38 @@ impl LockFile {
             metadata: LockFileMetadata {
                 generated_at
             },
-            root: vec![],
+            root: lock_root.drain().collect(),
             resources: lock_resources
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn build() -> Result<(), LockFileError> {
+        let path = std::env::temp_dir().join(".agl-packages-test");
+
+        if path.exists() {
+            std::fs::remove_dir_all(&path)?;
+        }
+
+        std::fs::create_dir_all(&path)?;
+
+        let store = Store::new(&path);
+
+        let lock_file = LockFile::with_packages(store, [
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/complete-rewrite/tests/packages/1"
+        ]);
+
+        let lock_file = lock_file.build().await?;
+
+        assert_eq!(lock_file.root, &[Hash(3622836511576447158)]);
+        assert_eq!(lock_file.resources.len(), 6);
+        assert_eq!(Hash::for_entry(path)?, Hash(7454957278689766516));
+
+        Ok(())
     }
 }
