@@ -1,4 +1,5 @@
 {
+    "standard": 1,
     "inputs": {
         "recursive-reference": "../1/",
         "file-reference": {

@@ -1,4 +1,5 @@
 {
+    "standard": 1,
     "inputs": {
         "self-reference": "package.json",
         "another-package": "../2/"
