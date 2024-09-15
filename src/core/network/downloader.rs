@@ -3,9 +3,10 @@ use std::time::Duration;
 use std::thread::JoinHandle;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::io::SeekFrom;
 
 use tokio::fs::File;
-use tokio::io::{BufWriter, AsyncWriteExt};
+use tokio::io::{AsyncSeekExt, AsyncWriteExt, BufWriter};
 use tokio::task::JoinError;
 use tokio::runtime::Runtime;
 
@@ -161,6 +162,8 @@ impl Downloader {
                     // Add an inner buffer to the output file
                     // to optimize disk writes.
                     let mut file = BufWriter::new(file);
+
+                    file.seek(SeekFrom::Start(downloaded)).await?;
 
                     // Prepare HTTP request.
                     let request = client.get(input_url)
@@ -352,7 +355,7 @@ mod tests {
             .with_output_file(&path)
             .with_continue_downloading(false)
             .download(move |curr, total, _| {
-                if curr > total >> 1 {
+                if curr > total >> 2 {
                     context_stop.store(true, Ordering::Release);
                 }
             })
@@ -363,7 +366,7 @@ mod tests {
                 break;
             }
 
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
 
         Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")?
