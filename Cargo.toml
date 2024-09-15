@@ -1,8 +1,8 @@
 [package]
 name = "anime-games-launcher"
-version = "1.0.2"
+version = "1.1.0-dev"
 description = "Anime Games Launcher"
-authors = ["Nikita Podvirnyy <krypt0nn@vk.com>"]
+authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
 homepage = "https://github.com/an-anime-team/anime-games-launcher"
 repository = "https://github.com/an-anime-team/anime-games-launcher"
 license = "GPL-3.0"
@@ -14,13 +14,8 @@ strip = true
 lto = true
 opt-level = "s"
 
-[profile.profiling]
-inherits = "release"
-strip = false
-debug = true
-
 [build-dependencies]
-glib-build-tools = "0.18.0"
+glib-build-tools = "0.20.0"
 
 [dependencies.relm4]
 version = "0.9.0"
@@ -28,55 +23,37 @@ features = ["macros", "libadwaita"]
 
 [dependencies.gtk]
 package = "gtk4"
-version = "0.9.0"
-features = ["v4_12"]
+version = "0.9.1"
+features = ["v4_14"]
 
 [dependencies.adw]
 package = "libadwaita"
 version = "0.7.0"
 features = ["v1_5"]
 
-[dependencies.anime-game-core]
-git = "https://github.com/an-anime-team/anime-game-core"
-branch = "v2.0.0-rewrite"
-# path = "../anime-game-core"
-
-# [dependencies.rfd]
-# version = "0.11"
-# features = ["xdg-portal"]
-# default-features = false
-
 [dependencies]
-serde = { version = "1.0.194", features = ["derive"] }
-serde_json = "1.0.110"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
-anyhow = "1.0.79"
-lazy_static = "1.4.0"
-flume = "0.11.0"
+anyhow = "1.0"
+thiserror = "1.0"
+lazy_static = "1.5"
+flume = "0.11"
 
-clap = { version = "4.5.4", features = ["derive"] }
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "fs", "io-std"] }
+reqwest = { version = "0.12", features = ["stream"] }
 
-tokio = { version = "*", features = ["full"] }
-reqwest = { version = "0.12.4", features = ["rustls-tls"] }
+clap = { version = "4.5", features = ["derive"] }
 
-cached = "0.47.0"
-chrono = "0.4.31"
-uuid = "1.8.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+human-panic = "2.0"
 
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
-human-panic = "1.2.2"
+fluent-templates = "0.10"
+unic-langid = "0.9"
 
-fluent-templates = "0.8.0"
-unic-langid = "0.9.4"
+seahash = "4.1.0"
+base32 = "0.5.1"
+rand = "0.8.5"
 
-wincompatlib = { version = "0.7.4", features = ["all"] }
-open = "5.0.1"
-
-mlua = { version = "0.9.4", features = ["luajit", "vendored", "serialize"] }
-
-base32 = "0.5.0"
-md-5 = { version = "0.10.6", features = ["asm"] }
-sha1 = { version = "0.10.6", features = ["asm"] }
-xxhash-rust = { version = "0.8.8", features = ["xxh32", "xxh64", "xxh3"] }
-crc32fast = "1.3.2"
+mlua = { version = "0.9.9", features = ["luajit", "vendored", "serialize"] }
