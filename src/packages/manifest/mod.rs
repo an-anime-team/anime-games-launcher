@@ -78,8 +78,17 @@ impl AsJson for Manifest {
                         .map(|inputs| {
                             inputs.into_iter()
                                 .map(|(k, v)| {
-                                    PackageResource::from_json(v)
-                                        .map(|v| (k.to_string(), v))
+                                    let resource = if let Some(uri) = v.as_str() {
+                                        PackageResource {
+                                            uri: uri.to_string(),
+                                            format: PackageResourceFormat::predict(uri),
+                                            hash: None
+                                        }
+                                    } else {
+                                        PackageResource::from_json(v)?
+                                    };
+
+                                    Ok::<_, AsJsonError>((k.to_string(), resource))
                                 })
                                 .collect::<Result<HashMap<_, _>, _>>()
                         })
@@ -95,8 +104,17 @@ impl AsJson for Manifest {
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("outputs"))?
                 .into_iter()
                 .map(|(k, v)| {
-                    PackageResource::from_json(v)
-                        .map(|v| (k.to_string(), v))
+                    let resource = if let Some(uri) = v.as_str() {
+                        PackageResource {
+                            uri: uri.to_string(),
+                            format: PackageResourceFormat::predict(uri),
+                            hash: None
+                        }
+                    } else {
+                        PackageResource::from_json(v)?
+                    };
+
+                    Ok::<_, AsJsonError>((k.to_string(), resource))
                 })
                 .collect::<Result<HashMap<_, _>, _>>()?
         })
