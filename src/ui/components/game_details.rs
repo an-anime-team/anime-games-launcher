@@ -7,25 +7,23 @@ use crate::ui::components::prelude::*;
 pub struct GameDetailsInit {
     pub title: String,
     pub card_image: String,
-    pub background_image: String
+    pub background_image: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsInput {
-    Update(GameDetailsInit)
+    Update(GameDetailsInit),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameDetailsOutput {
-    
-}
+pub enum GameDetailsOutput {}
 
 #[derive(Debug)]
 pub struct GameDetails {
     pub card: AsyncController<CardComponent>,
 
     pub background_image: String,
-    pub title: String
+    pub title: String,
 }
 
 #[relm4::component(pub, async)]
@@ -68,6 +66,8 @@ impl SimpleAsyncComponent for GameDetails {
                         gtk::Box {
                             set_orientation: gtk::Orientation::Vertical,
                             set_valign: gtk::Align::End,
+                            set_margin_top: 126,
+                            set_margin_start: 16,
 
                             gtk::Label {
                                 set_halign: gtk::Align::Start,
@@ -81,7 +81,7 @@ impl SimpleAsyncComponent for GameDetails {
                             gtk::Label {
                                 set_halign: gtk::Align::Start,
 
-                                set_label: "Hoyoverse"
+                                set_label: "Hoyoverse",
                             },
 
                             gtk::Box {
@@ -152,14 +152,17 @@ impl SimpleAsyncComponent for GameDetails {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        _sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent::medium())
                 .detach(),
-
             background_image: String::new(),
-            title: String::new()
+            title: String::new(),
         };
 
         let widgets = view_output!();
@@ -167,10 +170,11 @@ impl SimpleAsyncComponent for GameDetails {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             GameDetailsInput::Update(init) => {
-                self.card.emit(CardComponentInput::SetImage(Some(init.card_image)));
+                self.card
+                    .emit(CardComponentInput::SetImage(Some(init.card_image)));
 
                 self.background_image = init.background_image;
                 self.title = init.title;
