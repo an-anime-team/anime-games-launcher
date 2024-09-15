@@ -75,7 +75,7 @@ impl LockFile {
     /// calculate their hashes and validate that everything
     /// is correct, returning a lock file's manifest struct.
     ///
-    /// Since this function will download (potentially) many
+    /// Note: Since this function will download (potentially) many
     /// files and archives you should run it in a separate thread.
     pub async fn build(&self) -> Result<LockFileManifest, LockFileError> {
         let mut packages = self.root_packages.iter()
@@ -162,8 +162,7 @@ impl LockFile {
                     .unwrap_or_else(|| package_url.clone());
 
                 // Prepare tmp path to the package.
-                let temp_path = self.store.folder()
-                    .join(format!("{}.tmp", temp_hash.to_base32()));
+                let temp_path = self.store.get_temp_path(&temp_hash);
 
                 // Start downloader task.
                 let context = Downloader::new(&package_url)?
@@ -239,8 +238,7 @@ impl LockFile {
                 }
 
                 // Move the manifest from the temp location to the correct one.
-                let src_path = self.store.folder()
-                    .join(format!("{}.src", manifest_hash.to_base32()));
+                let src_path = self.store.get_path(&manifest_hash, &PackageResourceFormat::Package);
 
                 std::fs::rename(temp_path, src_path)?;
             }
@@ -289,8 +287,7 @@ impl LockFile {
                 }
 
                 // Prepare temp path to the resource.
-                let temp_path = self.store.folder()
-                    .join(format!("{}.tmp", temp_hash.to_base32()));
+                let temp_path = self.store.get_temp_path(&temp_hash);
 
                 // Start downloader task.
                 let context = Downloader::new(&resource_url)?
@@ -314,9 +311,7 @@ impl LockFile {
                     PackageResourceFormat::File => {
                         // Move downloaded file to the correct location.
                         let hash = Hash::for_entry(&temp_path)?;
-
-                        let src_path = self.store.folder()
-                            .join(hash.to_base32());
+                        let src_path = self.store.get_path(&hash, &resource.format);
 
                         std::fs::rename(temp_path, &src_path)?;
 
@@ -350,8 +345,7 @@ impl LockFile {
                     PackageResourceFormat::Zip |
                     PackageResourceFormat::Sevenz => {
                         // Extract the archive to a temp folder.
-                        let tmp_extract_path = self.store.folder()
-                            .join(format!("{}.tmp", Hash::rand().to_base32()));
+                        let tmp_extract_path = self.store.get_temp_path(&Hash::rand());
 
                         match resource.format {
                             PackageResourceFormat::Archive => {
@@ -389,15 +383,13 @@ impl LockFile {
                                     })?;
                             }
 
-                            _ => unreachable!()
+                            _ => unreachable!("Non-archive format in archives-only processor")
                         }
 
                         // Move extracted files to the correct location
                         // and delete downloaded archive.
                         let hash = Hash::for_entry(&tmp_extract_path)?;
-
-                        let src_path = self.store.folder()
-                            .join(hash.to_base32());
+                        let src_path = self.store.get_path(&hash, &resource.format);
 
                         if src_path.exists() {
                             std::fs::remove_dir_all(&src_path)?;
@@ -423,8 +415,7 @@ impl LockFile {
                             lock: LockFileResourceLockData {
                                 hash,
 
-                                // TODO: might be incorrect. Better sum lengths of
-                                // all the files inside the folder.
+                                // FIXME: incorrect! sum lengths of all the files.
                                 size: src_path.metadata()?.len()
                             },
                             inputs: None,
@@ -487,7 +478,7 @@ mod tests {
         let store = Store::new(&path);
 
         let lock_file = LockFile::with_packages(store, [
-            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/complete-rewrite/tests/packages/1"
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/packages/1"
         ]);
 
         let lock_file = lock_file.build().await?;

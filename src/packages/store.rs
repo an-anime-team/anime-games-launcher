@@ -37,6 +37,23 @@ impl Store {
         self.folder.as_path()
     }
 
+    /// Build path to the resource in the store.
+    pub fn get_path(&self, hash: &Hash, format: &PackageResourceFormat) -> PathBuf {
+        let hash = hash.to_base32();
+
+        if format == &PackageResourceFormat::Package {
+            self.folder.join(format!("{hash}.src"))
+        } else {
+            self.folder.join(hash)
+        }
+    }
+
+    #[inline]
+    /// Build path to the temp resource in the store.
+    pub fn get_temp_path(&self, hash: &Hash) -> PathBuf {
+        self.folder.join(format!("{}.tmp", hash.to_base32()))
+    }
+
     #[inline]
     /// Check if a resource with given hash is installed.
     pub fn has_resource(&self, hash: &Hash) -> bool {
@@ -147,7 +164,7 @@ mod tests {
         let store = Store::new(&path);
 
         let lock_file = LockFile::with_packages(store.clone(), [
-            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/complete-rewrite/tests/packages/1"
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/packages/1"
         ]);
 
         let lock_file = lock_file.build().await
