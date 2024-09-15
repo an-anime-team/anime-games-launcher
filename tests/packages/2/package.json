@@ -1,0 +1,16 @@
+{
+    "inputs": {
+        "recursive-reference": "../1",
+        "file-reference": {
+            "uri": "package.json",
+            "format": "file"
+        }
+    },
+    "outputs": {
+        "dxvk": "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz",
+        "dxvk-file": {
+            "uri": "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz",
+            "format": "file"
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "inputs": {
+        "self-reference": "package.json",
+        "another-package": "../2"
+    },
+    "outputs": {
+        "self-reference": {
+            "uri": "package.json",
+            "format": "file"
+        }
+    }
+}
