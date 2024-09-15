@@ -109,8 +109,6 @@ impl Downloader {
     ///
     /// Disabled by default.
     pub fn with_continue_downloading(mut self, state: bool) -> Self {
-        unimplemented!("TODO: send special HTTP header");
-
         self.continue_downloading = state;
 
         self
@@ -146,22 +144,6 @@ impl Downloader {
 
             std::thread::spawn(move || {
                 RUNTIME.block_on(async move {
-                    // Prepare HTTP request.
-                    let request = client.get(input_url)
-                        .build()?;
-
-                    let mut response = client.execute(request).await?;
-
-                    // Try to read the `content-length` HTTP header and if successful,
-                    // store its value as the total length of the downloadable content.
-                    if let Some(content_length) = response.headers().get("content-length") {
-                        let content_length = String::from_utf8_lossy(content_length.as_bytes());
-
-                        if let Ok(content_length) = content_length.parse::<u64>() {
-                            total.store(content_length, Ordering::Release);
-                        }
-                    }
-
                     // Open output file.
                     let file = File::options()
                         .read(true)
@@ -179,6 +161,50 @@ impl Downloader {
                     // Add an inner buffer to the output file
                     // to optimize disk writes.
                     let mut file = BufWriter::new(file);
+
+                    // Prepare HTTP request.
+                    let request = client.get(input_url)
+                        .header("range", format!("bytes={downloaded}-"))
+                        .build()?;
+
+                    let mut response = client.execute(request).await?;
+
+                    // Request content range (downloaded + remained content size).
+                    //
+                    // If finished or overcame: `bytes */10611646760`.
+                    // If not finished: `bytes 10611646759-10611646759/10611646760`.
+                    //
+                    // Source: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Range
+                    if let Some(range) = response.headers().get("content-range") {
+                        let range = String::from_utf8_lossy(range.as_bytes());
+
+                        // Finish downloading if header says that we've already downloaded all the data
+                        if range.contains("*/") {
+                            total.store(downloaded, Ordering::Release);
+
+                            return Ok(());
+                        }
+                    }
+
+                    // HTTP 416 = provided range is greater than the actual
+                    // content length (means the file is downloaded).
+                    //
+                    // Source: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/416
+                    if response.status() == 416 {
+                        total.store(downloaded, Ordering::Release);
+
+                        return Ok(());
+                    }
+
+                    // Try to read the `content-length` HTTP header and if successful,
+                    // store its value as the total length of the downloadable content.
+                    if let Some(content_length) = response.headers().get("content-length") {
+                        let content_length = String::from_utf8_lossy(content_length.as_bytes());
+
+                        if let Ok(content_length) = content_length.parse::<u64>() {
+                            total.store(content_length, Ordering::Release);
+                        }
+                    }
 
                     // Read chunks of data from the stream
                     // and redirect them to the writer task.
