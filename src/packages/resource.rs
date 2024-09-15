@@ -102,4 +102,23 @@ impl Resource {
             None
         }
     }
+
+    /// Compare current resource info with a given
+    /// store file.
+    pub fn validate(&self, path: impl AsRef<Path>) -> std::io::Result<bool> {
+        let path = path.as_ref();
+
+        if !path.exists() {
+            return Ok(false);
+        }
+
+        let current_hash = *self.get_hash();
+        let file_hash = Hash::for_entry(path)?;
+
+        if self.is_package() {
+            Ok(current_hash == Hash(!file_hash.0))
+        } else {
+            Ok(current_hash == file_hash)
+        }
+    }
 }

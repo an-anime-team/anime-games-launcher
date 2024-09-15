@@ -147,6 +147,36 @@ impl Store {
             }))
         }
     }
+
+    /// Validate packages in the lock file.
+    ///
+    /// This method will scan current store and
+    /// validate hashes of the locked resources.
+    pub fn validate(&self, lock_file: &LockFileManifest) -> Result<bool, StoreError> {
+        let resources = lock_file.resources.iter()
+            .map(|resource| {
+                let path = self.get_path(&resource.lock.hash, &resource.format);
+                let resource = self.load(lock_file, &resource.lock.hash);
+
+                // Do not ask.
+                resource.map(|resource| resource.map(|resource| (resource, path)))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // We're doing it this way to validate packages one by one
+        // to, potentially, improve performance of the operation.
+        for resource in resources {
+            let Some((resource, path)) = resource else {
+                continue
+            };
+
+            if !resource.validate(path)? {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
 }
 
 #[cfg(test)]
@@ -155,7 +185,7 @@ mod tests {
 
     #[tokio::test]
     async fn read_packages() -> anyhow::Result<()> {
-        let path = std::env::temp_dir().join(".agl-read-packages-test");
+        let path = std::env::temp_dir().join(".agl-packages-store-test");
 
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
@@ -191,6 +221,31 @@ mod tests {
         assert_eq!(inputs["self-reference"], Hash(14823907562133104457));
         assert_eq!(inputs["another-package"], Hash(16664589923667942635));
         assert_eq!(outputs["self-reference"], Hash(3622836511576447158));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn validate() -> anyhow::Result<()> {
+        let path = std::env::temp_dir().join(".agl-packages-store-test");
+
+        if !path.exists() {
+            std::fs::create_dir_all(&path)?;
+        }
+
+        let store = Store::new(&path);
+
+        let lock_file = LockFile::with_packages(store.clone(), [
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/packages/1"
+        ]);
+
+        let lock_file = lock_file.build().await
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+        let valid = store.validate(&lock_file)
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+        assert!(valid);
 
         Ok(())
     }
