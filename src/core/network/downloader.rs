@@ -340,4 +340,43 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn continue_download() -> Result<(), DownloaderError> {
+        let path = std::env::temp_dir().join(".agl-continue-downloader-test");
+
+        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let context_stop = stop.clone();
+
+        let context = Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")?
+            .with_output_file(&path)
+            .with_continue_downloading(false)
+            .download(move |curr, total, _| {
+                if curr > total >> 1 {
+                    context_stop.store(true, Ordering::Release);
+                }
+            })
+            .await?;
+
+        while !context.is_finished() {
+            if stop.load(Ordering::Acquire) {
+                break;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+
+        Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")?
+            .with_output_file(&path)
+            .with_continue_downloading(true)
+            .download(|_, _, _| {})
+            .await?
+            .wait()?;
+
+        assert_eq!(seahash::hash(&std::fs::read(&path)?), 13290421503141924848);
+
+        std::fs::remove_file(path)?;
+
+        Ok(())
+    }
 }
