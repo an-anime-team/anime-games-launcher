@@ -12,6 +12,10 @@ Inputs and outputs are files, archives or another packages. Each will
 be hashed, and hashes will be stored in the lock file to proof consistency.
 Hashes are also used to locate packages in one single storage folder.
 
+Hashes of packages are calculated as inverse hashes of the package's
+manifest file. Bit inversion is needed to differ `package.json` as a
+package source file and `package.json` as a "file" format resource.
+
 ## Manifest format
 
 ```ts
