@@ -80,12 +80,20 @@ impl LockFile {
     pub async fn build(&self) -> Result<LockFileManifest, LockFileError> {
         let mut packages = self.root_packages.iter()
             .cloned()
-            .map(|url| (url, true))
+            .map(|url| (url, Hash::rand(), true))
             .collect::<HashSet<_>>();
 
+        // Lock file building logic.
         let mut lock_resources = Vec::with_capacity(packages.len());
         let mut lock_root = HashSet::with_capacity(packages.len());
+
+        // Loops and self-references prevention logic.
         let mut requested_urls = HashSet::with_capacity(packages.len());
+
+        // Inputs/outputs references updates logic.
+        let mut actual_hashes = HashMap::new();
+        let mut assigned_hashes = HashMap::new();
+        let mut assign_references = Vec::new();
 
         #[inline]
         /// Normalize given URL.
@@ -125,7 +133,7 @@ impl LockFile {
             let mut packages_contexts = Vec::with_capacity(packages.len());
 
             // Go through the list of packages to process.
-            for (mut package_url, is_root) in packages.drain() {
+            for (mut package_url, temp_hash, is_root) in packages.drain() {
                 // Append "package.json" to the end of the URL
                 // if it's missing.
                 if !package_url.ends_with("/package.json") {
@@ -135,8 +143,15 @@ impl LockFile {
                 // Normalize URL.
                 package_url = normalize_url(package_url);
 
+                let unique_key = (package_url.clone(), PackageResourceFormat::Package);
+
+                // Reference temp hash to the unique key of the
+                // current package. This will be used at the
+                // final stage to update references in this package.
+                assigned_hashes.insert(temp_hash, unique_key.clone());
+
                 // Skip packages which already were requested.
-                if requested_urls.contains(&(package_url.clone(), PackageResourceFormat::Package)) {
+                if requested_urls.contains(&unique_key) {
                     continue;
                 }
 
@@ -147,33 +162,40 @@ impl LockFile {
                     .unwrap_or_else(|| package_url.clone());
 
                 // Prepare tmp path to the package.
-                let tmp_path = self.store.folder()
-                    .join(format!("{}.tmp", Hash::rand().to_base32()));
+                let temp_path = self.store.folder()
+                    .join(format!("{}.tmp", temp_hash.to_base32()));
 
                 // Start downloader task.
                 let context = Downloader::new(&package_url)?
                     .with_continue_downloading(false)
-                    .with_output_file(&tmp_path)
+                    .with_output_file(&temp_path)
                     .download(|_, _, _| {})
                     .await?;
 
-                requested_urls.insert((package_url.clone(), PackageResourceFormat::Package));
-                packages_contexts.push((tmp_path, package_url, root_url, context, is_root));
+                requested_urls.insert(unique_key.clone());
+                packages_contexts.push((temp_path, package_url, root_url, unique_key, context, is_root));
             }
 
             let mut resources = Vec::new();
 
             // Go through the list of queued packages.
-            for (tmp_path, package_url, root_url, context, is_root) in packages_contexts.drain(..) {
+            for (temp_path, package_url, root_url, unique_key, context, is_root) in packages_contexts.drain(..) {
                 // Await package downloading.
                 context.wait()?;
 
                 // Read the package's manifest and hash it.
-                let manifest_slice = std::fs::read(&tmp_path)?;
-                let manifest = serde_json::from_slice(&manifest_slice)?;
+                let manifest_slice = std::fs::read(&temp_path)?;
 
+                let manifest = serde_json::from_slice(&manifest_slice)?;
                 let manifest = PackageManifest::from_json(&manifest)?;
+
+                // Inversion is needed to differ "package.json" as file
+                // and "package.json" as a package source.
                 let manifest_hash = Hash::for_slice(&manifest_slice);
+                let manifest_hash = Hash(!manifest_hash.0);
+
+                // Save hash of the resolved package.
+                actual_hashes.insert(unique_key, manifest_hash);
 
                 // Update the lock file info.
                 let lock_resource_index = lock_resources.len();
@@ -201,39 +223,37 @@ impl LockFile {
                 // Process inputs if there are some.
                 if let Some(inputs) = manifest.inputs {
                     for (name, resource) in inputs {
-                        resources.push((root_url.clone(), resource, name, lock_resource_index, true));
+                        let temp_hash = Hash::rand();
+
+                        assign_references.push((temp_hash, name, lock_resource_index, true));
+                        resources.push((temp_hash, root_url.clone(), resource));
                     }
                 }
 
                 // Process outputs.
                 for (name, resource) in manifest.outputs {
-                    resources.push((root_url.clone(), resource, name, lock_resource_index, false));
+                    let temp_hash = Hash::rand();
+
+                    assign_references.push((temp_hash, name, lock_resource_index, false));
+                    resources.push((temp_hash, root_url.clone(), resource));
                 }
 
                 // Move the manifest from the temp location to the correct one.
                 let src_path = self.store.folder()
                     .join(format!("{}.src", manifest_hash.to_base32()));
 
-                std::fs::rename(tmp_path, src_path)?;
+                std::fs::rename(temp_path, src_path)?;
             }
 
             let mut resources_contexts = Vec::with_capacity(resources.len());
 
             // Go through the list of packages' resources to process.
-            for (root_url, resource, lock_resource_name, lock_resource_index, is_input) in resources.drain(..) {
+            for (temp_hash, root_url, resource) in resources.drain(..) {
                 // Skip resource processing if it's already installed.
                 if let Some(hash) = resource.hash {
                     // Do not check for packages because their dependencies
                     // could be updated upstream.
                     if self.store.has_resource(&hash) {
-                        if is_input {
-                            if let Some(inputs) = &mut lock_resources[lock_resource_index].inputs {
-                                inputs.insert(lock_resource_name, hash);
-                            }
-                        } else if let Some(outputs) = &mut lock_resources[lock_resource_index].outputs {
-                            outputs.insert(lock_resource_name, hash);
-                        }
-
                         continue;
                     }
                 }
@@ -248,40 +268,43 @@ impl LockFile {
                 // Normalize URL.
                 resource_url = normalize_url(resource_url);
 
+                let unique_key = (resource_url.clone(), resource.format);
+
+                // Reference temp hash to the unique key of the
+                // current package. This will be used at the
+                // final stage to update references in this package.
+                assigned_hashes.insert(temp_hash, unique_key.clone());
+
                 // Skip resources which already were requested.
-                if requested_urls.contains(&(resource_url.clone(), resource.format)) {
+                if requested_urls.contains(&unique_key) {
                     continue;
                 }
 
                 // If the resource is another package - queue it to the full processing.
                 // Otherwise process the resource by downloading and extracting it.
                 if resource.format == PackageResourceFormat::Package {
-                    packages.insert((resource_url, false));
+                    packages.insert((resource_url, temp_hash, false));
 
                     continue;
                 }
 
                 // Prepare temp path to the resource.
-                let resource_hash = resource.hash
-                    .unwrap_or(Hash::rand())
-                    .to_base32();
-
-                let tmp_path = self.store.folder()
-                    .join(format!("{resource_hash}.tmp"));
+                let temp_path = self.store.folder()
+                    .join(format!("{}.tmp", temp_hash.to_base32()));
 
                 // Start downloader task.
                 let context = Downloader::new(&resource_url)?
                     .with_continue_downloading(false)
-                    .with_output_file(&tmp_path)
+                    .with_output_file(&temp_path)
                     .download(|_, _, _| {})
                     .await?;
 
-                requested_urls.insert((resource_url.clone(), resource.format));
-                resources_contexts.push((tmp_path, resource_url, resource, context, lock_resource_name, lock_resource_index, is_input));
+                requested_urls.insert(unique_key.clone());
+                resources_contexts.push((temp_path, resource_url, unique_key, resource, context));
             }
 
             // Go through the list of queued resources.
-            for (tmp_path, resource_url, resource, context, lock_resource_name, lock_resource_index, is_input) in resources_contexts.drain(..) {
+            for (temp_path, resource_url, unique_key, resource, context) in resources_contexts.drain(..) {
                 // Await resource downloading.
                 context.wait()?;
 
@@ -290,12 +313,12 @@ impl LockFile {
 
                     PackageResourceFormat::File => {
                         // Move downloaded file to the correct location.
-                        let hash = Hash::for_entry(&tmp_path)?;
+                        let hash = Hash::for_entry(&temp_path)?;
 
                         let src_path = self.store.folder()
                             .join(hash.to_base32());
 
-                        std::fs::rename(tmp_path, &src_path)?;
+                        std::fs::rename(temp_path, &src_path)?;
 
                         // Verify hashes match.
                         if let Some(expected_hash) = resource.hash {
@@ -319,13 +342,7 @@ impl LockFile {
                             outputs: None
                         });
 
-                        if is_input {
-                            if let Some(inputs) = &mut lock_resources[lock_resource_index].inputs {
-                                inputs.insert(lock_resource_name, hash);
-                            }
-                        } else if let Some(outputs) = &mut lock_resources[lock_resource_index].outputs {
-                            outputs.insert(lock_resource_name, hash);
-                        }
+                        actual_hashes.insert(unique_key, hash);
                     }
 
                     PackageResourceFormat::Archive |
@@ -338,12 +355,12 @@ impl LockFile {
 
                         match resource.format {
                             PackageResourceFormat::Archive => {
-                                archive_extract(&tmp_path, &tmp_extract_path, |_, _, _| {})
+                                archive_extract(&temp_path, &tmp_extract_path, |_, _, _| {})
                                     .map_err(|err| LockFileError::ExtractFailed(err.to_string()))?;
                             }
 
                             PackageResourceFormat::Tar => {
-                                TarArchive::open(&tmp_path)?
+                                TarArchive::open(&temp_path)?
                                     .extract(&tmp_extract_path, |_, _, _| {})?
                                     .wait()
                                     .map_err(|err| {
@@ -352,7 +369,7 @@ impl LockFile {
                             }
 
                             PackageResourceFormat::Zip => {
-                                ZipArchive::open(&tmp_path)?
+                                ZipArchive::open(&temp_path)?
                                     .extract(&tmp_extract_path, |_, _, _| {})?
                                     .wait()
                                     .map_err(|err| {
@@ -361,7 +378,7 @@ impl LockFile {
                             }
 
                             PackageResourceFormat::Sevenz => {
-                                SevenzArchive::open(&tmp_path)
+                                SevenzArchive::open(&temp_path)
                                     .and_then(|archive| archive.extract(&tmp_extract_path, |_, _, _| {}))
                                     .map(|extractor| extractor.wait())
                                     .map_err(|err| {
@@ -387,7 +404,7 @@ impl LockFile {
                         }
 
                         std::fs::rename(tmp_extract_path, &src_path)?;
-                        std::fs::remove_file(tmp_path)?;
+                        std::fs::remove_file(temp_path)?;
 
                         // Verify hashes match.
                         if let Some(expected_hash) = resource.hash {
@@ -414,13 +431,25 @@ impl LockFile {
                             outputs: None
                         });
 
-                        if is_input {
-                            if let Some(inputs) = &mut lock_resources[lock_resource_index].inputs {
-                                inputs.insert(lock_resource_name, hash);
-                            }
-                        } else if let Some(outputs) = &mut lock_resources[lock_resource_index].outputs {
-                            outputs.insert(lock_resource_name, hash);
+                        actual_hashes.insert(unique_key, hash);
+                    }
+                }
+            }
+        }
+
+        // Update packages' inputs/outputs references.
+        for (temp_hash, name, index, is_input) in assign_references {
+            // Resolve unique key of the temp hash.
+            if let Some(unique_key) = assigned_hashes.get(&temp_hash) {
+                // Resolve actual hash of the resource by its unique key.
+                if let Some(actual_hash) = actual_hashes.get(unique_key) {
+                    // Update the package's reference.
+                    if is_input {
+                        if let Some(inputs) = &mut lock_resources[index].inputs {
+                            inputs.insert(name, *actual_hash);
                         }
+                    } else if let Some(outputs) = &mut lock_resources[index].outputs {
+                        outputs.insert(name, *actual_hash);
                     }
                 }
             }
@@ -463,9 +492,9 @@ mod tests {
 
         let lock_file = lock_file.build().await?;
 
-        assert_eq!(lock_file.root, &[Hash(3622836511576447158)]);
+        assert_eq!(lock_file.root, &[Hash(14823907562133104457)]);
         assert_eq!(lock_file.resources.len(), 6);
-        assert_eq!(Hash::for_entry(path)?, Hash(7454957278689766516));
+        assert_eq!(Hash::for_entry(path)?, Hash(6776203643455837073));
 
         Ok(())
     }

@@ -2,6 +2,7 @@ pub mod hash;
 pub mod manifest;
 pub mod lock_file;
 pub mod store;
+pub mod resource;
 
 pub mod prelude {
     pub use super::hash::Hash;
@@ -23,4 +24,6 @@ pub mod prelude {
         Store,
         StoreError
     };
+
+    pub use super::resource::Resource;
 }
