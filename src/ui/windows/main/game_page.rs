@@ -1,15 +1,19 @@
 use adw::prelude::*;
 use gtk::prelude::*;
 
-use relm4::prelude::*;
+use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
 
-use crate::ui::components::card::CardComponent;
+use crate::{
+    games::manifest::info::game_tag::GameTag,
+    ui::components::{card::CardComponent, game_tags::*},
+};
 
 #[derive(Debug)]
 pub struct GamePageApp {
     card: AsyncController<CardComponent>,
     title: String,
     developer: String,
+    tags: AsyncFactoryVecDeque<GameTagFactory>,
 }
 
 #[derive(Debug)]
@@ -36,15 +40,11 @@ impl SimpleAsyncComponent for GamePageApp {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 16,
                         model.card.widget(),
-                        gtk::Box {
-                            set_orientation: gtk::Orientation::Vertical,
-                            set_spacing: 16,
-                            gtk::Button {
-                                set_label: "Add",
-                                set_css_classes: &["suggested-action", "pill"],
-                                set_halign: gtk::Align::Center,
-                                connect_clicked => GamePageAppMsg::Add,
-                            }
+                        gtk::Button {
+                            set_label: "Add",
+                            set_css_classes: &["suggested-action", "pill"],
+                            set_halign: gtk::Align::Center,
+                            connect_clicked => GamePageAppMsg::Add,
                         }
                     },
                     gtk::Box {
@@ -55,7 +55,12 @@ impl SimpleAsyncComponent for GamePageApp {
                         },
                         gtk::Label {
                             set_text: &model.developer,
-                        }
+                        },
+                        model.tags.widget() {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_row_spacing: 2,
+                            set_column_spacing: 2,
+                        },
                     }
                 }
             }
@@ -67,7 +72,7 @@ impl SimpleAsyncComponent for GamePageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent {
                     image: Some(String::from("card.jpg")),
@@ -76,8 +81,17 @@ impl SimpleAsyncComponent for GamePageApp {
                 .detach(),
             title: String::from("Genshin Impact"),
             developer: String::from("MiHoYo"),
+            tags: AsyncFactoryVecDeque::builder().launch_default().detach(),
         };
         let widgets = view_output!();
+
+        model.tags.guard().push_back(GameTag::Violence);
+        model.tags.guard().push_back(GameTag::Gambling);
+        model.tags.guard().push_back(GameTag::Payments);
+        model.tags.guard().push_back(GameTag::AntiCheat);
+        model.tags.guard().push_back(GameTag::PerformanceIssues);
+        model.tags.guard().push_back(GameTag::CompatibilityLayer);
+        model.tags.guard().push_back(GameTag::UnsupportedPlatform);
 
         AsyncComponentParts { model, widgets }
     }

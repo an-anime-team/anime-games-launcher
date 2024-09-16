@@ -40,7 +40,7 @@ impl SimpleAsyncComponent for LibraryPageApp {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     gtk::Button {
-                        set_icon_name: "draw-arrow-back-symbolic",
+                        set_icon_name: "go-previous-symbolic",
                         set_halign: gtk::Align::Start,
                         set_margin_all: 16,
                         connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
