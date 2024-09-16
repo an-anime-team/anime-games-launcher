@@ -153,19 +153,59 @@ impl Store {
 mod tests {
     use super::*;
 
-    #[test]
-    fn insert() -> Result<(), StoreError> {
-        let path = std::env::temp_dir().join(".agl-generations-test");
+    #[tokio::test]
+    async fn store() -> anyhow::Result<()> {
+        let path = std::env::temp_dir().join(".agl-generations-store-test");
 
-        if !path.exists() {
-            std::fs::create_dir_all(&path)?;
+        if path.exists() {
+            std::fs::remove_dir_all(&path)?;
         }
 
-        let generations = Store::new(path);
+        std::fs::create_dir_all(&path)?;
 
-        assert_eq!(generations.list()?, None);
-        assert_eq!(generations.latest()?, None);
-        assert!(!generations.has_generation(&Hash::rand()));
+        // Use the same folder for both packages and generations.
+        let packages_store = PackagesStore::new(&path);
+        let generations_store = GenerationsStore::new(&path);
+
+        assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());
+        assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());
+        assert!(!generations_store.has_generation(&Hash(535491346813091909)));
+
+        let generation = Generation::with_games([
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/games/1.json"
+        ]);
+
+        let generation = generation.build(&packages_store, &generations_store).await
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+        assert_eq!(generation.games.len(), 1);
+        assert_eq!(&generation.lock_file.root, &[Hash(14823907562133104457)]);
+        assert_eq!(generation.lock_file.resources.len(), 6);
+        assert_eq!(Hash::for_entry(path)?, Hash(6776203643455837073));
+
+        generations_store.insert(generation)
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+        assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
+        assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
+        assert!(generations_store.has_generation(&Hash(535491346813091909)));
+
+        let generation = generations_store.load(&Hash(535491346813091909))
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?
+            .ok_or_else(|| anyhow::anyhow!("Generation expected, got none"))?;
+
+        assert_eq!(generation.games.len(), 1);
+        assert_eq!(&generation.lock_file.root, &[Hash(14823907562133104457)]);
+        assert_eq!(generation.lock_file.resources.len(), 6);
+
+        generations_store.remove(&Hash(535491346813091909))
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+        assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());
+        assert!(!generations_store.has_generation(&Hash(535491346813091909)));
+
+        // TODO: would be good to insert couple more generations to verify
+        // their ordering and deduplication mechanism.
 
         Ok(())
     }
