@@ -1,5 +1,6 @@
 pub mod card;
 pub mod cards_list;
+pub mod cards_row;
 pub mod downloads_row;
 pub mod game_details;
 pub mod graph;

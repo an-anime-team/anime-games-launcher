@@ -4,7 +4,7 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::card::*;
+use crate::ui::components::cards_row::*;
 
 #[derive(Debug, Clone)]
 pub enum StorePageAppMsg {
@@ -13,8 +13,7 @@ pub enum StorePageAppMsg {
 
 #[derive(Debug)]
 pub struct StorePageApp {
-    // testing purposes
-    cards: Vec<AsyncController<CardComponent>>,
+    cards: AsyncController<CardsRow>,
 }
 
 #[relm4::component(pub, async)]
@@ -53,18 +52,7 @@ impl SimpleAsyncComponent for StorePageApp {
                     },
                 }
             },
-            add = &adw::PreferencesGroup {
-                set_title: "MiHoYo",
-                gtk::ScrolledWindow {
-                    set_policy: (gtk::PolicyType::Automatic, gtk::PolicyType::Never),
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Horizontal,
-                        set_spacing: 16,
-                        set_vexpand: true,
-                        model.cards.get(0).unwrap().widget(),
-                    },
-                }
-            }
+            model.cards.widget(),
         }
     }
 
@@ -74,16 +62,9 @@ impl SimpleAsyncComponent for StorePageApp {
         _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let TEST_PATH = String::from("background.jpg");
-        let TEST_PATH1 = String::from("card.jpg");
 
         let model = Self {
-            cards: vec![CardComponent::builder()
-                .launch(CardComponent {
-                    image: Some(TEST_PATH1),
-                    title: Some(String::from("Honkai Impact 3rd")),
-                    ..CardComponent::medium()
-                })
-                .detach()],
+            cards: CardsRow::builder().launch(String::from("MiHoYo")).detach(),
         };
         let widgets = view_output!();
 
