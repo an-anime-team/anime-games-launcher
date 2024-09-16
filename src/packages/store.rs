@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 
 use serde_json::Value as Json;
 
@@ -193,11 +192,11 @@ mod tests {
 
         let store = Store::new(&path);
 
-        let lock_file = LockFile::with_packages(store.clone(), [
+        let lock_file = LockFile::with_packages([
             "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/packages/1"
         ]);
 
-        let lock_file = lock_file.build().await
+        let lock_file = lock_file.build(&store).await
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert_eq!(lock_file.root, &[Hash(14823907562133104457)]);
@@ -235,11 +234,11 @@ mod tests {
 
         let store = Store::new(&path);
 
-        let lock_file = LockFile::with_packages(store.clone(), [
+        let lock_file = LockFile::with_packages([
             "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/packages/1"
         ]);
 
-        let lock_file = lock_file.build().await
+        let lock_file = lock_file.build(&store).await
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         let valid = store.validate(&lock_file)
