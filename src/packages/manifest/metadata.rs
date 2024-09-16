@@ -2,6 +2,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PackageMetadata {
@@ -37,5 +38,12 @@ impl AsJson for PackageMetadata {
                 }
             }
         })
+    }
+}
+
+impl AsHash for PackageMetadata {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.maintainers.hash()
     }
 }

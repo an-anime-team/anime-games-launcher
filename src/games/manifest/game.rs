@@ -1,6 +1,7 @@
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 use super::localizable_string::LocalizableString;
 
@@ -49,6 +50,16 @@ impl AsJson for Game {
     }
 }
 
+impl AsHash for Game {
+    fn hash(&self) -> Hash {
+        self.title.hash()
+            .chain(self.description.hash())
+            .chain(self.developer.hash())
+            .chain(self.publisher.hash())
+            .chain(self.images.hash())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameImages {
     pub icon: String,
@@ -85,5 +96,13 @@ impl AsJson for GameImages {
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("game.images.background"))?
                 .to_string()
         })
+    }
+}
+
+impl AsHash for GameImages {
+    fn hash(&self) -> Hash {
+        self.icon.hash()
+            .chain(self.poster.hash())
+            .chain(self.background.hash())
     }
 }

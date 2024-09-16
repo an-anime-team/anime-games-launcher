@@ -3,6 +3,7 @@ use std::str::FromStr;
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 use super::disk_type::DiskType;
 
@@ -46,5 +47,12 @@ impl AsJson for DiskHardwareRequirements {
                 }
             }
         })
+    }
+}
+
+impl AsHash for DiskHardwareRequirements {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.size.hash().chain(self.disk_type.hash())
     }
 }

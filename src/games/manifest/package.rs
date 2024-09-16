@@ -1,10 +1,12 @@
+use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Package {
-    url: String
+    pub url: String
 }
 
 impl AsJson for Package {
@@ -22,5 +24,12 @@ impl AsJson for Package {
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("package.url"))?
                 .to_string()
         })
+    }
+}
+
+impl AsHash for Package {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.url.hash()
     }
 }

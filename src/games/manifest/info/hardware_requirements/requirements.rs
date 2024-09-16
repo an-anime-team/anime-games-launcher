@@ -1,6 +1,7 @@
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 use super::cpu::CpuHardwareRequirements;
 use super::gpu::GpuHardwareRequirements;
@@ -98,5 +99,14 @@ impl AsJson for HardwareRequirements {
                 }
             }
         })
+    }
+}
+
+impl AsHash for HardwareRequirements {
+    fn hash(&self) -> Hash {
+        self.cpu.hash()
+            .chain(self.gpu.hash())
+            .chain(self.ram.hash())
+            .chain(self.disk.hash())
     }
 }

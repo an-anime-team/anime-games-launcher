@@ -1,3 +1,5 @@
+use crate::packages::prelude::*;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DiskType {
     Hdd,
@@ -26,5 +28,12 @@ impl std::str::FromStr for DiskType {
 
             _ => anyhow::bail!("Unsupported disk type: {s}")
         }
+    }
+}
+
+impl AsHash for DiskType {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.to_string().hash()
     }
 }

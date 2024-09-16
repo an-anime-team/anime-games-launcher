@@ -1,6 +1,7 @@
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 pub mod cpu;
 pub mod gpu;
@@ -48,5 +49,12 @@ impl AsJson for GameHardwareRequirements {
                 }
             }
         })
+    }
+}
+
+impl AsHash for GameHardwareRequirements {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.minimal.hash().chain(self.optimal.hash())
     }
 }

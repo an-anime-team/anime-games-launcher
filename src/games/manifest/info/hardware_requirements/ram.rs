@@ -1,6 +1,7 @@
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RamHardwareRequirements {
@@ -39,5 +40,12 @@ impl AsJson for RamHardwareRequirements {
                 }
             }
         })
+    }
+}
+
+impl AsHash for RamHardwareRequirements {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.size.hash().chain(self.frequency.hash())
     }
 }

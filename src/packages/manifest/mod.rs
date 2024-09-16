@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 pub mod metadata;
 pub mod resource_format;
@@ -118,5 +119,14 @@ impl AsJson for Manifest {
                 })
                 .collect::<Result<HashMap<_, _>, _>>()?
         })
+    }
+}
+
+impl AsHash for Manifest {
+    fn hash(&self) -> Hash {
+        self.standard.hash()
+            .chain(self.package.hash())
+            .chain(self.inputs.hash())
+            .chain(self.outputs.hash())
     }
 }

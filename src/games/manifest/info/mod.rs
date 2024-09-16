@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 pub mod hardware_requirements;
 pub mod game_tag;
@@ -75,5 +76,12 @@ impl AsJson for Info {
                 }
             }
         })
+    }
+}
+
+impl AsHash for Info {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.hardware_requirements.hash().chain(self.tags.hash())
     }
 }

@@ -65,6 +65,21 @@ impl AsJson for Manifest {
     }
 }
 
+impl AsHash for Manifest {
+    fn hash(&self) -> Hash {
+        self.standard.hash()
+            .chain(self.metadata.hash())
+            .chain(self.root.hash())
+            .chain(self.resources.hash())
+    }
+
+    fn partial_hash(&self) -> Hash {
+        self.standard.partial_hash()
+            .chain(self.root.partial_hash())
+            .chain(self.resources.partial_hash())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LockFileMetadata {
     pub generated_at: u64
@@ -84,6 +99,13 @@ impl AsJson for LockFileMetadata {
                 .as_u64()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("metadata.generated_at"))?
         })
+    }
+}
+
+impl AsHash for LockFileMetadata {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.generated_at.hash()
     }
 }
 
@@ -181,6 +203,16 @@ impl AsJson for ResourceLock {
     }
 }
 
+impl AsHash for ResourceLock {
+    fn hash(&self) -> Hash {
+        self.url.hash()
+            .chain(self.format.hash())
+            .chain(self.lock.hash())
+            .chain(self.inputs.hash())
+            .chain(self.outputs.hash())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ResourceLockData {
     pub hash: Hash,
@@ -208,5 +240,12 @@ impl AsJson for ResourceLockData {
                 .as_u64()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].lock.size"))?
         })
+    }
+}
+
+impl AsHash for ResourceLockData {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.hash
     }
 }

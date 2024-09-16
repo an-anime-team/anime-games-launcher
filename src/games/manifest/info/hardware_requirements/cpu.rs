@@ -1,7 +1,8 @@
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
-use crate::games::manifest::localizable_string::LocalizableString;
+use crate::packages::prelude::*;
+use crate::games::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CpuHardwareRequirements {
@@ -57,5 +58,13 @@ impl AsJson for CpuHardwareRequirements {
                 }
             }
         })
+    }
+}
+
+impl AsHash for CpuHardwareRequirements {
+    fn hash(&self) -> Hash {
+        self.model.hash()
+            .chain(self.cores.hash())
+            .chain(self.frequency.hash())
     }
 }

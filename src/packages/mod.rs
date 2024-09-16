@@ -5,7 +5,11 @@ pub mod store;
 pub mod resource;
 
 pub mod prelude {
-    pub use super::hash::Hash;
+    pub use super::hash::{
+        Hash,
+        AsHash
+    };
+
     pub use super::manifest::prelude::*;
 
     pub use super::lock_file::{

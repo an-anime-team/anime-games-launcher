@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 
+use crate::packages::prelude::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceFormat {
     Package,
@@ -62,6 +64,13 @@ impl std::str::FromStr for ResourceFormat {
 
             _ => anyhow::bail!("Unsupported resource format: {s}")
         }
+    }
+}
+
+impl AsHash for ResourceFormat {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.to_string().hash()
     }
 }
 

@@ -9,6 +9,7 @@ pub mod consts;
 pub mod core;
 pub mod config;
 pub mod packages;
+pub mod generations;
 
 pub mod i18n;
 pub mod utils;

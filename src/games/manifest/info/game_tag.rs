@@ -1,3 +1,5 @@
+use crate::packages::prelude::*;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GameTag {
     /// Game has a scenes of gambling or has game mechanics
@@ -59,5 +61,12 @@ impl std::str::FromStr for GameTag {
 
             _ => anyhow::bail!("Unsupported game tag: {s}")
         }
+    }
+}
+
+impl AsHash for GameTag {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.to_string().hash()
     }
 }

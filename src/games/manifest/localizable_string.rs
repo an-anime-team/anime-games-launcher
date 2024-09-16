@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use unic_langid::LanguageIdentifier;
 use serde_json::{json, Value as Json};
+use unic_langid::LanguageIdentifier;
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalizableString {
@@ -99,6 +100,25 @@ impl AsJson for LocalizableString {
         }
 
         Err(AsJsonError::InvalidFieldValue("<localizable string>"))
+    }
+}
+
+impl AsHash for LocalizableString {
+    fn hash(&self) -> Hash {
+        match self {
+            Self::Raw(str) => str.hash(),
+
+            Self::Translatable(values) => {
+                let mut hash = Hash::default();
+
+                for (key, value) in values {
+                    hash ^= Hash::for_slice(key.to_string());
+                    hash ^= value.hash();
+                }
+
+                hash
+            }
+        }
     }
 }
 

@@ -49,3 +49,11 @@ impl AsJson for Resource {
         })
     }
 }
+
+impl AsHash for Resource {
+    fn hash(&self) -> Hash {
+        self.uri.hash()
+            .chain(self.format.hash())
+            .chain(self.hash.hash())
+    }
+}

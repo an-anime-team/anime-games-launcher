@@ -4,7 +4,23 @@ use std::path::{Path, PathBuf};
 use std::hash::Hasher;
 use std::io::Read;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+/// Provide custom object hashing mechanism.
+pub trait AsHash {
+    /// Calculate unique hash of the object.
+    fn hash(&self) -> Hash;
+
+    /// Calculate partial hash of the object.
+    ///
+    /// Partial hashes verify only most important
+    /// parts of the data. They ignore things like
+    /// metadata, creation timestamps and so on.
+    /// Actual value depends on implementation.
+    fn partial_hash(&self) -> Hash {
+        self.hash()
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 /// Wrapper around an integer used as hash value.
 pub struct Hash(pub u64);
 
@@ -13,6 +29,12 @@ impl Hash {
     /// Generate new random hash.
     pub fn rand() -> Self {
         Self(rand::random())
+    }
+
+    #[inline]
+    /// Chain two hashes together, making a new one.
+    pub fn chain(self, other: Hash) -> Self {
+        self ^ other
     }
 
     #[inline]
@@ -117,6 +139,190 @@ impl Hash {
     }
 }
 
+impl std::ops::BitXor for Hash {
+    type Output = Self;
+
+    #[inline]
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Hash(self.0 ^ rhs.0)
+    }
+}
+
+impl std::ops::BitXorAssign for Hash {
+    #[inline]
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
+
+macro_rules! impl_as_hash {
+    (num $($type:ty)*) => {
+        $(
+            impl AsHash for $type {
+                fn hash(&self) -> Hash {
+                    Hash::for_slice(self.to_be_bytes())
+                }
+            }
+        )*
+    };
+
+    (bytes $($type:ty)*) => {
+        $(
+            impl AsHash for $type {
+                fn hash(&self) -> Hash {
+                    Hash::for_slice(self.as_bytes())
+                }
+            }
+        )*
+    };
+}
+
+impl_as_hash!(num u16 u32 u64 u128 i8 i16 i32 i64 i128);
+impl_as_hash!(bytes &str String);
+
+impl AsHash for Hash {
+    #[inline]
+    fn hash(&self) -> Hash {
+        *self
+    }
+}
+
+impl AsHash for [u8] {
+    #[inline]
+    fn hash(&self) -> Hash {
+        Hash::for_slice(self)
+    }
+}
+
+impl AsHash for &[u8] {
+    #[inline]
+    fn hash(&self) -> Hash {
+        Hash::for_slice(self)
+    }
+}
+
+impl AsHash for Vec<u8> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        Hash::for_slice(&self)
+    }
+}
+
+impl AsHash for Box<[u8]> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        Hash::for_slice(self)
+    }
+}
+
+impl<T: AsHash> AsHash for Box<T> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        T::hash(&self)
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        T::partial_hash(&self)
+    }
+}
+
+impl<T: AsHash> AsHash for Option<T> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.as_ref()
+            .map(AsHash::hash)
+            .unwrap_or_default()
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        self.as_ref()
+            .map(AsHash::partial_hash)
+            .unwrap_or_default()
+    }
+}
+
+impl<T: AsHash> AsHash for [T] {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.iter()
+            .map(T::hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        self.iter()
+            .map(T::partial_hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+}
+
+impl<T: AsHash> AsHash for &[T] {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.iter()
+            .map(T::hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        self.iter()
+            .map(T::partial_hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+}
+
+impl<T: AsHash> AsHash for Vec<T> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.iter()
+            .map(T::hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        self.iter()
+            .map(T::partial_hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+}
+
+impl<T: AsHash> AsHash for std::collections::HashSet<T> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.iter()
+            .map(T::hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        self.iter()
+            .map(T::partial_hash)
+            .fold(Hash::default(), Hash::chain)
+    }
+}
+
+impl<K: AsHash, V: AsHash> AsHash for std::collections::HashMap<K, V> {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.iter()
+            .map(|(k, v)| k.hash().chain(v.hash()))
+            .fold(Hash::default(), Hash::chain)
+    }
+
+    #[inline]
+    fn partial_hash(&self) -> Hash {
+        self.iter()
+            .map(|(k, v)| k.partial_hash().chain(v.partial_hash()))
+            .fold(Hash::default(), Hash::chain)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core::prelude::*;
@@ -146,6 +352,15 @@ mod tests {
         assert_eq!(Hash::for_entry(&folder)?, Hash(17827013605004440863));
 
         Ok(())
+    }
+
+    #[test]
+    fn as_hash() {
+        assert_eq!(123456789_u64.hash(), Hash(0));
+        assert_eq!("Hello, World!".hash(), Hash(0));
+        assert_eq!(Some(123456_u32).hash(), Hash(0));
+        assert_eq!(None::<String>.hash(), Hash(0));
+        assert_eq!([1_i16, -2, 3].hash(), Hash(0));
     }
 
     #[test]

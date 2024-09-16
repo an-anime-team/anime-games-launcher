@@ -1,6 +1,7 @@
 use serde_json::{json, Value as Json};
 
 use crate::core::prelude::*;
+use crate::packages::prelude::*;
 
 pub mod localizable_string;
 pub mod game;
@@ -46,5 +47,14 @@ impl AsJson for GameManifest {
                 .map(info::Info::from_json)
                 .transpose()?
         })
+    }
+}
+
+impl AsHash for GameManifest {
+    fn hash(&self) -> Hash {
+        self.standard.hash()
+            .chain(self.game.hash())
+            .chain(self.package.hash())
+            .chain(self.info.hash())
     }
 }
