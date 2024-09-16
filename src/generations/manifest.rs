@@ -19,6 +19,18 @@ pub struct Manifest {
     pub lock_file: LockFileManifest
 }
 
+impl Manifest {
+    /// Compose new generation manifest from given parts.
+    pub fn compose(games: impl Into<Vec<Game>>, lock_file: LockFileManifest) -> Self {
+        Self {
+            format: 1,
+            generated_at: lock_file.metadata.generated_at,
+            games: games.into(),
+            lock_file
+        }
+    }
+}
+
 impl AsJson for Manifest {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({

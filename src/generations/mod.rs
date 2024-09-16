@@ -1,25 +1,20 @@
-use std::path::PathBuf;
-
 pub mod manifest;
+pub mod store;
+pub mod generation;
 
 pub mod prelude {
     pub use super::manifest::{
         Manifest as GenerationManifest,
         Game as GenerationGameLock
     };
-}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Generations {
-    folder: PathBuf
-}
+    pub use super::store::{
+        Store as GenerationsStore,
+        StoreError as GenerationsStoreError
+    };
 
-impl Generations {
-    #[inline]
-    /// Create new empty generations store.
-    pub fn new(folder: impl Into<PathBuf>) -> Self {
-        Self {
-            folder: folder.into()
-        }
-    }
+    pub use super::generation::{
+        Generation,
+        GenerationError
+    };
 }
