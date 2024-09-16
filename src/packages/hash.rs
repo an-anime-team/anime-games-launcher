@@ -356,11 +356,11 @@ mod tests {
 
     #[test]
     fn as_hash() {
-        assert_eq!(123456789_u64.hash(), Hash(0));
-        assert_eq!("Hello, World!".hash(), Hash(0));
-        assert_eq!(Some(123456_u32).hash(), Hash(0));
+        assert_eq!(123456789_u64.hash(), Hash(16531472742531055538));
+        assert_eq!("Hello, World!".hash(), Hash(3369351306556737277));
+        assert_eq!(Some(123456_u32).hash(), Hash(13440295563441507171));
         assert_eq!(None::<String>.hash(), Hash(0));
-        assert_eq!([1_i16, -2, 3].hash(), Hash(0));
+        assert_eq!([1_i16, -2, 3].hash(), Hash(7455816351535058648));
     }
 
     #[test]
