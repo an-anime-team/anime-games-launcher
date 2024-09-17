@@ -31,19 +31,13 @@ impl AsyncFactoryComponent for GameTagFactory {
                 GameTag::UnsupportedPlatform => "Game is not officially supported on Linux",
                 GameTag::CompatibilityLayer => "Game is not runnable on Linux, but the integration package provides functionality to make the game runnable - this will likely be against TOS",
             },
-            adw::PreferencesGroup {
-                set_margin_all: 0,
-                adw::ActionRow {
-                    set_subtitle: match self.tag {
-                        GameTag::Gambling => "Gambling",
-                        GameTag::Payments => "Payments",
-                        GameTag::Violence => "Violence",
-                        GameTag::PerformanceIssues => "Performance Issues",
-                        GameTag::AntiCheat => "Anti Cheat",
-                        GameTag::UnsupportedPlatform => "Unsupported Platform",
-                        GameTag::CompatibilityLayer => "Compatability Layer",
-                    },
-                    add_prefix = &gtk::Image {
+            gtk::Frame {
+                set_css_classes: &["accent"],
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_spacing: 4,
+                    set_margin_all: 4,
+                    gtk::Image {
                         set_icon_name: match self.tag {
                             GameTag::Gambling => Some("dice3-symbolic"),
                             GameTag::Payments => Some("money-symbolic"),
@@ -52,7 +46,20 @@ impl AsyncFactoryComponent for GameTagFactory {
                             GameTag::AntiCheat => Some("background-app-ghost-symbolic"),
                             GameTag::UnsupportedPlatform => Some("cloud-disabled-symbolic"),
                             GameTag::CompatibilityLayer => Some("test-symbolic"),
-                        }
+                        },
+                        set_css_classes: &["accent"],
+                    },
+                    gtk::Label {
+                        set_label: match self.tag {
+                            GameTag::Gambling => "Gambling",
+                            GameTag::Payments => "Payments",
+                            GameTag::Violence => "Violence",
+                            GameTag::PerformanceIssues => "Performance Issues",
+                            GameTag::AntiCheat => "Anti Cheat",
+                            GameTag::UnsupportedPlatform => "Unsupported Platform",
+                            GameTag::CompatibilityLayer => "Workarounds",
+                        },
+                        set_css_classes: &["accent"],
                     }
                 }
             }
