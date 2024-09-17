@@ -25,8 +25,8 @@ pub mod prelude {
     };
 
     pub use super::store::{
-        Store,
-        StoreError
+        Store as PackagesStore,
+        StoreError as PackagesStoreError
     };
 
     pub use super::resource::Resource;

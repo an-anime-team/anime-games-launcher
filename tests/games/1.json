@@ -1,0 +1,36 @@
+{
+    "standard": 1,
+    "game": {
+        "title": {
+            "en": "Test Game",
+            "ru": "Тестовая Игра"
+        },
+        "description": {
+            "en": "Test manifest used in the generations system testing.",
+            "ru": "Тестовый манифест, использующийся в тестировании системы генераций."
+        },
+        "developer": "KRypt0n_",
+        "publisher": "KRypt0n_",
+        "images": {
+            "icon": "https://i.redd.it/93q5d0oz8h041.jpg",
+            "poster": "https://s.keepmeme.com/files/en_posts/20201008/among-us-crewmate-ricardo-milos-meme-0b39be7085ab2394e252715fd11d0ffe.jpg",
+            "background": "https://i.redd.it/cgho9x2rf8341.jpg"
+        }
+    },
+    "package": {
+        "url": "https://github.com/an-anime-team/anime-games-launcher/raw/next/tests/packages/1/package.json"
+    },
+    "info": {
+        "hardware_requirements": {
+            "minimal": {
+                "disk": {
+                    "size": 42,
+                    "type": "ssd"
+                }
+            }
+        },
+        "tags": [
+            "unsupported-platform"
+        ]
+    }
+}
