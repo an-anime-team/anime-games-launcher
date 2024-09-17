@@ -49,17 +49,19 @@ impl SimpleAsyncComponent for GamePageApp {
                     },
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 16,
+                        set_spacing: 8,
                         gtk::Label {
-                            set_markup: &format!("<big><b>{}</b></big>", model.title),
+                            set_markup: &model.title,
+                            set_css_classes: &["title-1"],
                         },
                         gtk::Label {
                             set_text: &model.developer,
+                            set_css_classes: &["dim-label"],
                         },
                         model.tags.widget() {
                             set_orientation: gtk::Orientation::Horizontal,
-                            set_row_spacing: 2,
-                            set_column_spacing: 2,
+                            set_row_spacing: 1,
+                            set_column_spacing: 1,
                         },
                     }
                 }
