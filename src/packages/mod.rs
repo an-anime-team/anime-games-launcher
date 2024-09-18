@@ -3,6 +3,7 @@ pub mod manifest;
 pub mod lock_file;
 pub mod store;
 pub mod resource;
+pub mod engine;
 
 pub mod prelude {
     pub use super::hash::{
@@ -30,4 +31,5 @@ pub mod prelude {
     };
 
     pub use super::resource::Resource;
+    pub use super::engine::Engine;
 }

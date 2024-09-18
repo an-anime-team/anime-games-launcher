@@ -3,13 +3,19 @@ use serde::{Serialize, Deserialize};
 use crate::packages::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ResourceFormat {
-    Package,
-    File,
-    Archive,
+/// Format of the resource archive.
+pub enum ResourceArchiveFormat {
+    Auto,
     Tar,
     Zip,
     Sevenz
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ResourceFormat {
+    Package,
+    File,
+    Archive(ResourceArchiveFormat)
 }
 
 impl ResourceFormat {
@@ -26,11 +32,11 @@ impl ResourceFormat {
         if tail.is_empty() || tail == "package.json" {
             Self::Package
         } else if uri.contains(".tar") {
-            Self::Tar
+            Self::Archive(ResourceArchiveFormat::Tar)
         } else if tail.ends_with(".zip") {
-            Self::Zip
+            Self::Archive(ResourceArchiveFormat::Zip)
         } else if tail.ends_with(".7z") {
-            Self::Sevenz
+            Self::Archive(ResourceArchiveFormat::Sevenz)
         } else {
             Self::File
         }
@@ -42,10 +48,13 @@ impl std::fmt::Display for ResourceFormat {
         match self {
             Self::Package => write!(f, "package"),
             Self::File    => write!(f, "file"),
-            Self::Archive => write!(f, "archive"),
-            Self::Tar     => write!(f, "tar"),
-            Self::Zip     => write!(f, "zip"),
-            Self::Sevenz  => write!(f, "7z")
+
+            Self::Archive(format) => match format {
+                ResourceArchiveFormat::Auto   => write!(f, "archive"),
+                ResourceArchiveFormat::Tar    => write!(f, "archive/tar"),
+                ResourceArchiveFormat::Zip    => write!(f, "archive/zip"),
+                ResourceArchiveFormat::Sevenz => write!(f, "archive/7z")
+            }
         }
     }
 }
@@ -57,10 +66,11 @@ impl std::str::FromStr for ResourceFormat {
         match s {
             "package" => Ok(Self::Package),
             "file"    => Ok(Self::File),
-            "archive" => Ok(Self::Archive),
-            "tar"     => Ok(Self::Tar),
-            "zip"     => Ok(Self::Zip),
-            "7z"      => Ok(Self::Sevenz),
+
+            "archive"     => Ok(Self::Archive(ResourceArchiveFormat::Auto)),
+            "archive/tar" => Ok(Self::Archive(ResourceArchiveFormat::Tar)),
+            "archive/zip" => Ok(Self::Archive(ResourceArchiveFormat::Zip)),
+            "archive/7z"  => Ok(Self::Archive(ResourceArchiveFormat::Sevenz)),
 
             _ => anyhow::bail!("Unsupported resource format: {s}")
         }
@@ -83,11 +93,11 @@ mod tests {
         assert_eq!(ResourceFormat::predict("https://example.org/"), ResourceFormat::Package);
         assert_eq!(ResourceFormat::predict("https://example.org/package.json"), ResourceFormat::Package);
         assert_eq!(ResourceFormat::predict("https://example.org/file"), ResourceFormat::File);
-        assert_eq!(ResourceFormat::predict("https://example.org/archive.tar"), ResourceFormat::Tar);
-        assert_eq!(ResourceFormat::predict("https://example.org/archive.zip"), ResourceFormat::Zip);
-        assert_eq!(ResourceFormat::predict("https://example.org/archive.7z"), ResourceFormat::Sevenz);
+        assert_eq!(ResourceFormat::predict("https://example.org/archive.tar"), ResourceFormat::Archive(ResourceArchiveFormat::Tar));
+        assert_eq!(ResourceFormat::predict("https://example.org/archive.zip"), ResourceFormat::Archive(ResourceArchiveFormat::Zip));
+        assert_eq!(ResourceFormat::predict("https://example.org/archive.7z"), ResourceFormat::Archive(ResourceArchiveFormat::Sevenz));
 
-        assert_eq!(ResourceFormat::predict("https://example.org/archive.tar.gz"), ResourceFormat::Tar);
-        assert_eq!(ResourceFormat::predict("https://example.org/archive.tar.xz"), ResourceFormat::Tar);
+        assert_eq!(ResourceFormat::predict("https://example.org/archive.tar.gz"), ResourceFormat::Archive(ResourceArchiveFormat::Tar));
+        assert_eq!(ResourceFormat::predict("https://example.org/archive.tar.xz"), ResourceFormat::Archive(ResourceArchiveFormat::Tar));
     }
 }

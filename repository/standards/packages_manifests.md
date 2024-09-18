@@ -56,14 +56,21 @@ type Resource = string | {
 };
 
 type ResourceFormat =
+    // Reference to another package.
     | 'package'
+
+    // Lua script that will be loaded into the engine
+    // and could be used by other modules. A singleton.
+    | 'module'
+
+    // Raw file.
     | 'file'
 
-    // Archives
+    // Archives.
     | 'archive'
-    | 'tar'
-    | 'zip'
-    | '7z';
+    | 'archive/tar'
+    | 'archive/zip'
+    | 'archive/7z';
 ```
 
 ## Lock file format

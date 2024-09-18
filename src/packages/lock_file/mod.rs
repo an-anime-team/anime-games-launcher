@@ -333,20 +333,17 @@ impl LockFile {
                         actual_hashes.insert(unique_key, hash);
                     }
 
-                    PackageResourceFormat::Archive |
-                    PackageResourceFormat::Tar |
-                    PackageResourceFormat::Zip |
-                    PackageResourceFormat::Sevenz => {
+                    PackageResourceFormat::Archive(_) => {
                         // Extract the archive to a temp folder.
                         let tmp_extract_path = store.get_temp_path(&Hash::rand());
 
                         match resource.format {
-                            PackageResourceFormat::Archive => {
+                            PackageResourceFormat::Archive(PackageResourceArchiveFormat::Auto) => {
                                 archive_extract(&temp_path, &tmp_extract_path, |_, _, _| {})
                                     .map_err(|err| LockFileError::ExtractFailed(err.to_string()))?;
                             }
 
-                            PackageResourceFormat::Tar => {
+                            PackageResourceFormat::Archive(PackageResourceArchiveFormat::Tar) => {
                                 TarArchive::open(&temp_path)?
                                     .extract(&tmp_extract_path, |_, _, _| {})?
                                     .wait()
@@ -355,7 +352,7 @@ impl LockFile {
                                     })?;
                             }
 
-                            PackageResourceFormat::Zip => {
+                            PackageResourceFormat::Archive(PackageResourceArchiveFormat::Zip) => {
                                 ZipArchive::open(&temp_path)?
                                     .extract(&tmp_extract_path, |_, _, _| {})?
                                     .wait()
@@ -364,7 +361,7 @@ impl LockFile {
                                     })?;
                             }
 
-                            PackageResourceFormat::Sevenz => {
+                            PackageResourceFormat::Archive(PackageResourceArchiveFormat::Sevenz) => {
                                 SevenzArchive::open(&temp_path)
                                     .and_then(|archive| archive.extract(&tmp_extract_path, |_, _, _| {}))
                                     .map(|extractor| extractor.wait())

@@ -63,11 +63,11 @@ impl std::str::FromStr for GameTag {
         match s {
             "gambling"             => Ok(Self::Gambling),
             "payments"             => Ok(Self::Payments),
-            "violence"             => Ok(Self::Violence),
+            "graphic-violence"     => Ok(Self::GraphicViolence),
             "performance-issues"   => Ok(Self::PerformanceIssues),
             "anti-cheat"           => Ok(Self::AntiCheat),
             "unsupported-platform" => Ok(Self::UnsupportedPlatform),
-            "compatibility-layer"  => Ok(Self::CompatibilityLayer),
+            "workarounds"          => Ok(Self::Workarounds),
 
             _ => anyhow::bail!("Unsupported game tag: {s}")
         }
