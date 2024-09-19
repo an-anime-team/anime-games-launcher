@@ -30,20 +30,20 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Processor",
                     add_suffix = &gtk::Label {
-                    set_label: &model.cpu.as_ref().unwrap().model.translate(&lang),
+                        set_label: model.cpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
                         set_css_classes: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Core Count",
                         add_suffix = &gtk::Label {
-                            set_label: &model.cpu.as_ref().unwrap().cores.unwrap().to_string(),
+                            set_label: &model.cpu.as_ref().and_then(|a| a.cores).map(|b| b.to_string()).unwrap_or("N/A".to_string()),
                             set_css_classes: DIM_CLASS,
                         }
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
-                            set_label: &pretty_frequency(model.cpu.as_ref().unwrap().frequency.unwrap()),
+                            set_label: &model.cpu.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b)).unwrap_or("N/A".to_string()),
                             set_css_classes: DIM_CLASS,
                         }
                     }
@@ -52,13 +52,13 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Graphics",
                     add_suffix = &gtk::Label {
-                        set_label: &model.gpu.as_ref().unwrap().model.translate(&lang),
+                        set_label: model.gpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
                         set_css_classes: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Video Memory",
                         add_suffix = &gtk::Label {
-                            set_label: &pretty_bytes(model.gpu.as_ref().unwrap().vram.unwrap()),
+                            set_label: &model.gpu.as_ref().and_then(|a| a.vram).map(|b| pretty_bytes(b)).unwrap_or("N/A".to_string()),
                             set_css_classes: DIM_CLASS,
                         }
                     }
@@ -67,20 +67,20 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Memory",
                     add_suffix = &gtk::Label {
-                        set_label: &model.cpu.as_ref().unwrap().model.translate(&lang),
+                        set_label: model.cpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
                         set_css_classes: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Capacity",
                         add_suffix = &gtk::Label {
-                            set_label: &pretty_bytes(model.ram.as_ref().unwrap().size),
+                            set_label: &model.ram.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
                             set_css_classes: DIM_CLASS,
                         }
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
-                            set_label: &pretty_frequency(model.ram.as_ref().unwrap().frequency.unwrap()),
+                            set_label: &model.ram.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b)).unwrap_or("N/A".to_string()),
                             set_css_classes: DIM_CLASS,
                         }
                     }
@@ -89,13 +89,13 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Disk",
                     add_suffix = &gtk::Label {
-                        set_label: &pretty_bytes(model.disk.as_ref().unwrap().size),
+                        set_label: &model.disk.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
                         set_css_classes: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Type",
                         add_suffix = &gtk::Label {
-                            set_label: &format!("{}", model.disk.as_ref().unwrap().disk_type.clone().unwrap()).to_uppercase(),
+                            set_label: &model.disk.as_ref().and_then(|a| a.disk_type.as_ref()).map(|b| b.to_string().to_uppercase()).unwrap_or("N/A".to_string()),
                             set_css_classes: DIM_CLASS,
                         }
                     }
@@ -107,11 +107,13 @@ impl SimpleAsyncComponent for HardwareRequirements {
     async fn init(
         init: Self::Init,
         root: Self::Root,
-        sender: AsyncComponentSender<Self>,
+        _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let model = init.0;
         let lang = init.1;
+
         let widgets = view_output!();
+
         AsyncComponentParts { model, widgets }
     }
 }
@@ -147,7 +149,7 @@ impl SimpleAsyncComponent for RequirementsComponent {
     async fn init(
         init: Self::Init,
         root: Self::Root,
-        sender: AsyncComponentSender<Self>,
+        _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let view_stack = adw::ViewStack::new();
         let lang = LanguageIdentifier::default();
