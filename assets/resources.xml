@@ -34,6 +34,7 @@
     <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">images/icons/dice3-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="money-symbolic.svg">images/icons/money-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="speedometer4-symbolic.svg">images/icons/speedometer4-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="speedometer2-symbolic.svg">images/icons/speedometer2-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="test-symbolic.svg">images/icons/test-symbolic.svg</file>
 
     <!-- Additional icons icons -->

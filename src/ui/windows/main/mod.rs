@@ -3,11 +3,13 @@ use gtk::prelude::*;
 use relm4::prelude::*;
 
 pub mod downloads_page;
+pub mod game_page;
 pub mod library_page;
 pub mod profile_page;
 pub mod store_page;
 
 pub use downloads_page::{DownloadsPageApp, DownloadsPageAppMsg};
+pub use game_page::{GamePageApp, GamePageAppMsg};
 pub use library_page::{LibraryPageApp, LibraryPageAppMsg};
 pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
 pub use store_page::{StorePageApp, StorePageAppMsg};
@@ -22,6 +24,7 @@ pub struct MainApp {
     store_page: AsyncController<StorePageApp>,
     library_page: AsyncController<LibraryPageApp>,
     profile_page: AsyncController<ProfilePageApp>,
+    game_page: AsyncController<GamePageApp>,
 }
 
 #[relm4::component(pub, async)]
@@ -68,6 +71,15 @@ impl SimpleAsyncComponent for MainApp {
                         set_vexpand: true,
                         set_hexpand: true,
 
+                        model.game_page.widget(),
+                    } -> {
+                        set_title: Some("GamePageApp"),
+                    },
+
+                    add = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
                         model.library_page.widget(),
                     } -> {
                         set_title: Some("Library"),
@@ -99,6 +111,8 @@ impl SimpleAsyncComponent for MainApp {
             library_page: LibraryPageApp::builder().launch(()).detach(),
 
             profile_page: ProfilePageApp::builder().launch(()).detach(),
+
+            game_page: GamePageApp::builder().launch(()).detach(),
         };
 
         let widgets = view_output!();

@@ -4,6 +4,7 @@ pub mod cards_row;
 pub mod downloads_row;
 pub mod game_details;
 pub mod game_tags;
+pub mod requirements;
 pub mod graph;
 
 pub mod prelude {

@@ -41,3 +41,13 @@ pub fn pretty_seconds(mut seconds: u64) -> String {
 
     format!("{hours}:{minutes}:{seconds}")
 }
+
+pub fn pretty_frequency(hz: u64) -> String {
+    if hz < 1000 {
+        format!("{} Hz", hz)
+    } else if hz < 1000000000 {
+        format!("{:.2} kHz", hz as f64 / 1000.0)
+    } else {
+        format!("{:.2} GHz", hz as f64 / 1000000000.0)
+    }
+}

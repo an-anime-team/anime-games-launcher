@@ -2,10 +2,22 @@ use adw::prelude::*;
 use gtk::prelude::*;
 
 use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
+use unic_langid::LanguageIdentifier;
 
 use crate::{
-    games::manifest::info::game_tag::GameTag,
-    ui::components::{card::CardComponent, game_tags::*},
+    games::{
+        manifest::info::{
+            game_tag::GameTag,
+            hardware_requirements::{
+                cpu::CpuHardwareRequirements, disk::DiskHardwareRequirements, disk_type::DiskType,
+                gpu::GpuHardwareRequirements, ram::RamHardwareRequirements,
+                requirements::HardwareRequirements, GameHardwareRequirements,
+            },
+        },
+        prelude::LocalizableString,
+    },
+    ui::components::{card::CardComponent, game_tags::*, requirements::RequirementsComponent},
+    utils::pretty_bytes,
 };
 
 #[derive(Debug)]
@@ -14,6 +26,7 @@ pub struct GamePageApp {
     title: String,
     developer: String,
     tags: AsyncFactoryVecDeque<GameTagFactory>,
+    requirements: AsyncController<RequirementsComponent>,
 }
 
 #[derive(Debug)]
@@ -28,95 +41,119 @@ impl SimpleAsyncComponent for GamePageApp {
     type Output = ();
 
     view! {
-    #[root]
-    gtk::Box {
-        set_orientation: gtk::Orientation::Vertical,
-        set_halign: gtk::Align::Center,
-        set_vexpand: true,
-        set_spacing: 16,
-        gtk::Box {
-            set_orientation: gtk::Orientation::Horizontal,
-            set_halign: gtk::Align::Center,
-            set_hexpand: true,
-            set_spacing: 16,
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_valign: gtk::Align::Start,
-                set_spacing: 16,
-                set_margin_top: 16,
-                model.card.widget(),
-                gtk::Button {
-                    set_label: "Add",
-                    set_css_classes: &["suggested-action", "pill"],
-                    set_halign: gtk::Align::Center,
-                    connect_clicked => GamePageAppMsg::Add,
-                }
-            },
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_valign: gtk::Align::Start,
-                set_spacing: 40,
-                set_margin_top: 16,
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 8,
-                    gtk::Label {
-                        set_markup: &model.title,
-                        set_css_classes: &["title-1"],
-                        set_align: gtk::Align::Start,
-                    },
-                    gtk::Label {
-                        set_text: &model.developer,
-                        set_css_classes: &["dim-label"],
-                        set_align: gtk::Align::Start,
-                    },
-                },
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 8,
-                    adw::Clamp {
-                        set_maximum_size: 600,
-                        #[name = "carousel"]
-                        adw::Carousel {
-                            gtk::Picture {
-                                set_filename: Some(&format!("{}1.png", TEST_PATH)),
+        #[root]
+        adw::NavigationView {
+            add = &adw::NavigationPage {
+                set_title: &model.title,
+                #[wrap(Some)]
+                set_child = &gtk::ScrolledWindow {
+                    set_expand: true,
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_halign: gtk::Align::Center,
+                        set_spacing: 16,
+                        set_margin_all: 16,
+                        gtk::Label {
+                            set_markup: &model.title,
+                            set_css_classes: &["title-1"],
+                            set_align: gtk::Align::Start,
+                        },
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_halign: gtk::Align::Start,
+                            set_spacing: 16,
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
+                                set_halign: gtk::Align::Center,
+                                set_spacing: 8,
+                                #[name = "carousel"]
+                                adw::Carousel {
+                                    set_height_request: CardComponent::default().height,
+                                    gtk::Picture {
+                                        set_filename: Some(&format!("{}1.png", TEST_PATH)),
+                                    },
+                                    gtk::Picture {
+                                        set_filename: Some(&format!("{}2.png", TEST_PATH)),
+                                    },
+                                    gtk::Picture {
+                                        set_filename: Some(&format!("{}3.png", TEST_PATH)),
+                                    }
+                                },
+                                adw::CarouselIndicatorLines {
+                                    set_carousel: Some(&carousel),
+                                },
+                                gtk::Label {
+                                    set_text: "About",
+                                    set_align: gtk::Align::Start,
+                                    set_css_classes: &["title-4"],
+                                },
+                                gtk::TextView {
+                                    set_buffer: Some(&short_buffer),
+                                    set_wrap_mode: gtk::WrapMode::Word,
+                                    set_editable: false,
+                                    set_can_target: false,
+                                    set_css_classes: &["body"],
+                                },
+                                gtk::Expander {
+                                    set_label: Some("Read More"),
+                                    gtk::TextView {
+                                        set_buffer: Some(&long_buffer),
+                                        set_wrap_mode: gtk::WrapMode::Word,
+                                        set_editable: false,
+                                        set_can_target: false,
+                                        set_css_classes: &["body"],
+                                    }
+                                },
+                                gtk::Label {
+                                    set_text: "System Requirements",
+                                    set_align: gtk::Align::Start,
+                                    set_css_classes: &["title-4"],
+                                },
+                                model.requirements.widget(),
                             },
-                            gtk::Picture {
-                                set_filename: Some(&format!("{}2.png", TEST_PATH)),
-                            },
-                            gtk::Picture {
-                                set_filename: Some(&format!("{}3.png", TEST_PATH)),
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
+                                set_valign: gtk::Align::Start,
+                                set_spacing: 16,
+                                model.card.widget(),
+                                gtk::Button {
+                                    set_label: "Add",
+                                    set_css_classes: &["suggested-action", "pill"],
+                                    connect_clicked => GamePageAppMsg::Add,
+                                },
+                                gtk::Label {
+                                    set_text: &format!("Developer: {}", model.developer),
+                                    set_align: gtk::Align::Start,
+                                    set_css_classes: &["dim-label"],
+                                },
+                                gtk::ScrolledWindow {
+                                    set_propagate_natural_height: true,
+                                    model.tags.widget() {
+                                        set_margin_bottom: 8,
+                                    },
+                                }
                             }
                         }
-                    },
-                    adw::CarouselIndicatorDots {
-                        set_carousel: Some(&carousel),
                     }
                 }
             }
-        },
-        gtk::ScrolledWindow {
-            set_policy: (gtk::PolicyType::Automatic, gtk::PolicyType::Never),
-            model.tags.widget() {
-                set_spacing: 8,
-                set_margin_bottom: 8,
-            },
-        },
-        gtk::Label {
-            set_text: "About",
-            set_align: gtk::Align::Start,
-            set_css_classes: &["title-4"],
-        },
-        gtk::ScrolledWindow {
-            set_vexpand: true,
-            gtk::Label {
-                set_vexpand: true,
-                set_text: "Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
+        }
+    }
+
+    async fn init(
+        init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>,
+    ) -> AsyncComponentParts<Self> {
+        let TEST_PATH = "/home/dylan/Repos/anime-games-launcher/temp/";
+        let lang = LanguageIdentifier::default();
+        let short_buffer = gtk::TextBuffer::new(None);
+        short_buffer.set_text("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
 
 You and your sibling arrived here from another world. Separated by an unknown god, stripped of your powers, and cast into a deep slumber, you now awake to a world very different from when you first arrived.
-Thus begins your journey across Teyvat to seek answers from The Seven — the gods of each element. Along the way, prepare to explore every inch of this wondrous world, join forces with a diverse range of characters, and unravel the countless mysteries that Teyvat holds...
-
-MASSIVE OPEN WORLD
+Thus begins your journey across Teyvat to seek answers from The Seven — the gods of each element. Along the way, prepare to explore every inch of this wondrous world, join forces with a diverse range of characters, and unravel the countless mysteries that Teyvat holds...");
+        let long_buffer = gtk::TextBuffer::new(None);
+        long_buffer.set_text("MASSIVE OPEN WORLD
 Climb any mountain, swim across any river, and glide over the world below, taking in the jaw-dropping scenery each step of the way. And if you stop to investigate a wandering Seelie or strange mechanism, who knows what you might discover?
 
 ELEMENTAL COMBAT SYSTEM
@@ -146,20 +183,7 @@ Instagram: https://www.instagram.com/genshinimpact/
 Twitter: https://twitter.com/GenshinImpact
 YouTube: http://www.youtube.com/c/GenshinImpact
 Discord: https://discord.gg/genshinimpact
-Reddit: https://www.reddit.com/r/Genshin_Impact/",
-                    set_css_classes: &["body"],
-                    set_wrap: true,
-                }
-            }
-        }
-    }
-
-    async fn init(
-        init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
-        let TEST_PATH = "temp/";
+Reddit: https://www.reddit.com/r/Genshin_Impact/");
         let mut model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent {
@@ -170,6 +194,48 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/",
             title: String::from("Genshin Impact"),
             developer: String::from("MiHoYo"),
             tags: AsyncFactoryVecDeque::builder().launch_default().detach(),
+            requirements: RequirementsComponent::builder()
+                .launch(GameHardwareRequirements {
+                    minimal: HardwareRequirements {
+                        cpu: Some(CpuHardwareRequirements {
+                            model: LocalizableString::Raw(String::from("Intel Core i5")),
+                            cores: Some(4),
+                            frequency: Some(5300000000),
+                        }),
+                        gpu: Some(GpuHardwareRequirements {
+                            model: LocalizableString::Raw(String::from("NVIDIA GeForce GT 1030")),
+                            vram: Some(2147483648),
+                        }),
+                        ram: Some(RamHardwareRequirements {
+                            size: 8589934592,
+                            frequency: Some(1333000),
+                        }),
+                        disk: Some(DiskHardwareRequirements {
+                            size: 107374182400,
+                            disk_type: Some(DiskType::Hdd),
+                        }),
+                    },
+                    optimal: Some(HardwareRequirements {
+                        cpu: Some(CpuHardwareRequirements {
+                            model: LocalizableString::Raw(String::from("Intel Core i7")),
+                            cores: Some(6),
+                            frequency: Some(5600000000),
+                        }),
+                        gpu: Some(GpuHardwareRequirements {
+                            model: LocalizableString::Raw(String::from("NVIDIA GeForce GTX 1060")),
+                            vram: Some(6442450944),
+                        }),
+                        ram: Some(RamHardwareRequirements {
+                            size: 17179869184,
+                            frequency: Some(2400000),
+                        }),
+                        disk: Some(DiskHardwareRequirements {
+                            size: 161061273600,
+                            disk_type: Some(DiskType::Ssd),
+                        }),
+                    }),
+                })
+                .detach(),
         };
         let widgets = view_output!();
 

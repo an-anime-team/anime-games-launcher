@@ -17,7 +17,7 @@ impl AsyncFactoryComponent for GameTagFactory {
     type Input = ();
     type Output = ();
     type CommandOutput = ();
-    type ParentWidget = gtk::Box;
+    type ParentWidget = gtk::FlowBox;
 
     view! {
         gtk::Overlay {
