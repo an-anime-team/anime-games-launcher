@@ -140,15 +140,7 @@ impl SimpleAsyncComponent for RequirementsComponent {
             },
 
             #[local_ref]
-            view_stack -> adw::ViewStack {
-                add = &gtk::Box {
-                    model.minimal.widget(),
-                } -> {
-                    set_name: Some("Minimum"),
-                    set_title: Some("Minimum"),
-                    set_icon_name: Some("speedometer4-symbolic"),
-                },
-            }
+            view_stack -> adw::ViewStack,
         }
     }
 
@@ -167,6 +159,14 @@ impl SimpleAsyncComponent for RequirementsComponent {
             optimal: None,
         };
 
+        // Insert minimum
+        view_stack.add_titled_with_icon(
+            model.minimal.widget(),
+            None,
+            "Minimum",
+            "speedometer4-symbolic",
+        );
+
         // Insert recommended only if present
         if let Some(optimal) = init.optimal {
             model.optimal = Some(
@@ -176,9 +176,12 @@ impl SimpleAsyncComponent for RequirementsComponent {
             );
         }
         if let Some(req) = &model.optimal {
-            view_stack
-                .add_titled(req.widget(), None, "Recommended")
-                .set_icon_name(Some("speedometer2-symbolic"));
+            view_stack.add_titled_with_icon(
+                req.widget(),
+                None,
+                "Recommended",
+                "speedometer2-symbolic",
+            );
         }
 
         let widgets = view_output!();
