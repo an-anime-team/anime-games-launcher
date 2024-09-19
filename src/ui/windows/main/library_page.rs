@@ -4,9 +4,7 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::downloads_row::DownloadsRow;
-use crate::ui::components::downloads_row::DownloadsRowInit;
-use crate::ui::components::prelude::*;
+use crate::ui::components::{downloads_row::*, prelude::*};
 
 use super::DownloadsPageApp;
 

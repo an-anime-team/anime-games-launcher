@@ -17,7 +17,6 @@ use crate::{
         prelude::LocalizableString,
     },
     ui::components::{card::CardComponent, game_tags::*, requirements::RequirementsComponent},
-    utils::pretty_bytes,
 };
 
 #[derive(Debug)]
@@ -45,48 +44,60 @@ impl SimpleAsyncComponent for GamePageApp {
         adw::NavigationView {
             add = &adw::NavigationPage {
                 set_title: &model.title,
+
                 #[wrap(Some)]
                 set_child = &gtk::ScrolledWindow {
                     set_expand: true,
+
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_halign: gtk::Align::Center,
                         set_spacing: 16,
                         set_margin_all: 16,
+
                         gtk::Label {
                             set_markup: &model.title,
                             set_css_classes: &["title-1"],
                             set_align: gtk::Align::Start,
                         },
+
                         gtk::Box {
                             set_orientation: gtk::Orientation::Horizontal,
                             set_halign: gtk::Align::Start,
                             set_spacing: 16,
+
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
                                 set_halign: gtk::Align::Center,
                                 set_spacing: 8,
+
                                 #[name = "carousel"]
                                 adw::Carousel {
                                     set_height_request: CardComponent::default().height,
+
                                     gtk::Picture {
                                         set_filename: Some(&format!("{}1.png", TEST_PATH)),
                                     },
+
                                     gtk::Picture {
                                         set_filename: Some(&format!("{}2.png", TEST_PATH)),
                                     },
+
                                     gtk::Picture {
                                         set_filename: Some(&format!("{}3.png", TEST_PATH)),
                                     }
                                 },
+
                                 adw::CarouselIndicatorLines {
                                     set_carousel: Some(&carousel),
                                 },
+
                                 gtk::Label {
                                     set_text: "About",
                                     set_align: gtk::Align::Start,
                                     set_css_classes: &["title-4"],
                                 },
+
                                 gtk::TextView {
                                     set_buffer: Some(&short_buffer),
                                     set_wrap_mode: gtk::WrapMode::Word,
@@ -94,8 +105,10 @@ impl SimpleAsyncComponent for GamePageApp {
                                     set_can_target: false,
                                     set_css_classes: &["body"],
                                 },
+
                                 gtk::Expander {
                                     set_label: Some("Read More"),
+
                                     gtk::TextView {
                                         set_buffer: Some(&long_buffer),
                                         set_wrap_mode: gtk::WrapMode::Word,
@@ -104,33 +117,39 @@ impl SimpleAsyncComponent for GamePageApp {
                                         set_css_classes: &["body"],
                                     }
                                 },
+
                                 gtk::Label {
                                     set_text: "System Requirements",
                                     set_align: gtk::Align::Start,
                                     set_css_classes: &["title-4"],
                                 },
+
                                 model.requirements.widget(),
                             },
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
                                 set_valign: gtk::Align::Start,
                                 set_spacing: 16,
+
                                 model.card.widget(),
+
                                 gtk::Button {
                                     set_label: "Add",
                                     set_css_classes: &["suggested-action", "pill"],
                                     connect_clicked => GamePageAppMsg::Add,
                                 },
+
                                 gtk::Label {
                                     set_text: &format!("Developer: {}", model.developer),
                                     set_align: gtk::Align::Start,
                                     set_css_classes: &["dim-label"],
                                 },
+
                                 gtk::ScrolledWindow {
                                     set_propagate_natural_height: true,
                                     model.tags.widget() {
                                         set_margin_bottom: 8,
-                                    },
+                                    }
                                 }
                             }
                         }
@@ -145,8 +164,7 @@ impl SimpleAsyncComponent for GamePageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let TEST_PATH = "/home/dylan/Repos/anime-games-launcher/temp/";
-        let lang = LanguageIdentifier::default();
+        let TEST_PATH = "temp/";
         let short_buffer = gtk::TextBuffer::new(None);
         short_buffer.set_text("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
 
