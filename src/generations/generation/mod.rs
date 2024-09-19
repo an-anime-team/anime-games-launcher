@@ -8,6 +8,8 @@ use crate::games::prelude::*;
 
 use super::prelude::*;
 
+pub mod manifest;
+
 #[derive(Debug, thiserror::Error)]
 pub enum GenerationError {
     #[error(transparent)]
@@ -140,9 +142,9 @@ mod tests {
         let generation = generation.build(&packages_store, &generations_store).await?;
 
         assert_eq!(generation.games.len(), 1);
-        assert_eq!(&generation.lock_file.root, &[Hash(14823907562133104457)]);
+        assert_eq!(&generation.lock_file.root, &[0]);
         assert_eq!(generation.lock_file.resources.len(), 6);
-        assert_eq!(Hash::for_entry(path)?, Hash(6776203643455837073));
+        assert_eq!(Hash::for_entry(path)?, Hash(7454957278689766516));
 
         Ok(())
     }
