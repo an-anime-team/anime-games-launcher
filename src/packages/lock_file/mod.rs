@@ -297,6 +297,7 @@ impl LockFile {
                 match resource.format {
                     PackageResourceFormat::Package => unreachable!("Package must have been queued to be processed in a different place"),
 
+                    PackageResourceFormat::Module(_) |
                     PackageResourceFormat::File => {
                         // Move downloaded file to the correct location.
                         let hash = Hash::for_entry(&temp_path)?;

@@ -3,6 +3,13 @@ use serde::{Serialize, Deserialize};
 use crate::packages::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Standard of the lua module.
+pub enum ResourceModuleStandard {
+    Auto,
+    V1
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Format of the resource archive.
 pub enum ResourceArchiveFormat {
     Auto,
@@ -14,6 +21,7 @@ pub enum ResourceArchiveFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceFormat {
     Package,
+    Module(ResourceModuleStandard),
     File,
     Archive(ResourceArchiveFormat)
 }
@@ -31,6 +39,8 @@ impl ResourceFormat {
 
         if tail.is_empty() || tail == "package.json" {
             Self::Package
+        } else if uri.contains(".lua") {
+            Self::Module(ResourceModuleStandard::Auto)
         } else if uri.contains(".tar") {
             Self::Archive(ResourceArchiveFormat::Tar)
         } else if tail.ends_with(".zip") {
@@ -47,7 +57,13 @@ impl std::fmt::Display for ResourceFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Package => write!(f, "package"),
-            Self::File    => write!(f, "file"),
+
+            Self::Module(standard) => match standard {
+                ResourceModuleStandard::Auto => write!(f, "module"),
+                ResourceModuleStandard::V1   => write!(f, "module/v1")
+            },
+
+            Self::File => write!(f, "file"),
 
             Self::Archive(format) => match format {
                 ResourceArchiveFormat::Auto   => write!(f, "archive"),
@@ -65,7 +81,11 @@ impl std::str::FromStr for ResourceFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "package" => Ok(Self::Package),
-            "file"    => Ok(Self::File),
+
+            "module"    => Ok(Self::Module(ResourceModuleStandard::Auto)),
+            "module/v1" => Ok(Self::Module(ResourceModuleStandard::V1)),
+
+            "file" => Ok(Self::File),
 
             "archive"     => Ok(Self::Archive(ResourceArchiveFormat::Auto)),
             "archive/tar" => Ok(Self::Archive(ResourceArchiveFormat::Tar)),
@@ -92,6 +112,7 @@ mod tests {
     fn prediction() {
         assert_eq!(ResourceFormat::predict("https://example.org/"), ResourceFormat::Package);
         assert_eq!(ResourceFormat::predict("https://example.org/package.json"), ResourceFormat::Package);
+        assert_eq!(ResourceFormat::predict("https://example.org/module.lua"), ResourceFormat::Module(ResourceModuleStandard::Auto));
         assert_eq!(ResourceFormat::predict("https://example.org/file"), ResourceFormat::File);
         assert_eq!(ResourceFormat::predict("https://example.org/archive.tar"), ResourceFormat::Archive(ResourceArchiveFormat::Tar));
         assert_eq!(ResourceFormat::predict("https://example.org/archive.zip"), ResourceFormat::Archive(ResourceArchiveFormat::Zip));

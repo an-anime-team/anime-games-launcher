@@ -62,6 +62,7 @@ type ResourceFormat =
     // Lua script that will be loaded into the engine
     // and could be used by other modules. A singleton.
     | 'module'
+    | 'module/v1'
 
     // Raw file.
     | 'file'

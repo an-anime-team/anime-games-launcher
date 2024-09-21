@@ -2,12 +2,14 @@
     "standard": 1,
     "inputs": {
         "self-reference": "package.json",
-        "another-package": "../2/"
+        "another-package": "../2/",
+        "another-package-module": "../2/module.lua"
     },
     "outputs": {
         "self-reference": {
             "uri": "package.json",
             "format": "file"
-        }
+        },
+        "module": "module.lua"
     }
 }

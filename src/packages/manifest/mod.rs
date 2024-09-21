@@ -16,6 +16,7 @@ pub mod prelude {
 
     pub use super::resource_format::{
         ResourceFormat as PackageResourceFormat,
+        ResourceModuleStandard as PackageResourceModuleStandard,
         ResourceArchiveFormat as PackageResourceArchiveFormat
     };
 
