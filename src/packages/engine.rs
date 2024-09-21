@@ -31,40 +31,48 @@ impl<'lua> Engine<'lua> {
     /// from the provided lock file.
     pub fn create(lua: &'lua Lua, store: PackagesStore, lock_file: LockFileManifest) -> Result<Self, EngineError> {
         let engine_table = lua.create_table()?;
-
-        let resources_table = lua.create_table()?; // [hash][format] => resource
-        let context_map_table = lua.create_table()?; // [hash] => <inputs, outputs>
+        let resources_table = lua.create_table()?;
 
         let mut resources = VecDeque::with_capacity(lock_file.resources.len());
         let mut visited_resources = HashSet::new();
+        let mut evaluation_queue = VecDeque::with_capacity(lock_file.resources.len());
 
+        // Push root resources to the processing queue.
         for root in &lock_file.root {
             resources.push_back((*root, None));
             visited_resources.insert(*root);
         }
 
+        // Iterate over all the locked resources.
         while let Some((key, parent_context)) = resources.pop_front() {
+            // Resolve base resource info.
             let resource = &lock_file.resources[key as usize];
 
             let path = store.get_path(&resource.lock.hash, &resource.format);
 
+            // Store basic info to the lua representation.
             let resource_table = lua.create_table()?;
 
             resource_table.set("format", resource.format.to_string())?;
             resource_table.set("hash", resource.lock.hash.to_base32())?;
 
+            // Prepare resource value depending on its format.
             match resource.format {
                 PackageResourceFormat::Package => {
                     let package = lua.create_table()?;
                     let inputs_table = lua.create_table()?;
                     let outputs_table = lua.create_table()?;
 
+                    // Load inputs and outputs of the package,
+                    // push to the queue which weren't processed yet.
                     if let Some(inputs) = &resource.inputs {
                         for (name, input_key) in inputs.clone() {
                             inputs_table.set(name, input_key)?;
 
                             if visited_resources.insert(input_key) {
-                                resources.push_back((key, None));
+                                // Do not reference this package for inputs
+                                // because inputs can't load other inputs.
+                                resources.push_back((input_key, None));
                             }
                         }
                     }
@@ -74,7 +82,9 @@ impl<'lua> Engine<'lua> {
                             outputs_table.set(name, output_key)?;
 
                             if visited_resources.insert(output_key) {
-                                resources.push_back((key, Some(key)));
+                                // Reference this package so the output module
+                                // can load inputs of this package.
+                                resources.push_back((output_key, Some(key)));
                             }
                         }
                     }
@@ -89,39 +99,45 @@ impl<'lua> Engine<'lua> {
                     let module = std::fs::read(&path)?;
                     let module = lua.load(module);
 
+                    // Prepare special environment for the module.
                     // Clone _ENV ?
                     let env = lua.create_table()?;
 
-                    env.set("__engine", engine_table.clone())?;
+                    env.set("_ENGINE", engine_table.clone())?;
+                    env.set("engine", engine_table.clone())?;
 
+                    // Define standard functions depending on the standard.
                     match standard {
                         PackageResourceModuleStandard::Auto |
                         PackageResourceModuleStandard::V1 => {
-                            env.set("load", {
-                                lua.create_function(move |lua, name: String| {
-                                    let engine = lua.globals().get::<_, LuaTable>("__engine")?;
+                            env.set("load", lua.create_function(move |lua, name: String| {
+                                dbg!(lua.globals());
 
-                                    if let Some(parent_context) = parent_context {
-                                        let resources_table = engine.get::<_, LuaTable>("resources")?;
-                                        let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
+                                let engine = lua.globals().get::<_, LuaTable>("_ENGINE")?;
 
-                                        let parent_inputs_table = parent_resource.get::<_, LuaTable>("inputs")?;
+                                if let Some(parent_context) = parent_context {
+                                    dbg!(parent_context);
 
-                                        if let Ok(resource_key) = parent_inputs_table.get::<_, u64>(name) {
-                                            return resources_table.get::<_, LuaTable>(resource_key);
-                                        }
+                                    let resources_table = engine.get::<_, LuaTable>("resources")?;
+                                    let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
+
+                                    let parent_inputs_table = parent_resource.get::<_, LuaTable>("inputs")?;
+
+                                    if let Ok(resource_key) = parent_inputs_table.get::<_, u64>(name) {
+                                        return resources_table.get::<_, LuaTable>(resource_key);
                                     }
+                                }
 
-                                    Err(LuaError::external("no resource found"))
-                                })?
-                            })?;
+                                Err(LuaError::external("no resource found"))
+                            })?)?;
                         }
                     };
 
-                    let module = module.set_environment(env)
-                        .eval::<LuaTable>()?;
+                    // Push module to the evaluation queue
+                    // to execute dependencies first.
+                    evaluation_queue.push_back((key, module, env));
 
-                    resource_table.set("value", module)?;
+                    resource_table.set("value", LuaNil)?;
                 }
 
                 PackageResourceFormat::File |
@@ -133,10 +149,22 @@ impl<'lua> Engine<'lua> {
             resources_table.set(key, resource_table)?;
         }
 
-        engine_table.set("resources", resources_table)?;
-        engine_table.set("context_map", context_map_table)?;
+        // Evaluate all the modules in dependency growth order.
+        while let Some((key, module, env)) = evaluation_queue.pop_front() {
+            let resource_table = resources_table.get::<_, LuaTable>(key)?;
 
-        lua.globals().set("__engine", engine_table)?;
+            let module = module.set_environment(env.clone())
+                .into_function()?;
+
+            module.set_environment(env)?;
+
+            resource_table.set("value", module.call::<_, LuaTable>(())?)?;
+            resources_table.set(key, resource_table)?;
+        }
+
+        engine_table.set("resources", resources_table)?;
+
+        lua.globals().set("_ENGINE", engine_table)?;
 
         Ok(Self {
             lua,
@@ -149,7 +177,7 @@ impl<'lua> Engine<'lua> {
     ///
     /// Resource key is taken from the lock file.
     pub fn load_resource(&'lua self, index: u64) -> Result<Option<LuaTable<'lua>>, EngineError> {
-        let engine = self.lua.globals().get::<_, LuaTable>("__engine")?;
+        let engine = self.lua.globals().get::<_, LuaTable>("_ENGINE")?;
         let resources = engine.get::<_, LuaTable>("resources")?;
 
         if !resources.contains_key(index)? {
@@ -191,9 +219,11 @@ mod tests {
         let engine = Engine::create(&lua, store, lock_file)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
-        let resource = engine.load_resource(0)
+        let resource = engine.load_resource(2)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;
+
+        dbg!(&resource);
 
         let greeting = resource.get::<_, String>("greeting")
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
