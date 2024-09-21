@@ -480,8 +480,8 @@ mod tests {
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert_eq!(lock_file.root, &[0]);
-        assert_eq!(lock_file.resources.len(), 6);
-        assert_eq!(Hash::for_entry(path)?, Hash(7454957278689766516));
+        assert_eq!(lock_file.resources.len(), 8);
+        assert_eq!(Hash::for_entry(path)?, Hash(8790959131269916966));
 
         let Some(inputs) = lock_file.resources[0].inputs.take() else {
             anyhow::bail!("No inputs in the root package");
@@ -492,8 +492,8 @@ mod tests {
         };
 
         assert_eq!(inputs["self-reference"], 0);
-        assert_eq!(inputs["another-package"], 2);
-        assert_eq!(outputs["self-reference"], 1);
+        assert_eq!(inputs["another-package"], 4);
+        assert_eq!(outputs["self-reference"], 3);
 
         Ok(())
     }

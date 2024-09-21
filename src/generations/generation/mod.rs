@@ -143,8 +143,8 @@ mod tests {
 
         assert_eq!(generation.games.len(), 1);
         assert_eq!(&generation.lock_file.root, &[0]);
-        assert_eq!(generation.lock_file.resources.len(), 6);
-        assert_eq!(Hash::for_entry(path)?, Hash(7454957278689766516));
+        assert_eq!(generation.lock_file.resources.len(), 8);
+        assert_eq!(Hash::for_entry(path)?, Hash(8790959131269916966));
 
         Ok(())
     }

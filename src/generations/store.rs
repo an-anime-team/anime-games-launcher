@@ -186,25 +186,25 @@ mod tests {
 
         assert_eq!(generation.games.len(), 1);
         assert_eq!(&generation.lock_file.root, &[0]);
-        assert_eq!(generation.lock_file.resources.len(), 6);
-        assert_eq!(Hash::for_entry(path)?, Hash(7454957278689766516));
+        assert_eq!(generation.lock_file.resources.len(), 8);
+        assert_eq!(Hash::for_entry(path)?, Hash(8790959131269916966));
 
         generations_store.insert(generation)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
-        assert!(generations_store.has_generation(&Hash(12666501203039115038)));
+        assert!(generations_store.has_generation(&Hash(7608349506801496372)));
 
-        let generation = generations_store.load(&Hash(12666501203039115038))
+        let generation = generations_store.load(&Hash(7608349506801496372))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .ok_or_else(|| anyhow::anyhow!("Generation expected, got none"))?;
 
         assert_eq!(generation.games.len(), 1);
         assert_eq!(&generation.lock_file.root, &[0]);
-        assert_eq!(generation.lock_file.resources.len(), 6);
+        assert_eq!(generation.lock_file.resources.len(), 8);
 
-        generations_store.remove(&Hash(12666501203039115038))
+        generations_store.remove(&Hash(7608349506801496372))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());
