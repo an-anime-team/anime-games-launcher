@@ -25,7 +25,7 @@ impl AsyncFactoryComponent for GameTagFactory {
             set_tooltip: match self.tag {
                 GameTag::Gambling => "Game has scenes of gambling or has game mechanics related to gambling (wishes, banners, etc.)",
                 GameTag::Payments => "Game can accept real money for in-game content",
-                GameTag::Violence => "Game contains scenes of violence",
+                GameTag::Violence => "Game contains graphic violence",
                 GameTag::PerformanceIssues => "Game is known to have bad performance, either on any platform or on Linux specifically",
                 GameTag::AntiCheat => "Game has an anti-cheat, either server- or client-side but may still work on Linux",
                 GameTag::UnsupportedPlatform => "Game is not officially supported on Linux",

@@ -20,7 +20,7 @@ pub enum CardsRowMsg {
 impl SimpleAsyncComponent for CardsRow {
     type Init = String;
     type Input = CardsRowMsg;
-    type Output = ();
+    type Output = CardsRowMsg;
 
     view! {
         #[root]
@@ -67,7 +67,7 @@ impl SimpleAsyncComponent for CardsRow {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             CardsRowMsg::Clicked(index) => {
-                println!("Clicked {:?}", index.current_index());
+                sender.output(CardsRowMsg::Clicked(index)).unwrap();
             }
         }
     }
