@@ -67,15 +67,8 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Memory",
                     add_suffix = &gtk::Label {
-                        set_label: model.cpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
+                        set_label: &model.ram.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
                         set_css_classes: DIM_CLASS,
-                    },
-                    add_row = &adw::ActionRow {
-                        set_title: "Capacity",
-                        add_suffix = &gtk::Label {
-                            set_label: &model.ram.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
-                            set_css_classes: DIM_CLASS,
-                        }
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
