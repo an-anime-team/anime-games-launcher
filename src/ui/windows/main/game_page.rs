@@ -15,7 +15,10 @@ use crate::{
         },
         prelude::LocalizableString,
     },
-    ui::components::{card::CardComponent, game_tags::*, requirements::RequirementsComponent},
+    ui::components::{
+        card::CardComponent, game_tags::*, maintainers_row::MaintainersRowFactory,
+        requirements::RequirementsComponent,
+    },
 };
 
 #[derive(Debug)]
@@ -25,6 +28,7 @@ pub struct GamePageApp {
     developer: String,
     tags: AsyncFactoryVecDeque<GameTagFactory>,
     requirements: AsyncController<RequirementsComponent>,
+    maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
 }
 
 #[derive(Debug)]
@@ -124,37 +128,8 @@ impl SimpleAsyncComponent for GamePageApp {
                                 },
 
                                 model.requirements.widget(),
-
-                                gtk::Label {
-                                    set_text: "Package",
-                                    set_align: gtk::Align::Start,
-                                    add_css_class: "title-4",
-                                },
-
-                                adw::PreferencesGroup {
-                                    adw::ActionRow {
-                                        set_title: "Repository",
-                                        add_suffix = &gtk::Label {
-                                            set_text: "Official",
-                                            add_css_class: "dim-label",
-                                        }
-                                    },
-                                    adw::ActionRow {
-                                        set_title: "Maintainer",
-                                        add_suffix = &gtk::Label {
-                                            set_text: "CreeperFace",
-                                            add_css_class: "dim-label",
-                                        }
-                                    },
-                                    adw::ActionRow {
-                                        set_title: "Version",
-                                        add_suffix = &gtk::Label {
-                                            set_text: "69.42.0",
-                                            add_css_class: "dim-label",
-                                        }
-                                    }
-                                }
                             },
+
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
                                 set_valign: gtk::Align::Start,
@@ -174,7 +149,42 @@ impl SimpleAsyncComponent for GamePageApp {
                                     add_css_class: "dim-label",
                                 },
 
-                                model.tags.widget(),
+                                gtk::ScrolledWindow {
+                                    set_propagate_natural_height: true,
+
+                                    gtk::Box {
+                                        set_orientation: gtk::Orientation::Vertical,
+                                        set_spacing: 16,
+
+                                        model.tags.widget(),
+
+                                        adw::PreferencesGroup {
+                                            set_title: "Package",
+
+                                            adw::ActionRow {
+                                                set_title: "Repository",
+
+                                                add_suffix = &gtk::Label {
+                                                    set_text: "an-anime-team",
+                                                    add_css_class: "dim-label",
+                                                }
+                                            },
+
+                                            model.maintainers.widget() {
+                                                set_title: "Maintainers",
+                                            },
+
+                                            adw::ActionRow {
+                                                set_title: "Version",
+
+                                                add_suffix = &gtk::Label {
+                                                    set_text: "69.42.0",
+                                                    add_css_class: "dim-label",
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -278,7 +288,9 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
                     }),
                 })
                 .detach(),
+            maintainers: AsyncFactoryVecDeque::builder().launch_default().detach(),
         };
+
         let widgets = view_output!();
 
         model.tags.guard().push_back(GameTag::Violence);
@@ -288,6 +300,12 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
         model.tags.guard().push_back(GameTag::PerformanceIssues);
         model.tags.guard().push_back(GameTag::CompatibilityLayer);
         model.tags.guard().push_back(GameTag::UnsupportedPlatform);
+
+        model
+            .maintainers
+            .guard()
+            .push_back(String::from("Nikita Podvirnyi <krypt0nn@vk.com>"));
+        model.maintainers.guard().push_back(String::from("Maroxy"));
 
         AsyncComponentParts { model, widgets }
     }

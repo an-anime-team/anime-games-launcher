@@ -32,7 +32,6 @@ impl AsyncFactoryComponent for GameTagFactory {
                 GameTag::CompatibilityLayer => "Game is not runnable on Linux, but the integration package provides functionality to make the game runnable - this will likely be against TOS",
             },
             gtk::Frame {
-                set_css_classes: &["accent"],
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
@@ -47,7 +46,6 @@ impl AsyncFactoryComponent for GameTagFactory {
                             GameTag::UnsupportedPlatform => Some("cloud-disabled-symbolic"),
                             GameTag::CompatibilityLayer => Some("test-symbolic"),
                         },
-                        set_css_classes: &["accent"],
                     },
                     gtk::Label {
                         set_label: match self.tag {
@@ -59,7 +57,6 @@ impl AsyncFactoryComponent for GameTagFactory {
                             GameTag::UnsupportedPlatform => "Unsupported Platform",
                             GameTag::CompatibilityLayer => "Workarounds",
                         },
-                        set_css_classes: &["accent"],
                     }
                 }
             }
