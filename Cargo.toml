@@ -56,4 +56,4 @@ seahash = "4.1.0"
 base32 = "0.5.1"
 rand = "0.8.5"
 
-mlua = { version = "0.9.9", features = ["luau"] }
+mlua = { version = "0.9.9", features = ["luau-jit"] }
