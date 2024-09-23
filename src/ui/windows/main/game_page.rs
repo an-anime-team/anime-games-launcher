@@ -2,7 +2,6 @@ use adw::prelude::*;
 use gtk::prelude::*;
 
 use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
-use unic_langid::LanguageIdentifier;
 
 use crate::{
     games::{
@@ -57,7 +56,7 @@ impl SimpleAsyncComponent for GamePageApp {
 
                         gtk::Label {
                             set_markup: &model.title,
-                            set_css_classes: &["title-1"],
+                            add_css_class: "title-1",
                             set_align: gtk::Align::Start,
                         },
 
@@ -95,7 +94,7 @@ impl SimpleAsyncComponent for GamePageApp {
                                 gtk::Label {
                                     set_text: "About",
                                     set_align: gtk::Align::Start,
-                                    set_css_classes: &["title-4"],
+                                    add_css_class: "title-4",
                                 },
 
                                 gtk::TextView {
@@ -103,7 +102,7 @@ impl SimpleAsyncComponent for GamePageApp {
                                     set_wrap_mode: gtk::WrapMode::Word,
                                     set_editable: false,
                                     set_can_target: false,
-                                    set_css_classes: &["body"],
+                                    add_css_class: "body",
                                 },
 
                                 gtk::Expander {
@@ -114,17 +113,47 @@ impl SimpleAsyncComponent for GamePageApp {
                                         set_wrap_mode: gtk::WrapMode::Word,
                                         set_editable: false,
                                         set_can_target: false,
-                                        set_css_classes: &["body"],
+                                        add_css_class: "body",
                                     }
                                 },
 
                                 gtk::Label {
                                     set_text: "System Requirements",
                                     set_align: gtk::Align::Start,
-                                    set_css_classes: &["title-4"],
+                                    add_css_class: "title-4",
                                 },
 
                                 model.requirements.widget(),
+
+                                gtk::Label {
+                                    set_text: "Package",
+                                    set_align: gtk::Align::Start,
+                                    add_css_class: "title-4",
+                                },
+
+                                adw::PreferencesGroup {
+                                    adw::ActionRow {
+                                        set_title: "Repository",
+                                        add_suffix = &gtk::Label {
+                                            set_text: "Official",
+                                            add_css_class: "dim-label",
+                                        }
+                                    },
+                                    adw::ActionRow {
+                                        set_title: "Maintainer",
+                                        add_suffix = &gtk::Label {
+                                            set_text: "CreeperFace",
+                                            add_css_class: "dim-label",
+                                        }
+                                    },
+                                    adw::ActionRow {
+                                        set_title: "Version",
+                                        add_suffix = &gtk::Label {
+                                            set_text: "69.42.0",
+                                            add_css_class: "dim-label",
+                                        }
+                                    }
+                                }
                             },
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
@@ -142,15 +171,10 @@ impl SimpleAsyncComponent for GamePageApp {
                                 gtk::Label {
                                     set_text: &format!("Developer: {}", model.developer),
                                     set_align: gtk::Align::Start,
-                                    set_css_classes: &["dim-label"],
+                                    add_css_class: "dim-label",
                                 },
 
-                                gtk::ScrolledWindow {
-                                    set_propagate_natural_height: true,
-                                    model.tags.widget() {
-                                        set_margin_bottom: 8,
-                                    }
-                                }
+                                model.tags.widget(),
                             }
                         }
                     }
@@ -164,7 +188,7 @@ impl SimpleAsyncComponent for GamePageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let TEST_PATH = "temp/";
+        let TEST_PATH = "/temp/";
         let short_buffer = gtk::TextBuffer::new(None);
         short_buffer.set_text("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
 

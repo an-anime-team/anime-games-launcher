@@ -11,7 +11,7 @@ use crate::{
     utils::{pretty_bytes, pretty_frequency},
 };
 
-const DIM_CLASS: &[&str] = &["dim-label"];
+const DIM_CLASS: &str = "dim-label";
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for HardwareRequirements {
@@ -31,20 +31,20 @@ impl SimpleAsyncComponent for HardwareRequirements {
                     set_title: "Processor",
                     add_suffix = &gtk::Label {
                         set_label: model.cpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
-                        set_css_classes: DIM_CLASS,
+                        add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Core Count",
                         add_suffix = &gtk::Label {
                             set_label: &model.cpu.as_ref().and_then(|a| a.cores).map(|b| b.to_string()).unwrap_or("N/A".to_string()),
-                            set_css_classes: DIM_CLASS,
+                            add_css_class: DIM_CLASS,
                         }
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
                             set_label: &model.cpu.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b)).unwrap_or("N/A".to_string()),
-                            set_css_classes: DIM_CLASS,
+                            add_css_class: DIM_CLASS,
                         }
                     }
                 },
@@ -53,13 +53,13 @@ impl SimpleAsyncComponent for HardwareRequirements {
                     set_title: "Graphics",
                     add_suffix = &gtk::Label {
                         set_label: model.gpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
-                        set_css_classes: DIM_CLASS,
+                        add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Video Memory",
                         add_suffix = &gtk::Label {
                             set_label: &model.gpu.as_ref().and_then(|a| a.vram).map(|b| pretty_bytes(b)).unwrap_or("N/A".to_string()),
-                            set_css_classes: DIM_CLASS,
+                            add_css_class: DIM_CLASS,
                         }
                     }
                 },
@@ -68,13 +68,13 @@ impl SimpleAsyncComponent for HardwareRequirements {
                     set_title: "Memory",
                     add_suffix = &gtk::Label {
                         set_label: &model.ram.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
-                        set_css_classes: DIM_CLASS,
+                        add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
                             set_label: &model.ram.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b)).unwrap_or("N/A".to_string()),
-                            set_css_classes: DIM_CLASS,
+                            add_css_class: DIM_CLASS,
                         }
                     }
                 },
@@ -83,13 +83,13 @@ impl SimpleAsyncComponent for HardwareRequirements {
                     set_title: "Disk",
                     add_suffix = &gtk::Label {
                         set_label: &model.disk.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
-                        set_css_classes: DIM_CLASS,
+                        add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Type",
                         add_suffix = &gtk::Label {
                             set_label: &model.disk.as_ref().and_then(|a| a.disk_type.as_ref()).map(|b| b.to_string().to_uppercase()).unwrap_or("N/A".to_string()),
-                            set_css_classes: DIM_CLASS,
+                            add_css_class: DIM_CLASS,
                         }
                     }
                 }
