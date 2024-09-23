@@ -43,7 +43,7 @@ impl SimpleAsyncComponent for HardwareRequirements {
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
-                            set_label: &model.cpu.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b)).unwrap_or("N/A".to_string()),
+                            set_label: &model.cpu.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b, false)).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     }
@@ -73,7 +73,7 @@ impl SimpleAsyncComponent for HardwareRequirements {
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
-                            set_label: &model.ram.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b)).unwrap_or("N/A".to_string()),
+                            set_label: &model.ram.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b, true)).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     }

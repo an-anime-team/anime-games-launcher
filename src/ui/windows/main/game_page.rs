@@ -260,7 +260,7 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
                         }),
                         ram: Some(RamHardwareRequirements {
                             size: 8589934592,
-                            frequency: Some(1333000),
+                            frequency: Some(1333000000),
                         }),
                         disk: Some(DiskHardwareRequirements {
                             size: 107374182400,
@@ -279,7 +279,7 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
                         }),
                         ram: Some(RamHardwareRequirements {
                             size: 17179869184,
-                            frequency: Some(2400000),
+                            frequency: Some(2400000000),
                         }),
                         disk: Some(DiskHardwareRequirements {
                             size: 161061273600,
