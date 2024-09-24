@@ -69,7 +69,7 @@ impl AsyncFactoryComponent for MaintainersRowFactory {
                     let has_dot = contact.contains('.');
                     let valid_chars = contact
                         .chars()
-                        .all(|c| c.is_alphanumeric() || "#-_@".contains(c));
+                        .all(|c| c.is_alphanumeric() || "#-_@.".contains(c));
 
                     let prefix = if at_count == 1 && has_dot && valid_chars {
                         "mailto:"
