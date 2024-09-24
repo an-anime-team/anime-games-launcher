@@ -61,6 +61,7 @@ and rust-lua bridge API.
 | `fs:open`        | Try to open a file handle.               |
 | `fs:read`        | Read bytes from a file handle.           |
 | `fs:write`       | Write bytes to the file handle.          |
+| `fs:flush`       | Flush file handle buffer.                |
 | `fs:seek`        | Set pointer in a file handle.            |
 | `fs:close`       | Close file handle.                       |
 | `fs:create_file` | Create new file in a given path.         |
@@ -111,7 +112,7 @@ local metadata = fs:metadata("my_file.txt")
 print("File size: " .. metadata.length)
 ```
 
-### `fs:open(path: string, [options: Options]) -> u64`
+### `fs:open(path: string, [options: Options]) -> number`
 
 Open a file handle.
 
@@ -150,5 +151,174 @@ local handle = fs:open("my_file.txt", {
     write     = true
 })
 ```
+
+### `fs:read(handle: number, [position: number, [length: number]]) -> [number]`
+
+Read chunk of binary data from the open file handle.
+Size of chunk is determined by the rust API. If 0 length
+chunk is returned, then there's no more data to read.
+
+If `position` is specified, then `fs:seek` will be used before
+reading the chunk. This will affect future operations as well.
+
+If `length` is specified, then the chunk length will not be larger
+than the given number.
+
+```lua
+local handle = fs:open("large_file.txt")
+local chunk  = fs:read(handle)
+
+while #chunk > 0 do
+    -- do something with chunk of data
+
+    chunk = fs:read(handle)
+end
+
+fs:close(handle)
+```
+
+```lua
+local handle = fs:open("game_file")
+
+-- read game version from the file (3 bytes)
+local game_version = fs:read(handle, 1000, 3)
+
+fs:close(handle)
+```
+
+### `fs:write(handle: number, content: [number], [position: number])`
+
+Write given data to the open file at its current position.
+
+If `position` is specified, then `fs:seek` will be used before
+reading the chunk. This will affect future operations as well.
+
+```lua
+-- file    : [ ]
+-- pointer :  ^
+local handle = fs:open("new_file.txt", {
+    create    = true,
+    overwrite = true,
+    write     = true
+})
+
+-- file    : [1, 2, 3, ]
+-- pointer :          ^
+fs:write({ 1, 2, 3 })
+
+-- file    : [1, 2, 3, 4, 5, 6, ]
+-- pointer :                   ^
+fs:write({ 4, 5, 6 })
+
+fs:close(handle)
+
+-- file    : [1, 2, 3, 4, 5, 6, ]
+-- pointer :  ^
+local handle = fs:open("new_file.txt", {
+    write = true
+})
+
+-- file    : [7, 8, 9, 4, 5, 6, ]
+-- pointer :           ^
+fs:write({ 7, 8, 9 })
+
+fs:close(handle)
+```
+
+```lua
+-- []
+local handle = fs:open("new_file.txt", {
+    create    = true,
+    overwrite = true,
+    write     = true
+})
+
+-- file    : [1, 2, 3, 4, 5, 6, ]
+-- pointer :                   ^
+fs:write({ 1, 2, 3, 4, 5, 6 })
+
+-- file    : [1, 2, 5, 4, 3, 6, ]
+-- pointer :                 ^
+fs:write({ 5, 4, 3 }, 2)
+
+-- file    : [1, 2, 5, 4, 3, 7, 8, 9, ]
+-- pointer :                         ^
+fs:write({ 7, 8, 9 })
+
+fs:close(handle)
+```
+
+### `fs:flush(handle: number)`
+
+Flush file content on disk.
+
+Write operations are performed on a small buffer in the RAM
+and are flushed on disk only when the buffer is full. This
+greatly improves performance of operations, but changes will
+not be available for other file readers until the buffer
+is flushed. This function forcely flushes the buffer on disk.
+
+```lua
+local reader = fs:open("file.txt", {
+    create = true,
+    read   = true
+})
+
+local writer_1 = fs:open("file.txt", {
+    write = true
+})
+
+local writer_2 = fs:open("file.txt", {
+    write = true
+})
+
+local writer_3 = fs:open("file.txt", {
+    write = true
+})
+
+fs:write(writer_1, { 1, 2, 3 })
+fs:write(writer_2, { 4, 5, 6 })
+fs:write(writer_3, { 7, 8, 9 })
+
+-- []
+fs:read(reader)
+
+fs:flush(writer_1)
+
+-- [1, 2, 3]
+fs:read(reader)
+
+fs:flush(writer_2)
+
+-- [4, 5, 6]
+fs:read(reader)
+
+fs:close(writer_1)
+fs:close(writer_2)
+fs:close(writer_3) -- writer_3 is flushed on close
+
+-- [7, 8, 9]
+fs:read(reader)
+
+fs:close(reader)
+```
+
+### `fs:seek(handle: number, position: number)`
+
+### `fs:close(handle: number)`
+
+### `fs:create_file(path: string)`
+
+### `fs:read_file(path: string) -> [number]`
+
+### `fs:write_file(path: string, content: [number])`
+
+### `fs:remove_file(path: string)`
+
+### `fs:create_dir(path: string)`
+
+### `fs:read_dir(path: string) -> [Entry]`
+
+### `fs:remove_dir(path: string)`
 
 TBD
