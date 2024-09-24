@@ -16,7 +16,6 @@ pub enum EngineError {
     Lua(#[from] LuaError)
 }
 
-#[derive(Debug)]
 pub struct Engine<'lua> {
     lua: &'lua Lua,
     store: PackagesStore,

@@ -32,6 +32,7 @@ version = "1.1.0-dev"
 dependencies = [
  "anyhow",
  "base32",
+ "bufreaderwriter",
  "clap",
  "fluent-templates",
  "flume",
@@ -163,6 +164,12 @@ dependencies = [
  "memchr",
  "serde",
 ]
+
+[[package]]
+name = "bufreaderwriter"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ece5ad97cde626d9fb807bf2dd4b4c4d13d7317a93a2ee0f8f9ef6389850a49e"
 
 [[package]]
 name = "bumpalo"

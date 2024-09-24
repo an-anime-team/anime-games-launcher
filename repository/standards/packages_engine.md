@@ -160,6 +160,8 @@ chunk is returned, then there's no more data to read.
 
 If `position` is specified, then `fs:seek` will be used before
 reading the chunk. This will affect future operations as well.
+Position can be negative to set offset from the end of the file.
+Otherwise it's always set from the beginning of the file.
 
 If `length` is specified, then the chunk length will not be larger
 than the given number.
@@ -192,6 +194,8 @@ Write given data to the open file at its current position.
 
 If `position` is specified, then `fs:seek` will be used before
 reading the chunk. This will affect future operations as well.
+Position can be negative to set offset from the end of the file.
+Otherwise it's always set from the beginning of the file.
 
 ```lua
 -- file    : [ ]

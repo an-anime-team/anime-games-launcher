@@ -3,20 +3,26 @@ use std::time::{UNIX_EPOCH, Duration};
 use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
 use std::fs::File;
+use std::io::{Read, Write, Seek, SeekFrom};
 
 use mlua::prelude::*;
+use bufreaderwriter::rand::BufReaderWriterRand;
 
 use super::EngineError;
 
-#[derive(Debug)]
+const READ_CHUNK_LEN: usize = 8192;
+
 pub struct Standard<'lua> {
     lua: &'lua Lua,
 
-    _file_handles: Arc<Mutex<HashMap<u64, File>>>,
+    _file_handles: Arc<Mutex<HashMap<u64, BufReaderWriterRand<File>>>>,
 
     fs_exists: LuaFunction<'lua>,
     fs_metadata: LuaFunction<'lua>,
-    fs_open: LuaFunction<'lua>
+    fs_open: LuaFunction<'lua>,
+    fs_read: LuaFunction<'lua>,
+    fs_write: LuaFunction<'lua>,
+    fs_flush: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -63,39 +69,130 @@ impl<'lua> Standard<'lua> {
                 Ok(result)
             })?,
 
-            fs_open: lua.create_function(move |_, (path, options): (String, Option<LuaTable>)| {
-                let path = PathBuf::from(path);
-                let handle = rand::random::<u64>();
+            fs_open: {
+                let file_handles = file_handles.clone();
 
-                let mut read = true;
-                let mut write = false;
-                let mut create = false;
-                let mut overwrite = false;
-                let mut append = false;
+                lua.create_function(move |_, (path, options): (String, Option<LuaTable>)| {
+                    let path = PathBuf::from(path);
+                    let handle = rand::random::<u64>();
+    
+                    let mut read = true;
+                    let mut write = false;
+                    let mut create = false;
+                    let mut overwrite = false;
+                    let mut append = false;
+    
+                    if let Some(options) = options {
+                        read      = options.get::<_, bool>("read").unwrap_or(true);
+                        write     = options.get::<_, bool>("write").unwrap_or_default();
+                        create    = options.get::<_, bool>("create").unwrap_or_default();
+                        overwrite = options.get::<_, bool>("overwrite").unwrap_or_default();
+                        append    = options.get::<_, bool>("append").unwrap_or_default();
+                    }
+    
+                    let file = File::options()
+                        .read(read)
+                        .write(write)
+                        .create(create)
+                        .truncate(overwrite)
+                        .append(append)
+                        .open(path)?;
+    
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+    
+                    handles.insert(handle, BufReaderWriterRand::new_reader(file));
+    
+                    Ok(handle)
+                })?
+            },
 
-                if let Some(options) = options {
-                    read      = options.get::<_, bool>("read").unwrap_or(true);
-                    write     = options.get::<_, bool>("write").unwrap_or_default();
-                    create    = options.get::<_, bool>("create").unwrap_or_default();
-                    overwrite = options.get::<_, bool>("overwrite").unwrap_or_default();
-                    append    = options.get::<_, bool>("append").unwrap_or_default();
-                }
+            fs_read: {
+                let file_handles = file_handles.clone();
 
-                let file = File::options()
-                    .read(read)
-                    .write(write)
-                    .create(create)
-                    .truncate(overwrite)
-                    .append(append)
-                    .open(path)?;
+                lua.create_function(move |_, (handle, position, length): (u64, Option<i64>, Option<u64>)| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                let mut handles = file_handles.lock()
-                    .map_err(|err| LuaError::external(format!("Failed to create file handle: {err}")))?;
+                    let Some(file) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid file handle"));
+                    };
 
-                handles.insert(handle, file);
+                    // Seek the file if position is given.
+                    if let Some(position) = position {
+                        if position > 0 {
+                            file.seek(SeekFrom::Start(position as u64))?;
+                        }
 
-                Ok(handle)
-            })?
+                        else {
+                            file.seek(SeekFrom::End(position))?;
+                        }
+                    }
+
+                    // Read exact amount of bytes.
+                    if let Some(length) = length {
+                        let mut buf = vec![0; length as usize];
+
+                        file.read_exact(&mut buf)?;
+
+                        Ok(buf)
+                    }
+
+                    // Or just read a chunk of data.
+                    else {
+                        let mut buf = [0; READ_CHUNK_LEN];
+
+                        let len = file.read(&mut buf)?;
+
+                        Ok(buf[..len].to_vec())
+                    }
+                })?
+            },
+
+            fs_write: {
+                let file_handles = file_handles.clone();
+
+                lua.create_function(move |_, (handle, content, position): (u64, Vec<u8>, Option<i64>)| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(file) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid file handle"));
+                    };
+
+                    // Seek the file if position is given.
+                    if let Some(position) = position {
+                        if position > 0 {
+                            file.seek(SeekFrom::Start(position as u64))?;
+                        }
+
+                        else {
+                            file.seek(SeekFrom::End(position))?;
+                        }
+                    }
+
+                    // Write the content to the file.
+                    file.write_all(&content)?;
+
+                    Ok(())
+                })?
+            },
+
+            fs_flush: {
+                let file_handles = file_handles.clone();
+
+                lua.create_function(move |_, handle: u64| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    // Flush the file if the handle is valid.
+                    if let Some(file) = handles.get_mut(&handle) {
+                        file.flush()?;
+                    }
+
+                    Ok(())
+                })?
+            }
         })
     }
 
@@ -109,6 +206,9 @@ impl<'lua> Standard<'lua> {
         fs.set("exists", self.fs_exists.clone())?;
         fs.set("metadata", self.fs_metadata.clone())?;
         fs.set("open", self.fs_open.clone())?;
+        fs.set("read", self.fs_read.clone())?;
+        fs.set("write", self.fs_write.clone())?;
+        fs.set("flush", self.fs_flush.clone())?;
 
         Ok(env)
     }
