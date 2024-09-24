@@ -20,9 +20,11 @@ pub struct Standard<'lua> {
     fs_exists: LuaFunction<'lua>,
     fs_metadata: LuaFunction<'lua>,
     fs_open: LuaFunction<'lua>,
+    fs_seek: LuaFunction<'lua>,
     fs_read: LuaFunction<'lua>,
     fs_write: LuaFunction<'lua>,
-    fs_flush: LuaFunction<'lua>
+    fs_flush: LuaFunction<'lua>,
+    fs_close: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -107,6 +109,30 @@ impl<'lua> Standard<'lua> {
                 })?
             },
 
+            fs_seek: {
+                let file_handles = file_handles.clone();
+
+                lua.create_function(move |_, (handle, position): (u64, i64)| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(file) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid file handle"));
+                    };
+
+                    // Seek the file.
+                    if position >= 0 {
+                        file.seek(SeekFrom::Start(position as u64))?;
+                    }
+
+                    else {
+                        file.seek(SeekFrom::End(position))?;
+                    }
+
+                    Ok(())
+                })?
+            },
+
             fs_read: {
                 let file_handles = file_handles.clone();
 
@@ -120,7 +146,7 @@ impl<'lua> Standard<'lua> {
 
                     // Seek the file if position is given.
                     if let Some(position) = position {
-                        if position > 0 {
+                        if position >= 0 {
                             file.seek(SeekFrom::Start(position as u64))?;
                         }
 
@@ -162,7 +188,7 @@ impl<'lua> Standard<'lua> {
 
                     // Seek the file if position is given.
                     if let Some(position) = position {
-                        if position > 0 {
+                        if position >= 0 {
                             file.seek(SeekFrom::Start(position as u64))?;
                         }
 
@@ -192,6 +218,25 @@ impl<'lua> Standard<'lua> {
 
                     Ok(())
                 })?
+            },
+
+            fs_close: {
+                let file_handles = file_handles.clone();
+
+                lua.create_function(move |_, handle: u64| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    // Flush the file if the handle is valid.
+                    if let Some(file) = handles.get_mut(&handle) {
+                        file.flush()?;
+                    }
+
+                    // Remove the file handle.
+                    handles.remove(&handle);
+
+                    Ok(())
+                })?
             }
         })
     }
@@ -206,9 +251,11 @@ impl<'lua> Standard<'lua> {
         fs.set("exists", self.fs_exists.clone())?;
         fs.set("metadata", self.fs_metadata.clone())?;
         fs.set("open", self.fs_open.clone())?;
+        fs.set("seek", self.fs_seek.clone())?;
         fs.set("read", self.fs_read.clone())?;
         fs.set("write", self.fs_write.clone())?;
         fs.set("flush", self.fs_flush.clone())?;
+        fs.set("close", self.fs_close.clone())?;
 
         Ok(env)
     }

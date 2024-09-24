@@ -59,10 +59,10 @@ and rust-lua bridge API.
 | `fs:exists`      | Check if given path exists.              |
 | `fs:metadata`    | Get metadata of given fs path.           |
 | `fs:open`        | Try to open a file handle.               |
+| `fs:seek`        | Set pointer in a file handle.            |
 | `fs:read`        | Read bytes from a file handle.           |
 | `fs:write`       | Write bytes to the file handle.          |
 | `fs:flush`       | Flush file handle buffer.                |
-| `fs:seek`        | Set pointer in a file handle.            |
 | `fs:close`       | Close file handle.                       |
 | `fs:create_file` | Create new file in a given path.         |
 | `fs:read_file`   | Read content from the given file's path. |
@@ -150,6 +150,29 @@ local handle = fs:open("my_file.txt", {
     overwrite = true,
     write     = true
 })
+```
+
+### `fs:seek(handle: number, position: number)`
+
+Seek position in the given file handle.
+
+Position can be negative to set offset from the end of the file.
+Otherwise it's always set from the beginning of the file.
+
+```lua
+local handle = fs:open("my_file.txt")
+
+fs:seek(10)
+
+-- read chunk of data skipping first 10 bytes
+local head = fs:read()
+
+fs:seek(-10)
+
+-- read last chunk of data with 10 bytes offset from the end
+local tail = fs:read()
+
+fs:close(handle)
 ```
 
 ### `fs:read(handle: number, [position: number, [length: number]]) -> [number]`
@@ -307,9 +330,17 @@ fs:read(reader)
 fs:close(reader)
 ```
 
-### `fs:seek(handle: number, position: number)`
-
 ### `fs:close(handle: number)`
+
+Close the file handle. This will flush the inner buffer
+of the file and prevent future use of this handle.
+
+```lua
+local handle = fs:write("my_file.txt", { write = true })
+
+fs:write({ 1, 2, 3 })
+fs:close(handle)
+```
 
 ### `fs:create_file(path: string)`
 
