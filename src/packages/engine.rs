@@ -1,4 +1,5 @@
-use std::collections::{VecDeque, HashSet};
+use std::collections::{HashSet, VecDeque};
+use std::str::FromStr;
 
 use mlua::prelude::*;
 
@@ -33,6 +34,11 @@ impl<'lua> Engine<'lua> {
         let engine_table = lua.create_table()?;
         let resources_table = lua.create_table()?;
 
+        // Lua tables are shared (like in JS) so I can store them right there.
+        engine_table.set("resources", resources_table.clone())?;
+
+        lua.globals().set("#!ENGINE", engine_table.clone())?;
+
         let mut resources = VecDeque::with_capacity(lock_file.resources.len());
         let mut visited_resources = HashSet::new();
         let mut evaluation_queue = VecDeque::with_capacity(lock_file.resources.len());
@@ -55,6 +61,8 @@ impl<'lua> Engine<'lua> {
 
             resource_table.set("format", resource.format.to_string())?;
             resource_table.set("hash", resource.lock.hash.to_base32())?;
+
+            resources_table.set(key, resource_table.clone())?;
 
             // Prepare resource value depending on its format.
             match resource.format {
@@ -100,29 +108,48 @@ impl<'lua> Engine<'lua> {
                     let module = lua.load(module);
 
                     // Prepare special environment for the module.
-                    // Clone _ENV ?
                     let env = lua.create_table()?;
 
-                    env.set("_ENGINE", engine_table.clone())?;
-                    env.set("engine", engine_table.clone())?;
+                    // Clone the lua globals.
+                    for pair in lua.globals().pairs::<LuaValue, LuaValue>() {
+                        let (key, value) = pair?;
+
+                        if key.as_str() != Some("#!ENGINE") {
+                            env.set(key, value)?;
+                        }
+                    }
+
+                    env.set("#!ENGINE", engine_table.clone())?;
 
                     // Define standard functions depending on the standard.
                     match standard {
                         PackageResourceModuleStandard::Auto |
                         PackageResourceModuleStandard::V1 => {
                             env.set("load", lua.create_function(move |lua, name: String| {
-                                dbg!(lua.globals());
+                                // Load the engine table.
+                                let engine = lua.globals().get::<_, LuaTable>("#!ENGINE")?;
 
-                                let engine = lua.globals().get::<_, LuaTable>("_ENGINE")?;
-
+                                // Read the parent package if it exists (must be at this point).
                                 if let Some(parent_context) = parent_context {
-                                    dbg!(parent_context);
-
+                                    // Load the parent resource table from the engine.
                                     let resources_table = engine.get::<_, LuaTable>("resources")?;
                                     let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
 
-                                    let parent_inputs_table = parent_resource.get::<_, LuaTable>("inputs")?;
+                                    // Try to parse its format.
+                                    let Ok(parent_format) = PackageResourceFormat::from_str(&parent_resource.get::<_, String>("format")?) else {
+                                        return Err(LuaError::external("unknown parent resource format"));
+                                    };
 
+                                    // Throw an error if it's not a package type.
+                                    if parent_format != PackageResourceFormat::Package {
+                                        return Err(LuaError::external("invalid parent package format"));
+                                    }
+
+                                    // Read the inputs of the parent package.
+                                    let parent_value = parent_resource.get::<_, LuaTable>("value")?;
+                                    let parent_inputs_table = parent_value.get::<_, LuaTable>("inputs")?;
+
+                                    // Try to read the requested input.
                                     if let Ok(resource_key) = parent_inputs_table.get::<_, u64>(name) {
                                         return resources_table.get::<_, LuaTable>(resource_key);
                                     }
@@ -135,9 +162,7 @@ impl<'lua> Engine<'lua> {
 
                     // Push module to the evaluation queue
                     // to execute dependencies first.
-                    evaluation_queue.push_back((key, module, env));
-
-                    resource_table.set("value", LuaNil)?;
+                    evaluation_queue.push_back((resource_table, module, env));
                 }
 
                 PackageResourceFormat::File |
@@ -145,26 +170,15 @@ impl<'lua> Engine<'lua> {
                     resource_table.set("value", path.to_string_lossy())?;
                 }
             }
-
-            resources_table.set(key, resource_table)?;
         }
 
         // Evaluate all the modules in dependency growth order.
-        while let Some((key, module, env)) = evaluation_queue.pop_front() {
-            let resource_table = resources_table.get::<_, LuaTable>(key)?;
+        while let Some((resource_table, module, env)) = evaluation_queue.pop_front() {
+            let value = module.set_environment(env)
+                .call::<_, LuaTable>(())?;
 
-            let module = module.set_environment(env.clone())
-                .into_function()?;
-
-            module.set_environment(env)?;
-
-            resource_table.set("value", module.call::<_, LuaTable>(())?)?;
-            resources_table.set(key, resource_table)?;
+            resource_table.set("value", value)?;
         }
-
-        engine_table.set("resources", resources_table)?;
-
-        lua.globals().set("_ENGINE", engine_table)?;
 
         Ok(Self {
             lua,
@@ -173,18 +187,63 @@ impl<'lua> Engine<'lua> {
         })
     }
 
-    /// Try to load resource from the engine.
-    ///
-    /// Resource key is taken from the lock file.
-    pub fn load_resource(&'lua self, index: u64) -> Result<Option<LuaTable<'lua>>, EngineError> {
-        let engine = self.lua.globals().get::<_, LuaTable>("_ENGINE")?;
+    /// Try to load root resources from the engine.
+    /// 
+    /// Resource keys are taken from the lock file.
+    pub fn load_root_resources(&'lua self) -> Result<Vec<LuaTable<'lua>>, EngineError> {
+        let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
         let resources = engine.get::<_, LuaTable>("resources")?;
 
-        if !resources.contains_key(index)? {
-            return Ok(None);
+        let mut root = Vec::with_capacity(self.lock_file.root.len());
+
+        for key in &self.lock_file.root {
+            root.push(resources.get::<_, LuaTable>(*key)?);
         }
 
-        Ok(Some(resources.get::<_, LuaTable>(index)?))
+        Ok(root)
+    }
+
+    /// Try to load resource from the engine.
+    ///
+    /// This function will try to find the resource
+    /// by given identifier. It can be a direct index
+    /// to the resource, or a hash (or a part of hash).
+    pub fn load_resource(&'lua self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable<'lua>>, EngineError> {
+        let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
+        let resources = engine.get::<_, LuaTable>("resources")?;
+
+        let identifier = identrifier.to_string();
+        let numeric_identifier = identifier.parse::<u64>().ok();
+        
+        // Try to directly load the resource.
+        if let Some(index) = numeric_identifier {
+            if resources.contains_key(index)? {
+                return Ok(Some(resources.get(index)?));
+            }
+        }
+
+        // Otherwise search it through the whole list of resources.
+        for resource in resources.sequence_values::<LuaTable>() {
+            let resource = resource?;
+
+            // Check the base32 encoded hash.
+            let hash = resource.get::<_, String>("hash")?;
+
+            if hash.contains(&identifier) {
+                return Ok(Some(resource));
+            }
+
+            // Or if can - check integer representation of the hash.
+            if let Some(numeric_identifier) = numeric_identifier {
+                if let Some(numeric_hash) = Hash::from_base32(hash) {
+                    if numeric_hash.0 == numeric_identifier {
+                        return Ok(Some(resource));
+                    }
+                }
+            }
+        }
+
+        Ok(None)
     }
 }
 
@@ -216,19 +275,20 @@ mod tests {
 
         let lua = Lua::new();
 
-        let engine = Engine::create(&lua, store, lock_file)
-            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+        let engine = Engine::create(&lua, store, lock_file)?;
 
-        let resource = engine.load_resource(2)
-            .map_err(|err| anyhow::anyhow!(err.to_string()))?
+        let resource = engine.load_resource("gqj0qechfgcge")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;
 
-        dbg!(&resource);
+        let value = resource.get::<_, LuaTable>("value")?;
 
-        let greeting = resource.get::<_, String>("greeting")
-            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+        assert!(value.get::<_, bool>("test_load_valid_input")?);
+        assert!(!value.get::<_, bool>("test_load_valid_output")?);
+        assert!(!value.get::<_, bool>("test_load_invalid_input")?);
+        assert!(!value.get::<_, bool>("test_load_invalid_output")?);
+        assert!(!value.get::<_, bool>("test_load_unexisting_input")?);
 
-        assert_eq!(greeting, "Hello, World!");
+        assert_eq!(value.get::<_, String>("greeting")?, "Hello, World!");
 
         Ok(())
     }
