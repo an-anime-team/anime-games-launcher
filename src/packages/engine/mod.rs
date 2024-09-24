@@ -5,6 +5,8 @@ use mlua::prelude::*;
 
 use crate::packages::prelude::*;
 
+pub mod v1_standard;
+
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
     #[error(transparent)]
@@ -18,7 +20,9 @@ pub enum EngineError {
 pub struct Engine<'lua> {
     lua: &'lua Lua,
     store: PackagesStore,
-    lock_file: LockFileManifest
+    lock_file: LockFileManifest,
+
+    v1_standard: v1_standard::Standard<'lua>
 }
 
 impl<'lua> Engine<'lua> {
@@ -36,6 +40,9 @@ impl<'lua> Engine<'lua> {
         let mut resources = VecDeque::with_capacity(lock_file.resources.len());
         let mut visited_resources = HashSet::new();
         let mut evaluation_queue = VecDeque::with_capacity(lock_file.resources.len());
+
+        // Prepare modules standard implementations.
+        let v1_standard = v1_standard::Standard::new(lua)?;
 
         // Push root resources to the processing queue.
         for root in &lock_file.root {
@@ -102,7 +109,7 @@ impl<'lua> Engine<'lua> {
                     let module = lua.load(module);
 
                     // Prepare special environment for the module.
-                    let env = lua.create_table()?;
+                    let env = v1_standard.create_env()?;
 
                     // Clone the lua globals.
                     for pair in lua.globals().pairs::<LuaValue, LuaValue>() {
@@ -177,7 +184,8 @@ impl<'lua> Engine<'lua> {
         Ok(Self {
             lua,
             store,
-            lock_file
+            lock_file,
+            v1_standard
         })
     }
 
