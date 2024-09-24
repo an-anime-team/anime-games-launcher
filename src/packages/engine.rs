@@ -11,13 +11,7 @@ pub enum EngineError {
     Io(#[from] std::io::Error),
 
     #[error("Lua engine error: {0}")]
-    Lua(#[from] LuaError),
-
-    #[error("Failed to send data to the packages engine channel: {0}")]
-    Send(String),
-
-    #[error("Failed to receive data from packages engine channel: {0}")]
-    Receive(String)
+    Lua(#[from] LuaError)
 }
 
 #[derive(Debug)]
