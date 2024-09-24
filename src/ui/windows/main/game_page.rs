@@ -305,7 +305,10 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
             .maintainers
             .guard()
             .push_back(String::from("Nikita Podvirnyi <krypt0nn@vk.com>"));
-        model.maintainers.guard().push_back(String::from("Maroxy"));
+        model
+            .maintainers
+            .guard()
+            .push_back(String::from("Maroxy <82662823523516416>"));
 
         AsyncComponentParts { model, widgets }
     }
