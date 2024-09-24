@@ -24,7 +24,11 @@ pub struct Standard<'lua> {
     fs_read: LuaFunction<'lua>,
     fs_write: LuaFunction<'lua>,
     fs_flush: LuaFunction<'lua>,
-    fs_close: LuaFunction<'lua>
+    fs_close: LuaFunction<'lua>,
+
+    fs_read_file: LuaFunction<'lua>,
+    fs_write_file: LuaFunction<'lua>,
+    fs_remove_file: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -237,7 +241,29 @@ impl<'lua> Standard<'lua> {
 
                     Ok(())
                 })?
-            }
+            },
+
+            fs_read_file: lua.create_function(|_, path: String| {
+                let path = PathBuf::from(path);
+
+                Ok(std::fs::read(path)?)
+            })?,
+
+            fs_write_file: lua.create_function(|_, (path, content): (String, Vec<u8>)| {
+                let path = PathBuf::from(path);
+
+                std::fs::write(path, &content)?;
+
+                Ok(())
+            })?,
+
+            fs_remove_file: lua.create_function(|_, path: String| {
+                let path = PathBuf::from(path);
+
+                std::fs::remove_file(path)?;
+
+                Ok(())
+            })?
         })
     }
 
@@ -256,6 +282,10 @@ impl<'lua> Standard<'lua> {
         fs.set("write", self.fs_write.clone())?;
         fs.set("flush", self.fs_flush.clone())?;
         fs.set("close", self.fs_close.clone())?;
+
+        fs.set("read_file", self.fs_read_file.clone())?;
+        fs.set("write_file", self.fs_write_file.clone())?;
+        fs.set("remove_file", self.fs_remove_file.clone())?;
 
         Ok(env)
     }

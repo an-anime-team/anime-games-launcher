@@ -342,13 +342,34 @@ fs:write({ 1, 2, 3 })
 fs:close(handle)
 ```
 
-### `fs:create_file(path: string)`
-
 ### `fs:read_file(path: string) -> [number]`
+
+Read the whole content of a file in a given path.
+
+> Note: do not try to read large files using this function.
+
+```lua
+local content = fs:read_file("my_file.txt")
+
+print("Read " .. #content .. " bytes")
+```
 
 ### `fs:write_file(path: string, content: [number])`
 
+Overwrite existing file with given content, or create
+a new one.
+
+```lua
+fs:write_file("my_file.txt", { 1, 2, 3 })
+```
+
 ### `fs:remove_file(path: string)`
+
+Remove file in a given path.
+
+```lua
+fs:remove_file("my_file.txt")
+```
 
 ### `fs:create_dir(path: string)`
 

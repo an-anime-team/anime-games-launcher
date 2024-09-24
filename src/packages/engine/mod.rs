@@ -18,16 +18,15 @@ pub enum EngineError {
 
 pub struct Engine<'lua> {
     lua: &'lua Lua,
-    store: PackagesStore,
     lock_file: LockFileManifest,
 
-    v1_standard: v1_standard::Standard<'lua>
+    _v1_standard: v1_standard::Standard<'lua>
 }
 
 impl<'lua> Engine<'lua> {
     /// Create new packages engine and load all the resources
     /// from the provided lock file.
-    pub fn create(lua: &'lua Lua, store: PackagesStore, lock_file: LockFileManifest) -> Result<Self, EngineError> {
+    pub fn create(lua: &'lua Lua, store: &PackagesStore, lock_file: LockFileManifest) -> Result<Self, EngineError> {
         let engine_table = lua.create_table()?;
         let resources_table = lua.create_table()?;
 
@@ -182,9 +181,9 @@ impl<'lua> Engine<'lua> {
 
         Ok(Self {
             lua,
-            store,
             lock_file,
-            v1_standard
+
+            _v1_standard: v1_standard
         })
     }
 
@@ -276,7 +275,7 @@ mod tests {
 
         let lua = Lua::new();
 
-        let engine = Engine::create(&lua, store, lock_file)?;
+        let engine = Engine::create(&lua, &store, lock_file)?;
 
         let resource = engine.load_resource("gqj0qechfgcge")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;
