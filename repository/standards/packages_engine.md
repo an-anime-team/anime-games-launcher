@@ -58,6 +58,8 @@ and rust-lua bridge API.
 | ---------------- | ---------------------------------------- |
 | `fs:exists`      | Check if given path exists.              |
 | `fs:metadata`    | Get metadata of given fs path.           |
+| `fs:move`        | Move a file or a folder.                 |
+| `fs:remove`      | Remove a file or a folder.               |
 | `fs:open`        | Try to open a file handle.               |
 | `fs:seek`        | Set pointer in a file handle.            |
 | `fs:read`        | Read bytes from a file handle.           |
@@ -89,6 +91,8 @@ end
 Read metadata of the filesystem path (file, folder or a symlink).
 
 ```ts
+type EntryType = 'file' | 'folder' | 'symlink';
+
 type Metadata = {
     // UTC timestamp of the creation time.
     created_at: number,
@@ -102,14 +106,39 @@ type Metadata = {
 
     // Is the given path accessible.
     // Similar to `fs:exists`.
-    is_accessible: boolean
+    is_accessible: boolean,
+
+    // Type of the filesystem entry.
+    type: EntryType
 };
 ```
 
 ```lua
 local metadata = fs:metadata("my_file.txt")
 
-print("File size: " .. metadata.length)
+print("Size: " .. metadata.length)
+print("Type: " .. metadata.type)
+```
+
+### `fs:move(source: string, target: string)`
+
+Move a file or a folder to another location. This function will
+throw an error if the target location already exists or is not
+accessible.
+
+```lua
+fs:move("my_folder", "new_location/my_folder")
+```
+
+### `fs:remove(path: string)`
+
+Remove a file, folder or a symlink. Removing a folder will remove
+all its content as well.
+
+```lua
+fs:remove("my_file.txt")
+fs:remove("my_folder")
+fs:remove("my_symlink")
 ```
 
 ### `fs:open(path: string, [options: Options]) -> number`
@@ -373,8 +402,49 @@ fs:remove_file("my_file.txt")
 
 ### `fs:create_dir(path: string)`
 
+Create directory if it doesn't exist.
+
+```lua
+-- this will create all the parent directories too
+fs:create_dir("a/b/c/d")
+```
+
 ### `fs:read_dir(path: string) -> [Entry]`
+
+Read the given directory, returning list of its entries.
+
+```ts
+type Entry = {
+    name: string,
+    path: string,
+    type: EntryType
+};
+```
+
+```lua
+function print_dir(path, prefix)
+    for _, entry in pairs(fs:read_dir(path)) do
+        print(prefix .. entry.name)
+
+        if entry.type == "folder" do
+            print_dir(entry.path, prefix .. "  ")
+        end
+    end
+end
+
+print_dir("my_dir", "")
+```
 
 ### `fs:remove_dir(path: string)`
 
-TBD
+Remove given folder and all its content.
+
+```lua
+fs:create_dir("my_dir")
+
+print(fs:exists("my_dir")) -- true
+
+fs:remove_dir("my_dir")
+
+print(fs:exists("my_dir")) -- false
+```
