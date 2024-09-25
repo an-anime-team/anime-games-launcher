@@ -30,7 +30,10 @@ pub struct Standard<'lua> {
 
     fs_read_file: LuaFunction<'lua>,
     fs_write_file: LuaFunction<'lua>,
-    fs_remove_file: LuaFunction<'lua>
+    fs_remove_file: LuaFunction<'lua>,
+    fs_create_dir: LuaFunction<'lua>,
+    fs_read_dir: LuaFunction<'lua>,
+    fs_remove_dir: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -358,6 +361,50 @@ impl<'lua> Standard<'lua> {
                 std::fs::remove_file(path)?;
 
                 Ok(())
+            })?,
+
+            fs_create_dir: lua.create_function(|_, path: String| {
+                let path = resolve_path(path)?;
+
+                std::fs::create_dir_all(path)?;
+
+                Ok(())
+            })?,
+
+            fs_read_dir: lua.create_function(|lua, path: String| {
+                let path = resolve_path(path)?;
+
+                let entries = lua.create_table()?;
+
+                for entry in path.read_dir()? {
+                    let entry = entry?;
+                    let entry_table = lua.create_table()?;
+
+                    entry_table.set("name", entry.file_name().to_string_lossy().to_string())?;
+                    entry_table.set("path", entry.path().to_string_lossy().to_string())?;
+
+                    entry_table.set("type", {
+                        if entry.path().is_symlink() {
+                            "symlink"
+                        } else if entry.path().is_dir() {
+                            "folder"
+                        } else {
+                            "file"
+                        }
+                    })?;
+
+                    entries.push(entry_table)?;
+                }
+
+                Ok(entries)
+            })?,
+
+            fs_remove_dir: lua.create_function(|_, path: String| {
+                let path = resolve_path(path)?;
+
+                std::fs::remove_dir_all(path)?;
+
+                Ok(())
             })?
         })
     }
@@ -383,6 +430,9 @@ impl<'lua> Standard<'lua> {
         fs.set("read_file", self.fs_read_file.clone())?;
         fs.set("write_file", self.fs_write_file.clone())?;
         fs.set("remove_file", self.fs_remove_file.clone())?;
+        fs.set("create_dir", self.fs_create_dir.clone())?;
+        fs.set("read_dir", self.fs_read_dir.clone())?;
+        fs.set("remove_dir", self.fs_remove_dir.clone())?;
 
         Ok(env)
     }
