@@ -82,10 +82,10 @@ impl<'lua> Standard<'lua> {
                         .duration_since(UNIX_EPOCH)
                         .as_ref()
                         .map(Duration::as_secs)
-                        .unwrap_or_default()
+                        .unwrap_or_default() as u32
                 })?;
 
-                result.set("length", metadata.len())?;
+                result.set("length", metadata.len() as u32)?;
                 result.set("is_accessible", true)?;
 
                 result.set("type", {
@@ -105,9 +105,9 @@ impl<'lua> Standard<'lua> {
                 let source = resolve_path(source)?;
                 let target = resolve_path(target)?;
 
-                // Do nothing if source path doesn't exist.
+                // Throw an error if source path doesn't exists.
                 if !source.exists() {
-                    return Ok(());
+                    return Err(LuaError::external("source path doesn't exists"));
                 }
 
                 // Throw an error if target path already exists.
@@ -151,9 +151,9 @@ impl<'lua> Standard<'lua> {
                 let source = resolve_path(source)?;
                 let target = resolve_path(target)?;
 
-                // Do nothing if source path doesn't exist.
+                // Throw an error if source path doesn't exists.
                 if !source.exists() {
-                    return Ok(());
+                    return Err(LuaError::external("source path doesn't exists"));
                 }
 
                 // Throw an error if target path already exists.
@@ -568,6 +568,56 @@ mod tests {
         standard.fs_close.call::<_, ()>(handle)?;
 
         assert!(standard.fs_read.call::<_, Vec<u8>>(handle).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn file_actions() -> anyhow::Result<()> {
+        let path = std::env::temp_dir().join(".agl-v1-file-actions-test");
+
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+
+        let path = path.to_string_lossy().to_string();
+
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        standard.fs_write_file.call::<_, ()>((path.clone(), vec![1, 2, 3]))?;
+
+        assert!(standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        let metadata = standard.fs_metadata.call::<_, LuaTable>(path.clone())?;
+
+        assert_eq!(metadata.get::<_, u32>("length")?, 3);
+        assert_eq!(metadata.get::<_, String>("type")?, "file");
+        assert!(metadata.get::<_, bool>("is_accessible")?);
+
+        assert_eq!(standard.fs_read_file.call::<_, Vec<u8>>(path.clone())?, &[1, 2, 3]);
+
+        assert!(standard.fs_copy.call::<_, ()>((format!("{path}123"), format!("{path}456"))).is_err());
+        assert!(standard.fs_copy.call::<_, ()>((path.clone(), path.clone())).is_err());
+
+        standard.fs_copy.call::<_, ()>((path.clone(), format!("{path}_copy")))?;
+
+        assert!(standard.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+
+        standard.fs_remove_file.call::<_, ()>(path.clone())?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        standard.fs_move.call::<_, ()>((format!("{path}_copy"), path.clone()))?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+        assert!(standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        standard.fs_remove.call::<_, ()>(path.clone())?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
 
         Ok(())
     }
