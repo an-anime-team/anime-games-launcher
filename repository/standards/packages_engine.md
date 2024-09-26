@@ -52,42 +52,42 @@ print(file.value)  -- "<path to the file>"
 ## Sandboxed IO API
 
 All the IO operations are sandboxed by both [luau](https://luau.org) engine
-and rust-lua bridge API.
+and rust-lua bridge API. From rust side we provide the following functions:
 
 | Function         | Description                              |
 | ---------------- | ---------------------------------------- |
-| `fs:exists`      | Check if given path exists.              |
-| `fs:metadata`    | Get metadata of given fs path.           |
-| `fs:copy`        | Copy file or folder to a new location.   |
-| `fs:move`        | Move a file or a folder.                 |
-| `fs:remove`      | Remove a file or a folder.               |
-| `fs:open`        | Try to open a file handle.               |
-| `fs:seek`        | Set pointer in a file handle.            |
-| `fs:read`        | Read bytes from a file handle.           |
-| `fs:write`       | Write bytes to the file handle.          |
-| `fs:flush`       | Flush file handle buffer.                |
-| `fs:close`       | Close file handle.                       |
-| `fs:create_file` | Create new file in a given path.         |
-| `fs:read_file`   | Read content from the given file's path. |
-| `fs:write_file`  | Write content to the given file's path.  |
-| `fs:remove_file` | Remove file on a given path.             |
-| `fs:create_dir`  | Create directory on a given path.        |
-| `fs:read_dir`    | Read directory on a given path.          |
-| `fs:remove_dir`  | Remove directory on a given path.        |
+| `fs.exists`      | Check if given path exists.              |
+| `fs.metadata`    | Get metadata of given fs path.           |
+| `fs.copy`        | Copy file or folder to a new location.   |
+| `fs.move`        | Move a file or a folder.                 |
+| `fs.remove`      | Remove a file or a folder.               |
+| `fs.open`        | Try to open a file handle.               |
+| `fs.seek`        | Set pointer in a file handle.            |
+| `fs.read`        | Read bytes from a file handle.           |
+| `fs.write`       | Write bytes to the file handle.          |
+| `fs.flush`       | Flush file handle buffer.                |
+| `fs.close`       | Close file handle.                       |
+| `fs.create_file` | Create new file in a given path.         |
+| `fs.read_file`   | Read content from the given file's path. |
+| `fs.write_file`  | Write content to the given file's path.  |
+| `fs.remove_file` | Remove file on a given path.             |
+| `fs.create_dir`  | Create directory on a given path.        |
+| `fs.read_dir`    | Read directory on a given path.          |
+| `fs.remove_dir`  | Remove directory on a given path.        |
 
-### `fs:exists(path: string) -> bool`
+### `fs.exists(path. string) -> bool`
 
 Check if given filesystem path exists and accessible.
 
 ```lua
-if fs:exists("/tmp") then
+if fs.exists("/tmp") then
     print("Temp folder exists and can be accessed")
 else
     print("Temp folder doesn't exist or can't be accessed")
 end
 ```
 
-### `fs:metadata(path: string) -> Metadata`
+### `fs.metadata(path. string) -> Metadata`
 
 Read metadata of the filesystem path (file, folder or a symlink).
 
@@ -106,7 +106,7 @@ type Metadata = {
     length: number,
 
     // Is the given path accessible.
-    // Similar to `fs:exists`.
+    // Similar to `fs.exists`.
     is_accessible: boolean,
 
     // Type of the filesystem entry.
@@ -115,44 +115,44 @@ type Metadata = {
 ```
 
 ```lua
-local metadata = fs:metadata("my_file.txt")
+local metadata = fs.metadata("my_file.txt")
 
 print("Size: " .. metadata.length)
 print("Type: " .. metadata.type)
 ```
 
-### `fs:copy(source: string, target: string)`
+### `fs.copy(source: string, target: string)`
 
 Copy file or folder to another location. This function will
 throw an error if the target location already exists or is not
 accessible.
 
 ```lua
-fs:copy("my_folder", "new_location/my_folder")
+fs.copy("my_folder", "new_location/my_folder")
 ```
 
-### `fs:move(source: string, target: string)`
+### `fs.move(source: string, target: string)`
 
 Move a file or a folder to another location. This function will
 throw an error if the target location already exists or is not
 accessible.
 
 ```lua
-fs:move("my_folder", "new_location/my_folder")
+fs.move("my_folder", "new_location/my_folder")
 ```
 
-### `fs:remove(path: string)`
+### `fs.remove(path. string)`
 
 Remove a file, folder or a symlink. Removing a folder will remove
 all its content as well.
 
 ```lua
-fs:remove("my_file.txt")
-fs:remove("my_folder")
-fs:remove("my_symlink")
+fs.remove("my_file.txt")
+fs.remove("my_folder")
+fs.remove("my_symlink")
 ```
 
-### `fs:open(path: string, [options: Options]) -> number`
+### `fs.open(path. string, [options: Options]) -> number`
 
 Open a file handle.
 
@@ -185,14 +185,14 @@ type Options = {
 
 ```lua
 -- Create a new file or clear already existing.
-local handle = fs:open("my_file.txt", {
+local handle = fs.open("my_file.txt", {
     create    = true,
     overwrite = true,
     write     = true
 })
 ```
 
-### `fs:seek(handle: number, position: number)`
+### `fs.seek(handle: number, position: number)`
 
 Seek position in the given file handle.
 
@@ -200,28 +200,28 @@ Position can be negative to set offset from the end of the file.
 Otherwise it's always set from the beginning of the file.
 
 ```lua
-local handle = fs:open("my_file.txt")
+local handle = fs.open("my_file.txt")
 
-fs:seek(10)
+fs.seek(10)
 
 -- read chunk of data skipping first 10 bytes
-local head = fs:read()
+local head = fs.read()
 
-fs:seek(-10)
+fs.seek(-10)
 
 -- read last chunk of data with 10 bytes offset from the end
-local tail = fs:read()
+local tail = fs.read()
 
-fs:close(handle)
+fs.close(handle)
 ```
 
-### `fs:read(handle: number, [position: number, [length: number]]) -> [number]`
+### `fs.read(handle: number, [position: number, [length: number]]) -> [number]`
 
 Read chunk of binary data from the open file handle.
 Size of chunk is determined by the rust API. If 0 length
 chunk is returned, then there's no more data to read.
 
-If `position` is specified, then `fs:seek` will be used before
+If `position` is specified, then `fs.seek` will be used before
 reading the chunk. This will affect future operations as well.
 Position can be negative to set offset from the end of the file.
 Otherwise it's always set from the beginning of the file.
@@ -230,32 +230,32 @@ If `length` is specified, then the chunk length will not be larger
 than the given number.
 
 ```lua
-local handle = fs:open("large_file.txt")
-local chunk  = fs:read(handle)
+local handle = fs.open("large_file.txt")
+local chunk  = fs.read(handle)
 
 while #chunk > 0 do
     -- do something with chunk of data
 
-    chunk = fs:read(handle)
+    chunk = fs.read(handle)
 end
 
-fs:close(handle)
+fs.close(handle)
 ```
 
 ```lua
-local handle = fs:open("game_file")
+local handle = fs.open("game_file")
 
 -- read game version from the file (3 bytes)
-local game_version = fs:read(handle, 1000, 3)
+local game_version = fs.read(handle, 1000, 3)
 
-fs:close(handle)
+fs.close(handle)
 ```
 
-### `fs:write(handle: number, content: [number], [position: number])`
+### `fs.write(handle: number, content: [number], [position: number])`
 
 Write given data to the open file at its current position.
 
-If `position` is specified, then `fs:seek` will be used before
+If `position` is specified, then `fs.seek` will be used before
 reading the chunk. This will affect future operations as well.
 Position can be negative to set offset from the end of the file.
 Otherwise it's always set from the beginning of the file.
@@ -263,7 +263,7 @@ Otherwise it's always set from the beginning of the file.
 ```lua
 -- file    : [ ]
 -- pointer :  ^
-local handle = fs:open("new_file.txt", {
+local handle = fs.open("new_file.txt", {
     create    = true,
     overwrite = true,
     write     = true
@@ -271,30 +271,30 @@ local handle = fs:open("new_file.txt", {
 
 -- file    : [1, 2, 3, ]
 -- pointer :          ^
-fs:write({ 1, 2, 3 })
+fs.write({ 1, 2, 3 })
 
 -- file    : [1, 2, 3, 4, 5, 6, ]
 -- pointer :                   ^
-fs:write({ 4, 5, 6 })
+fs.write({ 4, 5, 6 })
 
-fs:close(handle)
+fs.close(handle)
 
 -- file    : [1, 2, 3, 4, 5, 6, ]
 -- pointer :  ^
-local handle = fs:open("new_file.txt", {
+local handle = fs.open("new_file.txt", {
     write = true
 })
 
 -- file    : [7, 8, 9, 4, 5, 6, ]
 -- pointer :           ^
-fs:write({ 7, 8, 9 })
+fs.write({ 7, 8, 9 })
 
-fs:close(handle)
+fs.close(handle)
 ```
 
 ```lua
 -- []
-local handle = fs:open("new_file.txt", {
+local handle = fs.open("new_file.txt", {
     create    = true,
     overwrite = true,
     write     = true
@@ -302,20 +302,20 @@ local handle = fs:open("new_file.txt", {
 
 -- file    : [1, 2, 3, 4, 5, 6, ]
 -- pointer :                   ^
-fs:write({ 1, 2, 3, 4, 5, 6 })
+fs.write({ 1, 2, 3, 4, 5, 6 })
 
 -- file    : [1, 2, 5, 4, 3, 6, ]
 -- pointer :                 ^
-fs:write({ 5, 4, 3 }, 2)
+fs.write({ 5, 4, 3 }, 2)
 
 -- file    : [1, 2, 5, 4, 3, 7, 8, 9, ]
 -- pointer :                         ^
-fs:write({ 7, 8, 9 })
+fs.write({ 7, 8, 9 })
 
-fs:close(handle)
+fs.close(handle)
 ```
 
-### `fs:flush(handle: number)`
+### `fs.flush(handle: number)`
 
 Flush file content on disk.
 
@@ -326,115 +326,115 @@ not be available for other file readers until the buffer
 is flushed. This function forcely flushes the buffer on disk.
 
 ```lua
-local reader = fs:open("file.txt", {
+local reader = fs.open("file.txt", {
     create = true,
     read   = true
 })
 
-local writer_1 = fs:open("file.txt", {
+local writer_1 = fs.open("file.txt", {
     write = true
 })
 
-local writer_2 = fs:open("file.txt", {
+local writer_2 = fs.open("file.txt", {
     write = true
 })
 
-local writer_3 = fs:open("file.txt", {
+local writer_3 = fs.open("file.txt", {
     write = true
 })
 
-fs:write(writer_1, { 1, 2, 3 })
-fs:write(writer_2, { 4, 5, 6 })
-fs:write(writer_3, { 7, 8, 9 })
+fs.write(writer_1, { 1, 2, 3 })
+fs.write(writer_2, { 4, 5, 6 })
+fs.write(writer_3, { 7, 8, 9 })
 
 -- []
-fs:read(reader)
+fs.read(reader)
 
-fs:flush(writer_1)
+fs.flush(writer_1)
 
 -- [1, 2, 3]
-fs:read(reader)
+fs.read(reader)
 
-fs:flush(writer_2)
+fs.flush(writer_2)
 
 -- [4, 5, 6]
-fs:read(reader)
+fs.read(reader)
 
-fs:close(writer_1)
-fs:close(writer_2)
-fs:close(writer_3) -- writer_3 is flushed on close
+fs.close(writer_1)
+fs.close(writer_2)
+fs.close(writer_3) -- writer_3 is flushed on close
 
 -- [7, 8, 9]
-fs:read(reader)
+fs.read(reader)
 
-fs:close(reader)
+fs.close(reader)
 ```
 
-### `fs:close(handle: number)`
+### `fs.close(handle: number)`
 
 Close the file handle. This will flush the inner buffer
 of the file and prevent future use of this handle.
 
 ```lua
-local handle = fs:write("my_file.txt", { write = true })
+local handle = fs.write("my_file.txt", { write = true })
 
-fs:write({ 1, 2, 3 })
-fs:close(handle)
+fs.write({ 1, 2, 3 })
+fs.close(handle)
 ```
 
-### `fs:read_file(path: string) -> [number]`
+### `fs.read_file(path. string) -> [number]`
 
 Read the whole content of a file in a given path.
 
 > Note: do not try to read large files using this function.
 
 ```lua
-local content = fs:read_file("my_file.txt")
+local content = fs.read_file("my_file.txt")
 
 print("Read " .. #content .. " bytes")
 ```
 
-### `fs:write_file(path: string, content: [number])`
+### `fs.write_file(path. string, content: [number])`
 
 Overwrite existing file with given content, or create
 a new one.
 
 ```lua
-fs:write_file("my_file.txt", { 1, 2, 3 })
+fs.write_file("my_file.txt", { 1, 2, 3 })
 ```
 
-### `fs:remove_file(path: string)`
+### `fs.remove_file(path. string)`
 
 Remove file in a given path.
 
 ```lua
-fs:remove_file("my_file.txt")
+fs.remove_file("my_file.txt")
 ```
 
-### `fs:create_dir(path: string)`
+### `fs.create_dir(path. string)`
 
 Create directory if it doesn't exist.
 
 ```lua
 -- this will create all the parent directories too
-fs:create_dir("a/b/c/d")
+fs.create_dir("a/b/c/d")
 ```
 
-### `fs:read_dir(path: string) -> [Entry]`
+### `fs.read_dir(path. string) -> [Entry]`
 
 Read the given directory, returning list of its entries.
 
 ```ts
 type Entry = {
     name: string,
-    path: string,
+    path. string,
     type: EntryType
 };
 ```
 
 ```lua
 function print_dir(path, prefix)
-    for _, entry in pairs(fs:read_dir(path)) do
+    for _, entry in pairs(fs.read_dir(path)) do
         print(prefix .. entry.name)
 
         if entry.type == "folder" do
@@ -446,16 +446,16 @@ end
 print_dir("my_dir", "")
 ```
 
-### `fs:remove_dir(path: string)`
+### `fs.remove_dir(path. string)`
 
 Remove given folder and all its content.
 
 ```lua
-fs:create_dir("my_dir")
+fs.create_dir("my_dir")
 
-print(fs:exists("my_dir")) -- true
+print(fs.exists("my_dir")) -- true
 
-fs:remove_dir("my_dir")
+fs.remove_dir("my_dir")
 
-print(fs:exists("my_dir")) -- false
+print(fs.exists("my_dir")) -- false
 ```
