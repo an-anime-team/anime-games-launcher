@@ -501,6 +501,9 @@ impl<'lua> Standard<'lua> {
     /// Create new environment for the v1 modules standard.
     pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
         let env = self.lua.create_table()?;
+
+        env.set("clone", self.clone.clone())?;
+
         let fs = self.lua.create_table()?;
 
         env.set("fs", fs.clone())?;
