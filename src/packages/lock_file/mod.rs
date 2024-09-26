@@ -491,9 +491,9 @@ mod tests {
             anyhow::bail!("No outputs in the root package");
         };
 
-        assert_eq!(inputs["self-reference"], 0);
-        assert_eq!(inputs["another-package"], 4);
-        assert_eq!(outputs["self-reference"], 2);
+        assert_eq!(lock_file.resources[inputs["self-reference"] as usize].lock.hash, Hash(9442626994218140953));
+        assert_eq!(lock_file.resources[inputs["another-package"] as usize].lock.hash, Hash(14134949798113050856));
+        assert_eq!(lock_file.resources[outputs["self-reference"] as usize].lock.hash, Hash(9442626994218140953));
 
         Ok(())
     }
