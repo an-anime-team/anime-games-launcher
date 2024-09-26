@@ -58,6 +58,7 @@ and rust-lua bridge API.
 | ---------------- | ---------------------------------------- |
 | `fs:exists`      | Check if given path exists.              |
 | `fs:metadata`    | Get metadata of given fs path.           |
+| `fs:copy`        | Copy file or folder to a new location.   |
 | `fs:move`        | Move a file or a folder.                 |
 | `fs:remove`      | Remove a file or a folder.               |
 | `fs:open`        | Try to open a file handle.               |
@@ -118,6 +119,16 @@ local metadata = fs:metadata("my_file.txt")
 
 print("Size: " .. metadata.length)
 print("Type: " .. metadata.type)
+```
+
+### `fs:copy(source: string, target: string)`
+
+Copy file or folder to another location. This function will
+throw an error if the target location already exists or is not
+accessible.
+
+```lua
+fs:copy("my_folder", "new_location/my_folder")
 ```
 
 ### `fs:move(source: string, target: string)`

@@ -19,6 +19,7 @@ pub struct Standard<'lua> {
 
     fs_exists: LuaFunction<'lua>,
     fs_metadata: LuaFunction<'lua>,
+    fs_copy: LuaFunction<'lua>,
     fs_move: LuaFunction<'lua>,
     fs_remove: LuaFunction<'lua>,
     fs_open: LuaFunction<'lua>,
@@ -100,6 +101,52 @@ impl<'lua> Standard<'lua> {
                 Ok(result)
             })?,
 
+            fs_copy: lua.create_function(|_, (source, target): (String, String)| {
+                let source = resolve_path(source)?;
+                let target = resolve_path(target)?;
+
+                // Do nothing if source path doesn't exist.
+                if !source.exists() {
+                    return Ok(());
+                }
+
+                // Throw an error if target path already exists.
+                if target.exists() {
+                    return Err(LuaError::external("target path already exists"));
+                }
+
+                fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
+                    if source.is_file() {
+                        std::fs::copy(source, target)?;
+                    }
+
+                    else if source.is_dir() {
+                        std::fs::create_dir_all(target)?;
+
+                        for entry in source.read_dir()? {
+                            let entry = entry?;
+
+                            try_copy(&entry.path(), &target.join(entry.file_name()))?;
+                        }
+                    }
+
+                    else if source.is_symlink() {
+                        if let Some(source_filename) = source.file_name() {
+                            std::os::unix::fs::symlink(
+                                source.read_link()?,
+                                target.join(source_filename)
+                            )?;
+                        }
+                    }
+
+                    Ok(())
+                }
+
+                try_copy(&source, &target)?;
+
+                Ok(())
+            })?,
+
             fs_move: lua.create_function(|_, (source, target): (String, String)| {
                 let source = resolve_path(source)?;
                 let target = resolve_path(target)?;
@@ -148,6 +195,8 @@ impl<'lua> Standard<'lua> {
                                 target.join(source_filename)
                             )?;
                         }
+
+                        std::fs::remove_file(source)?;
                     }
 
                     Ok(())
@@ -418,6 +467,7 @@ impl<'lua> Standard<'lua> {
 
         fs.set("exists", self.fs_exists.clone())?;
         fs.set("metadata", self.fs_metadata.clone())?;
+        fs.set("copy", self.fs_copy.clone())?;
         fs.set("move", self.fs_move.clone())?;
         fs.set("remove", self.fs_remove.clone())?;
         fs.set("open", self.fs_open.clone())?;
