@@ -495,6 +495,9 @@ impl<'lua> Standard<'lua> {
 
 #[cfg(test)]
 mod tests {
+    use crate::core::prelude::*;
+    use crate::packages::prelude::*;
+
     use super::*;
 
     #[test]
@@ -618,6 +621,82 @@ mod tests {
         standard.fs_remove.call::<_, ()>(path.clone())?;
 
         assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn folder_actions() -> anyhow::Result<()> {
+        let path = std::env::temp_dir().join(".agl-v1-folder-actions-test");
+        let dxvk_path = std::env::temp_dir().join(".agl-v1-folder-actions-test-dxvk.tar.gz");
+
+        if path.exists() {
+            std::fs::remove_dir_all(&path)?;
+        }
+
+        let path = path.to_string_lossy().to_string();
+
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        standard.fs_create_dir.call::<_, ()>(path.clone())?;
+
+        assert!(standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        let metadata = standard.fs_metadata.call::<_, LuaTable>(path.clone())?;
+
+        assert_eq!(metadata.get::<_, String>("type")?, "folder");
+        assert!(metadata.get::<_, bool>("is_accessible")?);
+
+        if !dxvk_path.exists() {
+            Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")
+                .map_err(|err| anyhow::anyhow!(err.to_string()))?
+                .with_output_file(&dxvk_path)
+                .download(|_, _, _| {})
+                .await
+                .map_err(|err| anyhow::anyhow!(err.to_string()))?
+                .wait()
+                .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+        }
+
+        archive_extract(dxvk_path, &path, |_, _, _| {})?;
+
+        let path = format!("{path}/dxvk-2.4");
+
+        assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
+
+        let entries = standard.fs_read_dir.call::<_, LuaTable>(path.clone())?;
+
+        assert_eq!(entries.len()?, 2);
+
+        for _ in 0..2 {
+            let entry = entries.pop::<LuaTable>()?;
+
+            assert!(["x32", "x64"].contains(&entry.get::<_, String>("name")?.as_str()));
+            assert!(std::fs::exists(&entry.get::<_, String>("path")?)?);
+            assert_eq!(entry.get::<_, String>("type")?, "folder");
+        }
+
+        assert!(!standard.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+
+        standard.fs_copy.call::<_, ()>((path.clone(), format!("{path}_copy")))?;
+
+        assert!(standard.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+
+        assert!(standard.fs_remove_file.call::<_, ()>(path.clone()).is_err());
+
+        standard.fs_remove_dir.call::<_, ()>(path.clone())?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        standard.fs_move.call::<_, ()>((format!("{path}_copy"), path.clone()))?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+        assert!(standard.fs_exists.call::<_, bool>(path.clone())?);
+
+        assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
 
         Ok(())
     }
