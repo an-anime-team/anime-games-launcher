@@ -8,9 +8,54 @@ use std::io::{Read, Write, Seek, SeekFrom};
 use mlua::prelude::*;
 use bufreaderwriter::rand::BufReaderWriterRand;
 
+use crate::packages::prelude::*;
+use crate::config;
+
 use super::EngineError;
 
 const READ_CHUNK_LEN: usize = 8192;
+
+fn normalize_path_parts(parts: &[impl AsRef<str>]) -> Option<Vec<String>> {
+    let mut normal_parts = Vec::with_capacity(parts.len());
+
+    let mut i = 0;
+    let n = parts.len();
+
+    while i < n {
+        let part = parts[i].as_ref();
+
+        if part == "." {
+            i += 1;
+        }
+
+        else if part == ".." {
+            normal_parts.pop()?;
+
+            i += 1;
+        }
+
+        else {
+            if !part.is_empty() {
+                normal_parts.push(part.to_string());
+            }
+
+            i += 1;
+        }
+    }
+
+    Some(normal_parts)
+}
+
+fn split_path(path: impl AsRef<str>) -> Option<Vec<String>> {
+    let path = path.as_ref()
+        .replace('\\', "/");
+
+    let raw_parts = path
+        .split('/')
+        .collect::<Vec<_>>();
+
+    normalize_path_parts(&raw_parts)
+}
 
 pub struct Standard<'lua> {
     lua: &'lua Lua,
@@ -36,7 +81,18 @@ pub struct Standard<'lua> {
     fs_remove_file: LuaFunction<'lua>,
     fs_create_dir: LuaFunction<'lua>,
     fs_read_dir: LuaFunction<'lua>,
-    fs_remove_dir: LuaFunction<'lua>
+    fs_remove_dir: LuaFunction<'lua>,
+
+    path_temp_dir: LuaFunction<'lua>,
+    path_module_dir: LuaFunction<'lua>,
+    path_persist_dir: LuaFunction<'lua>,
+    path_normalize: LuaFunction<'lua>,
+    path_join: LuaFunction<'lua>,
+    path_parts: LuaFunction<'lua>,
+    path_parent: LuaFunction<'lua>,
+    path_file_name: LuaFunction<'lua>,
+    path_exists: LuaFunction<'lua>,
+    path_accessible: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -121,7 +177,7 @@ impl<'lua> Standard<'lua> {
                 })?;
 
                 result.set("length", metadata.len() as u32)?;
-                result.set("is_accessible", true)?;
+                result.set("is_accessible", true)?; // TODO
 
                 result.set("type", {
                     if metadata.is_symlink() {
@@ -494,6 +550,110 @@ impl<'lua> Standard<'lua> {
                 std::fs::remove_dir_all(path)?;
 
                 Ok(())
+            })?,
+
+            path_temp_dir: lua.create_function(|_, ()| {
+                let path = std::env::temp_dir()
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(path)
+            })?,
+
+            path_module_dir: lua.create_function(|_, ()| {
+                let path = config::get().packages.modules_store_path
+                    .join("TODO")
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(path)
+            })?,
+
+            path_persist_dir: lua.create_function(|_, key: LuaString| {
+                let path = config::get().packages.persist_store_path
+                    .join(Hash::for_slice(key.as_bytes()).to_base32())
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(path)
+            })?,
+
+            path_normalize: lua.create_function(|lua, path: LuaString| {
+                match split_path(path.to_string_lossy()) {
+                    Some(parts) => lua.create_string(parts.join("/")).map(LuaValue::String),
+                    None => Ok(LuaNil)
+                }
+            })?,
+
+            path_join: lua.create_function(|lua, parts: Vec<LuaString>| {
+                if parts.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let parts = parts.iter()
+                    .filter(|part| !part.as_bytes().is_empty())
+                    .map(LuaString::to_string_lossy)
+                    .collect::<Vec<_>>();
+
+                let Some(parts) = normalize_path_parts(&parts) else {
+                    return Ok(LuaNil);
+                };
+
+                lua.create_string(parts.join("/"))
+                    .map(LuaValue::String)
+            })?,
+
+            path_parts: lua.create_function(|lua, path: LuaString| {
+                let Some(parts) = split_path(path.to_string_lossy()) else {
+                    return Ok(LuaNil);
+                };
+
+                let result = lua.create_table()?;
+
+                for part in parts {
+                    result.push(part)?;
+                }
+
+                Ok(LuaValue::Table(result))
+            })?,
+
+            path_parent: lua.create_function(|lua, path: LuaString| {
+                let Some(parts) = split_path(path.to_string_lossy()) else {
+                    return Ok(LuaNil);
+                };
+
+                if parts.len() > 1 {
+                    lua.create_string(parts[..parts.len() - 1].join("/"))
+                        .map(LuaValue::String)
+                }
+
+                else {
+                    Ok(LuaNil)
+                }
+            })?,
+
+            path_file_name: lua.create_function(|lua, path: LuaString| {
+                let Some(mut parts) = split_path(path.to_string_lossy()) else {
+                    return Ok(LuaNil);
+                };
+
+                let Some(file_name) = parts.pop() else {
+                    return Ok(LuaNil);
+                };
+
+                lua.create_string(file_name)
+                    .map(LuaValue::String)
+            })?,
+
+            path_exists: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
+
+                Ok(path.exists())
+            })?,
+
+            // TODO
+            path_accessible: lua.create_function(|_, _path: LuaString| {
+                Ok(true)
             })?
         })
     }
@@ -505,8 +665,12 @@ impl<'lua> Standard<'lua> {
         env.set("clone", self.clone.clone())?;
 
         let fs = self.lua.create_table()?;
+        let path = self.lua.create_table()?;
 
         env.set("fs", fs.clone())?;
+        env.set("path", path.clone())?;
+
+        // IO API
 
         fs.set("exists", self.fs_exists.clone())?;
         fs.set("metadata", self.fs_metadata.clone())?;
@@ -527,6 +691,19 @@ impl<'lua> Standard<'lua> {
         fs.set("read_dir", self.fs_read_dir.clone())?;
         fs.set("remove_dir", self.fs_remove_dir.clone())?;
 
+        // Paths API
+
+        path.set("temp_dir", self.path_temp_dir.clone())?;
+        path.set("module_dir", self.path_module_dir.clone())?;
+        path.set("persist_dir", self.path_persist_dir.clone())?;
+        path.set("normalize", self.path_normalize.clone())?;
+        path.set("join", self.path_join.clone())?;
+        path.set("parts", self.path_parts.clone())?;
+        path.set("parent", self.path_parent.clone())?;
+        path.set("file_name", self.path_file_name.clone())?;
+        path.set("exists", self.path_exists.clone())?;
+        path.set("accessible", self.path_accessible.clone())?;
+
         Ok(env)
     }
 }
@@ -534,7 +711,6 @@ impl<'lua> Standard<'lua> {
 #[cfg(test)]
 mod tests {
     use crate::core::prelude::*;
-    use crate::packages::prelude::*;
 
     use super::*;
 
