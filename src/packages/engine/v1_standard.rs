@@ -91,14 +91,14 @@ impl<'lua> Standard<'lua> {
                 clone_value(lua, value)
             })?,
 
-            fs_exists: lua.create_function(|_, path: String| {
-                let path = resolve_path(path)?;
+            fs_exists: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 Ok(path.exists())
             })?,
 
-            fs_metadata: lua.create_function(|lua, path: String| {
-                let path = resolve_path(path)?;
+            fs_metadata: lua.create_function(|lua, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 let metadata = path.metadata()?;
 
@@ -136,9 +136,9 @@ impl<'lua> Standard<'lua> {
                 Ok(result)
             })?,
 
-            fs_copy: lua.create_function(|_, (source, target): (String, String)| {
-                let source = resolve_path(source)?;
-                let target = resolve_path(target)?;
+            fs_copy: lua.create_function(|_, (source, target): (LuaString, LuaString)| {
+                let source = resolve_path(source.to_string_lossy())?;
+                let target = resolve_path(target.to_string_lossy())?;
 
                 // Throw an error if source path doesn't exists.
                 if !source.exists() {
@@ -182,9 +182,9 @@ impl<'lua> Standard<'lua> {
                 Ok(())
             })?,
 
-            fs_move: lua.create_function(|_, (source, target): (String, String)| {
-                let source = resolve_path(source)?;
-                let target = resolve_path(target)?;
+            fs_move: lua.create_function(|_, (source, target): (LuaString, LuaString)| {
+                let source = resolve_path(source.to_string_lossy())?;
+                let target = resolve_path(target.to_string_lossy())?;
 
                 // Throw an error if source path doesn't exists.
                 if !source.exists() {
@@ -242,8 +242,8 @@ impl<'lua> Standard<'lua> {
                 Ok(())
             })?,
 
-            fs_remove: lua.create_function(|_, path: String| {
-                let path = resolve_path(path)?;
+            fs_remove: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 // Symlinks are resolved so we don't need to check for them.
                 if path.is_file() {
@@ -260,8 +260,8 @@ impl<'lua> Standard<'lua> {
             fs_open: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (path, options): (String, Option<LuaTable>)| {
-                    let path = resolve_path(path)?;
+                lua.create_function(move |_, (path, options): (LuaString, Option<LuaTable>)| {
+                    let path = resolve_path(path.to_string_lossy())?;
     
                     let mut read = true;
                     let mut write = false;
@@ -430,38 +430,38 @@ impl<'lua> Standard<'lua> {
                 })?
             },
 
-            fs_read_file: lua.create_function(|_, path: String| {
-                let path = resolve_path(path)?;
+            fs_read_file: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 Ok(std::fs::read(path)?)
             })?,
 
-            fs_write_file: lua.create_function(|_, (path, content): (String, Vec<u8>)| {
-                let path = resolve_path(path)?;
+            fs_write_file: lua.create_function(|_, (path, content): (LuaString, Vec<u8>)| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 std::fs::write(path, &content)?;
 
                 Ok(())
             })?,
 
-            fs_remove_file: lua.create_function(|_, path: String| {
-                let path = resolve_path(path)?;
+            fs_remove_file: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 std::fs::remove_file(path)?;
 
                 Ok(())
             })?,
 
-            fs_create_dir: lua.create_function(|_, path: String| {
-                let path = resolve_path(path)?;
+            fs_create_dir: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 std::fs::create_dir_all(path)?;
 
                 Ok(())
             })?,
 
-            fs_read_dir: lua.create_function(|lua, path: String| {
-                let path = resolve_path(path)?;
+            fs_read_dir: lua.create_function(|lua, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 let entries = lua.create_table()?;
 
@@ -488,8 +488,8 @@ impl<'lua> Standard<'lua> {
                 Ok(entries)
             })?,
 
-            fs_remove_dir: lua.create_function(|_, path: String| {
-                let path = resolve_path(path)?;
+            fs_remove_dir: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
 
                 std::fs::remove_dir_all(path)?;
 
