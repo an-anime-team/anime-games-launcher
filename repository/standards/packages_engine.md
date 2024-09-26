@@ -49,6 +49,27 @@ print(file.hash)   -- "<base32 value>"
 print(file.value)  -- "<path to the file>"
 ```
 
+## Values cloning
+
+Since tables in lua work similarly to arrays in JS (they're shared on cloning)
+it's convenient to have a function to create a full copy of some value which
+will not be shared with the rest of the script.
+
+```lua
+local table_1 = {
+    hello = "world"
+}
+
+local table_2 = table_1
+local table_3 = clone(table_1)
+
+table_1.hello = "sugoma"
+
+print(table_1.hello) -- "sugoma"
+print(table_2.hello) -- "sugoma"
+print(table_3.hello) -- "world"
+```
+
 ## Sandboxed IO API
 
 All the IO operations are sandboxed by both [luau](https://luau.org) engine

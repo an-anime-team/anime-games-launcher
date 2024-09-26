@@ -17,6 +17,8 @@ pub struct Standard<'lua> {
 
     _file_handles: Arc<Mutex<HashMap<u32, BufReaderWriterRand<File>>>>,
 
+    clone: LuaFunction<'lua>,
+
     fs_exists: LuaFunction<'lua>,
     fs_metadata: LuaFunction<'lua>,
     fs_copy: LuaFunction<'lua>,
@@ -55,6 +57,39 @@ impl<'lua> Standard<'lua> {
             lua,
 
             _file_handles: file_handles.clone(),
+
+            clone: lua.create_function(|lua, value: LuaValue| {
+                fn clone_value<'lua>(lua: &'lua Lua, value: LuaValue<'lua>) -> Result<LuaValue<'lua>, LuaError> {
+                    match value {
+                        LuaValue::String(string) => {
+                            Ok(LuaValue::String(lua.create_string(string.as_bytes())?))
+                        }
+
+                        LuaValue::Function(function) => {
+                            Ok(LuaValue::Function(function.deep_clone()))
+                        }
+
+                        LuaValue::Table(table) => {
+                            let cloned = lua.create_table()?;
+
+                            for pair in table.pairs::<LuaValue, LuaValue>() {
+                                let (key, value) = pair?;
+
+                                cloned.set(
+                                    clone_value(lua, key)?,
+                                    clone_value(lua, value)?
+                                )?;
+                            }
+
+                            Ok(LuaValue::Table(cloned))
+                        }
+    
+                        _ => Ok(value)
+                    }
+                }
+
+                clone_value(lua, value)
+            })?,
 
             fs_exists: lua.create_function(|_, path: String| {
                 let path = resolve_path(path)?;
