@@ -35,7 +35,7 @@ fn normalize_path_parts(parts: &[impl AsRef<str>]) -> Option<Vec<String>> {
         }
 
         else {
-            if !part.is_empty() {
+            if !["", "/", "\\"].contains(&part) {
                 normal_parts.push(part.to_string());
             }
 
@@ -43,7 +43,11 @@ fn normalize_path_parts(parts: &[impl AsRef<str>]) -> Option<Vec<String>> {
         }
     }
 
-    Some(normal_parts)
+    if normal_parts.is_empty() {
+        None
+    } else {
+        Some(normal_parts)
+    }
 }
 
 fn split_path(path: impl AsRef<str>) -> Option<Vec<String>> {
@@ -579,8 +583,33 @@ impl<'lua> Standard<'lua> {
             })?,
 
             path_normalize: lua.create_function(|lua, path: LuaString| {
-                match split_path(path.to_string_lossy()) {
-                    Some(parts) => lua.create_string(parts.join("/")).map(LuaValue::String),
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let (path, is_absolute) = match path.strip_prefix("/") {
+                    Some(path) => (path, true),
+                    None => (path.as_str(), false)
+                };
+
+                match split_path(path) {
+                    Some(parts) => {
+                        let mut path = parts.join("/");
+
+                        if is_absolute {
+                            path = format!("/{path}");
+                        }
+
+                        lua.create_string(path)
+                            .map(LuaValue::String)
+                    }
+
+                    None if is_absolute => lua.create_string("/")
+                        .map(LuaValue::String),
+
                     None => Ok(LuaNil)
                 }
             })?,
@@ -595,16 +624,44 @@ impl<'lua> Standard<'lua> {
                     .map(LuaString::to_string_lossy)
                     .collect::<Vec<_>>();
 
-                let Some(parts) = normalize_path_parts(&parts) else {
-                    return Ok(LuaNil);
+                let (parts, is_absolute) = match parts.first() {
+                    None => return Ok(LuaNil),
+
+                    Some(v) if v == "/" || v == "\\" => (&parts[1..], true),
+                    Some(_) => (parts.as_slice(), false)
                 };
 
-                lua.create_string(parts.join("/"))
+                let Some(parts) = normalize_path_parts(parts) else {
+                    if is_absolute {
+                        return lua.create_string("/")
+                            .map(LuaValue::String);
+                    } else {
+                        return Ok(LuaNil);
+                    }
+                };
+
+                let mut path = parts.join("/");
+
+                if is_absolute {
+                    path = format!("/{path}");
+                }
+
+                lua.create_string(path)
                     .map(LuaValue::String)
             })?,
 
             path_parts: lua.create_function(|lua, path: LuaString| {
-                let Some(parts) = split_path(path.to_string_lossy()) else {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let path = path.strip_prefix("/")
+                    .unwrap_or(&path);
+
+                let Some(parts) = split_path(path) else {
                     return Ok(LuaNil);
                 };
 
@@ -618,12 +675,30 @@ impl<'lua> Standard<'lua> {
             })?,
 
             path_parent: lua.create_function(|lua, path: LuaString| {
-                let Some(parts) = split_path(path.to_string_lossy()) else {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let (path, is_absolute) = match path.strip_prefix("/") {
+                    Some(path) => (path, true),
+                    None => (path.as_str(), false)
+                };
+
+                let Some(parts) = split_path(path) else {
                     return Ok(LuaNil);
                 };
 
                 if parts.len() > 1 {
-                    lua.create_string(parts[..parts.len() - 1].join("/"))
+                    let mut path = parts[..parts.len() - 1].join("/");
+
+                    if is_absolute {
+                        path = format!("/{path}");
+                    }
+
+                    lua.create_string(path)
                         .map(LuaValue::String)
                 }
 
@@ -633,7 +708,22 @@ impl<'lua> Standard<'lua> {
             })?,
 
             path_file_name: lua.create_function(|lua, path: LuaString| {
-                let Some(mut parts) = split_path(path.to_string_lossy()) else {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                if path == "/" {
+                    return lua.create_string("/")
+                        .map(LuaValue::String);
+                }
+
+                let path = path.strip_prefix("/")
+                    .unwrap_or(&path);
+
+                let Some(mut parts) = split_path(path) else {
                     return Ok(LuaNil);
                 };
 
@@ -911,6 +1001,63 @@ mod tests {
         assert!(standard.fs_exists.call::<_, bool>(path.clone())?);
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
+
+        Ok(())
+    }
+
+    #[test]
+    fn path_actions() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        assert_eq!(standard.path_normalize.call::<_, String>("/")?, "/");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/b/c")?, "a/b/c");
+        assert_eq!(standard.path_normalize.call::<_, String>("/a/b/c")?, "/a/b/c");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/./c")?, "a/c");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/../c")?, "c");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/../c/./")?, "c");
+        assert_eq!(standard.path_normalize.call::<_, String>("./a//\\./../b")?, "b");
+        assert_eq!(standard.path_normalize.call::<_, String>(" ")?, " "); // space is a correct entry name
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("")?, None); // entry name cannot be empty
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>(".")?, None); // we do not support relative paths
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("..")?, None);
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("./..")?, None);
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("a/..")?, None);
+
+        assert_eq!(standard.path_join.call::<_, String>(vec!["a", "b", "c"])?, "a/b/c");
+        assert_eq!(standard.path_join.call::<_, String>(vec!["/", "a", "b", "c"])?, "/a/b/c");
+        assert_eq!(standard.path_join.call::<_, String>(vec!["a", "..", "b"])?, "b");
+        assert_eq!(standard.path_join.call::<_, String>(vec![".", "a", ".", "b"])?, "a/b");
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![""])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec!["."])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![".."])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![".", ".."])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec!["a", ".."])?, None);
+
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/b/c")?, &["a", "b", "c"]);
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/./c")?, &["a", "c"]);
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/./c/..")?, &["a"]);
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>(".")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("..")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("./..")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("a/..")?, None);
+
+        assert_eq!(standard.path_parent.call::<_, String>("a/b/c")?, "a/b");
+        assert_eq!(standard.path_parent.call::<_, String>("/a/b/c")?, "/a/b");
+        assert_eq!(standard.path_parent.call::<_, String>("a\\./b")?, "a");
+        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a")?, None);
+        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a/.")?, None);
+        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a/../b")?, None);
+
+        assert_eq!(standard.path_file_name.call::<_, String>("/")?, "/");
+        assert_eq!(standard.path_file_name.call::<_, String>("a")?, "a");
+        assert_eq!(standard.path_file_name.call::<_, String>("a/b/c")?, "c");
+        assert_eq!(standard.path_file_name.call::<_, String>("/a/b/c")?, "c");
+        assert_eq!(standard.path_file_name.call::<_, String>("a\\./b")?, "b");
+        assert_eq!(standard.path_file_name.call::<_, Option<Vec<String>>>(".")?, None);
+        assert_eq!(standard.path_file_name.call::<_, Option<Vec<String>>>("a/..")?, None);
 
         Ok(())
     }
