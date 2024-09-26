@@ -15,7 +15,7 @@ const READ_CHUNK_LEN: usize = 8192;
 pub struct Standard<'lua> {
     lua: &'lua Lua,
 
-    _file_handles: Arc<Mutex<HashMap<u64, BufReaderWriterRand<File>>>>,
+    _file_handles: Arc<Mutex<HashMap<u32, BufReaderWriterRand<File>>>>,
 
     fs_exists: LuaFunction<'lua>,
     fs_metadata: LuaFunction<'lua>,
@@ -227,7 +227,6 @@ impl<'lua> Standard<'lua> {
 
                 lua.create_function(move |_, (path, options): (String, Option<LuaTable>)| {
                     let path = resolve_path(path)?;
-                    let handle = rand::random::<u64>();
     
                     let mut read = true;
                     let mut write = false;
@@ -254,6 +253,12 @@ impl<'lua> Standard<'lua> {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
     
+                    let mut handle = rand::random::<u32>();
+
+                    while handles.contains_key(&handle) {
+                        handle = rand::random::<u32>();
+                    }
+
                     handles.insert(handle, BufReaderWriterRand::new_reader(file));
     
                     Ok(handle)
@@ -263,7 +268,7 @@ impl<'lua> Standard<'lua> {
             fs_seek: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position): (u64, i64)| {
+                lua.create_function(move |_, (handle, position): (u32, i32)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -277,7 +282,7 @@ impl<'lua> Standard<'lua> {
                     }
 
                     else {
-                        file.seek(SeekFrom::End(position))?;
+                        file.seek(SeekFrom::End(position as i64))?;
                     }
 
                     Ok(())
@@ -287,7 +292,7 @@ impl<'lua> Standard<'lua> {
             fs_read: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position, length): (u64, Option<i64>, Option<u64>)| {
+                lua.create_function(move |_, (handle, position, length): (u32, Option<i32>, Option<u32>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -302,7 +307,7 @@ impl<'lua> Standard<'lua> {
                         }
 
                         else {
-                            file.seek(SeekFrom::End(position))?;
+                            file.seek(SeekFrom::End(position as i64))?;
                         }
                     }
 
@@ -329,7 +334,7 @@ impl<'lua> Standard<'lua> {
             fs_write: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, content, position): (u64, Vec<u8>, Option<i64>)| {
+                lua.create_function(move |_, (handle, content, position): (u32, Vec<u8>, Option<i32>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -344,7 +349,7 @@ impl<'lua> Standard<'lua> {
                         }
 
                         else {
-                            file.seek(SeekFrom::End(position))?;
+                            file.seek(SeekFrom::End(position as i64))?;
                         }
                     }
 
@@ -358,7 +363,7 @@ impl<'lua> Standard<'lua> {
             fs_flush: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, handle: u64| {
+                lua.create_function(move |_, handle: u32| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -374,7 +379,7 @@ impl<'lua> Standard<'lua> {
             fs_close: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, handle: u64| {
+                lua.create_function(move |_, handle: u32| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -485,5 +490,85 @@ impl<'lua> Standard<'lua> {
         fs.set("remove_dir", self.fs_remove_dir.clone())?;
 
         Ok(env)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_handle() -> anyhow::Result<()> {
+        let path = std::env::temp_dir().join(".agl-v1-file-handle-test");
+
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+
+        let path = path.to_string_lossy().to_string();
+
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        assert!(!standard.fs_exists.call::<_, bool>(path.clone())?);
+        assert!(standard.fs_open.call::<_, u64>(path.clone()).is_err());
+
+        let options = lua.create_table()?;
+
+        options.set("read", true)?;
+        options.set("write", true)?;
+        options.set("create", true)?;
+
+        let handle = standard.fs_open.call::<_, u64>((path.clone(), options))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?.len(), 0);
+
+        standard.fs_write.call::<_, ()>((handle, b"Hello, ".to_vec()))?;
+        standard.fs_write.call::<_, ()>((handle, b"World!".to_vec()))?;
+        standard.fs_flush.call::<_, ()>(handle)?;
+
+        standard.fs_seek.call::<_, ()>((handle, 0))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?, b"Hello, World!");
+
+        standard.fs_seek.call::<_, ()>((handle, 0))?;
+        standard.fs_write.call::<_, ()>((handle, b"Amogus".to_vec()))?;
+        standard.fs_flush.call::<_, ()>(handle)?;
+
+        standard.fs_seek.call::<_, ()>((handle, 0))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?, b"Amogus World!");
+
+        standard.fs_seek.call::<_, ()>((handle, -6))?;
+        standard.fs_write.call::<_, ()>((handle, b"Amogus".to_vec()))?;
+        standard.fs_flush.call::<_, ()>(handle)?;
+
+        standard.fs_seek.call::<_, ()>((handle, 0))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?, b"Amogus Amogus");
+
+        standard.fs_seek.call::<_, ()>((handle, 0))?;
+        standard.fs_write.call::<_, ()>((handle, b"Sugoma".to_vec()))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?, b" Amogus");
+
+        standard.fs_flush.call::<_, ()>(handle)?;
+        standard.fs_seek.call::<_, ()>((handle, 0))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?, b"Sugoma Amogus");
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>((handle, 3, 7))?, b"oma Amo");
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>(handle)?, b"gus");
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>((handle, -6))?, b"Amogus");
+
+        standard.fs_write.call::<_, ()>((handle, b"Mogusa".to_vec(), 0))?;
+        standard.fs_write.call::<_, ()>((handle, b"Susoma".to_vec(), 7))?;
+
+        assert_eq!(standard.fs_read.call::<_, Vec<u8>>((handle, 0))?, b"Mogusa Susoma");
+
+        standard.fs_close.call::<_, ()>(handle)?;
+
+        assert!(standard.fs_read.call::<_, Vec<u8>>(handle).is_err());
+
+        Ok(())
     }
 }
