@@ -293,12 +293,12 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
 
         let widgets = view_output!();
 
-        model.tags.guard().push_back(GameTag::Violence);
         model.tags.guard().push_back(GameTag::Gambling);
         model.tags.guard().push_back(GameTag::Payments);
         model.tags.guard().push_back(GameTag::AntiCheat);
+        model.tags.guard().push_back(GameTag::Workarounds);
+        model.tags.guard().push_back(GameTag::GraphicViolence);
         model.tags.guard().push_back(GameTag::PerformanceIssues);
-        model.tags.guard().push_back(GameTag::CompatibilityLayer);
         model.tags.guard().push_back(GameTag::UnsupportedPlatform);
 
         model
