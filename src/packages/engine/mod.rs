@@ -13,7 +13,10 @@ pub enum EngineError {
     Io(#[from] std::io::Error),
 
     #[error("Lua engine error: {0}")]
-    Lua(#[from] LuaError)
+    Lua(#[from] LuaError),
+
+    #[error("Network error: {0}")]
+    Reqwest(#[from] reqwest::Error)
 }
 
 pub struct Engine<'lua> {

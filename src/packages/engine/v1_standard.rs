@@ -8,12 +8,27 @@ use std::io::{Read, Write, Seek, SeekFrom};
 use mlua::prelude::*;
 use bufreaderwriter::rand::BufReaderWriterRand;
 
+use tokio::runtime::Runtime;
+
+use reqwest::{Client, Method, Response};
+
 use crate::packages::prelude::*;
 use crate::config;
 
 use super::EngineError;
 
 const READ_CHUNK_LEN: usize = 8192;
+
+// TODO: should get its own config field.
+const NET_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+lazy_static::lazy_static! {
+    static ref RUNTIME: Runtime = tokio::runtime::Builder::new_multi_thread()
+        .thread_name("v1_net_api")
+        .enable_all()
+        .build()
+        .expect("Failed to create v1 network API tasks runtime");
+}
 
 fn normalize_path_parts(parts: &[impl AsRef<str>]) -> Option<Vec<String>> {
     let mut normal_parts = Vec::with_capacity(parts.len());
@@ -61,10 +76,68 @@ fn split_path(path: impl AsRef<str>) -> Option<Vec<String>> {
     normalize_path_parts(&raw_parts)
 }
 
+fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<LuaTable>) -> Result<reqwest::RequestBuilder, LuaError> {
+    let mut method = String::from("get");
+    
+    // Change the request method if provided.
+    if let Some(options) = &options {
+        method = options.get::<_, String>("method")
+            .unwrap_or(String::from("get"));
+    }
+
+    let method = match method.to_ascii_lowercase().as_str() {
+        "get"     => Method::GET,
+        "port"    => Method::POST,
+        "head"    => Method::HEAD,
+        "put"     => Method::PUT,
+        "patch"   => Method::PATCH,
+        "delete"  => Method::DELETE,
+        "connect" => Method::CONNECT,
+
+        _ => return Err(LuaError::external("invalid request method"))
+    };
+
+    let mut request = client.request(method, url.as_ref());
+
+    // Set request header and body if provided.
+    if let Some(options) = &options {
+        if let Ok(headers) = options.get::<_, LuaTable>("headers") {
+            for pair in headers.pairs::<LuaValue, LuaValue>() {
+                let (key, value) = pair?;
+
+                request = request.header(key.to_string()?, value.to_string()?);
+            }
+        }
+
+        if let Ok(body) = options.get::<_, LuaValue>("body") {
+            request = match body {
+                LuaValue::String(str) => request.body(str.as_bytes().to_vec()),
+
+                LuaValue::Table(table) => {
+                    let mut body = Vec::with_capacity(table.len()? as usize);
+
+                    for byte in table.sequence_values::<u8>() {
+                        body.push(byte?);
+                    }
+
+                    request.body(body)
+                }
+
+                _ => return Err(LuaError::external("invalid body value"))
+            };
+        }
+    }
+
+    Ok(request)
+}
+
 pub struct Standard<'lua> {
     lua: &'lua Lua,
 
+    _net_client: Arc<Client>,
+
     _file_handles: Arc<Mutex<HashMap<u32, BufReaderWriterRand<File>>>>,
+    _net_handles: Arc<Mutex<HashMap<u32, Response>>>,
 
     clone: LuaFunction<'lua>,
 
@@ -96,12 +169,22 @@ pub struct Standard<'lua> {
     path_parent: LuaFunction<'lua>,
     path_file_name: LuaFunction<'lua>,
     path_exists: LuaFunction<'lua>,
-    path_accessible: LuaFunction<'lua>
+    path_accessible: LuaFunction<'lua>,
+
+    net_fetch: LuaFunction<'lua>,
+    net_open: LuaFunction<'lua>,
+    net_read: LuaFunction<'lua>,
+    net_close: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
     pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+        let net_client = Arc::new(Client::builder()
+            .connect_timeout(NET_REQUEST_TIMEOUT)
+            .build()?);
+
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
+        let net_handles = Arc::new(Mutex::new(HashMap::new()));
 
         fn resolve_path(path: impl AsRef<str>) -> std::io::Result<PathBuf> {
             let mut path = PathBuf::from(path.as_ref());
@@ -116,7 +199,10 @@ impl<'lua> Standard<'lua> {
         Ok(Self {
             lua,
 
+            _net_client: net_client.clone(),
+
             _file_handles: file_handles.clone(),
+            _net_handles: net_handles.clone(),
 
             clone: lua.create_function(|lua, value: LuaValue| {
                 fn clone_value<'lua>(lua: &'lua Lua, value: LuaValue<'lua>) -> Result<LuaValue<'lua>, LuaError> {
@@ -744,7 +830,125 @@ impl<'lua> Standard<'lua> {
             // TODO
             path_accessible: lua.create_function(|_, _path: LuaString| {
                 Ok(true)
-            })?
+            })?,
+
+            net_fetch: {
+                let net_client = net_client.clone();
+
+                lua.create_function(move |lua, (url, options): (LuaString, Option<LuaTable>)| {
+                    let url = url.to_string_lossy().to_string();
+                    let request = create_request(&net_client, url, options)?;
+
+                    // Perform the request.
+                    let response = RUNTIME.block_on(async move {
+                        let result = lua.create_table()?;
+                        let headers = lua.create_table()?;
+
+                        let response = request.send().await
+                            .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
+
+                        result.set("status", response.status().as_u16())?;
+                        result.set("is_ok", response.status().is_success())?;
+                        result.set("headers", headers.clone())?;
+
+                        for (key, value) in response.headers() {
+                            headers.set(key.to_string(), lua.create_string(value.as_bytes())?)?;
+                        }
+
+                        let body = response.bytes().await
+                            .map_err(|err| LuaError::external(format!("failed to fetch body: {err}")))?;
+
+                        result.set("body", body.to_vec())?;
+
+                        Ok::<_, LuaError>(result)
+                    })?;
+
+                    Ok(response)
+                })?
+            },
+
+            net_open: {
+                let net_client = net_client.clone();
+                let net_handles = net_handles.clone();
+
+                lua.create_function(move |lua, (url, options): (LuaString, Option<LuaTable>)| {
+                    let url = url.to_string_lossy().to_string();
+                    let request = create_request(&net_client, url, options)?;
+
+                    let (response, header) = RUNTIME.block_on(async move {
+                        let result = lua.create_table()?;
+                        let headers = lua.create_table()?;
+
+                        let response = request.send().await
+                            .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
+
+                        result.set("status", response.status().as_u16())?;
+                        result.set("is_ok", response.status().is_success())?;
+                        result.set("headers", headers.clone())?;
+
+                        for (key, value) in response.headers() {
+                            headers.set(key.to_string(), lua.create_string(value.as_bytes())?)?;
+                        }
+
+                        Ok::<_, LuaError>((response, result))
+                    })?;
+
+                    let mut handles = net_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+    
+                    let mut handle = rand::random::<u32>();
+
+                    while handles.contains_key(&handle) {
+                        handle = rand::random::<u32>();
+                    }
+
+                    handles.insert(handle, response);
+
+                    header.set("handle", handle)?;
+
+                    Ok(header)
+                })?
+            },
+
+            net_read: {
+                let net_handles = net_handles.clone();
+
+                lua.create_function(move |lua, handle: u32| {
+                    let mut handles = net_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+    
+                    let Some(response) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid request handle"));
+                    };
+
+                    let chunk = RUNTIME.block_on(async move {
+                        response.chunk().await
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to read body chunk: {err}"))
+                            })
+                    })?;
+
+                    let Some(chunk) = chunk else {
+                        return Ok(LuaNil);
+                    };
+
+                    lua.create_sequence_from(chunk)
+                        .map(LuaValue::Table)
+                })?
+            },
+
+            net_close: {
+                let net_handles = net_handles.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let mut handles = net_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    handles.remove(&handle);
+
+                    Ok(())
+                })?
+            }
         })
     }
 
@@ -756,9 +960,11 @@ impl<'lua> Standard<'lua> {
 
         let fs = self.lua.create_table()?;
         let path = self.lua.create_table()?;
+        let net = self.lua.create_table()?;
 
         env.set("fs", fs.clone())?;
         env.set("path", path.clone())?;
+        env.set("net", net.clone())?;
 
         // IO API
 
@@ -793,6 +999,13 @@ impl<'lua> Standard<'lua> {
         path.set("file_name", self.path_file_name.clone())?;
         path.set("exists", self.path_exists.clone())?;
         path.set("accessible", self.path_accessible.clone())?;
+
+        // Network API
+
+        net.set("fetch", self.net_fetch.clone())?;
+        net.set("open", self.net_open.clone())?;
+        net.set("read", self.net_read.clone())?;
+        net.set("close", self.net_close.clone())?;
 
         Ok(env)
     }

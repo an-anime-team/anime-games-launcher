@@ -14,8 +14,6 @@ use reqwest::Client;
 
 use crate::consts::DATA_FOLDER;
 
-// TODO: implement downloads queue for the packages installation.
-
 // TODO: should get its own config field.
 const DOWNLOADER_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
