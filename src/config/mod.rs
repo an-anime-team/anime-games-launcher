@@ -5,16 +5,19 @@ use crate::core::prelude::*;
 use crate::consts::CONFIG_FILE;
 
 pub mod general;
+pub mod packages;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
-    pub general: general::General
+    pub general: general::General,
+    pub packages: packages::Packages
 }
 
 impl AsJson for Config {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
-            "general": self.general.to_json()?
+            "general": self.general.to_json()?,
+            "packages": self.packages.to_json()?
         }))
     }
 
@@ -22,7 +25,11 @@ impl AsJson for Config {
         Ok(Self {
             general: json.get("general")
                 .map(general::General::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("general"))??
+                .ok_or_else(|| AsJsonError::FieldNotFound("general"))??,
+
+            packages: json.get("packages")
+                .map(packages::Packages::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages"))??
         })
     }
 }

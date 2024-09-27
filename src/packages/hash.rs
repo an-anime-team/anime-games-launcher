@@ -204,7 +204,7 @@ impl AsHash for &[u8] {
 impl AsHash for Vec<u8> {
     #[inline]
     fn hash(&self) -> Hash {
-        Hash::for_slice(&self)
+        Hash::for_slice(self)
     }
 }
 
@@ -218,12 +218,12 @@ impl AsHash for Box<[u8]> {
 impl<T: AsHash> AsHash for Box<T> {
     #[inline]
     fn hash(&self) -> Hash {
-        T::hash(&self)
+        T::hash(self)
     }
 
     #[inline]
     fn partial_hash(&self) -> Hash {
-        T::partial_hash(&self)
+        T::partial_hash(self)
     }
 }
 

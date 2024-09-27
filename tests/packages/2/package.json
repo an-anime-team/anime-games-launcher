@@ -12,6 +12,7 @@
         "dxvk-file": {
             "uri": "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz",
             "format": "file"
-        }
+        },
+        "module": "module.lua"
     }
 }

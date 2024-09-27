@@ -84,15 +84,25 @@ type HardwareRequirements = {
 };
 
 type GameTag =
-    // Game has a scenes of gambling or has game mechanics
+    // Game has scenes of gambling or has game mechanics
     // related to gambling (wishes, banners, etc.)
     | 'gambling'
 
     // Game can accept real money for in-game content.
     | 'payments'
 
-    // Game contains scenes of violence.
-    | 'violence'
+    // Graphic violence generally consists of any clear and uncensored
+    // depiction of various violent acts. Commonly included depictions
+    // include murder, assault with a deadly weapon, accidents which
+    // result in death or severe injury, suicide, and torture. In all
+    // cases, it is the explicitness of the violence and the injury
+    // inflicted which results in it being labeled "graphic". In fictional
+    // depictions, appropriately realistic plot elements are usually
+    // included to heighten the sense of realism
+    // (i.e. blood effects, prop weapons, CGI).
+    //
+    // Source: https://en.wikipedia.org/wiki/Graphic_violence
+    | 'graphic-violence'
 
     // Game is known to have a bad performance, either
     // on any platform or on linux specifically
@@ -111,7 +121,7 @@ type GameTag =
     // provides set of special utilities or game files modifications
     // which make the game to function. Note that this may violate its
     // terms of service and result in taking actions on your account.
-    | 'compatibility-layer';
+    | 'workarounds';
 
 // If just a string, then it will be used despite selected
 // launcher locale.

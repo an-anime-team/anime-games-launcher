@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 
 use serde_json::Value as Json;
 
@@ -68,9 +67,10 @@ impl Store {
         }
 
         let generations = std::fs::read(path)?;
-        let generations = serde_json::from_slice::<HashMap<Hash, u64>>(&generations)?;
+        let generations = serde_json::from_slice::<Json>(&generations)?;
 
-        let mut generations = generations.into_iter()
+        let mut generations = GenerationsManifest::from_json(&generations)?.generations
+            .into_iter()
             .collect::<Vec<_>>();
 
         generations.sort_by_key(|(_, time)| *time);
@@ -90,22 +90,25 @@ impl Store {
         }
     }
 
+    /// Insert generation to the store.
     pub fn insert(&self, generation: GenerationManifest) -> Result<(), StoreError> {
-        let hash = generation.hash();
+        let hash = generation.partial_hash();
 
         let manifest_path = self.folder.join("generations.json");
         let generation_path = self.folder.join(hash.to_base32());
 
-        if !manifest_path.exists() {
-            std::fs::write(&manifest_path, "{}")?;
-        }
+        let mut generations = if !manifest_path.exists() {
+            GenerationsManifest::default()
+        } else {
+            let generations = std::fs::read(&manifest_path)?;
+            let generations = serde_json::from_slice::<Json>(&generations)?;
 
-        let generations = std::fs::read(&manifest_path)?;
-        let mut generations = serde_json::from_slice::<HashMap<Hash, u64>>(&generations)?;
+            GenerationsManifest::from_json(&generations)?
+        };
 
-        generations.insert(hash, generation.generated_at);
+        generations.generations.insert(hash, generation.generated_at);
 
-        std::fs::write(manifest_path, serde_json::to_vec_pretty(&generations)?)?;
+        std::fs::write(manifest_path, serde_json::to_vec_pretty(&generations.to_json()?)?)?;
         std::fs::write(generation_path, serde_json::to_vec_pretty(&generation.to_json()?)?)?;
 
         Ok(())
@@ -121,11 +124,13 @@ impl Store {
         }
 
         let generations = std::fs::read(&manifest_path)?;
-        let mut generations = serde_json::from_slice::<HashMap<Hash, u64>>(&generations)?;
+        let generations = serde_json::from_slice::<Json>(&generations)?;
 
-        generations.remove(generation);
+        let mut generations = GenerationsManifest::from_json(&generations)?;
 
-        std::fs::write(manifest_path, serde_json::to_vec_pretty(&generations)?)?;
+        generations.generations.remove(generation);
+
+        std::fs::write(manifest_path, serde_json::to_vec_pretty(&generations.to_json()?)?)?;
 
         if generation_path.exists() {
             std::fs::remove_file(generation_path)?;
@@ -179,26 +184,26 @@ mod tests {
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert_eq!(generation.games.len(), 1);
-        assert_eq!(&generation.lock_file.root, &[Hash(14823907562133104457)]);
-        assert_eq!(generation.lock_file.resources.len(), 6);
-        assert_eq!(Hash::for_entry(path)?, Hash(6776203643455837073));
+        assert_eq!(&generation.lock_file.root, &[0]);
+        assert_eq!(generation.lock_file.resources.len(), 8);
+        assert_eq!(Hash::for_entry(path)?, Hash(9585216612201553270));
 
         generations_store.insert(generation)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
-        assert!(generations_store.has_generation(&Hash(535491346813091909)));
+        assert!(generations_store.has_generation(&Hash(18086654289878451496)));
 
-        let generation = generations_store.load(&Hash(535491346813091909))
+        let generation = generations_store.load(&Hash(18086654289878451496))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .ok_or_else(|| anyhow::anyhow!("Generation expected, got none"))?;
 
         assert_eq!(generation.games.len(), 1);
-        assert_eq!(&generation.lock_file.root, &[Hash(14823907562133104457)]);
-        assert_eq!(generation.lock_file.resources.len(), 6);
+        assert_eq!(&generation.lock_file.root, &[0]);
+        assert_eq!(generation.lock_file.resources.len(), 8);
 
-        generations_store.remove(&Hash(535491346813091909))
+        generations_store.remove(&Hash(18086654289878451496))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());

@@ -56,14 +56,22 @@ type Resource = string | {
 };
 
 type ResourceFormat =
+    // Reference to another package.
     | 'package'
+
+    // Luau script that will be loaded into the engine
+    // and could be used by other modules. A singleton.
+    | 'module'
+    | 'module/v1'
+
+    // Raw file.
     | 'file'
 
-    // Archives
+    // Archives.
     | 'archive'
-    | 'tar'
-    | 'zip'
-    | '7z';
+    | 'archive/tar'
+    | 'archive/zip'
+    | 'archive/7z';
 ```
 
 ## Lock file format
@@ -85,9 +93,9 @@ type LockFileManifest = {
         generated_at: number
     },
 
-    // List of base32 hashes of the root packages
+    // List of resource indexes of the root packages
     // which were used to produce the dependency graph.
-    root: string[],
+    root: number[],
 
     // List of all the packages and resources.
     resources: ResourceLock[]
@@ -112,12 +120,12 @@ type ResourceLock = {
         size: number
     },
 
-    // Table of inputs names and hashes of
+    // Table of inputs names and indexes of
     // imported resources of the current package.
-    inputs?: [name: string]: string,
+    inputs?: [name: string]: number,
 
-    // Table of outputs names and hashes of
+    // Table of outputs names and indexes of
     // exported resources of the current package.
-    outputs?: [name: string]: string
+    outputs?: [name: string]: number
 };
 ```

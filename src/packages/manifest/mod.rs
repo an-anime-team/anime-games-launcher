@@ -13,7 +13,13 @@ pub mod resource;
 pub mod prelude {
     pub use super::Manifest as PackageManifest;
     pub use super::metadata::PackageMetadata;
-    pub use super::resource_format::ResourceFormat as PackageResourceFormat;
+
+    pub use super::resource_format::{
+        ResourceFormat as PackageResourceFormat,
+        ResourceModuleStandard as PackageResourceModuleStandard,
+        ResourceArchiveFormat as PackageResourceArchiveFormat
+    };
+
     pub use super::resource::Resource as PackageResource;
 }
 
