@@ -1274,4 +1274,45 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn net_fetch() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        let response = standard.net_fetch.call::<_, LuaTable>(
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/tests/packages/1/package.json"
+        )?;
+
+        assert_eq!(response.get::<_, u16>("status")?, 200);
+        assert!(response.get::<_, bool>("is_ok")?);
+        assert_eq!(Hash::for_slice(&response.get::<_, Vec<u8>>("body")?), Hash(9442626994218140953));
+
+        Ok(())
+    }
+
+    #[test]
+    fn net_read() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        let header = standard.net_open.call::<_, LuaTable>(
+            "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz"
+        )?;
+
+        assert_eq!(header.get::<_, u16>("status")?, 200);
+        assert!(header.get::<_, bool>("is_ok")?);
+
+        let handle = header.get::<_, u32>("handle")?;
+
+        let mut body_len = 0;
+
+        while let Some(chunk) = standard.net_read.call::<_, Option<Vec<u8>>>(handle)? {
+            body_len += chunk.len();
+        }
+
+        assert_eq!(body_len, 9215513);
+
+        Ok(())
+    }
 }
