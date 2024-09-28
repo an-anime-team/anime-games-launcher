@@ -11,7 +11,7 @@ use super::*;
 lazy_static::lazy_static! {
     /// Name of the 7z binary installed on the system.
     pub static ref SEVENZ_BINARY: Option<&'static str> = {
-        for binary in ["7z", "7za"] {
+        for binary in ["7z", "7za", "7zz"] {
             let result = Command::new(binary)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
