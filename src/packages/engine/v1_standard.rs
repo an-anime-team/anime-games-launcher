@@ -18,6 +18,7 @@ use crate::config;
 use super::EngineError;
 
 const READ_CHUNK_LEN: usize = 8192;
+const MUTEX_LOCK_TIMEOUT: Duration = Duration::from_millis(100);
 
 // TODO: should get its own config field.
 const NET_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
@@ -249,7 +250,12 @@ pub struct Standard<'lua> {
     sync_channel_open: LuaFunction<'lua>,
     sync_channel_send: LuaFunction<'lua>,
     sync_channel_recv: LuaFunction<'lua>,
-    sync_channel_close: LuaFunction<'lua>
+    sync_channel_close: LuaFunction<'lua>,
+
+    sync_mutex_open: LuaFunction<'lua>,
+    sync_mutex_lock: LuaFunction<'lua>,
+    sync_mutex_unlock: LuaFunction<'lua>,
+    sync_mutex_close: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -260,8 +266,12 @@ impl<'lua> Standard<'lua> {
 
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
-        let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new()));
-        let sync_channels_data = Arc::new(Mutex::new(HashMap::new()));
+
+        let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new())); // key => handle
+        let sync_channels_data = Arc::new(Mutex::new(HashMap::new())); // handle => (key, data)
+
+        let sync_mutex_consumers = Arc::new(Mutex::new(HashMap::<u32, Hash>::new())); // handle => key
+        let sync_mutex_locks = Arc::new(Mutex::new(HashMap::<Hash, Option<u32>>::new())); // key => curr_lock_handle
 
         Ok(Self {
             lua,
@@ -1003,10 +1013,9 @@ impl<'lua> Standard<'lua> {
                 let net_handles = net_handles.clone();
 
                 lua.create_function(move |_, handle: u32| {
-                    let mut handles = net_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
-
-                    handles.remove(&handle);
+                    net_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?
+                        .remove(&handle);
 
                     Ok(())
                 })?
@@ -1017,9 +1026,6 @@ impl<'lua> Standard<'lua> {
                 let sync_channels_data = sync_channels_data.clone();
 
                 lua.create_function(move |_, key: LuaString| {
-                    let mut consumers = sync_channels_consumers.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
-
                     let mut listeners = sync_channels_data.lock()
                         .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
 
@@ -1029,6 +1035,9 @@ impl<'lua> Standard<'lua> {
                     while listeners.contains_key(&handle) {
                         handle = rand::random::<u32>();
                     }
+
+                    let mut consumers = sync_channels_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
 
                     consumers.entry(key).or_insert_with(HashSet::new);
 
@@ -1049,15 +1058,15 @@ impl<'lua> Standard<'lua> {
                 lua.create_function(move |_, (handle, message): (u32, LuaValue<'lua>)| {
                     let message = ChannelMessage::from_lua(message)?;
 
-                    let consumers = sync_channels_consumers.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
-
                     let mut listeners = sync_channels_data.lock()
                         .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
 
                     let Some((key, _)) = listeners.get(&handle) else {
                         return Err(LuaError::external("invalid channel handle"));
                     };
+
+                    let consumers = sync_channels_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
 
                     let Some(consumers) = consumers.get(key) else {
                         return Err(LuaError::external("invalid channel handle"));
@@ -1121,6 +1130,119 @@ impl<'lua> Standard<'lua> {
                     Ok(())
                 })?
             },
+
+            sync_mutex_open: {
+                let sync_mutex_consumers = sync_mutex_consumers.clone();
+
+                lua.create_function(move |_, key: LuaString| {
+                    let key = Hash::for_slice(key.as_bytes());
+
+                    let mut consumers = sync_mutex_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?;
+
+                    let mut handle = rand::random::<u32>();
+
+                    while consumers.contains_key(&handle) {
+                        handle = rand::random::<u32>();
+                    }
+
+                    consumers.insert(handle, key);
+
+                    Ok(handle)
+                })?
+            },
+
+            sync_mutex_lock: {
+                let sync_mutex_consumers = sync_mutex_consumers.clone();
+                let sync_mutex_locks = sync_mutex_locks.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let key = sync_mutex_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?
+                        .get(&handle)
+                        .copied()
+                        .ok_or_else(|| LuaError::external("invalid mutex handle"))?;
+
+                    loop {
+                        let mut locks = sync_mutex_locks.lock()
+                            .map_err(|err| LuaError::external(format!("failed to read mutex locks: {err}")))?;
+
+                        match locks.get_mut(&key) {
+                            Some(lock) => {
+                                if lock.is_none() {
+                                    *lock = Some(handle);
+
+                                    return Ok(());
+                                }
+                            }
+
+                            None => {
+                                locks.insert(key, Some(handle));
+
+                                return Ok(());
+                            }
+                        }
+
+                        drop(locks);
+
+                        std::thread::sleep(MUTEX_LOCK_TIMEOUT);
+                    }
+                })?
+            },
+
+            sync_mutex_unlock: {
+                let sync_mutex_consumers = sync_mutex_consumers.clone();
+                let sync_mutex_locks = sync_mutex_locks.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let key = sync_mutex_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?
+                        .get(&handle)
+                        .copied()
+                        .ok_or_else(|| LuaError::external("invalid mutex handle"))?;
+
+                    let mut locks = sync_mutex_locks.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read mutex locks: {err}")))?;
+
+                    if let Some(lock) = locks.get_mut(&key) {
+                        if let Some(lock_handle) = lock {
+                            if *lock_handle != handle {
+                                return Err(LuaError::external("can't unlock mutex locked by another handle"));
+                            }
+
+                            *lock = None;
+                        }
+                    }
+
+                    Ok(())
+                })?
+            },
+
+            sync_mutex_close: {
+                let sync_mutex_consumers = sync_mutex_consumers.clone();
+                let sync_mutex_locks = sync_mutex_locks.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let key = sync_mutex_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?
+                        .remove(&handle);
+
+                    if let Some(key) = key {
+                        let mut locks = sync_mutex_locks.lock()
+                            .map_err(|err| LuaError::external(format!("failed to read mutex locks: {err}")))?;
+
+                        if let Some(lock) = locks.get_mut(&key) {
+                            if let Some(lock_handle) = lock {
+                                if *lock_handle == handle {
+                                    *lock = None;
+                                }
+                            }
+                        }
+                    }
+
+                    Ok(())
+                })?
+            }
         })
     }
 
@@ -1136,6 +1258,7 @@ impl<'lua> Standard<'lua> {
 
         let sync = self.lua.create_table()?;
         let sync_channel = self.lua.create_table()?;
+        let sync_mutex = self.lua.create_table()?;
 
         env.set("fs", fs.clone())?;
         env.set("path", path.clone())?;
@@ -1143,6 +1266,7 @@ impl<'lua> Standard<'lua> {
 
         env.set("sync", sync.clone())?;
         sync.set("channel", sync_channel.clone())?;
+        sync.set("mutex", sync_mutex.clone())?;
 
         // IO API
 
@@ -1185,12 +1309,19 @@ impl<'lua> Standard<'lua> {
         net.set("read", self.net_read.clone())?;
         net.set("close", self.net_close.clone())?;
 
-        // Sync API - channels
+        // Sync API - Channels
 
         sync_channel.set("open", self.sync_channel_open.clone())?;
         sync_channel.set("send", self.sync_channel_send.clone())?;
         sync_channel.set("recv", self.sync_channel_recv.clone())?;
         sync_channel.set("close", self.sync_channel_close.clone())?;
+
+        // Sync API - Mutex
+
+        sync_mutex.set("open", self.sync_mutex_open.clone())?;
+        sync_mutex.set("lock", self.sync_mutex_lock.clone())?;
+        sync_mutex.set("unlock", self.sync_mutex_unlock.clone())?;
+        sync_mutex.set("close", self.sync_mutex_close.clone())?;
 
         Ok(env)
     }

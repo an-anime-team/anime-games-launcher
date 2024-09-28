@@ -781,7 +781,7 @@ before you obtained this identifier.
 local channel = sync.channel.open("my_package_channel")
 ```
 
-#### `sync.channel.send(channel: number, message: any)`
+#### `sync.channel.send(handle: number, message: any)`
 
 Send some value to the open channel. Message will be sent to all the
 packages which have this channel open except you.
@@ -802,7 +802,7 @@ sync.channel.send(channel, true)
 print(sync.channel.recv(channel)) -- nil
 ```
 
-#### `sync.channel.recv(channel: number) -> any | nil, bool`
+#### `sync.channel.recv(handle: number) -> any | nil, bool`
 
 Try to receive a message from the open channel. This is a non-blocking
 method which will return `nil` if there's no messages to read. Second
@@ -831,7 +831,7 @@ sync.channel.close(sender)
 sync.channel.close(receiver)
 ```
 
-#### `sync.channel.close(channel: number)`
+#### `sync.channel.close(handle: number)`
 
 Close the open channel. This will clear all the remaining messages and
 prevent future writes to your identifier.
@@ -842,4 +842,84 @@ local channel = sync.channel.open("my_package_channel")
 -- do some operations
 
 sync.channel.close(channel)
+```
+
+### Mutex
+
+Mutex is the most used synchronization primitive. It allows you to block
+code execution while another thread (module, package) is using the mutex.
+
+| Function            | Description                |
+| ------------------- | -------------------------- |
+| `sync.mutex.open`   | Open inter-packages mutex. |
+| `sync.mutex.lock`   | Lock an open mutex.        |
+| `sync.mutex.unlock` | Unlock an open mutex.      |
+| `sync.mutex.close`  | Close an open mutex.       |
+
+#### `sync.mutex.open(key: string) -> number`
+
+Get handle to the mutex with given key identifier. This handle is used to
+lock and unlock the same mutex from different packages and modules.
+
+```lua
+local mutex = sync.mutex.open("my_module_mutex")
+```
+
+#### `sync.mutex.lock(handle: number)`
+
+Block code execution until the mutex is locked by you. Once another module
+unlocks the mutex you (or some another module) will be able to lock it and
+continue execution. After unlocking the mutex you allow other modules to
+continue execution. This can be used if your module downloads resources
+from the internet and you have different versions of the same module. Using
+mutex you can block other modules from downloading the resources.
+
+```lua
+-- first module
+local mutex = sync.mutex.open("my_module_mutex")
+
+sync.mutex.lock(mutex)
+
+-- do some operations
+
+sync.mutex.close(mutex)
+```
+
+```lua
+-- second module
+local mutex = sync.mutex.open("my_module_mutex")
+
+sync.mutex.lock(mutex)
+
+-- do some operations
+
+sync.mutex.unlock(mutex)
+```
+
+#### `sync.mutex.unlock(handle: number)`
+
+Unlock the mutex, allowing other modules to lock it and continue execution.
+
+```lua
+local mutex = sync.mutex.open("my_module_mutex")
+
+sync.mutex.lock(mutex)
+
+-- do some operations
+
+sync.mutex.unlock(mutex)
+```
+
+#### `sync.mutex.close(handle: number)`
+
+Close the mutex handle. Closing locked mutex will automatically unlock it.
+
+```lua
+local mutex = sync.mutex.open("my_module_mutex")
+
+sync.mutex.lock(mutex)
+
+-- do some operations
+
+sync.mutex.close(mutex)
 ```
