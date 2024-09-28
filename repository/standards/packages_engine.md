@@ -754,3 +754,92 @@ print(head.headers["Content-Length"])
 
 net.close(head.handle)
 ```
+
+## Sync API
+
+Some packages would like to communicate with each other, e.g.
+different version of the same package. Sync API provides a set
+of data synchronization primitives for this.
+
+### Channels
+
+| Function             | Description                                |
+| -------------------- | ------------------------------------------ |
+| `sync.channel.open`  | Open inter-packages communication channel. |
+| `sync.channel.send`  | Send a new message to the channel.         |
+| `sync.channel.recv`  | Receive a new message from the channel.    |
+| `sync.channel.close` | Close an open channel.                     |
+
+#### `sync.channel.open(key: string) -> number`
+
+Subscribe to a channel with a given key (name). After subscription
+you receive a special identifier which will be used to hold your
+read messages history. You can't read messages which were sent
+before you obtained this identifier.
+
+```lua
+local channel = sync.channel.open("my_package_channel")
+```
+
+#### `sync.channel.send(channel: number, message: any)`
+
+Send some value to the open channel. Message will be sent to all the
+packages which have this channel open except you.
+
+> NOTE: currently not *any* value is supported due to technical
+> difficulties. Sent values are also not shared, meaning they all
+> are cloned.
+
+```lua
+local channel = sync.channel.open("my_package_channel")
+
+sync.channel.send(channel, "Hello, World!")
+sync.channel.send(channel, { 1, 2, 3 })
+sync.channel.send(channel, true)
+
+-- messages sent by you will be visible to other
+-- channel users, but you will not see them yourself.
+print(sync.channel.recv(channel)) -- nil
+```
+
+#### `sync.channel.recv(channel: number) -> any | nil, bool`
+
+Try to receive a message from the open channel. This is a non-blocking
+method which will return `nil` if there's no messages to read. Second
+returned value means status of the returned value. Since `nil` could
+be sent in the channel as a message, second value indicates its status.
+For every valid message it's `true` while for channel end message
+it's `false`.
+
+```lua
+local sender   = sync.channel.open("my_package_channel")
+local receiver = sync.channel.open("my_package_channel")
+
+sync.channel.send(sender, 1)
+sync.channel.send(sender, 2)
+sync.channel.send(sender, nil)
+sync.channel.send(sender, 3)
+
+repeat
+    local message, status = sync.channel.recv(receiver)
+
+    -- 1, 2, nil, 3
+    print(message)
+until status
+
+sync.channel.close(sender)
+sync.channel.close(receiver)
+```
+
+#### `sync.channel.close(channel: number)`
+
+Close the open channel. This will clear all the remaining messages and
+prevent future writes to your identifier.
+
+```lua
+local channel = sync.channel.open("my_package_channel")
+
+-- do some operations
+
+sync.channel.close(channel)
+```

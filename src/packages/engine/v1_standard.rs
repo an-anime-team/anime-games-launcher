@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::{UNIX_EPOCH, Duration};
 use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
@@ -10,7 +10,7 @@ use bufreaderwriter::rand::BufReaderWriterRand;
 
 use tokio::runtime::Runtime;
 
-use reqwest::{Client, Method, Response};
+use reqwest::{Client, Method};
 
 use crate::packages::prelude::*;
 use crate::config;
@@ -28,6 +28,16 @@ lazy_static::lazy_static! {
         .enable_all()
         .build()
         .expect("Failed to create v1 network API tasks runtime");
+}
+
+fn resolve_path(path: impl AsRef<str>) -> std::io::Result<PathBuf> {
+    let mut path = PathBuf::from(path.as_ref());
+
+    while path.is_symlink() {
+        path = path.read_link()?;
+    }
+
+    Ok(path)
 }
 
 fn normalize_path_parts(parts: &[impl AsRef<str>]) -> Option<Vec<String>> {
@@ -114,7 +124,7 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
                 LuaValue::String(str) => request.body(str.as_bytes().to_vec()),
 
                 LuaValue::Table(table) => {
-                    let mut body = Vec::with_capacity(table.len()? as usize);
+                    let mut body = Vec::with_capacity(table.raw_len());
 
                     for byte in table.sequence_values::<u8>() {
                         body.push(byte?);
@@ -131,13 +141,73 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
     Ok(request)
 }
 
+// Workaround for lifetimes fuckery.
+#[derive(Debug, Clone)]
+enum ChannelMessage {
+    Table(Vec<(Self, Self)>),
+    String(String),
+    Double(f64),
+    Integer(i32),
+    Boolean(bool),
+    Nil
+}
+
+impl ChannelMessage {
+    pub fn from_lua(value: LuaValue) -> Result<Self, LuaError> {
+        match value {
+            LuaValue::String(value) => Ok(Self::String(value.to_string_lossy().to_string())),
+            LuaValue::Number(value) => Ok(Self::Double(value)),
+            LuaValue::Integer(value) => Ok(Self::Integer(value)),
+            LuaValue::Boolean(value) => Ok(Self::Boolean(value)),
+            LuaValue::Nil => Ok(Self::Nil),
+
+            LuaValue::Table(table) => {
+                let mut result = Vec::with_capacity(table.raw_len());
+
+                for pair in table.pairs::<LuaValue, LuaValue>() {
+                    let (key, value) = pair?;
+
+                    result.push((
+                        Self::from_lua(key)?,
+                        Self::from_lua(value)?
+                    ));
+                }
+
+                Ok(Self::Table(result))
+            }
+
+            _ => Err(LuaError::external("can't coerce given value type"))
+        }
+    }
+
+    pub fn to_lua<'lua>(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, LuaError> {
+        match self {
+            Self::String(value) => lua.create_string(value)
+                .map(LuaValue::String),
+
+            Self::Double(value) => Ok(LuaValue::Number(*value)),
+            Self::Integer(value) => Ok(LuaValue::Integer(*value)),
+            Self::Boolean(value) => Ok(LuaValue::Boolean(*value)),
+            Self::Nil => Ok(LuaNil),
+
+            Self::Table(table) => {
+                let result = lua.create_table()?;
+
+                for (key, value) in table {
+                    result.set(
+                        key.to_lua(lua)?,
+                        value.to_lua(lua)?
+                    )?;
+                }
+
+                Ok(LuaValue::Table(result))
+            }
+        }
+    }
+}
+
 pub struct Standard<'lua> {
     lua: &'lua Lua,
-
-    _net_client: Arc<Client>,
-
-    _file_handles: Arc<Mutex<HashMap<u32, BufReaderWriterRand<File>>>>,
-    _net_handles: Arc<Mutex<HashMap<u32, Response>>>,
 
     clone: LuaFunction<'lua>,
 
@@ -174,7 +244,12 @@ pub struct Standard<'lua> {
     net_fetch: LuaFunction<'lua>,
     net_open: LuaFunction<'lua>,
     net_read: LuaFunction<'lua>,
-    net_close: LuaFunction<'lua>
+    net_close: LuaFunction<'lua>,
+
+    sync_channel_open: LuaFunction<'lua>,
+    sync_channel_send: LuaFunction<'lua>,
+    sync_channel_recv: LuaFunction<'lua>,
+    sync_channel_close: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -185,24 +260,11 @@ impl<'lua> Standard<'lua> {
 
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
-
-        fn resolve_path(path: impl AsRef<str>) -> std::io::Result<PathBuf> {
-            let mut path = PathBuf::from(path.as_ref());
-
-            while path.is_symlink() {
-                path = path.read_link()?;
-            }
-
-            Ok(path)
-        }
+        let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new()));
+        let sync_channels_data = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
             lua,
-
-            _net_client: net_client.clone(),
-
-            _file_handles: file_handles.clone(),
-            _net_handles: net_handles.clone(),
 
             clone: lua.create_function(|lua, value: LuaValue| {
                 fn clone_value<'lua>(lua: &'lua Lua, value: LuaValue<'lua>) -> Result<LuaValue<'lua>, LuaError> {
@@ -948,7 +1010,117 @@ impl<'lua> Standard<'lua> {
 
                     Ok(())
                 })?
-            }
+            },
+
+            sync_channel_open: {
+                let sync_channels_consumers = sync_channels_consumers.clone();
+                let sync_channels_data = sync_channels_data.clone();
+
+                lua.create_function(move |_, key: LuaString| {
+                    let mut consumers = sync_channels_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
+
+                    let mut listeners = sync_channels_data.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
+
+                    let key = Hash::for_slice(key.as_bytes());
+                    let mut handle = rand::random::<u32>();
+
+                    while listeners.contains_key(&handle) {
+                        handle = rand::random::<u32>();
+                    }
+
+                    consumers.entry(key).or_insert_with(HashSet::new);
+
+                    if let Some(listeners) = consumers.get_mut(&key) {
+                        listeners.insert(handle);
+                    }
+
+                    listeners.insert(handle, (key, VecDeque::new()));
+
+                    Ok(handle)
+                })?
+            },
+
+            sync_channel_send: {
+                let sync_channels_consumers = sync_channels_consumers.clone();
+                let sync_channels_data = sync_channels_data.clone();
+
+                lua.create_function(move |_, (handle, message): (u32, LuaValue<'lua>)| {
+                    let message = ChannelMessage::from_lua(message)?;
+
+                    let consumers = sync_channels_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
+
+                    let mut listeners = sync_channels_data.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
+
+                    let Some((key, _)) = listeners.get(&handle) else {
+                        return Err(LuaError::external("invalid channel handle"));
+                    };
+
+                    let Some(consumers) = consumers.get(key) else {
+                        return Err(LuaError::external("invalid channel handle"));
+                    };
+
+                    for consumer in consumers {
+                        if consumer != &handle {
+                            if let Some((_, ref mut data)) = listeners.get_mut(consumer) {
+                                data.push_back(message.clone());
+                            }
+                        }
+                    }
+
+                    Ok(())
+                })?
+            },
+
+            sync_channel_recv: {
+                let sync_channels_data = sync_channels_data.clone();
+
+                lua.create_function(move |lua, handle: u32| {
+                    let mut listeners = sync_channels_data.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
+
+                    let Some((_, data)) = listeners.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid channel handle"));
+                    };
+
+                    match data.pop_front() {
+                        Some(message) => Ok((message.to_lua(lua)?, true)),
+                        None => Ok((LuaNil, false))
+                    }
+                })?
+            },
+
+            sync_channel_close: {
+                let sync_channels_consumers = sync_channels_consumers.clone();
+                let sync_channels_data = sync_channels_data.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let mut consumers = sync_channels_consumers.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
+
+                    let mut listeners = sync_channels_data.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
+
+                    if let Some((hash, _)) = listeners.remove(&handle) {
+                        let mut empty = false;
+
+                        if let Some(listeners) = consumers.get_mut(&hash) {
+                            listeners.remove(&handle);
+
+                            empty = listeners.is_empty();
+                        }
+
+                        if empty {
+                            consumers.remove(&hash);
+                        }
+                    }
+
+                    Ok(())
+                })?
+            },
         })
     }
 
@@ -962,9 +1134,15 @@ impl<'lua> Standard<'lua> {
         let path = self.lua.create_table()?;
         let net = self.lua.create_table()?;
 
+        let sync = self.lua.create_table()?;
+        let sync_channel = self.lua.create_table()?;
+
         env.set("fs", fs.clone())?;
         env.set("path", path.clone())?;
         env.set("net", net.clone())?;
+
+        env.set("sync", sync.clone())?;
+        sync.set("channel", sync_channel.clone())?;
 
         // IO API
 
@@ -1006,6 +1184,13 @@ impl<'lua> Standard<'lua> {
         net.set("open", self.net_open.clone())?;
         net.set("read", self.net_read.clone())?;
         net.set("close", self.net_close.clone())?;
+
+        // Sync API - channels
+
+        sync_channel.set("open", self.sync_channel_open.clone())?;
+        sync_channel.set("send", self.sync_channel_send.clone())?;
+        sync_channel.set("recv", self.sync_channel_recv.clone())?;
+        sync_channel.set("close", self.sync_channel_close.clone())?;
 
         Ok(env)
     }
@@ -1312,6 +1497,70 @@ mod tests {
         }
 
         assert_eq!(body_len, 9215513);
+
+        Ok(())
+    }
+
+    #[test]
+    fn sync_channels() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        assert!(standard.sync_channel_send.call::<_, ()>((0, String::new())).is_err());
+        assert!(standard.sync_channel_recv.call::<_, Option<String>>(0).is_err());
+
+        let a = standard.sync_channel_open.call::<_, u32>("test")?;
+        let b = standard.sync_channel_open.call::<_, u32>("test")?;
+
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(a)?, None);
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+
+        standard.sync_channel_send.call::<_, ()>((a, String::from("Message 1")))?;
+        standard.sync_channel_send.call::<_, ()>((a, String::from("Message 2")))?;
+
+        let c = standard.sync_channel_open.call::<_, u32>("test")?;
+
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(a)?, None);
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(c)?, None);
+        assert_eq!(standard.sync_channel_recv.call::<_, String>(b)?, "Message 1");
+        assert_eq!(standard.sync_channel_recv.call::<_, String>(b)?, "Message 2");
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+
+        standard.sync_channel_send.call::<_, ()>((a, String::from("Message 3")))?;
+
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(a)?, None);
+        assert_eq!(standard.sync_channel_recv.call::<_, String>(b)?, "Message 3");
+        assert_eq!(standard.sync_channel_recv.call::<_, String>(c)?, "Message 3");
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(c)?, None);
+
+        standard.sync_channel_send.call::<_, ()>((a, true))?;
+        standard.sync_channel_send.call::<_, ()>((a, 0.5))?;
+        standard.sync_channel_send.call::<_, ()>((a, -17))?;
+        standard.sync_channel_send.call::<_, ()>((a, vec![1, 2, 3]))?;
+        standard.sync_channel_send.call::<_, ()>((a, vec!["Hello", "World"]))?;
+        standard.sync_channel_send.call::<_, ()>((a, vec![vec![1, 2], vec![3, 4]]))?;
+
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<_>>(b)?, Some(true));
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<_>>(b)?, Some(0.5));
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<_>>(b)?, Some(-17));
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<_>>(b)?, Some(vec![1, 2, 3]));
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<_>>(b)?, Some(vec![String::from("Hello"), String::from("World")]));
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<_>>(b)?, Some(vec![vec![1, 2], vec![3, 4]]));
+        assert_eq!(standard.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+
+        standard.sync_channel_close.call::<_, ()>(a)?;
+        standard.sync_channel_close.call::<_, ()>(b)?;
+        standard.sync_channel_close.call::<_, ()>(c)?;
+
+        assert!(standard.sync_channel_send.call::<_, ()>((a, String::new())).is_err());
+        assert!(standard.sync_channel_recv.call::<_, Option<String>>(a).is_err());
+
+        assert!(standard.sync_channel_send.call::<_, ()>((b, String::new())).is_err());
+        assert!(standard.sync_channel_recv.call::<_, Option<String>>(b).is_err());
+
+        assert!(standard.sync_channel_send.call::<_, ()>((c, String::new())).is_err());
+        assert!(standard.sync_channel_recv.call::<_, Option<String>>(c).is_err());
 
         Ok(())
     }
