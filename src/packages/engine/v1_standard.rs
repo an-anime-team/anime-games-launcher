@@ -1657,6 +1657,7 @@ impl<'lua> Standard<'lua> {
         let sync_mutex = self.lua.create_table()?;
 
         let archive = self.lua.create_table()?;
+        let hash = self.lua.create_table()?;
 
         env.set("fs", fs.clone())?;
         env.set("path", path.clone())?;
@@ -1667,6 +1668,7 @@ impl<'lua> Standard<'lua> {
         sync.set("mutex", sync_mutex.clone())?;
 
         env.set("archive", archive.clone())?;
+        env.set("hash", hash.clone())?;
 
         // IO API
 
@@ -1729,6 +1731,13 @@ impl<'lua> Standard<'lua> {
         archive.set("entries", self.archive_entries.clone())?;
         archive.set("extract", self.archive_extract.clone())?;
         archive.set("close", self.archive_close.clone())?;
+
+        // Hashes API
+
+        hash.set("calc", self.hash_calc.clone())?;
+        hash.set("builder", self.hash_builder.clone())?;
+        hash.set("write", self.hash_write.clone())?;
+        hash.set("finalize", self.hash_finalize.clone())?;
 
         Ok(env)
     }
