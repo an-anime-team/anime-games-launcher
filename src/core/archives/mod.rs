@@ -78,31 +78,35 @@ pub trait ArchiveExt {
     fn extract(&self, folder: impl AsRef<Path>, progress: impl FnMut(u64, u64, u64) + Send + 'static) -> Result<Self::Extractor, Self::Error>;
 }
 
-enum ArchiveFormat {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ArchiveFormat {
     Tar,
     Zip,
     Sevenz
 }
 
-fn get_format(path: impl AsRef<Path>) -> Option<ArchiveFormat> {
-    let path = path.as_ref()
-        .as_os_str()
-        .to_string_lossy();
+impl ArchiveFormat {
+    /// Assume archive format from the fs path.
+    pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
+        let path = path.as_ref()
+            .as_os_str()
+            .to_string_lossy();
 
-    if path.ends_with(".tar.xz") || path.ends_with(".tar.gz") || path.ends_with(".tar.bz2") || path.ends_with(".tar") {
-        Some(ArchiveFormat::Tar)
-    }
+        if path.ends_with(".tar.xz") || path.ends_with(".tar.gz") || path.ends_with(".tar.bz2") || path.ends_with(".tar") {
+            Some(Self::Tar)
+        }
 
-    else if path.ends_with(".zip") {
-        Some(ArchiveFormat::Zip)
-    }
+        else if path.ends_with(".zip") {
+            Some(Self::Zip)
+        }
 
-    else if path.ends_with(".7z") | path.ends_with(".zip.001") || path.ends_with(".7z.001") {
-        Some(ArchiveFormat::Sevenz)
-    }
+        else if path.ends_with(".7z") | path.ends_with(".zip.001") || path.ends_with(".7z.001") {
+            Some(Self::Sevenz)
+        }
 
-    else {
-        None
+        else {
+            None
+        }
     }
 }
 
@@ -112,7 +116,7 @@ fn get_format(path: impl AsRef<Path>) -> Option<ArchiveFormat> {
 /// the format of the archive and needed struct
 /// to process it.
 pub fn get_entries(path: impl AsRef<Path>) -> anyhow::Result<Vec<ArchiveEntry>> {
-    let entries = match get_format(path.as_ref()) {
+    let entries = match ArchiveFormat::from_path(path.as_ref()) {
         Some(ArchiveFormat::Tar) => tar::TarArchive::open(path)
             .and_then(|archive| archive.get_entries())?,
 
@@ -134,7 +138,7 @@ pub fn get_entries(path: impl AsRef<Path>) -> anyhow::Result<Vec<ArchiveEntry>> 
 /// the format of the archive and needed struct
 /// to process it.
 pub fn get_total_size(path: impl AsRef<Path>) -> anyhow::Result<u64> {
-    let total_size = match get_format(path.as_ref()) {
+    let total_size = match ArchiveFormat::from_path(path.as_ref()) {
         Some(ArchiveFormat::Tar) => tar::TarArchive::open(path)
             .and_then(|archive| archive.total_size())?,
 
@@ -159,7 +163,7 @@ pub fn get_total_size(path: impl AsRef<Path>) -> anyhow::Result<u64> {
 /// This function will freeze the current thread
 /// until the archive is fully extracted.
 pub fn extract(path: impl AsRef<Path>, folder: impl AsRef<Path>, progress: impl FnMut(u64, u64, u64) + Send + 'static) -> anyhow::Result<()> {
-    match get_format(path.as_ref()) {
+    match ArchiveFormat::from_path(path.as_ref()) {
         Some(ArchiveFormat::Tar) => {
             tar::TarArchive::open(path)
                 .and_then(|archive| archive.extract(folder, progress))?
