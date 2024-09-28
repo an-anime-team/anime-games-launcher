@@ -96,7 +96,7 @@ and rust-lua bridge API. From rust side we provide the following functions:
 | `fs.read_dir`    | Read directory on a given path.          |
 | `fs.remove_dir`  | Remove directory on a given path.        |
 
-### `fs.exists(path. string) -> bool`
+### `fs.exists(path: string) -> boolean`
 
 Check if given filesystem path exists and accessible.
 
@@ -108,7 +108,7 @@ else
 end
 ```
 
-### `fs.metadata(path. string) -> Metadata`
+### `fs.metadata(path: string) -> Metadata`
 
 Read metadata of the filesystem path (file, folder or a symlink).
 
@@ -162,7 +162,7 @@ accessible.
 fs.move("my_folder", "new_location/my_folder")
 ```
 
-### `fs.remove(path. string)`
+### `fs.remove(path: string)`
 
 Remove a file, folder or a symlink. Removing a folder will remove
 all its content as well.
@@ -173,7 +173,7 @@ fs.remove("my_folder")
 fs.remove("my_symlink")
 ```
 
-### `fs.open(path. string, [options: Options]) -> number`
+### `fs.open(path: string, [options: Options]) -> number`
 
 Open a file handle.
 
@@ -403,7 +403,7 @@ fs.write({ 1, 2, 3 })
 fs.close(handle)
 ```
 
-### `fs.read_file(path. string) -> [number]`
+### `fs.read_file(path: string) -> [number]`
 
 Read the whole content of a file in a given path.
 
@@ -415,7 +415,7 @@ local content = fs.read_file("my_file.txt")
 print("Read " .. #content .. " bytes")
 ```
 
-### `fs.write_file(path. string, content: [number])`
+### `fs.write_file(path: string, content: [number])`
 
 Overwrite existing file with given content, or create
 a new one.
@@ -424,7 +424,7 @@ a new one.
 fs.write_file("my_file.txt", { 1, 2, 3 })
 ```
 
-### `fs.remove_file(path. string)`
+### `fs.remove_file(path: string)`
 
 Remove file in a given path.
 
@@ -432,7 +432,7 @@ Remove file in a given path.
 fs.remove_file("my_file.txt")
 ```
 
-### `fs.create_dir(path. string)`
+### `fs.create_dir(path: string)`
 
 Create directory if it doesn't exist.
 
@@ -441,7 +441,7 @@ Create directory if it doesn't exist.
 fs.create_dir("a/b/c/d")
 ```
 
-### `fs.read_dir(path. string) -> [Entry]`
+### `fs.read_dir(path: string) -> [Entry]`
 
 Read the given directory, returning list of its entries.
 
@@ -632,7 +632,7 @@ print(path.exists(path.module_dir())) -- true
 print(path.exists("/home"))           -- true
 ```
 
-### `path.accessible(path: string) -> bool`
+### `path.accessible(path: string) -> boolean`
 
 Check if given path is accessible for the current module.
 
@@ -936,7 +936,7 @@ This module allows you to extract their content.
 | `archive.extract` | Extract all the entries of the open archive. |
 | `archive.close`   | Close an open archive.                       |
 
-### `archive.open(path: string, [format: Format]) -> number`
+### `archive.open(path: string, [format: ArchiveFormat]) -> number`
 
 Try to open an archive. This method will fail if the path is not accessible
 or it doesn't point to an archive (or the archive format is not supported).
@@ -944,7 +944,7 @@ or it doesn't point to an archive (or the archive format is not supported).
 If format is not specified, then it's automatically assumed from the extension.
 
 ```ts
-type Format = 'tar' | 'zip' | '7z';
+type ArchiveFormat = 'tar' | 'zip' | '7z';
 ```
 
 ```lua
@@ -1018,4 +1018,103 @@ local handle = archive.open("archive.zip")
 -- do some operations
 
 archive.close(handle)
+```
+
+## Hashes API
+
+In many cases you would like to calculate hashes of values.
+This API provides some most used ones for you.
+
+| Function       | Description                               |
+| -------------- | ----------------------------------------- |
+| `hash.calc`    | Calculate hash for a bytes slice.         |
+| `hash.builder` | Create new hash builder.                  |
+| `hash.write`   | Write a chunk of data to the open hasher. |
+| `hash.finalize`| Finalize hash value.                      |
+
+### Supported hash algorithms
+
+Following table contains list of `HashAlgorithm` enum values.
+
+| Algorithm  | Bits | Cryptographic | URL                                  |
+| ---------- | ---- | ------------- | ------------------------------------ |
+| `seahash`  | 64   | No            | https://crates.io/crates/seahash     |
+| `crc32`    | 32   | No            | https://crates.io/crates/crc32fast   |
+| `crc32c`   | 32   | No            | https://crates.io/crates/crc32c      |
+| `xxh32`    | 32   | No            | https://crates.io/crates/xxhash-rust |
+| `xxh64`    | 64   | No            | https://crates.io/crates/xxhash-rust |
+| `xxh3-64`  | 64   | No            | https://crates.io/crates/xxhash-rust |
+| `xxh3-128` | 128  | No            | https://crates.io/crates/xxhash-rust |
+| `md5`      | 128  | Yes           | https://crates.io/crates/md5         |
+| `sha1`     | 160  | Yes           | https://crates.io/crates/sha1        |
+| `sha2-224` | 224  | Yes           | https://crates.io/crates/sha2        |
+| `sha2-256` | 256  | Yes           | https://crates.io/crates/sha2        |
+| `sha2-384` | 384  | Yes           | https://crates.io/crates/sha2        |
+| `sha2-512` | 256  | Yes           | https://crates.io/crates/sha2        |
+
+### `hash.calc(value: any, [algorithm: HashAlgorithm]) -> [number]`
+
+Calculate hash for a given bytes slice using specified algorithm.
+By default `seahash` is used as a launcher's internal algorithm.
+
+```lua
+-- [236, 74, 195, 208]
+print(hash.calc("Hello, World!", "crc32"))
+```
+
+### `hash.builder([algorithm: HashAlgorithm]) -> number`
+
+Create new incremental data hasher. This should be used to hash
+large amounts of data. Unlike `hash.calc` method where you had to
+hold the whole data slice in RAM before making a hash, the hasher
+struct allows you to write small chunks of data iteratively, not
+keeping all of them in RAM at once.
+
+```lua
+local hasher = hash.hasher("md5")
+
+-- do some actions
+```
+
+### `hash.write(handle: number, value: any)`
+
+Write a chunk of data to the open hasher.
+
+```lua
+local hasher = hash.hasher("xxh3-128")
+local head = net.open("https://example.com/large_file.zip")
+
+if head.is_ok do
+    local chunk = net.read(head.handle)
+
+    while chunk do
+        if #chunk > 0 do
+            hasher.write(chunk)
+        end
+
+        chunk = net.read(head.handle)
+    end
+
+    -- print large file's hash
+    print(hash.finalize(hasher))
+end
+
+hash.close(hasher)
+net.close(head.handle)
+```
+
+### `hash.finalize(handle: number) -> [number]`
+
+Finalize hash calculation in the open hasher struct.
+This will close the hasher and prevent future writes.
+
+```lua
+local hasher = hash.hasher("sha1")
+
+hash.write(hasher, "Hello")
+hash.write(hasher, "World")
+
+-- printed the same value
+print(hash.finalize(hasher))
+print(hash.calc("HelloWorld"))
 ```

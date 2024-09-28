@@ -54,6 +54,13 @@ fluent-templates = "0.10"
 unic-langid = "0.9"
 
 seahash = "4.1.0"
+crc32fast = "1.4.2"
+crc32c = "0.6.8"
+xxhash-rust = { version = "0.8.12", features = ["xxh32", "xxh64", "xxh3"] }
+md5 = "0.7.0"
+sha1 = "0.10.6"
+sha2 = "0.10.8"
+
 base32 = "0.5.1"
 rand = "0.8.5"
 
