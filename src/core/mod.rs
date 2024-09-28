@@ -17,8 +17,9 @@ pub mod prelude {
 
     pub use super::archives::{
         ArchiveExt,
-        ArchiveEntry,
         ArchiveExtractionContext,
+        ArchiveEntry,
+        ArchiveFormat,
         get_entries as archive_get_entries,
         get_total_size as archive_get_total_size,
         extract as archive_extract
