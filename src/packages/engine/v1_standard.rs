@@ -25,7 +25,7 @@ const MUTEX_LOCK_TIMEOUT: Duration = Duration::from_millis(100);
 const NET_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 lazy_static::lazy_static! {
-    static ref RUNTIME: Runtime = tokio::runtime::Builder::new_multi_thread()
+    static ref NET_RUNTIME: Runtime = tokio::runtime::Builder::new_multi_thread()
         .thread_name("v1_net_api")
         .enable_all()
         .build()
@@ -1067,7 +1067,7 @@ impl<'lua> Standard<'lua> {
                     let request = create_request(&net_client, url, options)?;
 
                     // Perform the request.
-                    let response = RUNTIME.block_on(async move {
+                    let response = NET_RUNTIME.block_on(async move {
                         let result = lua.create_table()?;
                         let headers = lua.create_table()?;
 
@@ -1102,7 +1102,7 @@ impl<'lua> Standard<'lua> {
                     let url = url.to_string_lossy().to_string();
                     let request = create_request(&net_client, url, options)?;
 
-                    let (response, header) = RUNTIME.block_on(async move {
+                    let (response, header) = NET_RUNTIME.block_on(async move {
                         let result = lua.create_table()?;
                         let headers = lua.create_table()?;
 
@@ -1148,7 +1148,7 @@ impl<'lua> Standard<'lua> {
                         return Err(LuaError::external("invalid request handle"));
                     };
 
-                    let chunk = RUNTIME.block_on(async move {
+                    let chunk = NET_RUNTIME.block_on(async move {
                         response.chunk().await
                             .map_err(|err| {
                                 LuaError::external(format!("failed to read body chunk: {err}"))
