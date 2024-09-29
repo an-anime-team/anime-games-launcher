@@ -85,7 +85,7 @@ List of all available APIs:
 
 | Name     | Prefix    | Extended privileges | Description                                |
 | -------- | --------- | ------------------- | ------------------------------------------ |
-| String   | `str`     | No                  | String conversions and data serialization. |
+| Strings  | `str`     | No                  | String conversions and data serialization. |
 | Paths    | `path`    | No                  | Paths construction and resolution.         |
 | IO       | `fs`      | No                  | Sandboxed filesystem manipulations.        |
 | Network  | `net`     | No                  | HTTP requests.                             |
@@ -94,7 +94,7 @@ List of all available APIs:
 | Hashes   | `hash`    | No                  | Hash values calculation.                   |
 | Process  | `process` | **Yes**             | Binaries execution.                        |
 
-## String API
+## Strings API
 
 Rust-lua bridge API is designed to return raw bytes instead of strings.
 While many methods can accept strings, as well as other data types, as
@@ -186,7 +186,7 @@ Decode given string to a bytes slice.
 ```lua
 print(str.decode("7b", "base16"))                                   -- [0, 0, 0, 123]
 print(str.from_bytes(str.decode("SGVsbG8sIFdvcmxkIQ==", "base64"))) -- "Hello, World!"
-print(str.decode("{\"hello\":\"world\"}", "json"))                  --  { hello = "world" }
+print(str.decode("{\"hello\":\"world\"}", "json"))                  -- { hello = "world" }
 ```
 
 ## Paths API

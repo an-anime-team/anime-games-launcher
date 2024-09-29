@@ -2127,7 +2127,7 @@ impl<'lua> Standard<'lua> {
         env.set("archive", archive.clone())?;
         env.set("hash", hash.clone())?;
 
-        // String API
+        // Strings API
 
         str.set("to_bytes", self.str_to_bytes.clone())?;
         str.set("from_bytes", self.str_from_bytes.clone())?;
