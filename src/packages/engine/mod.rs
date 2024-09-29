@@ -110,7 +110,7 @@ impl<'lua> Engine<'lua> {
                     let module = lua.load(module);
 
                     // Prepare special environment for the module.
-                    let env = v1_standard.create_env()?;
+                    let env = v1_standard.create_env(false)?;
 
                     // Clone the lua globals.
                     for pair in lua.globals().pairs::<LuaValue, LuaValue>() {

@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{Read, Write, Seek, SeekFrom};
+use std::process::{Command, Stdio};
 
 use mlua::prelude::*;
 use bufreaderwriter::rand::BufReaderWriterRand;
@@ -18,11 +19,14 @@ use crate::config;
 
 use super::EngineError;
 
-const READ_CHUNK_LEN: usize = 8192;
-const MUTEX_LOCK_TIMEOUT: Duration = Duration::from_millis(100);
+const NET_READ_CHUNK_LEN: usize = 8192;
 
 // TODO: should get its own config field.
 const NET_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+const MUTEX_LOCK_TIMEOUT: Duration = Duration::from_millis(100);
+
+const PROCESS_READ_CHUNK_LEN: usize = 1024;
 
 lazy_static::lazy_static! {
     static ref NET_RUNTIME: Runtime = tokio::runtime::Builder::new_multi_thread()
@@ -114,10 +118,13 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
     // Set request header and body if provided.
     if let Some(options) = &options {
         if let Ok(headers) = options.get::<_, LuaTable>("headers") {
-            for pair in headers.pairs::<LuaValue, LuaValue>() {
+            for pair in headers.pairs::<LuaString, LuaString>() {
                 let (key, value) = pair?;
 
-                request = request.header(key.to_string()?, value.to_string()?);
+                request = request.header(
+                    key.to_string_lossy().to_string(),
+                    value.to_string_lossy().to_string()
+                );
             }
         }
 
@@ -214,7 +221,7 @@ impl ChannelMessage {
             Self::Nil => Ok(LuaNil),
 
             Self::Table(table) => {
-                let result = lua.create_table()?;
+                let result = lua.create_table_with_capacity(0, table.len())?;
 
                 for (key, value) in table {
                     result.set(
@@ -408,7 +415,18 @@ pub struct Standard<'lua> {
     hash_calc: LuaFunction<'lua>,
     hash_builder: LuaFunction<'lua>,
     hash_write: LuaFunction<'lua>,
-    hash_finalize: LuaFunction<'lua>
+    hash_finalize: LuaFunction<'lua>,
+
+    // Extended privileges
+
+    process_exec: LuaFunction<'lua>,
+    process_open: LuaFunction<'lua>,
+    process_stdin: LuaFunction<'lua>,
+    process_stdout: LuaFunction<'lua>,
+    process_stderr: LuaFunction<'lua>,
+    process_kill: LuaFunction<'lua>,
+    process_wait: LuaFunction<'lua>,
+    process_finished: LuaFunction<'lua>
 }
 
 impl<'lua> Standard<'lua> {
@@ -421,6 +439,7 @@ impl<'lua> Standard<'lua> {
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
         let archive_handles = Arc::new(Mutex::new(HashMap::new()));
         let hasher_handles = Arc::new(Mutex::new(HashMap::new()));
+        let process_handles = Arc::new(Mutex::new(HashMap::new()));
 
         let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new())); // key => handle
         let sync_channels_data = Arc::new(Mutex::new(HashMap::new())); // handle => (key, data)
@@ -443,7 +462,7 @@ impl<'lua> Standard<'lua> {
                         }
 
                         LuaValue::Table(table) => {
-                            let cloned = lua.create_table()?;
+                            let cloned = lua.create_table_with_capacity(0, table.raw_len())?;
 
                             for pair in table.pairs::<LuaValue, LuaValue>() {
                                 let (key, value) = pair?;
@@ -730,7 +749,7 @@ impl<'lua> Standard<'lua> {
 
                     // Or just read a chunk of data.
                     else {
-                        let mut buf = [0; READ_CHUNK_LEN];
+                        let mut buf = [0; NET_READ_CHUNK_LEN];
 
                         let len = file.read(&mut buf)?;
 
@@ -978,7 +997,7 @@ impl<'lua> Standard<'lua> {
                     return Ok(LuaNil);
                 };
 
-                let result = lua.create_table()?;
+                let result = lua.create_table_with_capacity(parts.len(), 0)?;
 
                 for part in parts {
                     result.push(part)?;
@@ -1477,7 +1496,7 @@ impl<'lua> Standard<'lua> {
                     };
 
                     // Prepare the lua output.
-                    let entries_table = lua.create_table()?;
+                    let entries_table = lua.create_table_with_capacity(entries.len(), 0)?;
 
                     for entry in entries.drain(..) {
                         let entry_table = lua.create_table()?;
@@ -1638,12 +1657,249 @@ impl<'lua> Standard<'lua> {
 
                     Ok(hasher.finalize())
                 })?
+            },
+
+            process_exec: lua.create_function(|lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
+                let path = resolve_path(path.to_string_lossy())?;
+
+                let mut command = Command::new(path);
+
+                    let mut command = command
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped());
+
+                // Apply command arguments.
+                if let Some(args) = args {
+                    for arg in args.sequence_values::<LuaString>() {
+                        command = command.arg(arg?.to_string_lossy().to_string());
+                    }
+                }
+
+                // Apply command environment.
+                if let Some(env) = env {
+                    for pair in env.pairs::<LuaString, LuaString>() {
+                        let (key, value) = pair?;
+
+                        command = command.env(
+                            key.to_string_lossy().to_string(),
+                            value.to_string_lossy().to_string()
+                        );
+                    }
+                }
+
+                // Execute the command.
+                let output = command.output()?;
+
+                // Prepare the output.
+                let result = lua.create_table()?;
+
+                result.set("status", output.status.code())?;
+                result.set("is_ok", output.status.success())?;
+                result.set("stdout", output.stdout)?;
+                result.set("stderr", output.stderr)?;
+
+                Ok(result)
+            })?,
+
+            process_open: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |_, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
+                    let path = resolve_path(path.to_string_lossy())?;
+
+                    let mut command = Command::new(path);
+
+                    let mut command = command
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped());
+
+                    // Apply command arguments.
+                    if let Some(args) = args {
+                        for arg in args.sequence_values::<LuaString>() {
+                            command = command.arg(arg?.to_string_lossy().to_string());
+                        }
+                    }
+
+                    // Apply command environment.
+                    if let Some(env) = env {
+                        for pair in env.pairs::<LuaString, LuaString>() {
+                            let (key, value) = pair?;
+
+                            command = command.env(
+                                key.to_string_lossy().to_string(),
+                                value.to_string_lossy().to_string()
+                            );
+                        }
+                    }
+
+                    // Start the process and store it.
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                    let mut handle = rand::random::<u32>();
+
+                    while handles.contains_key(&handle) {
+                        handle = rand::random::<u32>();
+                    }
+
+                    handles.insert(handle, command.spawn()?);
+
+                    Ok(handle)
+                })?
+            },
+
+            process_stdin: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |_, (handle, data): (u32, LuaValue)| {
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(process) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid process handle"));
+                    };
+
+                    // Try to write data to the process's stdin.
+                    if let Some(stdin) = &mut process.stdin {
+                        stdin.write_all(&get_value_bytes(data)?)?;
+                    }
+
+                    Ok(handle)
+                })?
+            },
+
+            process_stdout: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |lua, handle: u32| {
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(process) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid process handle"));
+                    };
+
+                    // Read the process's stdout chunk.
+                    if let Some(stdout) = &mut process.stdout {
+                        let mut buf = [0; PROCESS_READ_CHUNK_LEN];
+
+                        let len = stdout.read(&mut buf)?;
+
+                        // Convert rust vector to a lua table.
+                        let result = lua.create_table_with_capacity(len, 0)?;
+
+                        for byte in &buf[..len] {
+                            result.push(*byte)?;
+                        }
+
+                        return Ok(LuaValue::Table(result));
+                    }
+
+                    Ok(LuaNil)
+                })?
+            },
+
+            process_stderr: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |lua, handle: u32| {
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(process) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid process handle"));
+                    };
+
+                    // Read the process's stderr chunk.
+                    if let Some(stderr) = &mut process.stderr {
+                        let mut buf = [0; PROCESS_READ_CHUNK_LEN];
+
+                        let len = stderr.read(&mut buf)?;
+
+                        // Convert rust vector to a lua table.
+                        let result = lua.create_table_with_capacity(len, 0)?;
+
+                        for byte in &buf[..len] {
+                            result.push(*byte)?;
+                        }
+
+                        return Ok(LuaValue::Table(result));
+                    }
+
+                    Ok(LuaNil)
+                })?
+            },
+
+            process_kill: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(process) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid process handle"));
+                    };
+
+                    // Kill the process and remove its handle. 
+                    process.kill()?;
+                    handles.remove(&handle);
+
+                    Ok(())
+                })?
+            },
+
+            process_wait: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |lua, handle: u32| {
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(process) = handles.remove(&handle) else {
+                        return Err(LuaError::external("invalid process handle"));
+                    };
+
+                    // Wait until the process has finished.
+                    let output = process.wait_with_output()?;
+
+                    // Prepare lua result.
+                    let result = lua.create_table()?;
+
+                    result.set("status", output.status.code())?;
+                    result.set("is_ok", output.status.success())?;
+                    result.set("stdout", output.stdout)?;
+                    result.set("stderr", output.stderr)?;
+
+                    Ok(result)
+                })?
+            },
+
+            process_finished: {
+                let process_handles = process_handles.clone();
+
+                lua.create_function(move |_, handle: u32| {
+                    let mut handles = process_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(process) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid process handle"));
+                    };
+
+                    Ok(process.try_wait()?.is_some())
+                })?
             }
         })
     }
 
     /// Create new environment for the v1 modules standard.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    /// 
+    /// If `extended_privileges` enabled, then the result
+    /// table will contain functions that can escape the
+    /// default sandbox and execute code on the host machine.
+    pub fn create_env(&self, extended_privileges: bool) -> Result<LuaTable<'lua>, EngineError> {
         let env = self.lua.create_table()?;
 
         env.set("clone", self.clone.clone())?;
@@ -1738,6 +1994,25 @@ impl<'lua> Standard<'lua> {
         hash.set("builder", self.hash_builder.clone())?;
         hash.set("write", self.hash_write.clone())?;
         hash.set("finalize", self.hash_finalize.clone())?;
+
+        // Extended privileges
+
+        if extended_privileges {
+            let process = self.lua.create_table()?;
+
+            env.set("process", process.clone())?;
+
+            // Process API
+
+            process.set("exec", self.process_exec.clone())?;
+            process.set("open", self.process_open.clone())?;
+            process.set("stdin", self.process_stdin.clone())?;
+            process.set("stdout", self.process_stdout.clone())?;
+            process.set("stderr", self.process_stderr.clone())?;
+            process.set("wait", self.process_wait.clone())?;
+            process.set("kill", self.process_kill.clone())?;
+            process.set("finished", self.process_finished.clone())?;
+        }
 
         Ok(env)
     }
@@ -2251,6 +2526,52 @@ mod tests {
 
             assert_eq!(standard.hash_finalize.call::<_, Vec<u8>>(hasher)?, hash);
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn process_exec() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        let output = standard.process_exec.call::<_, LuaTable>((
+            "bash", ["-c", "echo $TEST"],
+            HashMap::from([
+                ("TEST", "Hello, World!")
+            ])
+        ))?;
+
+        assert_eq!(output.get::<_, i32>("status")?, 0);
+        assert!(output.get::<_, bool>("is_ok")?);
+        assert_eq!(output.get::<_, Vec<u8>>("stdout")?, b"Hello, World!\n");
+
+        Ok(())
+    }
+
+    #[test]
+    fn process_open() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        let handle = standard.process_open.call::<_, u32>((
+            "bash", ["-c", "echo $TEST"],
+            HashMap::from([
+                ("TEST", "Hello, World!")
+            ])
+        ))?;
+
+        while !standard.process_finished.call::<_, bool>(handle)? {
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        assert_eq!(standard.process_stdout.call::<_, Vec<u8>>(handle)?, b"Hello, World!\n");
+
+        let output = standard.process_wait.call::<_, LuaTable>(handle)?;
+
+        assert_eq!(output.get::<_, i32>("status")?, 0);
+        assert!(output.get::<_, bool>("is_ok")?);
+        assert!(output.get::<_, Vec<u8>>("stdout")?.is_empty());
 
         Ok(())
     }
