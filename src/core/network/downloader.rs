@@ -122,7 +122,7 @@ impl Downloader {
     /// Start downloading of the file, returning
     /// struct to control the process.
     ///
-    /// Input callback handled current and total
+    /// Input callback handles current and total
     /// number of bytes to download, and a difference
     /// between callback calls.
     ///

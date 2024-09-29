@@ -876,7 +876,51 @@ print(head.headers["Content-Length"])
 net.close(head.handle)
 ```
 
-TODO: Downloader API
+## Downloader API
+
+Launcher provides its own network files downloader. You could use this one
+instead of making your own variant using the network API.
+
+| Function              | Description                       |
+| --------------------- | --------------------------------- |
+| `downloader.download` | Download file from the given URL. |
+
+### `downloader.download(url: string, [options: Options]) -> boolean`
+
+Start downloading a file from the given URL, returning the downloading
+result. This is a blocking method.
+
+```ts
+type Options = {
+    // Path to the downloaded file.
+    output_file?: string,
+
+    // If true, then downloader will continue downloading
+    // if the output file already exists.
+    // Enabled by default.
+    continue_downloading?: boolean,
+
+    // Downloading progress handler.
+    progress?: (current: number, total: number, diff: number)
+};
+```
+
+```lua
+-- when no output path given - downloader will automatically
+-- resolve the file name (large_file.zip) and download it
+-- in the module's folder (used as a relative folder for all the operations).
+local result = downloader.download("https://example.com/large_file.zip", {
+    continue_downloading = false,
+
+    progress = function(curr, total, diff)
+        print("progress: " .. (curr / total * 100) .. "%")
+    end
+})
+
+if result then
+    -- do something
+end
+```
 
 ## Archives API
 

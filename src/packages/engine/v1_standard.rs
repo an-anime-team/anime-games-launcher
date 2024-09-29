@@ -580,6 +580,8 @@ pub struct Standard<'lua> {
     net_read: LuaFunction<'lua>,
     net_close: LuaFunction<'lua>,
 
+    downloader_download: LuaFunction<'lua>,
+
     archive_open: LuaFunction<'lua>,
     archive_entries: LuaFunction<'lua>,
     archive_extract: LuaFunction<'lua>,
@@ -1425,6 +1427,69 @@ impl<'lua> Standard<'lua> {
                 })?
             },
 
+            downloader_download: lua.create_function(move |_, (url, options): (LuaString, Option<LuaTable>)| {
+                let mut output_file = None;
+                let mut continue_downloading = true;
+                let mut progress = None;
+
+                // Set downloading options if they're given.
+                if let Some(options) = options {
+                    if let Ok(value) = options.get::<_, LuaString>("output_file") {
+                        let value = resolve_path(value.to_string_lossy())?;
+
+                        output_file = Some(value);
+                    }
+
+                    continue_downloading = options.get::<_, bool>("continue_downloading")
+                        .unwrap_or(true);
+
+                    if let Ok(value) = options.get::<_, LuaFunction>("progress") {
+                        progress = Some(value);
+                    }
+                }
+
+                // Prepare downloader.
+                let mut downloader = Downloader::new(url.to_string_lossy())
+                    .map_err(|err| LuaError::external(format!("failed to open downloader: {err}")))?
+                    .with_continue_downloading(continue_downloading);
+
+                if let Some(output_file) = output_file {
+                    downloader = downloader.with_output_file(output_file);
+                }
+
+                // Start downloading.
+                let (send, recv) = std::sync::mpsc::channel();
+
+                let context = NET_RUNTIME.block_on(async move {
+                    let context = downloader.download(move |curr, total, diff| {
+                        let _ = send.send((curr, total, diff));
+                    }).await;
+
+                    context.map_err(|err| {
+                        LuaError::external(format!("failed to start downloader: {err}"))
+                    })
+                })?;
+
+                // Handle downloading progress events.
+                let mut finished = false;
+
+                while !context.is_finished() {
+                    for (curr, total, diff) in recv.try_iter() {
+                        finished = curr == total;
+
+                        if let Some(callback) = &progress {
+                            callback.call::<_, ()>((curr, total, diff))?;
+                        }
+                    }
+                }
+
+                context.wait().map_err(|err| {
+                    LuaError::external(format!("failed to download file: {err:?}"))
+                })?;
+
+                Ok(finished)
+            })?,
+
             archive_open: {
                 let archive_handles = archive_handles.clone();
 
@@ -2126,6 +2191,7 @@ impl<'lua> Standard<'lua> {
         let path = self.lua.create_table()?;
         let fs = self.lua.create_table()?;
         let net = self.lua.create_table()?;
+        let downloader = self.lua.create_table()?;
         let archive = self.lua.create_table()?;
         let hash = self.lua.create_table()?;
 
@@ -2137,6 +2203,7 @@ impl<'lua> Standard<'lua> {
         env.set("path", path.clone())?;
         env.set("fs", fs.clone())?;
         env.set("net", net.clone())?;
+        env.set("downloader", downloader.clone())?;
         env.set("archive", archive.clone())?;
         env.set("hash", hash.clone())?;
 
@@ -2191,6 +2258,10 @@ impl<'lua> Standard<'lua> {
         net.set("open", self.net_open.clone())?;
         net.set("read", self.net_read.clone())?;
         net.set("close", self.net_close.clone())?;
+
+        // Downloader API
+
+        downloader.set("download", self.downloader_download.clone())?;
 
         // Archives API
 
@@ -2610,6 +2681,29 @@ mod tests {
         }
 
         assert_eq!(body_len, 9215513);
+
+        Ok(())
+    }
+
+    #[test]
+    fn downloader_download() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        let path = std::env::temp_dir().join(".agl-v1-downloader-test-dxvk.tar.gz");
+
+        let options = lua.create_table()?;
+
+        options.set("output_file", path.to_string_lossy().to_string())?;
+        options.set("continue_downloading", false)?;
+
+        let result = standard.downloader_download.call::<_, bool>((
+            "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz",
+            options
+        ))?;
+
+        assert!(result);
+        assert_eq!(Hash::for_entry(path)?, Hash(13290421503141924848));
 
         Ok(())
     }
