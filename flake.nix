@@ -10,7 +10,7 @@
             # pkgs = (import nixpkgs { inherit system; }).pkgsStatic;
             pkgs = import nixpkgs { inherit system; };
 
-            config = pkgs.lib.trivial.importTOML ./Cargo.toml;
+            config = pkgs.lib.importTOML ./Cargo.toml;
 
         in {
             packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
@@ -26,10 +26,6 @@
 
             devShells.${system}.default = pkgs.mkShell {
                 nativeBuildInputs = with pkgs; [
-                    rustup
-                    rustfmt
-                    clippy
-
                     gcc
                     cmake
                     pkg-config
