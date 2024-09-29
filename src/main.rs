@@ -17,6 +17,10 @@ pub mod games;
 pub mod cli;
 pub mod ui;
 
+#[cfg(feature = "mimalloc")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
