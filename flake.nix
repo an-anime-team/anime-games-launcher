@@ -1,20 +1,34 @@
 {
-    inputs = {
-        nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
-        nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-    };
+    description = "Anime Games Launcher";
 
-    outputs = { self, nixpkgs, nixpkgs-unstable }:
+    inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+
+    outputs = { self, nixpkgs }:
         let
-            pkgs = nixpkgs.legacyPackages.x86_64-linux;
-            pkgs-unstable = nixpkgs-unstable.legacyPackages.x86_64-linux;
+            system = "x86_64-linux";
+
+            # pkgs = (import nixpkgs { inherit system; }).pkgsStatic;
+            pkgs = import nixpkgs { inherit system; };
+
+            config = pkgs.lib.trivial.importTOML ./Cargo.toml;
 
         in {
-            devShells.x86_64-linux.default = pkgs.mkShell {
+            packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
+                pname = config.name;
+                version = config.version;
+
+                src = ./.;
+
+                cargoLock = {
+                    lockFile = ./Cargo.lock;
+                };
+            };
+
+            devShells.${system}.default = pkgs.mkShell {
                 nativeBuildInputs = with pkgs; [
-                    pkgs-unstable.rustup
-                    pkgs-unstable.rustfmt
-                    pkgs-unstable.clippy
+                    rustup
+                    rustfmt
+                    clippy
 
                     gcc
                     cmake
@@ -28,13 +42,16 @@
 
                 buildInputs = with pkgs; [
                     gtk4
-                    glib
                     gdk-pixbuf
                     gobject-introspection
 
                     libadwaita
                     openssl
+                    luau
                 ];
+
+                # CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
+                # CARGO_ENCODED_RUSTFLAGS = "-Clink-arg=-fuse-ld=${pkgs.mold}/bin/mold";
             };
         };
 }
