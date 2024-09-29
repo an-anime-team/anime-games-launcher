@@ -126,7 +126,8 @@ Following table contains list of `StringEncoding` enum values.
 | `base64/nopad`         | Standard lower without padding.                      |
 | `base64/urlsafe-pad`   | URL-safe with padding.                               |
 | `base64/urlsafe-nopad` | URL-safe without padding.                            |
-| `json`                 | Convert given value to JSON string.                  |
+| `json`                 | Convert given value to a JSON string.                |
+| `toml`                 | Convert given value to a TOML string.                |
 
 ### `str.to_bytes(value: any, [charset: string]) -> [number]`
 

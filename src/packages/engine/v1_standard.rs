@@ -186,7 +186,8 @@ enum StringEncoding {
     Base16,
     Base32(base32::Alphabet),
     Base64(base64::engine::GeneralPurpose),
-    Json
+    Json,
+    Toml
 }
 
 impl StringEncoding {
@@ -253,6 +254,7 @@ impl StringEncoding {
             }
 
             b"json" => Some(Self::Json),
+            b"toml" => Some(Self::Toml),
 
             _ => None
         }
@@ -282,6 +284,13 @@ impl StringEncoding {
 
             Self::Json => {
                 let value = serde_json::to_vec(&value)
+                    .map_err(LuaError::external)?;
+
+                lua.create_string(value)
+            }
+
+            Self::Toml => {
+                let value = toml::to_string(&value)
                     .map_err(LuaError::external)?;
 
                 lua.create_string(value)
@@ -322,6 +331,16 @@ impl StringEncoding {
 
             Self::Json => {
                 let value = serde_json::from_slice::<serde_json::Value>(string.as_bytes())
+                    .map_err(LuaError::external)?;
+
+                lua.to_value(&value)
+            }
+
+            Self::Toml => {
+                let string = string.to_string_lossy()
+                    .to_string();
+
+                let value = toml::from_str::<toml::Value>(&string)
                     .map_err(LuaError::external)?;
 
                 lua.to_value(&value)
@@ -2283,7 +2302,8 @@ mod tests {
         table.set("hello", "world")?;
 
         let encodings = [
-            ("json", "{\"hello\":\"world\"}")
+            ("json", "{\"hello\":\"world\"}"),
+            ("toml", "hello = \"world\"\n")
         ];
 
         for (name, value) in encodings {

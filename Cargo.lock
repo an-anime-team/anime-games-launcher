@@ -58,6 +58,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "tokio",
+ "toml",
  "tracing",
  "tracing-subscriber",
  "unic-langid",
