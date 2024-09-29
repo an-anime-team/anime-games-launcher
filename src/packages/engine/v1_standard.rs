@@ -362,6 +362,17 @@ pub struct Standard<'lua> {
 
     clone: LuaFunction<'lua>,
 
+    path_temp_dir: LuaFunction<'lua>,
+    path_module_dir: LuaFunction<'lua>,
+    path_persist_dir: LuaFunction<'lua>,
+    path_normalize: LuaFunction<'lua>,
+    path_join: LuaFunction<'lua>,
+    path_parts: LuaFunction<'lua>,
+    path_parent: LuaFunction<'lua>,
+    path_file_name: LuaFunction<'lua>,
+    path_exists: LuaFunction<'lua>,
+    path_accessible: LuaFunction<'lua>,
+
     fs_exists: LuaFunction<'lua>,
     fs_metadata: LuaFunction<'lua>,
     fs_copy: LuaFunction<'lua>,
@@ -380,17 +391,6 @@ pub struct Standard<'lua> {
     fs_create_dir: LuaFunction<'lua>,
     fs_read_dir: LuaFunction<'lua>,
     fs_remove_dir: LuaFunction<'lua>,
-
-    path_temp_dir: LuaFunction<'lua>,
-    path_module_dir: LuaFunction<'lua>,
-    path_persist_dir: LuaFunction<'lua>,
-    path_normalize: LuaFunction<'lua>,
-    path_join: LuaFunction<'lua>,
-    path_parts: LuaFunction<'lua>,
-    path_parent: LuaFunction<'lua>,
-    path_file_name: LuaFunction<'lua>,
-    path_exists: LuaFunction<'lua>,
-    path_accessible: LuaFunction<'lua>,
 
     net_fetch: LuaFunction<'lua>,
     net_open: LuaFunction<'lua>,
@@ -481,6 +481,196 @@ impl<'lua> Standard<'lua> {
                 }
 
                 clone_value(lua, value)
+            })?,
+
+            path_temp_dir: lua.create_function(|_, ()| {
+                let path = std::env::temp_dir()
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(path)
+            })?,
+
+            path_module_dir: lua.create_function(|_, ()| {
+                let path = config::get().packages.modules_store_path
+                    .join("TODO")
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(path)
+            })?,
+
+            path_persist_dir: lua.create_function(|_, key: LuaString| {
+                let path = config::get().packages.persist_store_path
+                    .join(Hash::for_slice(key.as_bytes()).to_base32())
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(path)
+            })?,
+
+            path_normalize: lua.create_function(|lua, path: LuaString| {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let (path, is_absolute) = match path.strip_prefix("/") {
+                    Some(path) => (path, true),
+                    None => (path.as_str(), false)
+                };
+
+                match split_path(path) {
+                    Some(parts) => {
+                        let mut path = parts.join("/");
+
+                        if is_absolute {
+                            path = format!("/{path}");
+                        }
+
+                        lua.create_string(path)
+                            .map(LuaValue::String)
+                    }
+
+                    None if is_absolute => lua.create_string("/")
+                        .map(LuaValue::String),
+
+                    None => Ok(LuaNil)
+                }
+            })?,
+
+            path_join: lua.create_function(|lua, parts: Vec<LuaString>| {
+                if parts.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let parts = parts.iter()
+                    .filter(|part| !part.as_bytes().is_empty())
+                    .map(LuaString::to_string_lossy)
+                    .collect::<Vec<_>>();
+
+                let (parts, is_absolute) = match parts.first() {
+                    None => return Ok(LuaNil),
+
+                    Some(v) if v == "/" || v == "\\" => (&parts[1..], true),
+                    Some(_) => (parts.as_slice(), false)
+                };
+
+                let Some(parts) = normalize_path_parts(parts) else {
+                    if is_absolute {
+                        return lua.create_string("/")
+                            .map(LuaValue::String);
+                    } else {
+                        return Ok(LuaNil);
+                    }
+                };
+
+                let mut path = parts.join("/");
+
+                if is_absolute {
+                    path = format!("/{path}");
+                }
+
+                lua.create_string(path)
+                    .map(LuaValue::String)
+            })?,
+
+            path_parts: lua.create_function(|lua, path: LuaString| {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let path = path.strip_prefix("/")
+                    .unwrap_or(&path);
+
+                let Some(parts) = split_path(path) else {
+                    return Ok(LuaNil);
+                };
+
+                let result = lua.create_table_with_capacity(parts.len(), 0)?;
+
+                for part in parts {
+                    result.push(part)?;
+                }
+
+                Ok(LuaValue::Table(result))
+            })?,
+
+            path_parent: lua.create_function(|lua, path: LuaString| {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                let (path, is_absolute) = match path.strip_prefix("/") {
+                    Some(path) => (path, true),
+                    None => (path.as_str(), false)
+                };
+
+                let Some(parts) = split_path(path) else {
+                    return Ok(LuaNil);
+                };
+
+                if parts.len() > 1 {
+                    let mut path = parts[..parts.len() - 1].join("/");
+
+                    if is_absolute {
+                        path = format!("/{path}");
+                    }
+
+                    lua.create_string(path)
+                        .map(LuaValue::String)
+                }
+
+                else {
+                    Ok(LuaNil)
+                }
+            })?,
+
+            path_file_name: lua.create_function(|lua, path: LuaString| {
+                let path = path.to_string_lossy()
+                    .to_string();
+
+                if path.is_empty() {
+                    return Ok(LuaNil);
+                }
+
+                if path == "/" {
+                    return lua.create_string("/")
+                        .map(LuaValue::String);
+                }
+
+                let path = path.strip_prefix("/")
+                    .unwrap_or(&path);
+
+                let Some(mut parts) = split_path(path) else {
+                    return Ok(LuaNil);
+                };
+
+                let Some(file_name) = parts.pop() else {
+                    return Ok(LuaNil);
+                };
+
+                lua.create_string(file_name)
+                    .map(LuaValue::String)
+            })?,
+
+            path_exists: lua.create_function(|_, path: LuaString| {
+                let path = resolve_path(path.to_string_lossy())?;
+
+                Ok(path.exists())
+            })?,
+
+            // TODO
+            path_accessible: lua.create_function(|_, _path: LuaString| {
+                Ok(true)
             })?,
 
             fs_exists: lua.create_function(|_, path: LuaString| {
@@ -886,196 +1076,6 @@ impl<'lua> Standard<'lua> {
                 std::fs::remove_dir_all(path)?;
 
                 Ok(())
-            })?,
-
-            path_temp_dir: lua.create_function(|_, ()| {
-                let path = std::env::temp_dir()
-                    .to_string_lossy()
-                    .to_string();
-
-                Ok(path)
-            })?,
-
-            path_module_dir: lua.create_function(|_, ()| {
-                let path = config::get().packages.modules_store_path
-                    .join("TODO")
-                    .to_string_lossy()
-                    .to_string();
-
-                Ok(path)
-            })?,
-
-            path_persist_dir: lua.create_function(|_, key: LuaString| {
-                let path = config::get().packages.persist_store_path
-                    .join(Hash::for_slice(key.as_bytes()).to_base32())
-                    .to_string_lossy()
-                    .to_string();
-
-                Ok(path)
-            })?,
-
-            path_normalize: lua.create_function(|lua, path: LuaString| {
-                let path = path.to_string_lossy()
-                    .to_string();
-
-                if path.is_empty() {
-                    return Ok(LuaNil);
-                }
-
-                let (path, is_absolute) = match path.strip_prefix("/") {
-                    Some(path) => (path, true),
-                    None => (path.as_str(), false)
-                };
-
-                match split_path(path) {
-                    Some(parts) => {
-                        let mut path = parts.join("/");
-
-                        if is_absolute {
-                            path = format!("/{path}");
-                        }
-
-                        lua.create_string(path)
-                            .map(LuaValue::String)
-                    }
-
-                    None if is_absolute => lua.create_string("/")
-                        .map(LuaValue::String),
-
-                    None => Ok(LuaNil)
-                }
-            })?,
-
-            path_join: lua.create_function(|lua, parts: Vec<LuaString>| {
-                if parts.is_empty() {
-                    return Ok(LuaNil);
-                }
-
-                let parts = parts.iter()
-                    .filter(|part| !part.as_bytes().is_empty())
-                    .map(LuaString::to_string_lossy)
-                    .collect::<Vec<_>>();
-
-                let (parts, is_absolute) = match parts.first() {
-                    None => return Ok(LuaNil),
-
-                    Some(v) if v == "/" || v == "\\" => (&parts[1..], true),
-                    Some(_) => (parts.as_slice(), false)
-                };
-
-                let Some(parts) = normalize_path_parts(parts) else {
-                    if is_absolute {
-                        return lua.create_string("/")
-                            .map(LuaValue::String);
-                    } else {
-                        return Ok(LuaNil);
-                    }
-                };
-
-                let mut path = parts.join("/");
-
-                if is_absolute {
-                    path = format!("/{path}");
-                }
-
-                lua.create_string(path)
-                    .map(LuaValue::String)
-            })?,
-
-            path_parts: lua.create_function(|lua, path: LuaString| {
-                let path = path.to_string_lossy()
-                    .to_string();
-
-                if path.is_empty() {
-                    return Ok(LuaNil);
-                }
-
-                let path = path.strip_prefix("/")
-                    .unwrap_or(&path);
-
-                let Some(parts) = split_path(path) else {
-                    return Ok(LuaNil);
-                };
-
-                let result = lua.create_table_with_capacity(parts.len(), 0)?;
-
-                for part in parts {
-                    result.push(part)?;
-                }
-
-                Ok(LuaValue::Table(result))
-            })?,
-
-            path_parent: lua.create_function(|lua, path: LuaString| {
-                let path = path.to_string_lossy()
-                    .to_string();
-
-                if path.is_empty() {
-                    return Ok(LuaNil);
-                }
-
-                let (path, is_absolute) = match path.strip_prefix("/") {
-                    Some(path) => (path, true),
-                    None => (path.as_str(), false)
-                };
-
-                let Some(parts) = split_path(path) else {
-                    return Ok(LuaNil);
-                };
-
-                if parts.len() > 1 {
-                    let mut path = parts[..parts.len() - 1].join("/");
-
-                    if is_absolute {
-                        path = format!("/{path}");
-                    }
-
-                    lua.create_string(path)
-                        .map(LuaValue::String)
-                }
-
-                else {
-                    Ok(LuaNil)
-                }
-            })?,
-
-            path_file_name: lua.create_function(|lua, path: LuaString| {
-                let path = path.to_string_lossy()
-                    .to_string();
-
-                if path.is_empty() {
-                    return Ok(LuaNil);
-                }
-
-                if path == "/" {
-                    return lua.create_string("/")
-                        .map(LuaValue::String);
-                }
-
-                let path = path.strip_prefix("/")
-                    .unwrap_or(&path);
-
-                let Some(mut parts) = split_path(path) else {
-                    return Ok(LuaNil);
-                };
-
-                let Some(file_name) = parts.pop() else {
-                    return Ok(LuaNil);
-                };
-
-                lua.create_string(file_name)
-                    .map(LuaValue::String)
-            })?,
-
-            path_exists: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
-
-                Ok(path.exists())
-            })?,
-
-            // TODO
-            path_accessible: lua.create_function(|_, _path: LuaString| {
-                Ok(true)
             })?,
 
             net_fetch: {
@@ -1904,8 +1904,8 @@ impl<'lua> Standard<'lua> {
 
         env.set("clone", self.clone.clone())?;
 
-        let fs = self.lua.create_table()?;
         let path = self.lua.create_table()?;
+        let fs = self.lua.create_table()?;
         let net = self.lua.create_table()?;
 
         let sync = self.lua.create_table()?;
@@ -1925,6 +1925,19 @@ impl<'lua> Standard<'lua> {
 
         env.set("archive", archive.clone())?;
         env.set("hash", hash.clone())?;
+
+        // Paths API
+
+        path.set("temp_dir", self.path_temp_dir.clone())?;
+        path.set("module_dir", self.path_module_dir.clone())?;
+        path.set("persist_dir", self.path_persist_dir.clone())?;
+        path.set("normalize", self.path_normalize.clone())?;
+        path.set("join", self.path_join.clone())?;
+        path.set("parts", self.path_parts.clone())?;
+        path.set("parent", self.path_parent.clone())?;
+        path.set("file_name", self.path_file_name.clone())?;
+        path.set("exists", self.path_exists.clone())?;
+        path.set("accessible", self.path_accessible.clone())?;
 
         // IO API
 
@@ -1946,19 +1959,6 @@ impl<'lua> Standard<'lua> {
         fs.set("create_dir", self.fs_create_dir.clone())?;
         fs.set("read_dir", self.fs_read_dir.clone())?;
         fs.set("remove_dir", self.fs_remove_dir.clone())?;
-
-        // Paths API
-
-        path.set("temp_dir", self.path_temp_dir.clone())?;
-        path.set("module_dir", self.path_module_dir.clone())?;
-        path.set("persist_dir", self.path_persist_dir.clone())?;
-        path.set("normalize", self.path_normalize.clone())?;
-        path.set("join", self.path_join.clone())?;
-        path.set("parts", self.path_parts.clone())?;
-        path.set("parent", self.path_parent.clone())?;
-        path.set("file_name", self.path_file_name.clone())?;
-        path.set("exists", self.path_exists.clone())?;
-        path.set("accessible", self.path_accessible.clone())?;
 
         // Network API
 
@@ -2021,6 +2021,63 @@ impl<'lua> Standard<'lua> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn path_actions() -> anyhow::Result<()> {
+        let lua = Lua::new();
+        let standard = Standard::new(&lua)?;
+
+        assert_eq!(standard.path_normalize.call::<_, String>("/")?, "/");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/b/c")?, "a/b/c");
+        assert_eq!(standard.path_normalize.call::<_, String>("/a/b/c")?, "/a/b/c");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/./c")?, "a/c");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/../c")?, "c");
+        assert_eq!(standard.path_normalize.call::<_, String>("a/../c/./")?, "c");
+        assert_eq!(standard.path_normalize.call::<_, String>("./a//\\./../b")?, "b");
+        assert_eq!(standard.path_normalize.call::<_, String>(" ")?, " "); // space is a correct entry name
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("")?, None); // entry name cannot be empty
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>(".")?, None); // we do not support relative paths
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("..")?, None);
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("./..")?, None);
+        assert_eq!(standard.path_normalize.call::<_, Option<String>>("a/..")?, None);
+
+        assert_eq!(standard.path_join.call::<_, String>(vec!["a", "b", "c"])?, "a/b/c");
+        assert_eq!(standard.path_join.call::<_, String>(vec!["/", "a", "b", "c"])?, "/a/b/c");
+        assert_eq!(standard.path_join.call::<_, String>(vec!["a", "..", "b"])?, "b");
+        assert_eq!(standard.path_join.call::<_, String>(vec![".", "a", ".", "b"])?, "a/b");
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![""])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec!["."])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![".."])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![".", ".."])?, None);
+        assert_eq!(standard.path_join.call::<_, Option<String>>(vec!["a", ".."])?, None);
+
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/b/c")?, &["a", "b", "c"]);
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/./c")?, &["a", "c"]);
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/./c/..")?, &["a"]);
+        assert_eq!(standard.path_parts.call::<_, Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>(".")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("..")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("./..")?, None);
+        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("a/..")?, None);
+
+        assert_eq!(standard.path_parent.call::<_, String>("a/b/c")?, "a/b");
+        assert_eq!(standard.path_parent.call::<_, String>("/a/b/c")?, "/a/b");
+        assert_eq!(standard.path_parent.call::<_, String>("a\\./b")?, "a");
+        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a")?, None);
+        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a/.")?, None);
+        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a/../b")?, None);
+
+        assert_eq!(standard.path_file_name.call::<_, String>("/")?, "/");
+        assert_eq!(standard.path_file_name.call::<_, String>("a")?, "a");
+        assert_eq!(standard.path_file_name.call::<_, String>("a/b/c")?, "c");
+        assert_eq!(standard.path_file_name.call::<_, String>("/a/b/c")?, "c");
+        assert_eq!(standard.path_file_name.call::<_, String>("a\\./b")?, "b");
+        assert_eq!(standard.path_file_name.call::<_, Option<Vec<String>>>(".")?, None);
+        assert_eq!(standard.path_file_name.call::<_, Option<Vec<String>>>("a/..")?, None);
+
+        Ok(())
+    }
 
     #[test]
     fn file_handle() -> anyhow::Result<()> {
@@ -2219,63 +2276,6 @@ mod tests {
         assert!(standard.fs_exists.call::<_, bool>(path.clone())?);
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
-
-        Ok(())
-    }
-
-    #[test]
-    fn path_actions() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let standard = Standard::new(&lua)?;
-
-        assert_eq!(standard.path_normalize.call::<_, String>("/")?, "/");
-        assert_eq!(standard.path_normalize.call::<_, String>("a/b/c")?, "a/b/c");
-        assert_eq!(standard.path_normalize.call::<_, String>("/a/b/c")?, "/a/b/c");
-        assert_eq!(standard.path_normalize.call::<_, String>("a/./c")?, "a/c");
-        assert_eq!(standard.path_normalize.call::<_, String>("a/../c")?, "c");
-        assert_eq!(standard.path_normalize.call::<_, String>("a/../c/./")?, "c");
-        assert_eq!(standard.path_normalize.call::<_, String>("./a//\\./../b")?, "b");
-        assert_eq!(standard.path_normalize.call::<_, String>(" ")?, " "); // space is a correct entry name
-        assert_eq!(standard.path_normalize.call::<_, Option<String>>("")?, None); // entry name cannot be empty
-        assert_eq!(standard.path_normalize.call::<_, Option<String>>(".")?, None); // we do not support relative paths
-        assert_eq!(standard.path_normalize.call::<_, Option<String>>("..")?, None);
-        assert_eq!(standard.path_normalize.call::<_, Option<String>>("./..")?, None);
-        assert_eq!(standard.path_normalize.call::<_, Option<String>>("a/..")?, None);
-
-        assert_eq!(standard.path_join.call::<_, String>(vec!["a", "b", "c"])?, "a/b/c");
-        assert_eq!(standard.path_join.call::<_, String>(vec!["/", "a", "b", "c"])?, "/a/b/c");
-        assert_eq!(standard.path_join.call::<_, String>(vec!["a", "..", "b"])?, "b");
-        assert_eq!(standard.path_join.call::<_, String>(vec![".", "a", ".", "b"])?, "a/b");
-        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![""])?, None);
-        assert_eq!(standard.path_join.call::<_, Option<String>>(vec!["."])?, None);
-        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![".."])?, None);
-        assert_eq!(standard.path_join.call::<_, Option<String>>(vec![".", ".."])?, None);
-        assert_eq!(standard.path_join.call::<_, Option<String>>(vec!["a", ".."])?, None);
-
-        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/b/c")?, &["a", "b", "c"]);
-        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/./c")?, &["a", "c"]);
-        assert_eq!(standard.path_parts.call::<_, Vec<String>>("a/./c/..")?, &["a"]);
-        assert_eq!(standard.path_parts.call::<_, Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
-        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("")?, None);
-        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>(".")?, None);
-        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("..")?, None);
-        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("./..")?, None);
-        assert_eq!(standard.path_parts.call::<_, Option<Vec<String>>>("a/..")?, None);
-
-        assert_eq!(standard.path_parent.call::<_, String>("a/b/c")?, "a/b");
-        assert_eq!(standard.path_parent.call::<_, String>("/a/b/c")?, "/a/b");
-        assert_eq!(standard.path_parent.call::<_, String>("a\\./b")?, "a");
-        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a")?, None);
-        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a/.")?, None);
-        assert_eq!(standard.path_parent.call::<_, Option<Vec<String>>>("a/../b")?, None);
-
-        assert_eq!(standard.path_file_name.call::<_, String>("/")?, "/");
-        assert_eq!(standard.path_file_name.call::<_, String>("a")?, "a");
-        assert_eq!(standard.path_file_name.call::<_, String>("a/b/c")?, "c");
-        assert_eq!(standard.path_file_name.call::<_, String>("/a/b/c")?, "c");
-        assert_eq!(standard.path_file_name.call::<_, String>("a\\./b")?, "b");
-        assert_eq!(standard.path_file_name.call::<_, Option<Vec<String>>>(".")?, None);
-        assert_eq!(standard.path_file_name.call::<_, Option<Vec<String>>>("a/..")?, None);
 
         Ok(())
     }
@@ -2572,6 +2572,9 @@ mod tests {
         assert_eq!(output.get::<_, i32>("status")?, 0);
         assert!(output.get::<_, bool>("is_ok")?);
         assert!(output.get::<_, Vec<u8>>("stdout")?.is_empty());
+
+        dbg!(get_value_bytes(LuaValue::Number(0.5)));
+        dbg!(get_value_bytes(lua.create_string("abc").map(LuaValue::String)?));
 
         Ok(())
     }
