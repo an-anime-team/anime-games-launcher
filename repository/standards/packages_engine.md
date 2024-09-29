@@ -113,12 +113,20 @@ and serialization.
 
 Following table contains list of `StringEncoding` enum values.
 
-| Name     | Description                                 |
-| -------- | ------------------------------------------- |
-| `base16` | Convert bytes array to base16 (hex) string. |
-| `base32` | Convert bytes array to base32 string.       |
-| `base64` | Convert bytes array to base64 string.       |
-| `json`   | Convert given value to JSON string.         |
+| Name                   | Description                                          |
+| ---------------------- | ---------------------------------------------------- |
+| `base16` or `hex`      | Convert bytes array to base16 (hex) string.          |
+| `base32`               | Convert bytes array to base32 string (`base32/pad`). |
+| `base32/pad`           | RFC 4648 lower with padding.                         |
+| `base32/nopad`         | RFC 4648 lower without padding.                      |
+| `base32/hex-pad`       | RFC 4648 hex lower with padding.                     |
+| `base32/hex-nopad`     | RFC 4648 hex lower without padding.                  |
+| `base64`               | Convert bytes array to base64 string (`base64/pad`). |
+| `base64/pad`           | Standard lower with padding.                         |
+| `base64/nopad`         | Standard lower without padding.                      |
+| `base64/urlsafe-pad`   | URL-safe with padding.                               |
+| `base64/urlsafe-nopad` | URL-safe without padding.                            |
+| `json`                 | Convert given value to JSON string.                  |
 
 ### `str.to_bytes(value: any, [charset: string]) -> [number]`
 
@@ -174,17 +182,6 @@ print(str.encode({ hello = "world" }, "json")) -- "{\"hello\":\"world\"}"
 ### `str.decode(value: string, encoding: StringEncoding) -> any`
 
 Decode given string to a bytes slice.
-
-> Note: `str.encode` method can accept many different lua values. However,
-> all of them will be converted into bytes slices first and encoded later.
-> 
-> For text encodings `str.decode` method will decode the string back into a
-> bytes slice, but it will not convert this slice into a lua value because
-> there can be many types with the same bytes representation
-> (e.g. `123` and `{ 0, 0, 0, 123 }`).
-> 
-> For data serialization formats (e.g. `json`) method will try to return
-> original data type.
 
 ```lua
 print(str.decode("7b", "base16"))                                   -- [0, 0, 0, 123]
