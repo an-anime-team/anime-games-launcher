@@ -33,20 +33,8 @@ impl SimpleAsyncComponent for LibraryPageApp {
         #[root]
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
-            #[transition(Crossfade)]
-            append = if model.show_downloads {
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    gtk::Button {
-                        set_icon_name: "go-previous-symbolic",
-                        set_css_classes: &["flat"],
-                        set_halign: gtk::Align::Start,
-                        set_margin_all: 16,
-                        connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
-                    },
-                    model.downloads_page.widget(),
-                }
-            } else {
+            #[transition(SlideLeftRight)]
+            append = if !model.show_downloads {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     adw::NavigationSplitView {
@@ -83,8 +71,20 @@ impl SimpleAsyncComponent for LibraryPageApp {
                         }
                     }
                 }
+            } else {
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    gtk::Button {
+                        set_icon_name: "go-previous-symbolic",
+                        set_css_classes: &["flat"],
+                        set_halign: gtk::Align::Start,
+                        set_margin_all: 16,
+                        connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
+                    },
+                    model.downloads_page.widget(),
+                }
             }
-        },
+        }
     }
 
     async fn init(
