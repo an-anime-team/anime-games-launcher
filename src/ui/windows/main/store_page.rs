@@ -1,18 +1,18 @@
 use adw::prelude::*;
 use gtk::prelude::*;
 
-use relm4::prelude::*;
+use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
 
-use crate::ui::components::cards_row::*;
+use crate::ui::components::{card::*, cards_row::*};
 
 #[derive(Debug)]
 pub enum StorePageAppMsg {
-    Clicked(DynamicIndex),
+    Clicked(DynamicIndex, DynamicIndex),
 }
 
 #[derive(Debug)]
 pub struct StorePageApp {
-    cards: AsyncController<CardsRow>,
+    rows: AsyncFactoryVecDeque<CardsRowFactory>,
 }
 
 #[relm4::component(pub, async)]
@@ -54,7 +54,13 @@ impl SimpleAsyncComponent for StorePageApp {
                         }
                     }
                 },
-                model.cards.widget(),
+                gtk::ScrolledWindow {
+                    set_propagate_natural_width: true,
+                    model.rows.widget() {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_vexpand: true,
+                    }
+                }
             }
         }
     }
@@ -66,23 +72,44 @@ impl SimpleAsyncComponent for StorePageApp {
     ) -> AsyncComponentParts<Self> {
         let TEST_PATH = String::from("background.jpg");
 
-        let model = Self {
-            cards: CardsRow::builder().launch(String::from("MiHoYo")).forward(
+        let mut model = Self {
+            rows: AsyncFactoryVecDeque::builder().launch_default().forward(
                 sender.input_sender(),
                 |msg| match msg {
-                    CardsRowMsg::Clicked(index) => StorePageAppMsg::Clicked(index),
+                    CardsRowFactoryOutput::Clicked(row, column) => {
+                        StorePageAppMsg::Clicked(row, column)
+                    }
                 },
             ),
         };
         let widgets = view_output!();
+
+        for name in 'a'..'z' {
+            let index = model.rows.guard().push_back(String::from(name));
+            for i in 0..10 {
+                model.rows.send(
+                    index.current_index(),
+                    CardsRowFactoryMsg::Add(CardComponent {
+                        image: Some(String::from("card.jpg")),
+                        clickable: true,
+                        title: Some(format!("Card {}", i)),
+                        ..CardComponent::medium()
+                    }),
+                )
+            }
+        }
 
         AsyncComponentParts { model, widgets }
     }
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            StorePageAppMsg::Clicked(index) => {
-                println!("Clicked {}", index.current_index());
+            StorePageAppMsg::Clicked(r, c) => {
+                println!(
+                    "Clicked element {} of row {}",
+                    c.current_index(),
+                    r.current_index()
+                );
             }
         }
     }
