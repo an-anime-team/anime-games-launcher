@@ -36,152 +36,150 @@ pub enum GamePageAppMsg {
     Add,
 }
 
+#[derive(Debug)]
+pub enum GamePageAppOutput {
+    Hide,
+}
+
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GamePageApp {
     type Init = ();
     type Input = GamePageAppMsg;
-    type Output = ();
+    type Output = GamePageAppOutput;
 
     view! {
         #[root]
-        adw::NavigationView {
-            add = &adw::NavigationPage {
-                set_title: &model.title,
+        gtk::ScrolledWindow {
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 16,
+                set_margin_all: 16,
+                set_vexpand: true,
 
-                #[wrap(Some)]
-                set_child = &gtk::ScrolledWindow {
-                    set_expand: true,
+                gtk::Label {
+                    set_markup: &model.title,
+                    add_css_class: "title-1",
+                    set_halign: gtk::Align::Start,
+                },
+
+                set_halign: gtk::Align::Center,
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_halign: gtk::Align::Start,
+                    set_spacing: 16,
 
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_halign: gtk::Align::Center,
-                        set_spacing: 16,
-                        set_margin_all: 16,
+                        set_spacing: 8,
 
-                        gtk::Label {
-                            set_markup: &model.title,
-                            add_css_class: "title-1",
-                            set_align: gtk::Align::Start,
-                        },
+                        #[name = "carousel"]
+                        adw::Carousel {
+                            set_height_request: CardComponent::default().height,
 
-                        gtk::Box {
-                            set_orientation: gtk::Orientation::Horizontal,
-                            set_halign: gtk::Align::Start,
-                            set_spacing: 16,
-
-                            gtk::Box {
-                                set_orientation: gtk::Orientation::Vertical,
-                                set_halign: gtk::Align::Center,
-                                set_spacing: 8,
-
-                                #[name = "carousel"]
-                                adw::Carousel {
-                                    set_height_request: CardComponent::default().height,
-
-                                    gtk::Picture {
-                                        set_filename: Some(&format!("{}1.png", TEST_PATH)),
-                                    },
-
-                                    gtk::Picture {
-                                        set_filename: Some(&format!("{}2.png", TEST_PATH)),
-                                    },
-
-                                    gtk::Picture {
-                                        set_filename: Some(&format!("{}3.png", TEST_PATH)),
-                                    }
-                                },
-
-                                adw::CarouselIndicatorLines {
-                                    set_carousel: Some(&carousel),
-                                },
-
-                                gtk::Label {
-                                    set_text: "About",
-                                    set_align: gtk::Align::Start,
-                                    add_css_class: "title-4",
-                                },
-
-                                gtk::TextView {
-                                    set_buffer: Some(&short_buffer),
-                                    set_wrap_mode: gtk::WrapMode::Word,
-                                    set_editable: false,
-                                    set_can_target: false,
-                                    add_css_class: "body",
-                                },
-
-                                gtk::Expander {
-                                    set_label: Some("Read More"),
-
-                                    gtk::TextView {
-                                        set_buffer: Some(&long_buffer),
-                                        set_wrap_mode: gtk::WrapMode::Word,
-                                        set_editable: false,
-                                        set_can_target: false,
-                                        add_css_class: "body",
-                                    }
-                                },
-
-                                gtk::Label {
-                                    set_text: "System Requirements",
-                                    set_align: gtk::Align::Start,
-                                    add_css_class: "title-4",
-                                },
-
-                                model.requirements.widget(),
+                            gtk::Picture {
+                                set_filename: Some(&format!("{}1.png", TEST_PATH)),
                             },
 
+                            gtk::Picture {
+                                set_filename: Some(&format!("{}2.png", TEST_PATH)),
+                            },
+
+                            gtk::Picture {
+                                set_filename: Some(&format!("{}3.png", TEST_PATH)),
+                            }
+                        },
+
+                        adw::CarouselIndicatorLines {
+                            set_carousel: Some(&carousel),
+                        },
+
+                        gtk::Label {
+                            set_text: "About",
+                            set_align: gtk::Align::Start,
+                            add_css_class: "title-4",
+                        },
+
+                        gtk::TextView {
+                            set_buffer: Some(&short_buffer),
+                            set_wrap_mode: gtk::WrapMode::Word,
+                            set_editable: false,
+                            set_can_target: false,
+                            add_css_class: "body",
+                        },
+
+                        gtk::Expander {
+                            set_label: Some("Read More"),
+
+                            gtk::TextView {
+                                set_buffer: Some(&long_buffer),
+                                set_wrap_mode: gtk::WrapMode::Word,
+                                set_editable: false,
+                                set_can_target: false,
+                                add_css_class: "body",
+                            }
+                        },
+
+                        gtk::Label {
+                            set_text: "System Requirements",
+                            set_align: gtk::Align::Start,
+                            add_css_class: "title-4",
+                        },
+
+                        model.requirements.widget(),
+                    },
+
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_valign: gtk::Align::Start,
+                        set_spacing: 16,
+
+                        model.card.widget(),
+
+                        gtk::Button {
+                            set_label: "Add",
+                            set_css_classes: &["suggested-action", "pill"],
+                            connect_clicked => GamePageAppMsg::Add,
+                        },
+
+                        gtk::Label {
+                            set_text: &format!("Developer: {}", model.developer),
+                            set_align: gtk::Align::Start,
+                            add_css_class: "dim-label",
+                        },
+
+                        gtk::ScrolledWindow {
+                            set_propagate_natural_height: true,
+
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
-                                set_valign: gtk::Align::Start,
                                 set_spacing: 16,
 
-                                model.card.widget(),
+                                model.tags.widget(),
 
-                                gtk::Button {
-                                    set_label: "Add",
-                                    set_css_classes: &["suggested-action", "pill"],
-                                    connect_clicked => GamePageAppMsg::Add,
-                                },
+                                adw::PreferencesGroup {
+                                    set_title: "Package",
 
-                                gtk::Label {
-                                    set_text: &format!("Developer: {}", model.developer),
-                                    set_align: gtk::Align::Start,
-                                    add_css_class: "dim-label",
-                                },
+                                    adw::ActionRow {
+                                        set_title: "Repository",
 
-                                gtk::ScrolledWindow {
-                                    set_propagate_natural_height: true,
+                                        add_suffix = &gtk::Label {
+                                            set_text: "an-anime-team",
+                                            add_css_class: "dim-label",
+                                        }
+                                    },
 
-                                    gtk::Box {
-                                        set_orientation: gtk::Orientation::Vertical,
-                                        set_spacing: 16,
+                                    model.maintainers.widget() {
+                                        set_title: "Maintainers",
+                                    },
 
-                                        model.tags.widget(),
+                                    adw::ActionRow {
+                                        set_title: "Version",
 
-                                        adw::PreferencesGroup {
-                                            set_title: "Package",
-
-                                            adw::ActionRow {
-                                                set_title: "Repository",
-
-                                                add_suffix = &gtk::Label {
-                                                    set_text: "an-anime-team",
-                                                    add_css_class: "dim-label",
-                                                }
-                                            },
-
-                                            model.maintainers.widget() {
-                                                set_title: "Maintainers",
-                                            },
-
-                                            adw::ActionRow {
-                                                set_title: "Version",
-
-                                                add_suffix = &gtk::Label {
-                                                    set_text: "69.42.0",
-                                                    add_css_class: "dim-label",
-                                                }
-                                            }
+                                        add_suffix = &gtk::Label {
+                                            set_text: "69.42.0",
+                                            add_css_class: "dim-label",
                                         }
                                     }
                                 }

@@ -5,61 +5,59 @@ use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
 
 use crate::ui::components::{card::*, cards_row::*};
 
+use super::game_page::*;
+
 #[derive(Debug)]
 pub enum StorePageAppMsg {
+    ToggleSearching,
+    HideGamePage,
     Clicked(DynamicIndex, DynamicIndex),
+}
+
+#[derive(Debug)]
+pub enum StorePageAppOutput {
+    ShowBack,
 }
 
 #[derive(Debug)]
 pub struct StorePageApp {
     rows: AsyncFactoryVecDeque<CardsRowFactory>,
+    game_page: AsyncController<GamePageApp>,
+    searching: bool,
+    show_game_page: bool,
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for StorePageApp {
     type Init = ();
     type Input = StorePageAppMsg;
-    type Output = ();
+    type Output = StorePageAppOutput;
 
     view! {
         #[root]
-        adw::NavigationPage {
-            set_title: "Store",
-            #[wrap(Some)]
-            set_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_margin_all: 16,
-                set_spacing: 16,
-                gtk::SearchEntry,
-                adw::PreferencesGroup {
-                    set_title: "Featured",
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_align: gtk::Align::Center,
-                        set_spacing: 16,
-                        #[name = "carousel"]
-                        adw::Carousel {
-                            gtk::Picture {
-                                set_filename: Some(&TEST_PATH),
-                            },
-                            gtk::Picture {
-                                set_filename: Some(&TEST_PATH),
-                            },
-                            gtk::Picture {
-                                set_filename: Some(&TEST_PATH),
-                            }
-                        },
-                        adw::CarouselIndicatorDots {
-                            set_carousel: Some(&carousel),
+        gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
+
+            #[transition(SlideLeftRight)]
+            append = if !model.show_game_page {
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_margin_all: 16,
+                    set_spacing: 16,
+                    gtk::SearchEntry {
+                        #[watch]
+                        set_visible: model.searching,
+                    },
+                    gtk::ScrolledWindow {
+                        model.rows.widget() {
+                            set_orientation: gtk::Orientation::Vertical,
+                            set_vexpand: true,
                         }
                     }
-                },
-                gtk::ScrolledWindow {
-                    set_propagate_natural_width: true,
-                    model.rows.widget() {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_vexpand: true,
-                    }
+                }
+            } else {
+                gtk::Box {
+                    model.game_page.widget() {}
                 }
             }
         }
@@ -70,8 +68,6 @@ impl SimpleAsyncComponent for StorePageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let TEST_PATH = String::from("background.jpg");
-
         let mut model = Self {
             rows: AsyncFactoryVecDeque::builder().launch_default().forward(
                 sender.input_sender(),
@@ -81,18 +77,28 @@ impl SimpleAsyncComponent for StorePageApp {
                     }
                 },
             ),
+            game_page: GamePageApp::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    GamePageAppOutput::Hide => StorePageAppMsg::HideGamePage,
+                }),
+            searching: false,
+            show_game_page: false,
         };
         let widgets = view_output!();
 
         for name in 'a'..'z' {
             let index = model.rows.guard().push_back(String::from(name));
-            for i in 0..10 {
+            for i in 0..3 {
                 model.rows.send(
                     index.current_index(),
                     CardsRowFactoryMsg::Add(CardComponent {
                         image: Some(String::from("card.jpg")),
                         clickable: true,
-                        title: Some(format!("Card {}", i)),
+                        title: Some(format!(
+                            "Card {}",
+                            if name as u32 % 2 == 1 { i + 1 } else { i }
+                        )),
                         ..CardComponent::medium()
                     }),
                 )
@@ -102,14 +108,22 @@ impl SimpleAsyncComponent for StorePageApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
+            StorePageAppMsg::ToggleSearching => {
+                self.searching = !self.searching;
+            }
+            StorePageAppMsg::HideGamePage => {
+                self.show_game_page = false;
+            }
             StorePageAppMsg::Clicked(r, c) => {
                 println!(
                     "Clicked element {} of row {}",
                     c.current_index(),
                     r.current_index()
                 );
+                self.show_game_page = true;
+                sender.output(StorePageAppOutput::ShowBack).unwrap();
             }
         }
     }
