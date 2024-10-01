@@ -1,5 +1,6 @@
 use adw::prelude::*;
 use gtk::prelude::*;
+use library_page::LibraryPageAppOutput;
 use relm4::prelude::*;
 
 pub mod downloads_page;
@@ -12,18 +13,18 @@ pub use downloads_page::{DownloadsPageApp, DownloadsPageAppMsg};
 pub use game_page::{GamePageApp, GamePageAppMsg};
 pub use library_page::{LibraryPageApp, LibraryPageAppMsg};
 pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
-use store_page::StorePageAppOutput;
-pub use store_page::{StorePageApp, StorePageAppMsg};
+pub use store_page::{StorePageApp, StorePageAppMsg, StorePageAppOutput};
 
 pub static mut WINDOW: Option<adw::Window> = None;
 
 #[derive(Debug, Clone)]
 pub enum MainAppMsg {
     ToggleSearching,
-    ShowSearch,
-    HideSearch,
-    ShowBack,
+    SetShowSearch(bool),
+    SetShowBack(bool),
     GoBack,
+    ActivateStorePage,
+    ActivateLibraryPage,
 }
 
 #[derive(Debug)]
@@ -31,6 +32,8 @@ pub struct MainApp {
     store_page: AsyncController<StorePageApp>,
     library_page: AsyncController<LibraryPageApp>,
     profile_page: AsyncController<ProfilePageApp>,
+
+    view_stack: adw::ViewStack,
 
     show_search: bool,
     searching: bool,
@@ -82,15 +85,26 @@ impl SimpleAsyncComponent for MainApp {
                     }
                 },
 
-                #[name = "view_stack"]
-                adw::ViewStack {
+                #[local_ref]
+                view_stack -> adw::ViewStack {
                     connect_visible_child_notify => move |stack| {
                         if let Some(name) = stack.visible_child_name() {
-                            // Show search on these page name
-                            if ["store", "library", "profile"].contains(&name.as_str()) {
-                                sender.input(MainAppMsg::ShowSearch);
-                            } else {
-                                sender.input(MainAppMsg::HideSearch);
+                            // Show search on these page names
+                            sender.input(
+                                MainAppMsg::SetShowSearch(
+                                    ["store", "library", "profile"].contains(&name.as_str())
+                                )
+                            );
+
+                            // Update back button
+                            match name.as_str() {
+                                "store" => {
+                                    sender.input(MainAppMsg::ActivateStorePage);
+                                },
+                                "library" => {
+                                    sender.input(MainAppMsg::ActivateLibraryPage);
+                                },
+                                _ => {}
                             }
                         }
                     },
@@ -141,10 +155,17 @@ impl SimpleAsyncComponent for MainApp {
             store_page: StorePageApp::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    StorePageAppOutput::ShowBack => MainAppMsg::ShowBack,
+                    StorePageAppOutput::SetShowBack(s) => MainAppMsg::SetShowBack(s),
                 }),
 
-            library_page: LibraryPageApp::builder().launch(()).detach(),
+            library_page: LibraryPageApp::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    LibraryPageAppOutput::SetShowBack(s) => MainAppMsg::SetShowBack(s),
+                },
+            ),
+
+            view_stack: adw::ViewStack::new(),
 
             profile_page: ProfilePageApp::builder().launch(()).detach(),
 
@@ -153,6 +174,8 @@ impl SimpleAsyncComponent for MainApp {
 
             show_back: false,
         };
+
+        let view_stack = &model.view_stack;
 
         let widgets = view_output!();
 
@@ -171,18 +194,32 @@ impl SimpleAsyncComponent for MainApp {
                     .emit(StorePageAppMsg::ToggleSearching);
                 self.searching = !self.searching;
             }
-            MainAppMsg::ShowSearch => {
-                self.show_search = true;
+            MainAppMsg::SetShowSearch(state) => {
+                self.show_search = state;
             }
-            MainAppMsg::HideSearch => {
-                self.show_search = false;
-            }
-            MainAppMsg::ShowBack => {
-                self.show_back = true;
+            MainAppMsg::SetShowBack(state) => {
+                self.show_back = state;
             }
             MainAppMsg::GoBack => {
                 self.show_back = false;
-                self.store_page.sender().emit(StorePageAppMsg::HideGamePage);
+
+                // Navigate back only on the visible page
+                if let Some(name) = self.view_stack.visible_child_name() {
+                    match name.as_str() {
+                        "store" => self.store_page.sender().emit(StorePageAppMsg::HideGamePage),
+                        "library" => self
+                            .library_page
+                            .sender()
+                            .emit(LibraryPageAppMsg::ToggleDownloadsPage),
+                        _ => {}
+                    }
+                }
+            }
+            MainAppMsg::ActivateStorePage => {
+                self.store_page.sender().emit(StorePageAppMsg::Activate);
+            }
+            MainAppMsg::ActivateLibraryPage => {
+                self.library_page.sender().emit(LibraryPageAppMsg::Activate);
             }
         }
     }

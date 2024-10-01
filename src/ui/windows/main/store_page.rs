@@ -9,6 +9,7 @@ use super::game_page::*;
 
 #[derive(Debug)]
 pub enum StorePageAppMsg {
+    Activate,
     ToggleSearching,
     HideGamePage,
     Clicked(DynamicIndex, DynamicIndex),
@@ -16,7 +17,7 @@ pub enum StorePageAppMsg {
 
 #[derive(Debug)]
 pub enum StorePageAppOutput {
-    ShowBack,
+    SetShowBack(bool),
 }
 
 #[derive(Debug)]
@@ -89,16 +90,13 @@ impl SimpleAsyncComponent for StorePageApp {
 
         for name in 'a'..'z' {
             let index = model.rows.guard().push_back(String::from(name));
-            for i in 0..3 {
+            for i in 0..4 {
                 model.rows.send(
                     index.current_index(),
                     CardsRowFactoryMsg::Add(CardComponent {
                         image: Some(String::from("card.jpg")),
                         clickable: true,
-                        title: Some(format!(
-                            "Card {}",
-                            if name as u32 % 2 == 1 { i + 1 } else { i }
-                        )),
+                        title: Some(format!("Card {}", i)),
                         ..CardComponent::medium()
                     }),
                 )
@@ -123,8 +121,13 @@ impl SimpleAsyncComponent for StorePageApp {
                     r.current_index()
                 );
                 self.show_game_page = true;
-                sender.output(StorePageAppOutput::ShowBack).unwrap();
             }
+            StorePageAppMsg::Activate => {}
         }
+
+        // Update back button visibility
+        sender
+            .output(StorePageAppOutput::SetShowBack(self.show_game_page))
+            .unwrap();
     }
 }

@@ -10,6 +10,7 @@ use super::DownloadsPageApp;
 
 #[derive(Debug, Clone)]
 pub enum LibraryPageAppMsg {
+    Activate,
     ShowGameDetails(DynamicIndex),
     ToggleDownloadsPage,
 }
@@ -23,11 +24,16 @@ pub struct LibraryPageApp {
     show_downloads: bool,
 }
 
+#[derive(Debug)]
+pub enum LibraryPageAppOutput {
+    SetShowBack(bool),
+}
+
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for LibraryPageApp {
     type Init = ();
     type Input = LibraryPageAppMsg;
-    type Output = ();
+    type Output = LibraryPageAppOutput;
 
     view! {
         #[root]
@@ -73,14 +79,6 @@ impl SimpleAsyncComponent for LibraryPageApp {
                 }
             } else {
                 gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    gtk::Button {
-                        set_icon_name: "go-previous-symbolic",
-                        set_css_classes: &["flat"],
-                        set_halign: gtk::Align::Start,
-                        set_margin_all: 16,
-                        connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
-                    },
                     model.downloads_page.widget(),
                 }
             }
@@ -134,7 +132,7 @@ impl SimpleAsyncComponent for LibraryPageApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             LibraryPageAppMsg::ShowGameDetails(index) => {
                 if let Some(details) = self.cards_list.get(index.current_index()) {
@@ -144,6 +142,12 @@ impl SimpleAsyncComponent for LibraryPageApp {
             LibraryPageAppMsg::ToggleDownloadsPage => {
                 self.show_downloads = !self.show_downloads;
             }
+            LibraryPageAppMsg::Activate => {}
         }
+
+        // Update back button visibility
+        sender
+            .output(LibraryPageAppOutput::SetShowBack(self.show_downloads))
+            .unwrap();
     }
 }
