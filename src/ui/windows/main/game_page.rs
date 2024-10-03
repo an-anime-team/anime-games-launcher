@@ -106,6 +106,7 @@ impl SimpleAsyncComponent for GamePageApp {
                             set_wrap_mode: gtk::WrapMode::Word,
                             set_editable: false,
                             set_can_target: false,
+                            set_cursor_visible: false,
                             add_css_class: "body",
                         },
 
@@ -117,6 +118,7 @@ impl SimpleAsyncComponent for GamePageApp {
                                 set_wrap_mode: gtk::WrapMode::Word,
                                 set_editable: false,
                                 set_can_target: false,
+                                set_cursor_visible: false,
                                 add_css_class: "body",
                             }
                         },

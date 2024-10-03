@@ -1,6 +1,6 @@
 use adw::prelude::*;
 use gtk::prelude::*;
-use library_page::LibraryPageAppOutput;
+
 use relm4::prelude::*;
 
 pub mod downloads_page;
@@ -11,7 +11,7 @@ pub mod store_page;
 
 pub use downloads_page::{DownloadsPageApp, DownloadsPageAppMsg};
 pub use game_page::{GamePageApp, GamePageAppMsg};
-pub use library_page::{LibraryPageApp, LibraryPageAppMsg};
+pub use library_page::{LibraryPageApp, LibraryPageAppMsg, LibraryPageAppOutput};
 pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
 pub use store_page::{StorePageApp, StorePageAppMsg, StorePageAppOutput};
 
