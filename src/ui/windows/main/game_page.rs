@@ -26,6 +26,8 @@ pub struct GamePageApp {
     card: AsyncController<CardComponent>,
     title: String,
     developer: String,
+    description_short: String,
+    description_long: String,
     tags: AsyncFactoryVecDeque<GameTagFactory>,
     requirements: AsyncController<RequirementsComponent>,
     maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
@@ -199,13 +201,21 @@ impl SimpleAsyncComponent for GamePageApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let TEST_PATH = "/temp/";
-        let short_buffer = gtk::TextBuffer::new(None);
-        short_buffer.set_text("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
+
+        let mut model = Self {
+            card: CardComponent::builder()
+                .launch(CardComponent {
+                    image: Some(String::from("card.jpg")),
+                    ..Default::default()
+                })
+                .detach(),
+            title: String::from("Genshin Impact"),
+            developer: String::from("MiHoYo"),
+            description_short: String::from("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
 
 You and your sibling arrived here from another world. Separated by an unknown god, stripped of your powers, and cast into a deep slumber, you now awake to a world very different from when you first arrived.
-Thus begins your journey across Teyvat to seek answers from The Seven — the gods of each element. Along the way, prepare to explore every inch of this wondrous world, join forces with a diverse range of characters, and unravel the countless mysteries that Teyvat holds...");
-        let long_buffer = gtk::TextBuffer::new(None);
-        long_buffer.set_text("MASSIVE OPEN WORLD
+Thus begins your journey across Teyvat to seek answers from The Seven — the gods of each element. Along the way, prepare to explore every inch of this wondrous world, join forces with a diverse range of characters, and unravel the countless mysteries that Teyvat holds..."),
+            description_long: String::from("MASSIVE OPEN WORLD
 Climb any mountain, swim across any river, and glide over the world below, taking in the jaw-dropping scenery each step of the way. And if you stop to investigate a wandering Seelie or strange mechanism, who knows what you might discover?
 
 ELEMENTAL COMBAT SYSTEM
@@ -235,16 +245,7 @@ Instagram: https://www.instagram.com/genshinimpact/
 Twitter: https://twitter.com/GenshinImpact
 YouTube: http://www.youtube.com/c/GenshinImpact
 Discord: https://discord.gg/genshinimpact
-Reddit: https://www.reddit.com/r/Genshin_Impact/");
-        let mut model = Self {
-            card: CardComponent::builder()
-                .launch(CardComponent {
-                    image: Some(String::from("card.jpg")),
-                    ..Default::default()
-                })
-                .detach(),
-            title: String::from("Genshin Impact"),
-            developer: String::from("MiHoYo"),
+Reddit: https://www.reddit.com/r/Genshin_Impact/"),
             tags: AsyncFactoryVecDeque::builder().launch_default().detach(),
             requirements: RequirementsComponent::builder()
                 .launch(GameHardwareRequirements {
@@ -290,6 +291,12 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/");
                 .detach(),
             maintainers: AsyncFactoryVecDeque::builder().launch_default().detach(),
         };
+
+        let short_buffer = gtk::TextBuffer::new(None);
+        let long_buffer = gtk::TextBuffer::new(None);
+
+        short_buffer.set_text(&model.description_short);
+        long_buffer.set_text(&model.description_long);
 
         let widgets = view_output!();
 
