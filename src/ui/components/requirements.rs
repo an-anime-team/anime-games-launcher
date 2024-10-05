@@ -13,10 +13,21 @@ use crate::{
 
 const DIM_CLASS: &str = "dim-label";
 
+#[derive(Debug)]
+pub struct HardwareRequirementsComponent {
+    req: HardwareRequirements,
+    lang: LanguageIdentifier,
+}
+
+#[derive(Debug)]
+pub enum HardwareRequirementsComponentMsg {
+    Update(HardwareRequirementsComponent),
+}
+
 #[relm4::component(async, pub)]
-impl SimpleAsyncComponent for HardwareRequirements {
-    type Init = (HardwareRequirements, LanguageIdentifier);
-    type Input = ();
+impl SimpleAsyncComponent for HardwareRequirementsComponent {
+    type Init = HardwareRequirementsComponent;
+    type Input = HardwareRequirementsComponentMsg;
     type Output = ();
 
     view! {
@@ -30,20 +41,23 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Processor",
                     add_suffix = &gtk::Label {
-                        set_label: model.cpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
+                        #[watch]
+                        set_label: model.req.cpu.as_ref().map(|a| a.model.translate(&model.lang)).unwrap_or("N/A"),
                         add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Core Count",
                         add_suffix = &gtk::Label {
-                            set_label: &model.cpu.as_ref().and_then(|a| a.cores).map(|b| b.to_string()).unwrap_or("N/A".to_string()),
+                            #[watch]
+                            set_label: &model.req.cpu.as_ref().and_then(|a| a.cores).map(|b| b.to_string()).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
-                            set_label: &model.cpu.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b, false)).unwrap_or("N/A".to_string()),
+                            #[watch]
+                            set_label: &model.req.cpu.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b, false)).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     }
@@ -52,13 +66,15 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Graphics",
                     add_suffix = &gtk::Label {
-                        set_label: model.gpu.as_ref().map(|a| a.model.translate(&lang)).unwrap_or("N/A"),
+                        #[watch]
+                        set_label: model.req.gpu.as_ref().map(|a| a.model.translate(&model.lang)).unwrap_or("N/A"),
                         add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Video Memory",
                         add_suffix = &gtk::Label {
-                            set_label: &model.gpu.as_ref().and_then(|a| a.vram).map(|b| pretty_bytes(b)).unwrap_or("N/A".to_string()),
+                            #[watch]
+                            set_label: &model.req.gpu.as_ref().and_then(|a| a.vram).map(|b| pretty_bytes(b)).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     }
@@ -67,13 +83,15 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Memory",
                     add_suffix = &gtk::Label {
-                        set_label: &model.ram.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
+                        #[watch]
+                        set_label: &model.req.ram.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
                         add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Frequency",
                         add_suffix = &gtk::Label {
-                            set_label: &model.ram.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b, true)).unwrap_or("N/A".to_string()),
+                            #[watch]
+                            set_label: &model.req.ram.as_ref().and_then(|a| a.frequency).map(|b| pretty_frequency(b, true)).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     }
@@ -82,13 +100,15 @@ impl SimpleAsyncComponent for HardwareRequirements {
                 adw::ExpanderRow {
                     set_title: "Disk",
                     add_suffix = &gtk::Label {
-                        set_label: &model.disk.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
+                        #[watch]
+                        set_label: &model.req.disk.as_ref().map(|a| pretty_bytes(a.size)).unwrap_or("N/A".to_string()),
                         add_css_class: DIM_CLASS,
                     },
                     add_row = &adw::ActionRow {
                         set_title: "Type",
                         add_suffix = &gtk::Label {
-                            set_label: &model.disk.as_ref().and_then(|a| a.disk_type.as_ref()).map(|b| b.to_string().to_uppercase()).unwrap_or("N/A".to_string()),
+                            #[watch]
+                            set_label: &model.req.disk.as_ref().and_then(|a| a.disk_type.as_ref()).map(|b| b.to_string().to_uppercase()).unwrap_or("N/A".to_string()),
                             add_css_class: DIM_CLASS,
                         }
                     }
@@ -98,29 +118,41 @@ impl SimpleAsyncComponent for HardwareRequirements {
     }
 
     async fn init(
-        init: Self::Init,
+        model: Self::Init,
         root: Self::Root,
         _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let model = init.0;
-        let lang = init.1;
-
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
+    }
+
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+        match msg {
+            HardwareRequirementsComponentMsg::Update(req) => {
+                self.req = req.req;
+                self.lang = req.lang;
+            }
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct RequirementsComponent {
-    pub minimal: AsyncController<HardwareRequirements>,
-    pub optimal: Option<AsyncController<HardwareRequirements>>,
+    pub minimal: AsyncController<HardwareRequirementsComponent>,
+    pub optimal: Option<AsyncController<HardwareRequirementsComponent>>,
+    stack: adw::ViewStack,
+}
+
+#[derive(Debug)]
+pub enum RequirementsComponentMsg {
+    Update((GameHardwareRequirements, LanguageIdentifier)),
 }
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for RequirementsComponent {
-    type Init = GameHardwareRequirements;
-    type Input = ();
+    type Init = (GameHardwareRequirements, LanguageIdentifier);
+    type Input = RequirementsComponentMsg;
     type Output = ();
 
     view! {
@@ -131,7 +163,7 @@ impl SimpleAsyncComponent for RequirementsComponent {
 
             adw::ViewSwitcher {
                 set_policy: adw::ViewSwitcherPolicy::Wide,
-                set_stack = Some(&view_stack),
+                set_stack = Some(view_stack),
             },
 
             #[local_ref]
@@ -144,15 +176,18 @@ impl SimpleAsyncComponent for RequirementsComponent {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let view_stack = adw::ViewStack::new();
-        let lang = LanguageIdentifier::default();
-
         let mut model = Self {
-            minimal: HardwareRequirements::builder()
-                .launch((init.minimal, lang.clone()))
+            minimal: HardwareRequirementsComponent::builder()
+                .launch(HardwareRequirementsComponent {
+                    req: init.0.minimal,
+                    lang: init.1.clone(),
+                })
                 .detach(),
             optimal: None,
+            stack: adw::ViewStack::new(),
         };
+
+        let view_stack = &model.stack;
 
         // Insert minimum
         view_stack.add_titled_with_icon(
@@ -163,17 +198,20 @@ impl SimpleAsyncComponent for RequirementsComponent {
         );
 
         // Insert recommended only if present
-        if let Some(optimal) = init.optimal {
+        if let Some(optimal) = init.0.optimal {
             model.optimal = Some(
-                HardwareRequirements::builder()
-                    .launch((optimal, lang))
+                HardwareRequirementsComponent::builder()
+                    .launch(HardwareRequirementsComponent {
+                        req: optimal,
+                        lang: init.1,
+                    })
                     .detach(),
             );
         }
         if let Some(req) = &model.optimal {
             view_stack.add_titled_with_icon(
                 req.widget(),
-                None,
+                Some("recommended"),
                 "Recommended",
                 "speedometer2-symbolic",
             );
@@ -182,5 +220,59 @@ impl SimpleAsyncComponent for RequirementsComponent {
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
+    }
+
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+        match msg {
+            RequirementsComponentMsg::Update((requirements, lang)) => {
+                self.minimal
+                    .sender()
+                    .send(HardwareRequirementsComponentMsg::Update(
+                        HardwareRequirementsComponent {
+                            req: requirements.minimal,
+                            lang: lang.clone(),
+                        },
+                    ))
+                    .unwrap();
+
+                match requirements.optimal {
+                    Some(opt) => match &self.optimal {
+                        Some(optimal) => {
+                            optimal
+                                .sender()
+                                .send(HardwareRequirementsComponentMsg::Update(
+                                    HardwareRequirementsComponent {
+                                        req: opt,
+                                        lang: lang.clone(),
+                                    },
+                                ))
+                                .unwrap();
+                        }
+                        None => {
+                            self.optimal = Some(
+                                HardwareRequirementsComponent::builder()
+                                    .launch(HardwareRequirementsComponent { req: opt, lang })
+                                    .detach(),
+                            );
+                            if let Some(optimal) = &self.optimal {
+                                // Remove optimal if presend
+                                if let Some(child) = self.stack.child_by_name("recommended") {
+                                    self.stack.remove(&child);
+                                }
+
+                                // Add new optimal
+                                self.stack.add_titled_with_icon(
+                                    optimal.widget(),
+                                    Some("recommended"),
+                                    "Recommended",
+                                    "speedometer2-symbolic",
+                                );
+                            }
+                        }
+                    },
+                    None => self.optimal = None,
+                }
+            }
+        }
     }
 }

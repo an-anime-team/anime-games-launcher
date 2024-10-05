@@ -2,6 +2,7 @@ use adw::prelude::*;
 use gtk::prelude::*;
 
 use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
+use unic_langid::LanguageIdentifier;
 
 use crate::{
     games::{
@@ -16,10 +17,23 @@ use crate::{
         prelude::LocalizableString,
     },
     ui::components::{
-        card::CardComponent, game_tags::*, maintainers_row::MaintainersRowFactory,
-        requirements::RequirementsComponent,
+        card::*, game_tags::*, maintainers_row::MaintainersRowFactory, requirements::*,
     },
 };
+
+#[derive(Debug)]
+pub struct GamePageAppInit {
+    pub image: String,
+    pub title: String,
+    pub developer: String,
+    pub description: String,
+    pub description_split: usize,
+    pub tags: Vec<GameTag>,
+    pub requirements: GameHardwareRequirements,
+    pub version: String,
+    pub repo_name: String,
+    pub maintainers: Vec<String>,
+}
 
 #[derive(Debug)]
 pub struct GamePageApp {
@@ -30,12 +44,15 @@ pub struct GamePageApp {
     description_long: String,
     tags: AsyncFactoryVecDeque<GameTagFactory>,
     requirements: AsyncController<RequirementsComponent>,
+    version: String,
+    repo_name: String,
     maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
 }
 
 #[derive(Debug)]
 pub enum GamePageAppMsg {
     Add,
+    Update(GamePageAppInit),
 }
 
 #[derive(Debug)]
@@ -59,6 +76,7 @@ impl SimpleAsyncComponent for GamePageApp {
                 set_vexpand: true,
 
                 gtk::Label {
+                    #[watch]
                     set_markup: &model.title,
                     add_css_class: "title-1",
                     set_halign: gtk::Align::Start,
@@ -104,7 +122,12 @@ impl SimpleAsyncComponent for GamePageApp {
                         },
 
                         gtk::TextView {
-                            set_buffer: Some(&short_buffer),
+                            #[watch]
+                            set_buffer: {
+                                let buffer = gtk::TextBuffer::new(None);
+                                buffer.set_text(&model.description_short);
+                                Some(&gtk::TextBuffer::from(buffer))
+                            },
                             set_wrap_mode: gtk::WrapMode::Word,
                             set_editable: false,
                             set_can_target: false,
@@ -116,7 +139,12 @@ impl SimpleAsyncComponent for GamePageApp {
                             set_label: Some("Read More"),
 
                             gtk::TextView {
-                                set_buffer: Some(&long_buffer),
+                                #[watch]
+                                set_buffer: {
+                                    let buffer = gtk::TextBuffer::new(None);
+                                    buffer.set_text(&model.description_long);
+                                    Some(&gtk::TextBuffer::from(buffer))
+                                },
                                 set_wrap_mode: gtk::WrapMode::Word,
                                 set_editable: false,
                                 set_can_target: false,
@@ -148,6 +176,7 @@ impl SimpleAsyncComponent for GamePageApp {
                         },
 
                         gtk::Label {
+                            #[watch]
                             set_text: &format!("Developer: {}", model.developer),
                             set_align: gtk::Align::Start,
                             add_css_class: "dim-label",
@@ -169,7 +198,8 @@ impl SimpleAsyncComponent for GamePageApp {
                                         set_title: "Repository",
 
                                         add_suffix = &gtk::Label {
-                                            set_text: "an-anime-team",
+                                            #[watch]
+                                            set_text: &model.repo_name,
                                             add_css_class: "dim-label",
                                         }
                                     },
@@ -182,7 +212,8 @@ impl SimpleAsyncComponent for GamePageApp {
                                         set_title: "Version",
 
                                         add_suffix = &gtk::Label {
-                                            set_text: "69.42.0",
+                                            #[watch]
+                                            set_text: &model.version,
                                             add_css_class: "dim-label",
                                         }
                                     }
@@ -202,120 +233,50 @@ impl SimpleAsyncComponent for GamePageApp {
     ) -> AsyncComponentParts<Self> {
         let TEST_PATH = "/temp/";
 
-        let mut model = Self {
+        let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent {
-                    image: Some(String::from("card.jpg")),
                     ..Default::default()
                 })
                 .detach(),
-            title: String::from("Genshin Impact"),
-            developer: String::from("MiHoYo"),
-            description_short: String::from("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.
-
-You and your sibling arrived here from another world. Separated by an unknown god, stripped of your powers, and cast into a deep slumber, you now awake to a world very different from when you first arrived.
-Thus begins your journey across Teyvat to seek answers from The Seven — the gods of each element. Along the way, prepare to explore every inch of this wondrous world, join forces with a diverse range of characters, and unravel the countless mysteries that Teyvat holds..."),
-            description_long: String::from("MASSIVE OPEN WORLD
-Climb any mountain, swim across any river, and glide over the world below, taking in the jaw-dropping scenery each step of the way. And if you stop to investigate a wandering Seelie or strange mechanism, who knows what you might discover?
-
-ELEMENTAL COMBAT SYSTEM
-Harness the seven elements to unleash elemental reactions. Anemo, Electro, Hydro, Pyro, Cryo, Dendro, and Geo interact in all sorts of ways, and Vision wielders have the power to turn this to their advantage.
-Will you vaporize Hydro with Pyro, electro-charge it with Electro, or freeze it with Cryo? Your mastery of the elements will give you the upper hand in battle and exploration.
-
-BEAUTIFUL VISUALS
-Feast your eyes on the world around you, with a stunning art style, real-time rendering, and finely tuned character animations delivering you a truly immersive visual experience. Lighting and weather all change naturally over time, bringing every detail of this world to life.
-
-SOOTHING SOUNDTRACK
-Let the beautiful sounds of Teyvat draw you in as you explore the expansive world around you. Performed by the world's top orchestras such as London Philharmonic Orchestra and Shanghai Symphony Orchestra, the soundtrack changes seamlessly with the time and gameplay to match the mood.
-
-BUILD YOUR DREAM TEAM
-Team up with a diverse cast of characters in Teyvat, each with their own unique personalities, stories, and abilities. Discover your favorite party combinations and level up your characters to help you conquer even the most daunting of enemies and domains.
-
-JOURNEY WITH FRIENDS
-Team up with friends across various platforms to trigger more elemental action, tackle tricky boss fights, and conquer challenging domains together to reap rich rewards.
-As you stand atop the peaks of Jueyun Karst and take in the rolling clouds and vast terrain stretching out before you, you may wish to stay in Teyvat a little longer... But until you are reunited with your lost sibling, how can you rest? Go forth, Traveler, and begin your adventure!
-
-SUPPORT
-If you encounter any issues during the game, you can send us feedback via the in-game Customer Service Center.
-Customer Service Email: genshin_cs@hoyoverse.com
-Official Site: https://genshin.hoyoverse.com/
-Forums: https://www.hoyolab.com/
-Facebook: https://www.facebook.com/Genshinimpact/
-Instagram: https://www.instagram.com/genshinimpact/
-Twitter: https://twitter.com/GenshinImpact
-YouTube: http://www.youtube.com/c/GenshinImpact
-Discord: https://discord.gg/genshinimpact
-Reddit: https://www.reddit.com/r/Genshin_Impact/"),
+            title: String::from("N/A"),
+            developer: String::from("N/A"),
+            description_short: String::from("N/A"),
+            description_long: String::from("N/A"),
             tags: AsyncFactoryVecDeque::builder().launch_default().detach(),
             requirements: RequirementsComponent::builder()
-                .launch(GameHardwareRequirements {
-                    minimal: HardwareRequirements {
-                        cpu: Some(CpuHardwareRequirements {
-                            model: LocalizableString::Raw(String::from("Intel Core i5")),
-                            cores: Some(4),
-                            frequency: Some(5300000000),
-                        }),
-                        gpu: Some(GpuHardwareRequirements {
-                            model: LocalizableString::Raw(String::from("NVIDIA GeForce GT 1030")),
-                            vram: Some(2147483648),
-                        }),
-                        ram: Some(RamHardwareRequirements {
-                            size: 8589934592,
-                            frequency: Some(1333000000),
-                        }),
-                        disk: Some(DiskHardwareRequirements {
-                            size: 107374182400,
-                            disk_type: Some(DiskType::Hdd),
-                        }),
+                .launch((
+                    GameHardwareRequirements {
+                        minimal: HardwareRequirements {
+                            cpu: Some(CpuHardwareRequirements {
+                                model: LocalizableString::Raw(String::from("N/A")),
+                                cores: None,
+                                frequency: None,
+                            }),
+                            gpu: Some(GpuHardwareRequirements {
+                                model: LocalizableString::Raw(String::from("N/A")),
+                                vram: None,
+                            }),
+                            ram: Some(RamHardwareRequirements {
+                                size: 0,
+                                frequency: None,
+                            }),
+                            disk: Some(DiskHardwareRequirements {
+                                size: 0,
+                                disk_type: None,
+                            }),
+                        },
+                        optimal: None,
                     },
-                    optimal: Some(HardwareRequirements {
-                        cpu: Some(CpuHardwareRequirements {
-                            model: LocalizableString::Raw(String::from("Intel Core i7")),
-                            cores: Some(6),
-                            frequency: Some(5600000000),
-                        }),
-                        gpu: Some(GpuHardwareRequirements {
-                            model: LocalizableString::Raw(String::from("NVIDIA GeForce GTX 1060")),
-                            vram: Some(6442450944),
-                        }),
-                        ram: Some(RamHardwareRequirements {
-                            size: 17179869184,
-                            frequency: Some(2400000000),
-                        }),
-                        disk: Some(DiskHardwareRequirements {
-                            size: 161061273600,
-                            disk_type: Some(DiskType::Ssd),
-                        }),
-                    }),
-                })
+                    LanguageIdentifier::default(),
+                ))
                 .detach(),
+            repo_name: String::from("N/A"),
             maintainers: AsyncFactoryVecDeque::builder().launch_default().detach(),
+            version: String::from("N/A"),
         };
 
-        let short_buffer = gtk::TextBuffer::new(None);
-        let long_buffer = gtk::TextBuffer::new(None);
-
-        short_buffer.set_text(&model.description_short);
-        long_buffer.set_text(&model.description_long);
-
         let widgets = view_output!();
-
-        model.tags.guard().push_back(GameTag::Gambling);
-        model.tags.guard().push_back(GameTag::Payments);
-        model.tags.guard().push_back(GameTag::AntiCheat);
-        model.tags.guard().push_back(GameTag::Workarounds);
-        model.tags.guard().push_back(GameTag::GraphicViolence);
-        model.tags.guard().push_back(GameTag::PerformanceIssues);
-        model.tags.guard().push_back(GameTag::UnsupportedPlatform);
-
-        model
-            .maintainers
-            .guard()
-            .push_back(String::from("Nikita Podvirnyi <krypt0nn@vk.com>"));
-        model
-            .maintainers
-            .guard()
-            .push_back(String::from("Maroxy <82662823523516416>"));
 
         AsyncComponentParts { model, widgets }
     }
@@ -324,6 +285,38 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/"),
         match msg {
             GamePageAppMsg::Add => {
                 println!("Added Game");
+            }
+            GamePageAppMsg::Update(init) => {
+                self.card
+                    .sender()
+                    .send(CardComponentInput::SetImage(Some(init.image)))
+                    .unwrap();
+                self.requirements
+                    .sender()
+                    .send(RequirementsComponentMsg::Update((
+                        init.requirements,
+                        LanguageIdentifier::default(),
+                    )))
+                    .unwrap();
+
+                self.title = init.title;
+                self.developer = init.developer;
+                self.description_short = init.description;
+                self.description_long = self.description_short.split_off(init.description_split);
+                self.repo_name = init.repo_name;
+                self.version = init.version;
+
+                // Clear these first
+                self.tags.guard().clear();
+                self.maintainers.guard().clear();
+
+                for tag in init.tags {
+                    self.tags.guard().push_back(tag);
+                }
+
+                for maintainer in init.maintainers {
+                    self.maintainers.guard().push_back(maintainer);
+                }
             }
         }
     }
