@@ -12,7 +12,7 @@ use super::*;
 
 const IO_READ_CHUNK_LEN: usize = 8192;
 
-pub struct IOAPI<'lua> {
+pub struct FilesystemAPI<'lua> {
     lua: &'lua Lua,
 
     fs_exists: LuaFunctionBuilder<'lua>,
@@ -36,7 +36,7 @@ pub struct IOAPI<'lua> {
     fs_remove_dir: LuaFunctionBuilder<'lua>
 }
 
-impl<'lua> IOAPI<'lua> {
+impl<'lua> FilesystemAPI<'lua> {
     pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
 
@@ -610,7 +610,7 @@ mod tests {
         let path = path.to_string_lossy().to_string();
 
         let lua = Lua::new();
-        let api = IOAPI::new(&lua)?;
+        let api = FilesystemAPI::new(&lua)?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -692,7 +692,7 @@ mod tests {
         let path = path.to_string_lossy().to_string();
 
         let lua = Lua::new();
-        let api = IOAPI::new(&lua)?;
+        let api = FilesystemAPI::new(&lua)?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -750,7 +750,7 @@ mod tests {
         let path = path.to_string_lossy().to_string();
 
         let lua = Lua::new();
-        let api = IOAPI::new(&lua)?;
+        let api = FilesystemAPI::new(&lua)?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -781,7 +781,7 @@ mod tests {
                 .map_err(|err| anyhow::anyhow!(err.to_string()))?;
         }
 
-        super::archive_extract(dxvk_path, &path, |_, _, _| {})?;
+        filesystem_api::archive_extract(dxvk_path, &path, |_, _, _| {})?;
 
         let path = format!("{path}/dxvk-2.4");
 
@@ -841,7 +841,7 @@ mod tests {
         }
 
         let lua = Lua::new();
-        let api = IOAPI::new(&lua)?;
+        let api = FilesystemAPI::new(&lua)?;
 
         let env = api.create_env(&Context {
             temp_folder: path_a.clone(),

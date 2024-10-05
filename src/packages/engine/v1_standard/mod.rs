@@ -9,7 +9,7 @@ use super::EngineError;
 
 mod string_api;
 mod path_api;
-mod io_api;
+mod filesystem_api;
 mod network_api;
 mod downloader_api;
 mod archive_api;
@@ -19,7 +19,7 @@ mod process_api;
 
 pub use string_api::StringAPI;
 pub use path_api::PathAPI;
-pub use io_api::IOAPI;
+pub use filesystem_api::FilesystemAPI;
 pub use network_api::NetworkAPI;
 pub use downloader_api::DownloaderAPI;
 pub use archive_api::ArchiveAPI;
@@ -118,7 +118,7 @@ pub struct Standard<'lua> {
 
     string_api: StringAPI<'lua>,
     path_api: PathAPI<'lua>,
-    io_api: IOAPI<'lua>,
+    filesystem_api: FilesystemAPI<'lua>,
     network_api: NetworkAPI<'lua>,
     downloader_api: DownloaderAPI<'lua>,
     archive_api: ArchiveAPI<'lua>,
@@ -167,7 +167,7 @@ impl<'lua> Standard<'lua> {
 
             string_api: StringAPI::new(lua)?,
             path_api: PathAPI::new(lua)?,
-            io_api: IOAPI::new(lua)?,
+            filesystem_api: FilesystemAPI::new(lua)?,
             network_api: NetworkAPI::new(lua)?,
             downloader_api: DownloaderAPI::new(lua)?,
             archive_api: ArchiveAPI::new(lua)?,
@@ -186,7 +186,7 @@ impl<'lua> Standard<'lua> {
 
         env.set("str", self.string_api.create_env()?)?;
         env.set("path", self.path_api.create_env(context)?)?;
-        env.set("fs", self.io_api.create_env(context)?)?;
+        env.set("fs", self.filesystem_api.create_env(context)?)?;
         env.set("net", self.network_api.create_env()?)?;
         env.set("downloader", self.downloader_api.create_env()?)?;
         env.set("archive", self.archive_api.create_env()?)?;

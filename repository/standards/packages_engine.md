@@ -87,7 +87,7 @@ List of all available APIs:
 | ---------- | ------------ | ------------------- | ------------------------------------------ |
 | Strings    | `str`        | No                  | String conversions and data serialization. |
 | Paths      | `path`       | No                  | Paths construction and resolution.         |
-| IO         | `fs`         | No                  | Sandboxed filesystem manipulations.        |
+| Filesystem | `fs`         | No                  | Sandboxed filesystem manipulations.        |
 | Network    | `net`        | No                  | HTTP requests.                             |
 | Downloader | `downloader` | No                  | HTTP files downloader.                     |
 | Archives   | `archive`    | No                  | Archives extraction.                       |
@@ -354,9 +354,9 @@ print(path.accessible(path.module_dir())) -- true
 print(path.accessible("/home"))           -- false
 ```
 
-## Sandboxed IO API
+## Filesystem API
 
-All the IO operations are sandboxed by both [luau](https://luau.org) engine
+All the fielsystem operations are sandboxed by both [luau](https://luau.org) engine
 and rust-lua bridge API. From rust side we provide the following functions:
 
 | Function         | Description                              |
