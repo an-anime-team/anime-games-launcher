@@ -137,6 +137,8 @@ impl<'lua> Engine<'lua> {
                         temp_folder: temp_folder.clone(),
                         module_folder,
                         persistent_folder: config.packages.persist_store.path.clone(),
+
+                        // TODO: implement packages authorities system
                         ext_process_api: false
                     })?;
 
