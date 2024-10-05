@@ -189,7 +189,7 @@ impl<'lua> Standard<'lua> {
         env.set("fs", self.filesystem_api.create_env(context)?)?;
         env.set("net", self.network_api.create_env()?)?;
         env.set("downloader", self.downloader_api.create_env()?)?;
-        env.set("archive", self.archive_api.create_env()?)?;
+        env.set("archive", self.archive_api.create_env(context)?)?;
         env.set("hash", self.hash_api.create_env()?)?;
         env.set("sync", self.sync_api.create_env()?)?;
 

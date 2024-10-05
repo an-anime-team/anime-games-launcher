@@ -14,9 +14,9 @@ enum Archive {
 pub struct ArchiveAPI<'lua> {
     lua: &'lua Lua,
 
-    archive_open: LuaFunction<'lua>,
+    archive_open: LuaFunctionBuilder<'lua>,
     archive_entries: LuaFunction<'lua>,
-    archive_extract: LuaFunction<'lua>,
+    archive_extract: LuaFunctionBuilder<'lua>,
     archive_close: LuaFunction<'lua>
 }
 
@@ -30,54 +30,63 @@ impl<'lua> ArchiveAPI<'lua> {
             archive_open: {
                 let archive_handles = archive_handles.clone();
 
-                lua.create_function(move |_, (path, format): (LuaString, Option<LuaString>)| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                Box::new(move |lua: &'lua Lua, context: &Context| {
+                    let context = context.to_owned();
+                    let archive_handles = archive_handles.clone();
 
-                    // Parse the archive format.
-                    let format = match format {
-                        Some(format) => {
-                            match format.as_bytes() {
-                                b"tar" => ArchiveFormat::Tar,
-                                b"zip" => ArchiveFormat::Zip,
-                                b"7z"  => ArchiveFormat::Sevenz,
+                    lua.create_function(move |_, (path, format): (LuaString, Option<LuaString>)| {
+                        let path = resolve_path(path.to_string_lossy())?;
 
-                                _ => return Err(LuaError::external("unsupported archive format"))
-                            }
+                        if !context.is_accessible(&path) {
+                            return Err(LuaError::external("path is inaccessible"));
                         }
 
-                        None => ArchiveFormat::from_path(&path)
-                            .ok_or_else(|| LuaError::external("unsupported archive format"))?
-                    };
+                        // Parse the archive format.
+                        let format = match format {
+                            Some(format) => {
+                                match format.as_bytes() {
+                                    b"tar" => ArchiveFormat::Tar,
+                                    b"zip" => ArchiveFormat::Zip,
+                                    b"7z"  => ArchiveFormat::Sevenz,
 
-                    // Try to open the archive depending on its format.
-                    let archive = match format {
-                        ArchiveFormat::Tar => TarArchive::open(path)
-                            .map_err(|err| LuaError::external(format!("failed to open tar archive: {err}")))
-                            .map(Archive::Tar)?,
+                                    _ => return Err(LuaError::external("unsupported archive format"))
+                                }
+                            }
 
-                        ArchiveFormat::Zip => ZipArchive::open(path)
-                            .map_err(|err| LuaError::external(format!("failed to open zip archive: {err}")))
-                            .map(Archive::Zip)?,
+                            None => ArchiveFormat::from_path(&path)
+                                .ok_or_else(|| LuaError::external("unsupported archive format"))?
+                        };
 
-                        ArchiveFormat::Sevenz => SevenzArchive::open(path)
-                            .map_err(|err| LuaError::external(format!("failed to open 7z archive: {err}")))
-                            .map(Archive::Sevenz)?,
-                    };
+                        // Try to open the archive depending on its format.
+                        let archive = match format {
+                            ArchiveFormat::Tar => TarArchive::open(path)
+                                .map_err(|err| LuaError::external(format!("failed to open tar archive: {err}")))
+                                .map(Archive::Tar)?,
 
-                    // Prepare new handle and store the open archive.
-                    let mut handles = archive_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+                            ArchiveFormat::Zip => ZipArchive::open(path)
+                                .map_err(|err| LuaError::external(format!("failed to open zip archive: {err}")))
+                                .map(Archive::Zip)?,
 
-                    let mut handle = rand::random::<u32>();
+                            ArchiveFormat::Sevenz => SevenzArchive::open(path)
+                                .map_err(|err| LuaError::external(format!("failed to open 7z archive: {err}")))
+                                .map(Archive::Sevenz)?,
+                        };
 
-                    while handles.contains_key(&handle) {
-                        handle = rand::random::<u32>();
-                    }
+                        // Prepare new handle and store the open archive.
+                        let mut handles = archive_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                    handles.insert(handle, archive);
+                        let mut handle = rand::random::<u32>();
 
-                    Ok(handle)
-                })?
+                        while handles.contains_key(&handle) {
+                            handle = rand::random::<u32>();
+                        }
+
+                        handles.insert(handle, archive);
+
+                        Ok(handle)
+                    })
+                })
             },
 
             archive_entries: {
@@ -123,68 +132,77 @@ impl<'lua> ArchiveAPI<'lua> {
             archive_extract: {
                 let archive_handles = archive_handles.clone();
 
-                lua.create_function(move |_, (handle, target, progress): (u32, LuaString, Option<LuaFunction>)| {
-                    let target = resolve_path(target.to_string_lossy())?;
-
-                    // Start extracting the archive in a background thread depending on its format.
-                    let (send, recv) = std::sync::mpsc::channel();
-
+                Box::new(move |lua: &'lua Lua, context: &Context| {
+                    let context = context.to_owned();
                     let archive_handles = archive_handles.clone();
 
-                    let handle = std::thread::spawn(move || {
-                        let handles = archive_handles.lock()
-                            .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                    lua.create_function(move |_, (handle, target, progress): (u32, LuaString, Option<LuaFunction>)| {
+                        let target = resolve_path(target.to_string_lossy())?;
 
-                        // Get archive object using the given handle.
-                        let Some(archive) = handles.get(&handle) else {
-                            return Err(LuaError::external("invalid archive handle"));
-                        };
+                        if !context.is_accessible(&target) {
+                            return Err(LuaError::external("target path is inaccessible"));
+                        }
 
-                        match archive {
-                            Archive::Tar(tar) => tar.extract(target, move |curr, total, diff| {
-                                    let _ = send.send((curr, total, diff));
-                                })
-                                .map_err(|err| LuaError::external(format!("failed to start extracting tar archive: {err}")))?
-                                .wait()
-                                .map_err(|err| LuaError::external(format!("failed to extract tar archive: {err:?}")))?,
+                        // Start extracting the archive in a background thread depending on its format.
+                        let (send, recv) = std::sync::mpsc::channel();
 
-                            Archive::Zip(zip) => zip.extract(target, move |curr, total, diff| {
-                                    let _ = send.send((curr, total, diff));
-                                })
-                                .map_err(|err| LuaError::external(format!("failed to start extracting zip archive: {err}")))?
-                                .wait()
-                                .map_err(|err| LuaError::external(format!("failed to extract zip archive: {err:?}")))?,
+                        let archive_handles = archive_handles.clone();
 
-                            Archive::Sevenz(sevenz) => sevenz.extract(target, move |curr, total, diff| {
-                                    let _ = send.send((curr, total, diff));
-                                })
-                                .map_err(|err| LuaError::external(format!("failed to start extracting 7z archive: {err}")))?
-                                .wait()
-                                .map_err(|err| LuaError::external(format!("failed to extract 7z archive: {err:?}")))?
-                        };
+                        let handle = std::thread::spawn(move || {
+                            let handles = archive_handles.lock()
+                                .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                        Ok::<_, LuaError>(())
-                    });
+                            // Get archive object using the given handle.
+                            let Some(archive) = handles.get(&handle) else {
+                                return Err(LuaError::external("invalid archive handle"));
+                            };
 
-                    // Handle extraction progress events.
-                    let mut finished = false;
+                            match archive {
+                                Archive::Tar(tar) => tar.extract(target, move |curr, total, diff| {
+                                        let _ = send.send((curr, total, diff));
+                                    })
+                                    .map_err(|err| LuaError::external(format!("failed to start extracting tar archive: {err}")))?
+                                    .wait()
+                                    .map_err(|err| LuaError::external(format!("failed to extract tar archive: {err:?}")))?,
 
-                    while !handle.is_finished() {
-                        for (curr, total, diff) in recv.try_iter() {
-                            finished = curr == total;
+                                Archive::Zip(zip) => zip.extract(target, move |curr, total, diff| {
+                                        let _ = send.send((curr, total, diff));
+                                    })
+                                    .map_err(|err| LuaError::external(format!("failed to start extracting zip archive: {err}")))?
+                                    .wait()
+                                    .map_err(|err| LuaError::external(format!("failed to extract zip archive: {err:?}")))?,
 
-                            if let Some(callback) = &progress {
-                                callback.call::<_, ()>((curr, total, diff))?;
+                                Archive::Sevenz(sevenz) => sevenz.extract(target, move |curr, total, diff| {
+                                        let _ = send.send((curr, total, diff));
+                                    })
+                                    .map_err(|err| LuaError::external(format!("failed to start extracting 7z archive: {err}")))?
+                                    .wait()
+                                    .map_err(|err| LuaError::external(format!("failed to extract 7z archive: {err:?}")))?
+                            };
+
+                            Ok::<_, LuaError>(())
+                        });
+
+                        // Handle extraction progress events.
+                        let mut finished = false;
+
+                        while !handle.is_finished() {
+                            for (curr, total, diff) in recv.try_iter() {
+                                finished = curr == total;
+
+                                if let Some(callback) = &progress {
+                                    callback.call::<_, ()>((curr, total, diff))?;
+                                }
                             }
                         }
-                    }
 
-                    handle.join().map_err(|err| {
-                        LuaError::external(format!("failed to extract archive: {err:?}"))
-                    })??;
+                        handle.join().map_err(|err| {
+                            LuaError::external(format!("failed to extract archive: {err:?}"))
+                        })??;
 
-                    Ok(finished)
-                })?
+                        Ok(finished)
+                    })
+                })
             },
 
             archive_close: {
@@ -202,12 +220,12 @@ impl<'lua> ArchiveAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("open", self.archive_open.clone())?;
+        env.set("open", (self.archive_open)(self.lua, context)?)?;
         env.set("entries", self.archive_entries.clone())?;
-        env.set("extract", self.archive_extract.clone())?;
+        env.set("extract", (self.archive_extract)(self.lua, context)?)?;
         env.set("close", self.archive_close.clone())?;
 
         Ok(env)
@@ -233,10 +251,17 @@ mod tests {
         let lua = Lua::new();
         let api = ArchiveAPI::new(&lua)?;
 
-        assert!(api.archive_entries.call::<_, LuaTable>(0).is_err());
-        assert!(api.archive_extract.call::<_, LuaTable>(0).is_err());
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
 
-        let handle = api.archive_open.call::<_, u32>(path.to_string_lossy())?;
+        assert!(api.archive_entries.call::<_, LuaTable>(0).is_err());
+        assert!(env.call_function::<_, LuaTable>("extract", 0).is_err());
+
+        let handle = env.call_function::<_, u32>("open", path.to_string_lossy())?;
         let entries = api.archive_entries.call::<_, LuaTable>(handle)?;
 
         assert_eq!(entries.len()?, 13);
@@ -263,7 +288,7 @@ mod tests {
         api.archive_close.call::<_, ()>(handle)?;
 
         assert!(api.archive_entries.call::<_, LuaTable>(handle).is_err());
-        assert!(api.archive_extract.call::<_, LuaTable>(handle).is_err());
+        assert!(env.call_function::<_, LuaTable>("extract", handle).is_err());
 
         Ok(())
     }
@@ -284,11 +309,18 @@ mod tests {
         let lua = Lua::new();
         let api = ArchiveAPI::new(&lua)?;
 
-        assert!(api.archive_entries.call::<_, LuaTable>(0).is_err());
-        assert!(api.archive_extract.call::<_, LuaTable>(0).is_err());
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
 
-        let handle = api.archive_open.call::<_, u32>(dxvk_path.to_string_lossy())?;
-        let result = api.archive_extract.call::<_, bool>((handle, path.to_string_lossy()))?;
+        assert!(api.archive_entries.call::<_, LuaTable>(0).is_err());
+        assert!(env.call_function::<_, LuaTable>("extract", 0).is_err());
+
+        let handle = env.call_function::<_, u32>("open", dxvk_path.to_string_lossy())?;
+        let result = env.call_function::<_, bool>("extract", (handle, path.to_string_lossy()))?;
 
         assert!(result);
         assert_eq!(Hash::for_entry(path)?, Hash(17827013605004440863));
@@ -296,7 +328,7 @@ mod tests {
         api.archive_close.call::<_, ()>(handle)?;
 
         assert!(api.archive_entries.call::<_, LuaTable>(handle).is_err());
-        assert!(api.archive_extract.call::<_, LuaTable>(handle).is_err());
+        assert!(env.call_function::<_, LuaTable>("extract", handle).is_err());
 
         Ok(())
     }
