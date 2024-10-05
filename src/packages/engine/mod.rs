@@ -144,7 +144,7 @@ impl<'lua> Engine<'lua> {
                     for pair in lua.globals().pairs::<LuaValue, LuaValue>() {
                         let (key, value) = pair?;
 
-                        if key.as_str() != Some("#!ENGINE") {
+                        if !env.contains_key(&key)? {
                             env.set(key, value)?;
                         }
                     }
