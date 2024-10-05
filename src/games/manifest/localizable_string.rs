@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde_json::{json, Value as Json};
 use unic_langid::LanguageIdentifier;
+use mlua::prelude::*;
 
 use crate::core::prelude::*;
 use crate::packages::prelude::*;
@@ -13,6 +14,29 @@ pub enum LocalizableString {
 }
 
 impl LocalizableString {
+    /// Create new raw localizable string.
+    /// 
+    /// ```
+    /// let string = LocalizableString::raw("Hello, World!");
+    /// ```
+    pub fn raw(value: impl ToString) -> Self {
+        Self::Raw(value.to_string())
+    }
+
+    /// Create new translatable string.
+    /// 
+    /// ```
+    /// use unic_langid::langid;
+    /// 
+    /// let string = LocalizableString::translatable([
+    ///     (langid!("en"), String::from("Hello, World!")),
+    ///     (langid!("ru"), String::from("Привет, Мир!"))
+    /// ]);
+    /// ```
+    pub fn translatable(iter: impl IntoIterator<Item = (LanguageIdentifier, String)>) -> Self {
+        Self::Translatable(HashMap::from_iter(iter))
+    }
+
     /// Get translated value of the string.
     ///
     /// This function will try to translate the value using
@@ -41,6 +65,39 @@ impl LocalizableString {
 
                 english_value
             }
+        }
+    }
+}
+
+impl TryFrom<&LuaValue<'_>> for LocalizableString {
+    type Error = LuaError;
+
+    fn try_from(value: &LuaValue) -> Result<Self, Self::Error> {
+        if let Some(translations) = value.as_table() {
+            let mut result = HashMap::with_capacity(translations.raw_len());
+
+            for pair in translations.clone().pairs::<LuaString, LuaString>() {
+                let (lang, value) = pair?;
+
+                let lang = lang.to_string_lossy()
+                    .parse::<LanguageIdentifier>()
+                    .map_err(LuaError::external)?;
+
+                let value = value.to_string_lossy()
+                    .to_string();
+
+                result.insert(lang, value);
+            }
+
+            Ok(Self::translatable(result))
+        }
+
+        else if let Some(value) = value.as_string_lossy() {
+            Ok(Self::raw(value))
+        }
+
+        else {
+            Err(LuaError::external("failed to parse localizable string"))
         }
     }
 }
@@ -130,15 +187,15 @@ mod tests {
 
     #[test]
     fn translate() {
-        let text = LocalizableString::Raw(String::from("Hello, World!"));
+        let text = LocalizableString::raw("Hello, World!");
 
         assert_eq!(text.translate(&langid!("en-us")), "Hello, World!");
 
-        let text = LocalizableString::Translatable(HashMap::from_iter([
+        let text = LocalizableString::translatable([
             (langid!("en-us"), String::from("Test")),
             (langid!("ru-ru"), String::from("Тест")),
             (langid!("zh"), String::from("测试")),
-        ]));
+        ]);
 
         assert_eq!(text.translate(&langid!("en-us")), "Test");
         assert_eq!(text.translate(&langid!("ru-ru")), "Тест");
