@@ -15,24 +15,24 @@ const IO_READ_CHUNK_LEN: usize = 8192;
 pub struct IOAPI<'lua> {
     lua: &'lua Lua,
 
-    fs_exists: LuaFunction<'lua>,
-    fs_metadata: LuaFunction<'lua>,
-    fs_copy: LuaFunction<'lua>,
-    fs_move: LuaFunction<'lua>,
-    fs_remove: LuaFunction<'lua>,
-    fs_open: LuaFunction<'lua>,
+    fs_exists: LuaFunctionBuilder<'lua>,
+    fs_metadata: LuaFunctionBuilder<'lua>,
+    fs_copy: LuaFunctionBuilder<'lua>,
+    fs_move: LuaFunctionBuilder<'lua>,
+    fs_remove: LuaFunctionBuilder<'lua>,
+    fs_open: LuaFunctionBuilder<'lua>,
     fs_seek: LuaFunction<'lua>,
     fs_read: LuaFunction<'lua>,
     fs_write: LuaFunction<'lua>,
     fs_flush: LuaFunction<'lua>,
     fs_close: LuaFunction<'lua>,
 
-    fs_read_file: LuaFunction<'lua>,
-    fs_write_file: LuaFunction<'lua>,
-    fs_remove_file: LuaFunction<'lua>,
-    fs_create_dir: LuaFunction<'lua>,
-    fs_read_dir: LuaFunction<'lua>,
-    fs_remove_dir: LuaFunction<'lua>
+    fs_read_file: LuaFunctionBuilder<'lua>,
+    fs_write_file: LuaFunctionBuilder<'lua>,
+    fs_remove_file: LuaFunctionBuilder<'lua>,
+    fs_create_dir: LuaFunctionBuilder<'lua>,
+    fs_read_dir: LuaFunctionBuilder<'lua>,
+    fs_remove_dir: LuaFunctionBuilder<'lua>
 }
 
 impl<'lua> IOAPI<'lua> {
@@ -42,213 +42,266 @@ impl<'lua> IOAPI<'lua> {
         Ok(Self {
             lua,
 
-            fs_exists: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+            fs_exists: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-                Ok(path.exists())
-            })?,
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
 
-            fs_metadata: lua.create_function(|lua, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
-
-                let metadata = path.metadata()?;
-
-                let result = lua.create_table()?;
-
-                result.set("created_at", {
-                    metadata.created()?
-                        .duration_since(UNIX_EPOCH)
-                        .as_ref()
-                        .map(Duration::as_secs)
-                        .unwrap_or_default()
-                })?;
-
-                result.set("modified_at", {
-                    metadata.modified()?
-                        .duration_since(UNIX_EPOCH)
-                        .as_ref()
-                        .map(Duration::as_secs)
-                        .unwrap_or_default() as u32
-                })?;
-
-                result.set("length", metadata.len() as u32)?;
-                result.set("is_accessible", true)?; // TODO
-
-                result.set("type", {
-                    if metadata.is_symlink() {
-                        "symlink"
-                    } else if metadata.is_dir() {
-                        "folder"
-                    } else {
-                        "file"
-                    }
-                })?;
-
-                Ok(result)
-            })?,
-
-            fs_copy: lua.create_function(|_, (source, target): (LuaString, LuaString)| {
-                let source = resolve_path(source.to_string_lossy())?;
-                let target = resolve_path(target.to_string_lossy())?;
-
-                // Throw an error if source path doesn't exists.
-                if !source.exists() {
-                    return Err(LuaError::external("source path doesn't exists"));
-                }
-
-                // Throw an error if target path already exists.
-                if target.exists() {
-                    return Err(LuaError::external("target path already exists"));
-                }
-
-                fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
-                    if source.is_file() {
-                        std::fs::copy(source, target)?;
+                    if !path.exists() {
+                        return Ok(false);
                     }
 
-                    else if source.is_dir() {
-                        std::fs::create_dir_all(target)?;
+                    Ok(context.is_accessible(path))
+                })
+            }),
 
-                        for entry in source.read_dir()? {
-                            let entry = entry?;
+            fs_metadata: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-                            try_copy(&entry.path(), &target.join(entry.file_name()))?;
+                lua.create_function(move |lua, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
+    
+                    let metadata = path.metadata()?;
+    
+                    let result = lua.create_table()?;
+    
+                    result.set("created_at", {
+                        metadata.created()?
+                            .duration_since(UNIX_EPOCH)
+                            .as_ref()
+                            .map(Duration::as_secs)
+                            .unwrap_or_default()
+                    })?;
+    
+                    result.set("modified_at", {
+                        metadata.modified()?
+                            .duration_since(UNIX_EPOCH)
+                            .as_ref()
+                            .map(Duration::as_secs)
+                            .unwrap_or_default() as u32
+                    })?;
+    
+                    result.set("length", metadata.len() as u32)?;
+                    result.set("is_accessible", context.is_accessible(path))?;
+    
+                    result.set("type", {
+                        if metadata.is_symlink() {
+                            "symlink"
+                        } else if metadata.is_dir() {
+                            "folder"
+                        } else {
+                            "file"
                         }
+                    })?;
+    
+                    Ok(result)
+                })
+            }),
+
+            fs_copy: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
+
+                lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
+                    let source = resolve_path(source.to_string_lossy())?;
+                    let target = resolve_path(target.to_string_lossy())?;
+
+                    // Throw an error if source path doesn't exists or inaccessible.
+                    if !source.exists() {
+                        return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    else if source.is_symlink() {
-                        if let Some(source_filename) = source.file_name() {
-                            std::os::unix::fs::symlink(
-                                source.read_link()?,
-                                target.join(source_filename)
-                            )?;
-                        }
+                    if !context.is_accessible(&source) {
+                        return Err(LuaError::external("source path is inaccessible"));
                     }
 
-                    Ok(())
-                }
+                    // Throw an error if target path already exists or inaccessible.
+                    if target.exists() {
+                        return Err(LuaError::external("target path already exists"));
+                    }
 
-                try_copy(&source, &target)?;
+                    if !context.is_accessible(&target) {
+                        return Err(LuaError::external("target path is inaccessible"));
+                    }
 
-                Ok(())
-            })?,
-
-            fs_move: lua.create_function(|_, (source, target): (LuaString, LuaString)| {
-                let source = resolve_path(source.to_string_lossy())?;
-                let target = resolve_path(target.to_string_lossy())?;
-
-                // Throw an error if source path doesn't exists.
-                if !source.exists() {
-                    return Err(LuaError::external("source path doesn't exists"));
-                }
-
-                // Throw an error if target path already exists.
-                if target.exists() {
-                    return Err(LuaError::external("target path already exists"));
-                }
-
-                fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
-                    if source.is_file() {
-                        // Try to rename the file (mv) or copy
-                        // it and then remove the source if mv
-                        // has failed (different mounts).
-                        if std::fs::rename(source, target).is_err() {
+                    fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
+                        if source.is_file() {
                             std::fs::copy(source, target)?;
-                            std::fs::remove_file(source)?;
                         }
-                    }
 
-                    else if source.is_dir() {
-                        // Try to rename the folder (mv) or create
-                        // a target folder and move all the files there.
-                        if std::fs::rename(source, target).is_err() {
+                        else if source.is_dir() {
                             std::fs::create_dir_all(target)?;
 
                             for entry in source.read_dir()? {
                                 let entry = entry?;
 
-                                try_move(&entry.path(), &target.join(entry.file_name()))?;
+                                try_copy(&entry.path(), &target.join(entry.file_name()))?;
                             }
-
-                            std::fs::remove_dir_all(source)?;
                         }
+
+                        else if source.is_symlink() {
+                            if let Some(source_filename) = source.file_name() {
+                                std::os::unix::fs::symlink(
+                                    source.read_link()?,
+                                    target.join(source_filename)
+                                )?;
+                            }
+                        }
+
+                        Ok(())
                     }
 
-                    else if source.is_symlink() {
-                        if let Some(source_filename) = source.file_name() {
-                            std::os::unix::fs::symlink(
-                                source.read_link()?,
-                                target.join(source_filename)
-                            )?;
+                    try_copy(&source, &target)?;
+
+                    Ok(())
+                })
+            }),
+
+            fs_move: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
+
+                lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
+                    let source = resolve_path(source.to_string_lossy())?;
+                    let target = resolve_path(target.to_string_lossy())?;
+
+                    // Throw an error if source path doesn't exists or inaccessible.
+                    if !source.exists() {
+                        return Err(LuaError::external("source path doesn't exists"));
+                    }
+
+                    if !context.is_accessible(&source) {
+                        return Err(LuaError::external("source path is inaccessible"));
+                    }
+
+                    // Throw an error if target path already exists or inaccessible.
+                    if target.exists() {
+                        return Err(LuaError::external("target path already exists"));
+                    }
+
+                    if !context.is_accessible(&target) {
+                        return Err(LuaError::external("target path is inaccessible"));
+                    }
+
+                    fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
+                        if source.is_file() {
+                            // Try to rename the file (mv) or copy
+                            // it and then remove the source if mv
+                            // has failed (different mounts).
+                            if std::fs::rename(source, target).is_err() {
+                                std::fs::copy(source, target)?;
+                                std::fs::remove_file(source)?;
+                            }
                         }
 
-                        std::fs::remove_file(source)?;
+                        else if source.is_dir() {
+                            // Try to rename the folder (mv) or create
+                            // a target folder and move all the files there.
+                            if std::fs::rename(source, target).is_err() {
+                                std::fs::create_dir_all(target)?;
+
+                                for entry in source.read_dir()? {
+                                    let entry = entry?;
+
+                                    try_move(&entry.path(), &target.join(entry.file_name()))?;
+                                }
+
+                                std::fs::remove_dir_all(source)?;
+                            }
+                        }
+
+                        else if source.is_symlink() {
+                            if let Some(source_filename) = source.file_name() {
+                                std::os::unix::fs::symlink(
+                                    source.read_link()?,
+                                    target.join(source_filename)
+                                )?;
+                            }
+
+                            std::fs::remove_file(source)?;
+                        }
+
+                        Ok(())
+                    }
+
+                    try_move(&source, &target)?;
+
+                    Ok(())
+                })
+            }),
+
+            fs_remove: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
+
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
+
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
+
+                    // Symlinks are resolved so we don't need to check for them.
+                    if path.is_file() {
+                        std::fs::remove_file(path)?;
+                    }
+
+                    else if path.is_dir() {
+                        std::fs::remove_dir_all(path)?;
                     }
 
                     Ok(())
-                }
-
-                try_move(&source, &target)?;
-
-                Ok(())
-            })?,
-
-            fs_remove: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
-
-                // Symlinks are resolved so we don't need to check for them.
-                if path.is_file() {
-                    std::fs::remove_file(path)?;
-                }
-
-                else if path.is_dir() {
-                    std::fs::remove_dir_all(path)?;
-                }
-
-                Ok(())
-            })?,
+                })
+            }),
 
             fs_open: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (path, options): (LuaString, Option<LuaTable>)| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                Box::new(move |lua: &'lua Lua, context: &Context| {
+                    let context = context.to_owned();
+                    let file_handles = file_handles.clone();
 
-                    let mut read = true;
-                    let mut write = false;
-                    let mut create = false;
-                    let mut overwrite = false;
-                    let mut append = false;
+                    lua.create_function(move |_, (path, options): (LuaString, Option<LuaTable>)| {
+                        let path = resolve_path(path.to_string_lossy())?;
 
-                    if let Some(options) = options {
-                        read      = options.get::<_, bool>("read").unwrap_or(true);
-                        write     = options.get::<_, bool>("write").unwrap_or_default();
-                        create    = options.get::<_, bool>("create").unwrap_or_default();
-                        overwrite = options.get::<_, bool>("overwrite").unwrap_or_default();
-                        append    = options.get::<_, bool>("append").unwrap_or_default();
-                    }
+                        if !context.is_accessible(&path) {
+                            return Err(LuaError::external("path is inaccessible"));
+                        }
 
-                    let file = File::options()
-                        .read(read)
-                        .write(write)
-                        .create(create)
-                        .truncate(overwrite)
-                        .append(append)
-                        .open(path)?;
+                        let mut read = true;
+                        let mut write = false;
+                        let mut create = false;
+                        let mut overwrite = false;
+                        let mut append = false;
 
-                    let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+                        if let Some(options) = options {
+                            read      = options.get::<_, bool>("read").unwrap_or(true);
+                            write     = options.get::<_, bool>("write").unwrap_or_default();
+                            create    = options.get::<_, bool>("create").unwrap_or_default();
+                            overwrite = options.get::<_, bool>("overwrite").unwrap_or_default();
+                            append    = options.get::<_, bool>("append").unwrap_or_default();
+                        }
 
-                    let mut handle = rand::random::<u32>();
+                        let file = File::options()
+                            .read(read)
+                            .write(write)
+                            .create(create)
+                            .truncate(overwrite)
+                            .append(append)
+                            .open(path)?;
 
-                    while handles.contains_key(&handle) {
-                        handle = rand::random::<u32>();
-                    }
+                        let mut handles = file_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                    handles.insert(handle, BufReaderWriterRand::new_reader(file));
+                        let mut handle = rand::random::<u32>();
 
-                    Ok(handle)
-                })?
+                        while handles.contains_key(&handle) {
+                            handle = rand::random::<u32>();
+                        }
+
+                        handles.insert(handle, BufReaderWriterRand::new_reader(file));
+
+                        Ok(handle)
+                    })
+                })
             },
 
             fs_seek: {
@@ -381,96 +434,144 @@ impl<'lua> IOAPI<'lua> {
                 })?
             },
 
-            fs_read_file: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+            fs_read_file: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-                Ok(std::fs::read(path)?)
-            })?,
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
 
-            fs_write_file: lua.create_function(|_, (path, content): (LuaString, Vec<u8>)| {
-                let path = resolve_path(path.to_string_lossy())?;
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
 
-                std::fs::write(path, &content)?;
+                    Ok(std::fs::read(path)?)
+                })
+            }),
 
-                Ok(())
-            })?,
+            fs_write_file: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-            fs_remove_file: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+                lua.create_function(move |_, (path, content): (LuaString, Vec<u8>)| {
+                    let path = resolve_path(path.to_string_lossy())?;
 
-                std::fs::remove_file(path)?;
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
 
-                Ok(())
-            })?,
+                    std::fs::write(path, &content)?;
 
-            fs_create_dir: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+                    Ok(())
+                })
+            }),
 
-                std::fs::create_dir_all(path)?;
+            fs_remove_file: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-                Ok(())
-            })?,
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
 
-            fs_read_dir: lua.create_function(|lua, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
 
-                let entries = lua.create_table()?;
+                    std::fs::remove_file(path)?;
 
-                for entry in path.read_dir()? {
-                    let entry = entry?;
-                    let entry_table = lua.create_table()?;
+                    Ok(())
+                })
+            }),
 
-                    entry_table.set("name", entry.file_name().to_string_lossy().to_string())?;
-                    entry_table.set("path", entry.path().to_string_lossy().to_string())?;
+            fs_create_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-                    entry_table.set("type", {
-                        if entry.path().is_symlink() {
-                            "symlink"
-                        } else if entry.path().is_dir() {
-                            "folder"
-                        } else {
-                            "file"
-                        }
-                    })?;
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
 
-                    entries.push(entry_table)?;
-                }
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
 
-                Ok(entries)
-            })?,
+                    std::fs::create_dir_all(path)?;
 
-            fs_remove_dir: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+                    Ok(())
+                })
+            }),
 
-                std::fs::remove_dir_all(path)?;
+            fs_read_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
 
-                Ok(())
-            })?
+                lua.create_function(move |lua, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
+
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
+
+                    let entries = lua.create_table()?;
+
+                    for entry in path.read_dir()? {
+                        let entry = entry?;
+                        let entry_table = lua.create_table()?;
+
+                        entry_table.set("name", entry.file_name().to_string_lossy().to_string())?;
+                        entry_table.set("path", entry.path().to_string_lossy().to_string())?;
+
+                        entry_table.set("type", {
+                            if entry.path().is_symlink() {
+                                "symlink"
+                            } else if entry.path().is_dir() {
+                                "folder"
+                            } else {
+                                "file"
+                            }
+                        })?;
+
+                        entries.push(entry_table)?;
+                    }
+
+                    Ok(entries)
+                })
+            }),
+
+            fs_remove_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
+
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
+
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
+
+                    std::fs::remove_dir_all(path)?;
+
+                    Ok(())
+                })
+            })
         })
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
         let env = self.lua.create_table_with_capacity(0, 17)?;
 
-        env.set("exists", self.fs_exists.clone())?;
-        env.set("metadata", self.fs_metadata.clone())?;
-        env.set("copy", self.fs_copy.clone())?;
-        env.set("move", self.fs_move.clone())?;
-        env.set("remove", self.fs_remove.clone())?;
-        env.set("open", self.fs_open.clone())?;
+        env.set("exists", (self.fs_exists)(self.lua, context)?)?;
+        env.set("metadata", (self.fs_metadata)(self.lua, context)?)?;
+        env.set("copy", (self.fs_copy)(self.lua, context)?)?;
+        env.set("move", (self.fs_move)(self.lua, context)?)?;
+        env.set("remove", (self.fs_remove)(self.lua, context)?)?;
+        env.set("open", (self.fs_open)(self.lua, context)?)?;
         env.set("seek", self.fs_seek.clone())?;
         env.set("read", self.fs_read.clone())?;
         env.set("write", self.fs_write.clone())?;
         env.set("flush", self.fs_flush.clone())?;
         env.set("close", self.fs_close.clone())?;
 
-        env.set("read_file", self.fs_read_file.clone())?;
-        env.set("write_file", self.fs_write_file.clone())?;
-        env.set("remove_file", self.fs_remove_file.clone())?;
-        env.set("create_dir", self.fs_create_dir.clone())?;
-        env.set("read_dir", self.fs_read_dir.clone())?;
-        env.set("remove_dir", self.fs_remove_dir.clone())?;
+        env.set("read_file", (self.fs_read_file)(self.lua, context)?)?;
+        env.set("write_file", (self.fs_write_file)(self.lua, context)?)?;
+        env.set("remove_file", (self.fs_remove_file)(self.lua, context)?)?;
+        env.set("create_dir", (self.fs_create_dir)(self.lua, context)?)?;
+        env.set("read_dir", (self.fs_read_dir)(self.lua, context)?)?;
+        env.set("remove_dir", (self.fs_remove_dir)(self.lua, context)?)?;
 
         Ok(env)
     }
@@ -479,6 +580,8 @@ impl<'lua> IOAPI<'lua> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // TODO: sandbox test
 
     #[test]
     fn fs_file_handle() -> anyhow::Result<()> {
@@ -493,8 +596,15 @@ mod tests {
         let lua = Lua::new();
         let api = IOAPI::new(&lua)?;
 
-        assert!(!api.fs_exists.call::<_, bool>(path.clone())?);
-        assert!(api.fs_open.call::<_, u64>(path.clone()).is_err());
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
+
+        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(env.call_function::<_, u64>("open", path.clone()).is_err());
 
         let options = lua.create_table()?;
 
@@ -502,7 +612,7 @@ mod tests {
         options.set("write", true)?;
         options.set("create", true)?;
 
-        let handle = api.fs_open.call::<_, u64>((path.clone(), options))?;
+        let handle = env.call_function::<_, u64>("open", (path.clone(), options))?;
 
         assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?.len(), 0);
 
@@ -568,39 +678,46 @@ mod tests {
         let lua = Lua::new();
         let api = IOAPI::new(&lua)?;
 
-        assert!(!api.fs_exists.call::<_, bool>(path.clone())?);
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
 
-        api.fs_write_file.call::<_, ()>((path.clone(), vec![1, 2, 3]))?;
+        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
 
-        assert!(api.fs_exists.call::<_, bool>(path.clone())?);
+        env.call_function::<_, ()>("write_file", (path.clone(), vec![1, 2, 3]))?;
 
-        let metadata = api.fs_metadata.call::<_, LuaTable>(path.clone())?;
+        assert!(env.call_function::<_, bool>("exists", path.clone())?);
+
+        let metadata = env.call_function::<_, LuaTable>("metadata", path.clone())?;
 
         assert_eq!(metadata.get::<_, u32>("length")?, 3);
         assert_eq!(metadata.get::<_, String>("type")?, "file");
         assert!(metadata.get::<_, bool>("is_accessible")?);
 
-        assert_eq!(api.fs_read_file.call::<_, Vec<u8>>(path.clone())?, &[1, 2, 3]);
+        assert_eq!(env.call_function::<_, Vec<u8>>("read_file", path.clone())?, &[1, 2, 3]);
 
-        assert!(api.fs_copy.call::<_, ()>((format!("{path}123"), format!("{path}456"))).is_err());
-        assert!(api.fs_copy.call::<_, ()>((path.clone(), path.clone())).is_err());
+        assert!(env.call_function::<_, ()>("copy", (format!("{path}123"), format!("{path}456"))).is_err());
+        assert!(env.call_function::<_, ()>("copy", (path.clone(), path.clone())).is_err());
 
-        api.fs_copy.call::<_, ()>((path.clone(), format!("{path}_copy")))?;
+        env.call_function::<_, ()>("copy", (path.clone(), format!("{path}_copy")))?;
 
-        assert!(api.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+        assert!(env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
 
-        api.fs_remove_file.call::<_, ()>(path.clone())?;
+        env.call_function::<_, ()>("remove_file", path.clone())?;
 
-        assert!(!api.fs_exists.call::<_, bool>(path.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
 
-        api.fs_move.call::<_, ()>((format!("{path}_copy"), path.clone()))?;
+        env.call_function::<_, ()>("move", (format!("{path}_copy"), path.clone()))?;
 
-        assert!(!api.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
-        assert!(api.fs_exists.call::<_, bool>(path.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
+        assert!(env.call_function::<_, bool>("exists", path.clone())?);
 
-        api.fs_remove.call::<_, ()>(path.clone())?;
+        env.call_function::<_, ()>("remove", path.clone())?;
 
-        assert!(!api.fs_exists.call::<_, bool>(path.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
 
         Ok(())
     }
@@ -619,13 +736,20 @@ mod tests {
         let lua = Lua::new();
         let api = IOAPI::new(&lua)?;
 
-        assert!(!api.fs_exists.call::<_, bool>(path.clone())?);
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
 
-        api.fs_create_dir.call::<_, ()>(path.clone())?;
+        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
 
-        assert!(api.fs_exists.call::<_, bool>(path.clone())?);
+        env.call_function::<_, ()>("create_dir", path.clone())?;
 
-        let metadata = api.fs_metadata.call::<_, LuaTable>(path.clone())?;
+        assert!(env.call_function::<_, bool>("exists", path.clone())?);
+
+        let metadata = env.call_function::<_, LuaTable>("metadata", path.clone())?;
 
         assert_eq!(metadata.get::<_, String>("type")?, "folder");
         assert!(metadata.get::<_, bool>("is_accessible")?);
@@ -647,7 +771,7 @@ mod tests {
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
 
-        let entries = api.fs_read_dir.call::<_, LuaTable>(path.clone())?;
+        let entries = env.call_function::<_, LuaTable>("read_dir", path.clone())?;
 
         assert_eq!(entries.len()?, 2);
 
@@ -659,22 +783,22 @@ mod tests {
             assert_eq!(entry.get::<_, String>("type")?, "folder");
         }
 
-        assert!(!api.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+        assert!(!env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
 
-        api.fs_copy.call::<_, ()>((path.clone(), format!("{path}_copy")))?;
+        env.call_function::<_, ()>("copy", (path.clone(), format!("{path}_copy")))?;
 
-        assert!(api.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
+        assert!(env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
 
-        assert!(api.fs_remove_file.call::<_, ()>(path.clone()).is_err());
+        assert!(env.call_function::<_, ()>("remove_file", path.clone()).is_err());
 
-        api.fs_remove_dir.call::<_, ()>(path.clone())?;
+        env.call_function::<_, ()>("remove_dir", path.clone())?;
 
-        assert!(!api.fs_exists.call::<_, bool>(path.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
 
-        api.fs_move.call::<_, ()>((format!("{path}_copy"), path.clone()))?;
+        env.call_function::<_, ()>("move", (format!("{path}_copy"), path.clone()))?;
 
-        assert!(!api.fs_exists.call::<_, bool>(format!("{path}_copy"))?);
-        assert!(api.fs_exists.call::<_, bool>(path.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
+        assert!(env.call_function::<_, bool>("exists", path.clone())?);
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
 

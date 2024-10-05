@@ -256,22 +256,12 @@ impl<'lua> PathAPI<'lua> {
             })?,
 
             path_accessible: Box::new(|lua: &'lua Lua, context: &Context| {
-                let allowed_paths = [
-                    context.temp_folder.clone(),
-                    context.module_folder.clone(),
-                    context.persistent_folder.clone()
-                ];
+                let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
                     let path = resolve_path(path.to_string_lossy())?;
 
-                    for allowed_path in &allowed_paths {
-                        if path.starts_with(allowed_path) {
-                            return Ok(true);
-                        }
-                    }
-
-                    Ok(false)
+                    Ok(context.is_accessible(path))
                 })
             })
         })

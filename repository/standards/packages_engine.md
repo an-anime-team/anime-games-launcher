@@ -732,7 +732,7 @@ Read the given directory, returning list of its entries.
 ```ts
 type Entry = {
     name: string,
-    path. string,
+    path: string,
     type: EntryType
 };
 ```

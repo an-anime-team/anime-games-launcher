@@ -89,6 +89,28 @@ pub struct Context {
     pub ext_process_api: bool
 }
 
+impl Context {
+    /// Check if given path is accessible
+    /// from the current context.
+    pub fn is_accessible(&self, path: impl AsRef<Path>) -> bool {
+        let allowed_paths = [
+            &self.module_folder,
+            &self.temp_folder,
+            &self.persistent_folder
+        ];
+
+        let path = path.as_ref();
+
+        for allowed_path in allowed_paths {
+            if path.starts_with(allowed_path) {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
 pub struct Standard<'lua> {
     lua: &'lua Lua,
 
@@ -164,7 +186,7 @@ impl<'lua> Standard<'lua> {
 
         env.set("str", self.string_api.create_env()?)?;
         env.set("path", self.path_api.create_env(context)?)?;
-        env.set("fs", self.io_api.create_env()?)?;
+        env.set("fs", self.io_api.create_env(context)?)?;
         env.set("net", self.network_api.create_env()?)?;
         env.set("downloader", self.downloader_api.create_env()?)?;
         env.set("archive", self.archive_api.create_env()?)?;
