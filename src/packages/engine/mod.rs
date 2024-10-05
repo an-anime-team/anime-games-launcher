@@ -4,6 +4,7 @@ use std::str::FromStr;
 use mlua::prelude::*;
 
 use crate::packages::prelude::*;
+use crate::config;
 
 pub mod v1_standard;
 
@@ -41,6 +42,20 @@ impl<'lua> Engine<'lua> {
         let mut resources = VecDeque::with_capacity(lock_file.resources.len());
         let mut visited_resources = HashSet::new();
         let mut evaluation_queue = VecDeque::with_capacity(lock_file.resources.len());
+
+        // Prepare standard folders.
+        let config = config::get();
+
+        let temp_folder = std::env::temp_dir()
+            .join(".agl-modules-temp"); // TODO: make a separate launcher-global temp folder
+
+        if !config.packages.persist_store.path.exists() {
+            std::fs::create_dir_all(&config.packages.persist_store.path)?;
+        }
+
+        if !temp_folder.exists() {
+            std::fs::create_dir_all(&temp_folder)?;
+        }
 
         // Prepare modules standard implementations.
         let v1_standard = v1_standard::Standard::new(lua)?;
@@ -109,8 +124,21 @@ impl<'lua> Engine<'lua> {
                     let module = std::fs::read(&path)?;
                     let module = lua.load(module);
 
+                    // Prepare the module's context.
+                    let module_folder = config.packages.modules_store.path
+                        .join(resource.lock.hash.to_base32());
+
+                    if !module_folder.exists() {
+                        std::fs::create_dir_all(&module_folder)?;
+                    }
+
                     // Prepare special environment for the module.
-                    let env = v1_standard.create_env(false)?;
+                    let env = v1_standard.create_env(&v1_standard::Context {
+                        temp_folder: temp_folder.clone(),
+                        module_folder,
+                        persistent_folder: config.packages.persist_store.path.clone(),
+                        ext_process_api: false
+                    })?;
 
                     // Clone the lua globals.
                     for pair in lua.globals().pairs::<LuaValue, LuaValue>() {
@@ -191,9 +219,9 @@ impl<'lua> Engine<'lua> {
     }
 
     /// Try to load root resources from the engine.
-    /// 
+    ///
     /// Resource keys are taken from the lock file.
-    pub fn load_root_resources(&'lua self) -> Result<Vec<LuaTable<'lua>>, EngineError> {
+    pub fn load_root_resources(&self) -> Result<Vec<LuaTable<'lua>>, EngineError> {
         let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
         let resources = engine.get::<_, LuaTable>("resources")?;
 
@@ -211,13 +239,13 @@ impl<'lua> Engine<'lua> {
     /// This function will try to find the resource
     /// by given identifier. It can be a direct index
     /// to the resource, or a hash (or a part of hash).
-    pub fn load_resource(&'lua self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable<'lua>>, EngineError> {
+    pub fn load_resource(&self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable<'lua>>, EngineError> {
         let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
         let resources = engine.get::<_, LuaTable>("resources")?;
 
         let identifier = identrifier.to_string();
         let numeric_identifier = identifier.parse::<u64>().ok();
-        
+
         // Try to directly load the resource.
         if let Some(index) = numeric_identifier {
             if resources.contains_key(index)? {
@@ -247,6 +275,13 @@ impl<'lua> Engine<'lua> {
         }
 
         Ok(None)
+    }
+}
+
+impl Drop for Engine<'_> {
+    fn drop(&mut self) {
+        let _ = self.lua.gc_collect();
+        let _ = self.lua.gc_collect();
     }
 }
 

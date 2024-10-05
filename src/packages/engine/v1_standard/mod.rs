@@ -4,7 +4,6 @@ use mlua::prelude::*;
 
 use crate::core::prelude::*;
 use crate::packages::prelude::*;
-use crate::config;
 
 use super::EngineError;
 
@@ -18,21 +17,15 @@ mod hash_api;
 mod sync_api;
 mod process_api;
 
-pub mod prelude {
-    pub use super::string_api::StringAPI;
-    pub use super::path_api::PathAPI;
-    pub use super::io_api::IOAPI;
-    pub use super::network_api::NetworkAPI;
-    pub use super::downloader_api::DownloaderAPI;
-    pub use super::archive_api::ArchiveAPI;
-    pub use super::hash_api::HashAPI;
-    pub use super::sync_api::SyncAPI;
-    pub use super::process_api::ProcessAPI;
-
-    pub use super::Standard;
-}
-
-use prelude::*;
+pub use string_api::StringAPI;
+pub use path_api::PathAPI;
+pub use io_api::IOAPI;
+pub use network_api::NetworkAPI;
+pub use downloader_api::DownloaderAPI;
+pub use archive_api::ArchiveAPI;
+pub use hash_api::HashAPI;
+pub use sync_api::SyncAPI;
+pub use process_api::ProcessAPI;
 
 lazy_static::lazy_static! {
     static ref RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
@@ -82,6 +75,18 @@ fn slice_to_table(lua: &Lua, slice: impl AsRef<[u8]>) -> Result<LuaTable<'_>, Lu
     }
 
     Ok(table)
+}
+
+type LuaFunctionBuilder<'lua> = Box<dyn Fn(&'lua Lua, &Context) -> Result<LuaFunction<'lua>, LuaError>>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Context {
+    pub temp_folder: PathBuf,
+    pub module_folder: PathBuf,
+    pub persistent_folder: PathBuf,
+
+    /// Include Process API in the environment.
+    pub ext_process_api: bool
 }
 
 pub struct Standard<'lua> {
@@ -150,18 +155,15 @@ impl<'lua> Standard<'lua> {
         })
     }
 
-    /// Create new environment for the v1 modules standard.
-    ///
-    /// If `extended_privileges` enabled, then the result
-    /// table will contain functions that can escape the
-    /// default sandbox and execute code on the host machine.
-    pub fn create_env(&self, extended_privileges: bool) -> Result<LuaTable<'lua>, EngineError> {
-        let env = self.lua.create_table_with_capacity(0, if extended_privileges { 10 } else { 9 })?;
+    /// Create new environment for the v1 modules standard
+    /// using provided module context.
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+        let env = self.lua.create_table_with_capacity(0, 10)?;
 
         env.set("clone", self.clone.clone())?;
 
         env.set("str", self.string_api.create_env()?)?;
-        env.set("path", self.path_api.create_env()?)?;
+        env.set("path", self.path_api.create_env(context)?)?;
         env.set("fs", self.io_api.create_env()?)?;
         env.set("net", self.network_api.create_env()?)?;
         env.set("downloader", self.downloader_api.create_env()?)?;
@@ -171,7 +173,7 @@ impl<'lua> Standard<'lua> {
 
         // Extended privileges
 
-        if extended_privileges {
+        if context.ext_process_api {
             env.set("process", self.process_api.create_env()?)?;
         }
 

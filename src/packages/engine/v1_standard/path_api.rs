@@ -51,16 +51,16 @@ fn split_path(path: impl AsRef<str>) -> Option<Vec<String>> {
 pub struct PathAPI<'lua> {
     lua: &'lua Lua,
 
-    path_temp_dir: LuaFunction<'lua>,
-    path_module_dir: LuaFunction<'lua>,
-    path_persist_dir: LuaFunction<'lua>,
+    path_temp_dir: LuaFunctionBuilder<'lua>,
+    path_module_dir: LuaFunctionBuilder<'lua>,
+    path_persist_dir: LuaFunctionBuilder<'lua>,
     path_normalize: LuaFunction<'lua>,
     path_join: LuaFunction<'lua>,
     path_parts: LuaFunction<'lua>,
     path_parent: LuaFunction<'lua>,
     path_file_name: LuaFunction<'lua>,
     path_exists: LuaFunction<'lua>,
-    path_accessible: LuaFunction<'lua>
+    path_accessible: LuaFunctionBuilder<'lua>
 }
 
 impl<'lua> PathAPI<'lua> {
@@ -68,31 +68,33 @@ impl<'lua> PathAPI<'lua> {
         Ok(Self {
             lua,
 
-            path_temp_dir: lua.create_function(|_, ()| {
-                let path = std::env::temp_dir()
+            path_temp_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+                let path = context.temp_folder
                     .to_string_lossy()
                     .to_string();
 
-                Ok(path)
-            })?,
+                lua.create_function(move |_, ()| Ok(path.clone()))
+            }),
 
-            path_module_dir: lua.create_function(|_, ()| {
-                let path = config::get().packages.modules_store_path
-                    .join("TODO")
+            path_module_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+                let path = context.module_folder
                     .to_string_lossy()
                     .to_string();
 
-                Ok(path)
-            })?,
+                lua.create_function(move |_, ()| Ok(path.clone()))
+            }),
 
-            path_persist_dir: lua.create_function(|_, key: LuaString| {
-                let path = config::get().packages.persist_store_path
-                    .join(Hash::for_slice(key.as_bytes()).to_base32())
-                    .to_string_lossy()
-                    .to_string();
+            path_persist_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+                let path = context.persistent_folder.clone();
 
-                Ok(path)
-            })?,
+                lua.create_function(move |_, key: LuaString| {
+                    let path = path.join(Hash::for_slice(key.as_bytes()).to_base32())
+                        .to_string_lossy()
+                        .to_string();
+
+                    Ok(path)
+                })
+            }),
 
             path_normalize: lua.create_function(|lua, path: LuaString| {
                 let path = path.to_string_lossy()
@@ -253,27 +255,42 @@ impl<'lua> PathAPI<'lua> {
                 Ok(path.exists())
             })?,
 
-            // TODO
-            path_accessible: lua.create_function(|_, _path: LuaString| {
-                Ok(true)
-            })?
+            path_accessible: Box::new(|lua: &'lua Lua, context: &Context| {
+                let allowed_paths = [
+                    context.temp_folder.clone(),
+                    context.module_folder.clone(),
+                    context.persistent_folder.clone()
+                ];
+
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
+
+                    for allowed_path in &allowed_paths {
+                        if path.starts_with(allowed_path) {
+                            return Ok(true);
+                        }
+                    }
+
+                    Ok(false)
+                })
+            })
         })
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
         let env = self.lua.create_table_with_capacity(0, 10)?;
 
-        env.set("temp_dir", self.path_temp_dir.clone())?;
-        env.set("module_dir", self.path_module_dir.clone())?;
-        env.set("persist_dir", self.path_persist_dir.clone())?;
+        env.set("temp_dir", (self.path_temp_dir)(self.lua, context)?)?;
+        env.set("module_dir", (self.path_module_dir)(self.lua, context)?)?;
+        env.set("persist_dir", (self.path_persist_dir)(self.lua, context)?)?;
         env.set("normalize", self.path_normalize.clone())?;
         env.set("join", self.path_join.clone())?;
         env.set("parts", self.path_parts.clone())?;
         env.set("parent", self.path_parent.clone())?;
         env.set("file_name", self.path_file_name.clone())?;
         env.set("exists", self.path_exists.clone())?;
-        env.set("accessible", self.path_accessible.clone())?;
+        env.set("accessible", (self.path_accessible)(self.lua, context)?)?;
 
         Ok(env)
     }

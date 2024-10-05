@@ -140,7 +140,7 @@ and this method will try to convert it into a given charset.
 
 > Note: this method internally uses the same algorithm as
 > many other methods in the standard which accept many types.
-> 
+>
 > E.g. when hashing a value it firstly will be converted into
 > bytes using this method.
 
@@ -216,6 +216,9 @@ functions to work with them.
 Temp directory is configured by the user in the launcher app and
 its content will eventually be automatically cleared. You can use
 temp directory to store temporary data, e.g. downloaded archives.
+
+Temp directory's content is shared between all the packages.
+This can be used to create custom synchronization mechanisms.
 
 ```lua
 local temp = path.temp_dir()
