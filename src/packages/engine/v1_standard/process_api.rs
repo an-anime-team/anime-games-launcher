@@ -12,8 +12,8 @@ const PROCESS_READ_CHUNK_LEN: usize = 1024;
 pub struct ProcessAPI<'lua> {
     lua: &'lua Lua,
 
-    process_exec: LuaFunction<'lua>,
-    process_open: LuaFunction<'lua>,
+    process_exec: LuaFunctionBuilder<'lua>,
+    process_open: LuaFunctionBuilder<'lua>,
     process_stdin: LuaFunction<'lua>,
     process_stdout: LuaFunction<'lua>,
     process_stderr: LuaFunction<'lua>,
@@ -29,58 +29,16 @@ impl<'lua> ProcessAPI<'lua> {
         Ok(Self {
             lua,
 
-            process_exec: lua.create_function(|lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                let path = resolve_path(path.to_string_lossy())?;
+            process_exec: Box::new(|lua: &'lua Lua, context: &Context| {
+                let module_folder = context.module_folder.clone();
 
-                let mut command = Command::new(path);
-
-                    let mut command = command
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped());
-
-                // Apply command arguments.
-                if let Some(args) = args {
-                    for arg in args.sequence_values::<LuaString>() {
-                        command = command.arg(arg?.to_string_lossy().to_string());
-                    }
-                }
-
-                // Apply command environment.
-                if let Some(env) = env {
-                    for pair in env.pairs::<LuaString, LuaString>() {
-                        let (key, value) = pair?;
-
-                        command = command.env(
-                            key.to_string_lossy().to_string(),
-                            value.to_string_lossy().to_string()
-                        );
-                    }
-                }
-
-                // Execute the command.
-                let output = command.output()?;
-
-                // Prepare the output.
-                let result = lua.create_table()?;
-
-                result.set("status", output.status.code())?;
-                result.set("is_ok", output.status.success())?;
-                result.set("stdout", output.stdout)?;
-                result.set("stderr", output.stderr)?;
-
-                Ok(result)
-            })?,
-
-            process_open: {
-                let process_handles = process_handles.clone();
-
-                lua.create_function(move |_, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
+                lua.create_function(move |lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
                     let path = resolve_path(path.to_string_lossy())?;
 
                     let mut command = Command::new(path);
 
                     let mut command = command
+                        .current_dir(&module_folder)
                         .stdin(Stdio::piped())
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped());
@@ -104,20 +62,73 @@ impl<'lua> ProcessAPI<'lua> {
                         }
                     }
 
-                    // Start the process and store it.
-                    let mut handles = process_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+                    // Execute the command.
+                    let output = command.output()?;
 
-                    let mut handle = rand::random::<u32>();
+                    // Prepare the output.
+                    let result = lua.create_table()?;
 
-                    while handles.contains_key(&handle) {
-                        handle = rand::random::<u32>();
-                    }
+                    result.set("status", output.status.code())?;
+                    result.set("is_ok", output.status.success())?;
+                    result.set("stdout", output.stdout)?;
+                    result.set("stderr", output.stderr)?;
 
-                    handles.insert(handle, command.spawn()?);
+                    Ok(result)
+                })
+            }),
 
-                    Ok(handle)
-                })?
+            process_open: {
+                let process_handles = process_handles.clone();
+
+                Box::new(move |lua: &'lua Lua, context: &Context| {
+                    let module_folder = context.module_folder.clone();
+                    let process_handles = process_handles.clone();
+
+                    lua.create_function(move |_, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
+                        let path = resolve_path(path.to_string_lossy())?;
+
+                        let mut command = Command::new(path);
+
+                        let mut command = command
+                            .current_dir(&module_folder)
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped());
+
+                        // Apply command arguments.
+                        if let Some(args) = args {
+                            for arg in args.sequence_values::<LuaString>() {
+                                command = command.arg(arg?.to_string_lossy().to_string());
+                            }
+                        }
+
+                        // Apply command environment.
+                        if let Some(env) = env {
+                            for pair in env.pairs::<LuaString, LuaString>() {
+                                let (key, value) = pair?;
+
+                                command = command.env(
+                                    key.to_string_lossy().to_string(),
+                                    value.to_string_lossy().to_string()
+                                );
+                            }
+                        }
+
+                        // Start the process and store it.
+                        let mut handles = process_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                        let mut handle = rand::random::<u32>();
+
+                        while handles.contains_key(&handle) {
+                            handle = rand::random::<u32>();
+                        }
+
+                        handles.insert(handle, command.spawn()?);
+
+                        Ok(handle)
+                    })
+                })
             },
 
             process_stdin: {
@@ -253,11 +264,11 @@ impl<'lua> ProcessAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
-        env.set("exec", self.process_exec.clone())?;
-        env.set("open", self.process_open.clone())?;
+        env.set("exec", (self.process_exec)(self.lua, context)?)?;
+        env.set("open", (self.process_open)(self.lua, context)?)?;
         env.set("stdin", self.process_stdin.clone())?;
         env.set("stdout", self.process_stdout.clone())?;
         env.set("stderr", self.process_stderr.clone())?;
@@ -278,7 +289,14 @@ mod tests {
         let lua = Lua::new();
         let api = ProcessAPI::new(&lua)?;
 
-        let output = api.process_exec.call::<_, LuaTable>((
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
+
+        let output = env.call_function::<_, LuaTable>("exec", (
             "bash", ["-c", "echo $TEST"],
             HashMap::from([
                 ("TEST", "Hello, World!")
@@ -297,7 +315,14 @@ mod tests {
         let lua = Lua::new();
         let api = ProcessAPI::new(&lua)?;
 
-        let handle = api.process_open.call::<_, u32>((
+        let env = api.create_env(&Context {
+            temp_folder: std::env::temp_dir(),
+            module_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir(),
+            ext_process_api: false
+        })?;
+
+        let handle = env.call_function::<_, u32>("open", (
             "bash", ["-c", "echo $TEST"],
             HashMap::from([
                 ("TEST", "Hello, World!")

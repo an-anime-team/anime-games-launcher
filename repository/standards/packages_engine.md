@@ -1320,7 +1320,8 @@ binaries.
 
 ### `process.exec(path: string, [args: [string]], [env: [key: string]: string]) -> Output`
 
-Execute given binary and return its output.
+Execute given binary and return its output. Module dir is used
+as the binary's current directory.
 
 ```ts
 type Output = {
@@ -1337,15 +1338,20 @@ type Output = {
 ```
 
 ```lua
+local my_file = path.join(path.module_dir(), "my_file.txt")
+
+fs.write_file(my_file, str.to_bytes("Hello, World!"))
+
 local output = process.exec("cat", { "my_file.txt" })
 
--- bytes of the "my_file.txt" content
-print(output.stdout)
+-- "Hello, World!"
+print(string.from_bytes(output.stdout))
 ```
 
 ### `process.open(path: string, [args: [string]], [env: [key: string]: string]) -> number`
 
-Start a new process with given parameters.
+Start a new process with given parameters. Module dir is used
+as the binary's current directory.
 
 ```lua
 local handle = process.open("curl", { "api.ipify.org" })

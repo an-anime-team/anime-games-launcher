@@ -196,7 +196,7 @@ impl<'lua> Standard<'lua> {
         // Extended privileges
 
         if context.ext_process_api {
-            env.set("process", self.process_api.create_env()?)?;
+            env.set("process", self.process_api.create_env(context)?)?;
         }
 
         Ok(env)
