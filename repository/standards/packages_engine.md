@@ -687,6 +687,16 @@ fs.write({ 1, 2, 3 })
 fs.close(handle)
 ```
 
+### `fs.create_file(path: string)`
+
+Create an empty file.
+
+```lua
+-- these two lines will do the same
+fs.create_file("file_1")
+fs.write_file("file_2", {})
+```
+
 ### `fs.read_file(path: string) -> [number]`
 
 Read the whole content of a file in a given path.

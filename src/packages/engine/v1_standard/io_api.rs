@@ -27,6 +27,7 @@ pub struct IOAPI<'lua> {
     fs_flush: LuaFunction<'lua>,
     fs_close: LuaFunction<'lua>,
 
+    fs_create_file: LuaFunctionBuilder<'lua>,
     fs_read_file: LuaFunctionBuilder<'lua>,
     fs_write_file: LuaFunctionBuilder<'lua>,
     fs_remove_file: LuaFunctionBuilder<'lua>,
@@ -434,6 +435,22 @@ impl<'lua> IOAPI<'lua> {
                 })?
             },
 
+            fs_create_file: Box::new(|lua: &'lua Lua, context: &Context| {
+                let context = context.to_owned();
+
+                lua.create_function(move |_, path: LuaString| {
+                    let path = resolve_path(path.to_string_lossy())?;
+
+                    if !context.is_accessible(&path) {
+                        return Err(LuaError::external("path is inaccessible"));
+                    }
+
+                    std::fs::write(path, [])?;
+
+                    Ok(())
+                })
+            }),
+
             fs_read_file: Box::new(|lua: &'lua Lua, context: &Context| {
                 let context = context.to_owned();
 
@@ -552,7 +569,7 @@ impl<'lua> IOAPI<'lua> {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
-        let env = self.lua.create_table_with_capacity(0, 17)?;
+        let env = self.lua.create_table_with_capacity(0, 18)?;
 
         env.set("exists", (self.fs_exists)(self.lua, context)?)?;
         env.set("metadata", (self.fs_metadata)(self.lua, context)?)?;
@@ -566,6 +583,7 @@ impl<'lua> IOAPI<'lua> {
         env.set("flush", self.fs_flush.clone())?;
         env.set("close", self.fs_close.clone())?;
 
+        env.set("create_file", (self.fs_create_file)(self.lua, context)?)?;
         env.set("read_file", (self.fs_read_file)(self.lua, context)?)?;
         env.set("write_file", (self.fs_write_file)(self.lua, context)?)?;
         env.set("remove_file", (self.fs_remove_file)(self.lua, context)?)?;
@@ -580,8 +598,6 @@ impl<'lua> IOAPI<'lua> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // TODO: sandbox test
 
     #[test]
     fn fs_file_handle() -> anyhow::Result<()> {
@@ -801,6 +817,115 @@ mod tests {
         assert!(env.call_function::<_, bool>("exists", path.clone())?);
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
+
+        Ok(())
+    }
+
+    #[test]
+    fn fs_sandbox() -> anyhow::Result<()> {
+        let path_a = std::env::temp_dir().join(".agl-v1-fs-sandbox-test-a"); // file
+        let path_b = std::env::temp_dir().join(".agl-v1-fs-sandbox-test-b"); // folder
+        let path_c = std::env::temp_dir().join(".agl-v1-fs-sandbox-test-c"); // temp
+
+        if path_a.exists() {
+            std::fs::remove_file(&path_a)?;
+        }
+
+        if path_b.exists() {
+            std::fs::remove_dir_all(&path_b)?;
+        }
+
+        if path_c.exists() {
+            let _ = std::fs::remove_file(&path_c)
+                .or_else(|_| std::fs::remove_dir_all(&path_c));
+        }
+
+        let lua = Lua::new();
+        let api = IOAPI::new(&lua)?;
+
+        let env = api.create_env(&Context {
+            temp_folder: path_a.clone(),
+            module_folder: path_b.clone(),
+            persistent_folder: path_c.clone(),
+            ext_process_api: false
+        })?;
+
+        let path_a = path_a.to_string_lossy().to_string();
+        let path_b = path_b.to_string_lossy().to_string();
+        let path_c = path_c.to_string_lossy().to_string();
+
+        let inaccessible_path = std::env::temp_dir()
+            .join(".agl-v1-fs-sandbox-test-inaccessible")
+            .to_string_lossy()
+            .to_string();
+
+        assert!(!env.call_function::<_, bool>("exists", path_a.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", path_b.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", path_c.clone())?);
+        assert!(!env.call_function::<_, bool>("exists", inaccessible_path.clone())?);
+
+        env.call_function::<_, ()>("create_file", path_a.clone())?;
+
+        assert!(env.call_function::<_, bool>("exists", path_a.clone())?);
+
+        let metadata = env.call_function::<_, LuaTable>("metadata", path_a.clone())?;
+
+        assert_eq!(metadata.get::<_, u32>("length")?, 0);
+        assert_eq!(metadata.get::<_, String>("type")?, "file");
+        assert!(metadata.get::<_, bool>("is_accessible")?);
+
+        env.call_function::<_, ()>("write_file", (path_a.clone(), vec![1, 2, 3]))?;
+
+        assert_eq!(env.call_function::<_, Vec<u8>>("read_file", path_a.clone())?, &[1, 2, 3]);
+
+        assert!(env.call_function::<_, ()>("copy", (path_a.clone(), inaccessible_path.clone())).is_err());
+        assert!(env.call_function::<_, ()>("move", (path_a.clone(), inaccessible_path.clone())).is_err());
+
+        env.call_function::<_, ()>("move", (path_a.clone(), path_c.clone()))?;
+
+        assert!(!env.call_function::<_, bool>("exists", path_a.clone())?);
+        assert!(env.call_function::<_, bool>("exists", path_c.clone())?);
+
+        let handle = env.call_function::<_, u32>("open", path_c.clone())?;
+
+        assert_eq!(env.call_function::<_, Vec<u8>>("read", handle)?, &[1, 2, 3]);
+
+        env.call_function::<_, ()>("close", handle)?;
+        env.call_function::<_, ()>("remove", path_c.clone())?;
+
+        assert!(!env.call_function::<_, bool>("exists", path_c.clone())?);
+
+        env.call_function::<_, ()>("create_dir", path_b.clone())?;
+
+        assert!(env.call_function::<_, bool>("exists", path_b.clone())?);
+
+        let metadata = env.call_function::<_, LuaTable>("metadata", path_b.clone())?;
+
+        assert_eq!(metadata.get::<_, String>("type")?, "folder");
+        assert!(metadata.get::<_, bool>("is_accessible")?);
+
+        assert!(env.call_function::<_, ()>("copy", (path_b.clone(), inaccessible_path.clone())).is_err());
+        assert!(env.call_function::<_, ()>("move", (path_b.clone(), inaccessible_path.clone())).is_err());
+
+        env.call_function::<_, ()>("move", (path_b.clone(), path_c.clone()))?;
+
+        assert!(!env.call_function::<_, bool>("exists", path_b.clone())?);
+        assert!(env.call_function::<_, bool>("exists", path_c.clone())?);
+
+        env.call_function::<_, ()>("create_file", format!("{path_c}/test"))?;
+
+        assert_eq!(env.call_function::<_, LuaTable>("read_dir", path_c.clone())?.raw_len(), 1);
+
+        env.call_function::<_, ()>("remove", path_c.clone())?;
+
+        assert!(!env.call_function::<_, bool>("exists", path_c.clone())?);
+
+        assert!(env.call_function::<_, ()>("create_file", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<_, ()>("create_dir", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<_, Vec<u8>>("read_file", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<_, LuaTable>("read_dir", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<_, ()>("write_file", (inaccessible_path.clone(), vec![1, 2, 3])).is_err());
+        assert!(env.call_function::<_, u32>("open", inaccessible_path.clone()).is_err());
 
         Ok(())
     }
