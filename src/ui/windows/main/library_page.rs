@@ -4,14 +4,13 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::downloads_row::DownloadsRow;
-use crate::ui::components::downloads_row::DownloadsRowInit;
-use crate::ui::components::prelude::*;
+use crate::ui::components::{downloads_row::*, prelude::*};
 
 use super::DownloadsPageApp;
 
 #[derive(Debug, Clone)]
 pub enum LibraryPageAppMsg {
+    Activate,
     ShowGameDetails(DynamicIndex),
     ToggleDownloadsPage,
 }
@@ -25,29 +24,23 @@ pub struct LibraryPageApp {
     show_downloads: bool,
 }
 
+#[derive(Debug)]
+pub enum LibraryPageAppOutput {
+    SetShowBack(bool),
+}
+
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for LibraryPageApp {
     type Init = ();
     type Input = LibraryPageAppMsg;
-    type Output = ();
+    type Output = LibraryPageAppOutput;
 
     view! {
         #[root]
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
-            #[transition(Crossfade)]
-            append = if model.show_downloads {
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    gtk::Button {
-                        set_icon_name: "draw-arrow-back-symbolic",
-                        set_halign: gtk::Align::Start,
-                        set_margin_all: 16,
-                        connect_clicked => LibraryPageAppMsg::ToggleDownloadsPage,
-                    },
-                    model.downloads_page.widget(),
-                }
-            } else {
+            #[transition(SlideLeftRight)]
+            append = if !model.show_downloads {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     adw::NavigationSplitView {
@@ -84,8 +77,12 @@ impl SimpleAsyncComponent for LibraryPageApp {
                         }
                     }
                 }
+            } else {
+                gtk::Box {
+                    model.downloads_page.widget(),
+                }
             }
-        },
+        }
     }
 
     async fn init(
@@ -135,7 +132,7 @@ impl SimpleAsyncComponent for LibraryPageApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             LibraryPageAppMsg::ShowGameDetails(index) => {
                 if let Some(details) = self.cards_list.get(index.current_index()) {
@@ -145,6 +142,12 @@ impl SimpleAsyncComponent for LibraryPageApp {
             LibraryPageAppMsg::ToggleDownloadsPage => {
                 self.show_downloads = !self.show_downloads;
             }
+            LibraryPageAppMsg::Activate => {}
         }
+
+        // Update back button visibility
+        sender
+            .output(LibraryPageAppOutput::SetShowBack(self.show_downloads))
+            .unwrap();
     }
 }
