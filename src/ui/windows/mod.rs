@@ -1,16 +1,18 @@
 mod loading_window;
-mod main;
+mod main_window;
 mod create_wine_profile;
 
-pub use loading_window::LoadingWindow;
+pub use loading_window::{
+    LoadingWindow,
+    LoadingWindowMsg
+};
+
+pub use main_window::{
+    MainWindow,
+    MainWindowMsg
+};
 
 pub mod prelude {
-    pub use super::main::{
-        MainApp,
-        MainAppMsg,
-        WINDOW as MAIN_APP_WINDOW
-    };
-
     pub use super::create_wine_profile::{
         CreateWineProfileApp,
         CreateWineProfileAppMsg,

@@ -1,7 +1,9 @@
-use adw::prelude::*;
 use gtk::prelude::*;
-
 use relm4::prelude::*;
+
+use mlua::prelude::*;
+
+use crate::prelude::*;
 
 pub mod downloads_page;
 pub mod game_page;
@@ -18,7 +20,10 @@ pub use store_page::{StorePageApp, StorePageAppMsg, StorePageAppOutput};
 pub static mut WINDOW: Option<adw::Window> = None;
 
 #[derive(Debug, Clone)]
-pub enum MainAppMsg {
+pub enum MainWindowMsg {
+    SetGeneration(GenerationManifest),
+    OpenWindow,
+
     ToggleSearching,
     SetShowSearch(bool),
     SetShowBack(bool),
@@ -28,12 +33,17 @@ pub enum MainAppMsg {
 }
 
 #[derive(Debug)]
-pub struct MainApp {
+pub struct MainWindow {
     store_page: AsyncController<StorePageApp>,
     library_page: AsyncController<LibraryPageApp>,
     profile_page: AsyncController<ProfilePageApp>,
 
     view_stack: adw::ViewStack,
+
+    lua: Lua,
+    generation: Option<GenerationManifest>,
+
+    visible: bool,
 
     show_search: bool,
     searching: bool,
@@ -42,18 +52,21 @@ pub struct MainApp {
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for MainApp {
+impl SimpleAsyncComponent for MainWindow {
     type Init = ();
-    type Input = MainAppMsg;
+    type Input = MainWindowMsg;
     type Output = ();
 
     view! {
         #[root]
         window = adw::Window {
-            set_size_request: (1200, 800),
             set_title: Some("Anime Games Launcher"),
+            set_size_request: (1200, 800),
 
             add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
+            #[watch]
+            set_visible: model.visible,
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -64,24 +77,28 @@ impl SimpleAsyncComponent for MainApp {
                     pack_start = &gtk::Button {
                         set_icon_name: "loupe-symbolic",
                         add_css_class: "flat",
+
                         #[watch]
                         set_visible: model.show_search && !model.show_back,
-                        connect_clicked => MainAppMsg::ToggleSearching,
+
+                        connect_clicked => MainWindowMsg::ToggleSearching
                     },
 
                     pack_start = &gtk::Button {
                         set_icon_name: "go-previous-symbolic",
                         add_css_class: "flat",
+
                         #[watch]
                         set_visible: model.show_back,
-                        connect_clicked => MainAppMsg::GoBack,
+
+                        connect_clicked => MainWindowMsg::GoBack
                     },
 
                     #[wrap(Some)]
                     set_title_widget = &adw::ViewSwitcher {
                         set_policy: adw::ViewSwitcherPolicy::Wide,
 
-                        set_stack: Some(&view_stack)
+                        set_stack: Some(view_stack)
                     }
                 },
 
@@ -89,22 +106,15 @@ impl SimpleAsyncComponent for MainApp {
                 view_stack -> adw::ViewStack {
                     connect_visible_child_notify => move |stack| {
                         if let Some(name) = stack.visible_child_name() {
-                            // Show search on these page names
-                            sender.input(
-                                MainAppMsg::SetShowSearch(
-                                    ["store", "library", "profile"].contains(&name.as_str())
-                                )
-                            );
+                            sender.input(MainWindowMsg::SetShowSearch(
+                                ["store", "library", "profile"].contains(&name.as_str())
+                            ));
 
-                            // Update back button
                             match name.as_str() {
-                                "store" => {
-                                    sender.input(MainAppMsg::ActivateStorePage);
-                                },
-                                "library" => {
-                                    sender.input(MainAppMsg::ActivateLibraryPage);
-                                },
-                                _ => {}
+                                "store"   => sender.input(MainWindowMsg::ActivateStorePage),
+                                "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
+
+                                _ => ()
                             }
                         }
                     },
@@ -146,28 +156,30 @@ impl SimpleAsyncComponent for MainApp {
         }
     }
 
-    async fn init(
-        _init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             store_page: StorePageApp::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    StorePageAppOutput::SetShowBack(s) => MainAppMsg::SetShowBack(s),
+                    StorePageAppOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
 
-            library_page: LibraryPageApp::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    LibraryPageAppOutput::SetShowBack(s) => MainAppMsg::SetShowBack(s),
-                },
-            ),
+            library_page: LibraryPageApp::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    LibraryPageAppOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+                }),
+
+            profile_page: ProfilePageApp::builder()
+                .launch(())
+                .detach(),
 
             view_stack: adw::ViewStack::new(),
 
-            profile_page: ProfilePageApp::builder().launch(()).detach(),
+            lua: Lua::new(),
+            generation: None,
+
+            visible: false,
 
             show_search: true,
             searching: false,
@@ -186,21 +198,28 @@ impl SimpleAsyncComponent for MainApp {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
-        match msg {
-            MainAppMsg::ToggleSearching => {
+    async fn update(&mut self, message: Self::Input, _sender: AsyncComponentSender<Self>) {
+        match message {
+            MainWindowMsg::SetGeneration(generation) => self.generation = Some(generation),
+
+            MainWindowMsg::OpenWindow => self.visible = true,
+
+            MainWindowMsg::ToggleSearching => {
                 self.store_page
                     .sender()
                     .emit(StorePageAppMsg::ToggleSearching);
                 self.searching = !self.searching;
             }
-            MainAppMsg::SetShowSearch(state) => {
+
+            MainWindowMsg::SetShowSearch(state) => {
                 self.show_search = state;
             }
-            MainAppMsg::SetShowBack(state) => {
+
+            MainWindowMsg::SetShowBack(state) => {
                 self.show_back = state;
             }
-            MainAppMsg::GoBack => {
+
+            MainWindowMsg::GoBack => {
                 self.show_back = false;
 
                 // Navigate back only on the visible page
@@ -215,10 +234,12 @@ impl SimpleAsyncComponent for MainApp {
                     }
                 }
             }
-            MainAppMsg::ActivateStorePage => {
+
+            MainWindowMsg::ActivateStorePage => {
                 self.store_page.sender().emit(StorePageAppMsg::Activate);
             }
-            MainAppMsg::ActivateLibraryPage => {
+
+            MainWindowMsg::ActivateLibraryPage => {
                 self.library_page.sender().emit(LibraryPageAppMsg::Activate);
             }
         }

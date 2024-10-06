@@ -4,13 +4,17 @@ use relm4::prelude::*;
 use crate::prelude::*;
 
 #[derive(Debug)]
-pub struct LoadingWindow {
-    current_action: Option<&'static str>
+pub enum LoadingWindowMsg {
+    SetAction(&'static str),
+    LoadMainWindow(GenerationManifest)
 }
 
-#[derive(Debug, Clone)]
-pub enum LoadingWindowMsg {
-    SetAction(&'static str)
+#[derive(Debug)]
+pub struct LoadingWindow {
+    main_window: AsyncController<MainWindow>,
+
+    current_action: Option<&'static str>,
+    visible: bool
 }
 
 #[relm4::component(pub, async)]
@@ -27,6 +31,9 @@ impl SimpleAsyncComponent for LoadingWindow {
             set_resizable: false,
 
             add_css_class?: crate::APP_DEBUG.then_some("devel"),
+
+            #[watch]
+            set_visible: model.visible,
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -52,7 +59,12 @@ impl SimpleAsyncComponent for LoadingWindow {
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
-            current_action: None
+            main_window: MainWindow::builder()
+                .launch(())
+                .detach(),
+
+            current_action: None,
+            visible: true
         };
 
         let widgets = view_output!();
@@ -181,8 +193,7 @@ impl SimpleAsyncComponent for LoadingWindow {
             tracing::debug!("Load main window");
 
             sender.input(LoadingWindowMsg::SetAction("Almost done"));
-
-            dbg!(valid_generation);
+            sender.input(LoadingWindowMsg::LoadMainWindow(valid_generation));
 
             Ok::<_, anyhow::Error>(())
         });
@@ -192,7 +203,14 @@ impl SimpleAsyncComponent for LoadingWindow {
 
     async fn update(&mut self, message: Self::Input, _sender: AsyncComponentSender<Self>) {
         match message {
-            LoadingWindowMsg::SetAction(action) => self.current_action = Some(action)
+            LoadingWindowMsg::SetAction(action) => self.current_action = Some(action),
+
+            LoadingWindowMsg::LoadMainWindow(generation) => {
+                self.main_window.emit(MainWindowMsg::SetGeneration(generation));
+                self.main_window.emit(MainWindowMsg::OpenWindow);
+
+                self.visible = false;
+            }
         }
     }
 }
