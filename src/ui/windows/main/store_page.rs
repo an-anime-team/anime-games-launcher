@@ -129,8 +129,10 @@ impl SimpleAsyncComponent for StorePageApp {
                 self.show_game_page = false;
             }
             StorePageAppMsg::Clicked(r, c) => {
+                // Test data
                 self.game_page.sender().send(GamePageAppMsg::Update(GamePageAppInit {
-                    image: String::from("cover.jpg"),
+                    card_image: String::from("cover.jpg"),
+                    carousel_images: vec![String::from("1.jpg"), String::from("2.jpg"), String::from("3.png")],
                     title: String::from("Genshin Impact"),
                     developer: String::from("MiHoYo"),
                     description: String::from("Step into Teyvat, a vast world teeming with life and flowing with elemental energy.

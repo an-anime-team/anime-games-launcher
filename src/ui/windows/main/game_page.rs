@@ -17,13 +17,15 @@ use crate::{
         prelude::LocalizableString,
     },
     ui::components::{
-        card::*, game_tags::*, maintainers_row::MaintainersRowFactory, requirements::*,
+        card::*, game_tags::*, maintainers_row::MaintainersRowFactory, picture_carousel::*,
+        requirements::*,
     },
 };
 
 #[derive(Debug)]
 pub struct GamePageAppInit {
-    pub image: String,
+    pub card_image: String,
+    pub carousel_images: Vec<String>,
     pub title: String,
     pub developer: String,
     pub description: String,
@@ -38,6 +40,7 @@ pub struct GamePageAppInit {
 #[derive(Debug)]
 pub struct GamePageApp {
     card: AsyncController<CardComponent>,
+    carousel: AsyncController<PictureCarousel>,
     title: String,
     developer: String,
     description_short: String,
@@ -94,26 +97,7 @@ impl SimpleAsyncComponent for GamePageApp {
                         set_halign: gtk::Align::Center,
                         set_spacing: 8,
 
-                        #[name = "carousel"]
-                        adw::Carousel {
-                            set_height_request: CardComponent::default().height,
-
-                            gtk::Picture {
-                                set_filename: Some(&format!("{}1.png", TEST_PATH)),
-                            },
-
-                            gtk::Picture {
-                                set_filename: Some(&format!("{}2.png", TEST_PATH)),
-                            },
-
-                            gtk::Picture {
-                                set_filename: Some(&format!("{}3.png", TEST_PATH)),
-                            }
-                        },
-
-                        adw::CarouselIndicatorLines {
-                            set_carousel: Some(&carousel),
-                        },
+                        model.carousel.widget(),
 
                         gtk::Label {
                             set_text: "About",
@@ -231,14 +215,13 @@ impl SimpleAsyncComponent for GamePageApp {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let TEST_PATH = "/temp/";
-
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent {
                     ..Default::default()
                 })
                 .detach(),
+            carousel: PictureCarousel::builder().launch(()).detach(),
             title: String::from("N/A"),
             developer: String::from("N/A"),
             description_short: String::from("N/A"),
@@ -289,7 +272,7 @@ impl SimpleAsyncComponent for GamePageApp {
             GamePageAppMsg::Update(init) => {
                 self.card
                     .sender()
-                    .send(CardComponentInput::SetImage(Some(init.image)))
+                    .send(CardComponentInput::SetImage(Some(init.card_image)))
                     .unwrap();
                 self.requirements
                     .sender()
@@ -297,6 +280,10 @@ impl SimpleAsyncComponent for GamePageApp {
                         init.requirements,
                         LanguageIdentifier::default(),
                     )))
+                    .unwrap();
+                self.carousel
+                    .sender()
+                    .send(PictureCarouselMsg::Update(init.carousel_images))
                     .unwrap();
 
                 self.title = init.title;
