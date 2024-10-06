@@ -1,23 +1,25 @@
 use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
 
-use crate::core::prelude::*;
-use crate::consts::CONFIG_FILE;
+use crate::prelude::*;
 
 pub mod general;
 pub mod packages;
+pub mod generations;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     pub general: general::General,
-    pub packages: packages::Packages
+    pub packages: packages::Packages,
+    pub generations: generations::Generations
 }
 
 impl AsJson for Config {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
             "general": self.general.to_json()?,
-            "packages": self.packages.to_json()?
+            "packages": self.packages.to_json()?,
+            "generations": self.generations.to_json()?
         }))
     }
 
@@ -29,7 +31,11 @@ impl AsJson for Config {
 
             packages: json.get("packages")
                 .map(packages::Packages::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages"))??
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages"))??,
+
+            generations: json.get("generations")
+                .map(generations::Generations::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("generations"))??
         })
     }
 }

@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
 
-use crate::core::prelude::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct General {

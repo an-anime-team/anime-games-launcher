@@ -10,10 +10,10 @@ pub mod core;
 pub mod config;
 pub mod packages;
 pub mod generations;
+pub mod games;
 
 pub mod i18n;
 pub mod utils;
-pub mod games;
 pub mod cli;
 pub mod ui;
 
@@ -27,6 +27,23 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static::lazy_static! {
     pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
+}
+
+pub mod prelude {
+    pub use super::consts::*;
+    pub use super::core::prelude::*;
+    pub use super::packages::prelude::*;
+    pub use super::generations::prelude::*;
+    pub use super::games::prelude::*;
+
+    pub use super::config;
+
+    pub use super::{
+        APP_ID,
+        APP_RESOURCE_PREFIX,
+        APP_VERSION,
+        APP_DEBUG
+    };
 }
 
 #[tokio::main]
@@ -97,7 +114,7 @@ async fn main() -> anyhow::Result<()> {
         let app = RelmApp::new(APP_ID);
 
         // Show loading window.
-        app.run_async::<ui::windows::prelude::MainApp>(());
+        app.run_async::<ui::windows::LoadingWindow>(());
     }
 
     Ok(())

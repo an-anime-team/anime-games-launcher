@@ -91,7 +91,7 @@ impl Store {
     }
 
     /// Insert generation to the store.
-    pub fn insert(&self, generation: GenerationManifest) -> Result<(), StoreError> {
+    pub fn insert(&self, generation: &GenerationManifest) -> Result<(), StoreError> {
         let hash = generation.partial_hash();
 
         let manifest_path = self.folder.join("generations.json");
@@ -188,7 +188,7 @@ mod tests {
         assert_eq!(generation.lock_file.resources.len(), 8);
         assert_eq!(Hash::for_entry(path)?, Hash(9585216612201553270));
 
-        generations_store.insert(generation)
+        generations_store.insert(&generation)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());

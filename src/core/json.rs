@@ -9,7 +9,7 @@ pub enum AsJsonError {
     InvalidFieldValue(&'static str),
 
     #[error(transparent)]
-    Other(#[from] Box<dyn std::error::Error>)
+    Other(#[from] Box<dyn std::error::Error + Send + Sync + 'static>)
 }
 
 pub trait AsJson {

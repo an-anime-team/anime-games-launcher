@@ -1,5 +1,8 @@
-pub mod main;
-pub mod create_wine_profile;
+mod loading_window;
+mod main;
+mod create_wine_profile;
+
+pub use loading_window::LoadingWindow;
 
 pub mod prelude {
     pub use super::main::{
