@@ -218,7 +218,7 @@ type PipelineAction = {
 type ProgressReporter = (status: ProgressReport): void;
 
 type ProgressReport = {
-    // Optional title of the current action
+    // Optional title of the current action.
     // 
     // Example: "Downloading <something>"
     title?: Localizable,
