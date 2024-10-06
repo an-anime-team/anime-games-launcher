@@ -67,7 +67,7 @@ impl<'lua> GameIntegration<'lua> {
 
     #[inline]
     /// Get list of available game editions.
-    pub fn edition(&self) -> &[GameEdition] {
+    pub fn editions(&self) -> &[GameEdition] {
         &self.editions
     }
 
