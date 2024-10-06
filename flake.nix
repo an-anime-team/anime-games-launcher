@@ -34,6 +34,9 @@
                     unzip
                     p7zip
                     libwebp
+
+                    # adwaita-1-demo
+                    libadwaita.devdoc
                 ];
 
                 buildInputs = with pkgs; [
