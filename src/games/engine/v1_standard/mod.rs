@@ -29,7 +29,6 @@ pub struct GameIntegration<'lua> {
 
     game_get_status: LuaFunction<'lua>,
     game_get_diff: LuaFunction<'lua>,
-    game_get_launch_status: LuaFunction<'lua>,
     game_get_launch_info: LuaFunction<'lua>
 }
 
@@ -60,7 +59,6 @@ impl<'lua> GameIntegration<'lua> {
 
             game_get_status: game.get("get_status")?,
             game_get_diff: game.get("get_diff")?,
-            game_get_launch_status: game.get("get_launch_status")?,
             game_get_launch_info: game.get("get_launch_info")?
         })
     }
@@ -87,12 +85,6 @@ impl<'lua> GameIntegration<'lua> {
     pub fn game_diff(&self) -> Result<InstallationDiff, LuaError> {
         self.game_get_diff.call::<_, LuaTable>(())
             .and_then(|diff| InstallationDiff::from_lua(self.lua, &diff))
-    }
-
-    /// Get launch status for the game.
-    pub fn game_launch_status(&self) -> Result<GameLaunchStatus, LuaError> {
-        self.game_get_launch_status.call::<_, LuaString>(())
-            .and_then(|status| GameLaunchStatus::from_str(&status.to_string_lossy()))
     }
 
     /// Get params used to launch the game.

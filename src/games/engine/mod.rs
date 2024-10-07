@@ -5,7 +5,6 @@ pub mod v1_standard;
 use v1_standard::{
     GameEdition,
     GameComponent,
-    GameLaunchStatus,
     GameLaunchInfo,
     InstallationStatus,
     InstallationDiff
@@ -54,14 +53,6 @@ impl<'lua> GameEngine<'lua> {
     pub fn game_diff(&self) -> Result<InstallationDiff, LuaError> {
         match self {
             Self::V1(engine) => engine.game_diff()
-        }
-    }
-
-    #[inline]
-    /// Get launch status for the game.
-    pub fn game_launch_status(&self) -> Result<GameLaunchStatus, LuaError> {
-        match self {
-            Self::V1(engine) => engine.game_launch_status()
         }
     }
 

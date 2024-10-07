@@ -29,10 +29,6 @@ type GameIntegration = {
         // Get installation diff.
         get_diff: (edition: string): InstallationDiff,
 
-        // Get launch status for the game.
-        // It is used to render the launch button.
-        get_launch_status: (edition: string): GameLaunchStatus,
-
         // Get params used to launch the game.
         get_launch_info: (edition: string): GameLaunchInfo
     }
