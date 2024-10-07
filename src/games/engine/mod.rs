@@ -50,7 +50,7 @@ impl<'lua> GameEngine<'lua> {
 
     #[inline]
     /// Get installation diff.
-    pub fn game_diff(&self) -> Result<InstallationDiff, LuaError> {
+    pub fn game_diff(&self) -> Result<Option<InstallationDiff>, LuaError> {
         match self {
             Self::V1(engine) => engine.game_diff()
         }

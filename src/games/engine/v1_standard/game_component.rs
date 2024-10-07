@@ -105,8 +105,11 @@ impl<'lua> GameComponent<'lua> {
     }
 
     /// Get installation diff of the component.
-    pub fn get_diff(&self) -> Result<InstallationDiff, LuaError> {
-        self.get_diff.call::<_, LuaTable>(())
-            .and_then(|diff| InstallationDiff::from_lua(self.lua, &diff))
+    pub fn get_diff(&self) -> Result<Option<InstallationDiff>, LuaError> {
+        self.get_diff.call::<_, Option<LuaTable>>(())
+            .and_then(|diff| {
+                diff.map(|diff| InstallationDiff::from_lua(self.lua, &diff))
+                    .transpose()
+            })
     }
 }

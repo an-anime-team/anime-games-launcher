@@ -26,8 +26,9 @@ type GameIntegration = {
         // Get status of the game installation.
         get_status: (edition: string): InstallationStatus,
 
-        // Get installation diff.
-        get_diff: (edition: string): InstallationDiff,
+        // Get installation diff. If no diff
+        // available (not required) - return nil.
+        get_diff: (edition: string): InstallationDiff | null,
 
         // Get params used to launch the game.
         get_launch_info: (edition: string): GameLaunchInfo
@@ -128,7 +129,8 @@ type Component = {
     get_status: (): InstallationStatus,
 
     // Get installation diff of the component.
-    get_diff: (): InstallationDiff
+    // If no diff available (not required) - return nil.
+    get_diff: (): InstallationDiff | null
 };
 ```
 

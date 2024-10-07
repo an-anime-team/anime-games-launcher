@@ -82,9 +82,12 @@ impl<'lua> GameIntegration<'lua> {
     }
 
     /// Get installation diff.
-    pub fn game_diff(&self) -> Result<InstallationDiff, LuaError> {
-        self.game_get_diff.call::<_, LuaTable>(())
-            .and_then(|diff| InstallationDiff::from_lua(self.lua, &diff))
+    pub fn game_diff(&self) -> Result<Option<InstallationDiff>, LuaError> {
+        self.game_get_diff.call::<_, Option<LuaTable>>(())
+            .and_then(|diff| {
+                diff.map(|diff| InstallationDiff::from_lua(self.lua, &diff))
+                    .transpose()
+            })
     }
 
     /// Get params used to launch the game.
