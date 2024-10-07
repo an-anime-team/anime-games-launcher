@@ -26,7 +26,11 @@ type Manifest = {
             poster: string,
 
             // URL to the game's background in album orientation (e.g. 1920x1080 px).
-            background: string
+            background: string,
+
+            // List of URLs to the game's slides displayed in the details page.
+            // Slides should have album orientation (e.g. 1920x1080 px).
+            slides: string[]
         }
     },
 
@@ -129,4 +133,31 @@ type GameTag =
 // If an object, then the value under the selected locale
 // will be used, or, if not set, fallback to en-us.
 type Localizable = string | [locale: string]: string;
+```
+
+## Games registry
+
+Games registry is a standard way of storing collections of the games'
+manifests. Launcher fetches all the manifests listed in the registry
+and displays them on the store page.
+
+```ts
+type Manifest = {
+    format: 1,
+
+    // Title of the registry.
+    title: Localizable,
+
+    // List of games.
+    games: Game[]
+};
+
+type Game = {
+    // URL to the game's manifest.
+    url: string,
+
+    // When true, this game will be proposed to be displayed
+    // on the top of the store page.
+    featured?: boolean
+};
 ```

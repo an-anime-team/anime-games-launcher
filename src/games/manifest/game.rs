@@ -64,7 +64,8 @@ impl AsHash for Game {
 pub struct GameImages {
     pub icon: String,
     pub poster: String,
-    pub background: String
+    pub background: String,
+    pub slides: Vec<String>
 }
 
 impl AsJson for GameImages {
@@ -94,7 +95,17 @@ impl AsJson for GameImages {
                 .ok_or_else(|| AsJsonError::FieldNotFound("game.images.background"))?
                 .as_str()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("game.images.background"))?
-                .to_string()
+                .to_string(),
+
+            slides: json.get("slides")
+                .ok_or_else(|| AsJsonError::FieldNotFound("game.images.slides"))?
+                .as_array()
+                .and_then(|slides| {
+                    slides.iter()
+                        .map(|url| url.as_str().map(String::from))
+                        .collect::<Option<Vec<_>>>()
+                })
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("game.images.slides"))?
         })
     }
 }
@@ -104,5 +115,6 @@ impl AsHash for GameImages {
         self.icon.hash()
             .chain(self.poster.hash())
             .chain(self.background.hash())
+            .chain(self.slides.hash())
     }
 }
