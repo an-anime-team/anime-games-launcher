@@ -193,9 +193,9 @@ mod tests {
 
         assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
-        assert!(generations_store.has_generation(&Hash(18086654289878451496)));
+        assert!(generations_store.has_generation(&Hash(3371458331281458332)));
 
-        let generation = generations_store.load(&Hash(18086654289878451496))
+        let generation = generations_store.load(&Hash(3371458331281458332))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .ok_or_else(|| anyhow::anyhow!("Generation expected, got none"))?;
 
@@ -203,7 +203,7 @@ mod tests {
         assert_eq!(&generation.lock_file.root, &[0]);
         assert_eq!(generation.lock_file.resources.len(), 8);
 
-        generations_store.remove(&Hash(18086654289878451496))
+        generations_store.remove(&Hash(3371458331281458332))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());

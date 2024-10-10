@@ -73,7 +73,8 @@ impl AsJson for GameImages {
         Ok(json!({
             "icon": self.icon,
             "poster": self.poster,
-            "background": self.background
+            "background": self.background,
+            "slides": self.slides
         }))
     }
 
