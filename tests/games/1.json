@@ -14,7 +14,10 @@
         "images": {
             "icon": "https://i.redd.it/93q5d0oz8h041.jpg",
             "poster": "https://s.keepmeme.com/files/en_posts/20201008/among-us-crewmate-ricardo-milos-meme-0b39be7085ab2394e252715fd11d0ffe.jpg",
-            "background": "https://i.redd.it/cgho9x2rf8341.jpg"
+            "background": "https://i.redd.it/cgho9x2rf8341.jpg",
+            "slides": [
+                "https://img10.reactor.cc/pics/post/full/Zhongli-%28Genshin-Impact%29-Genshin-Impact-7881448.jpeg"
+            ]
         }
     },
     "package": {
