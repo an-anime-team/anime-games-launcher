@@ -24,10 +24,9 @@ pub struct GameDetailsPage {
     requirements: AsyncController<HardwareRequirementsComponent>,
 
     title: String,
+    description: String,
     developer: String,
-    description_short: String,
-    description_long: String,
-    repo_name: String
+    publisher: String
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,149 +49,110 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
     view! {
         #[root]
-        gtk::ScrolledWindow {
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_halign: gtk::Align::Center,
+        adw::ClampScrollable {
+            set_maximum_size: 900,
+            set_margin_all: 32,
 
-                set_spacing: 16,
-                set_margin_all: 16,
-
-                set_vexpand: true,
-
-                gtk::Label {
-                    set_halign: gtk::Align::Start,
-
-                    add_css_class: "title-1",
-
-                    #[watch]
-                    set_label: &model.title
-                },
-
+            gtk::ScrolledWindow {
                 gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_halign: gtk::Align::Start,
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_halign: gtk::Align::Center,
 
-                    set_spacing: 16,
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
 
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_halign: gtk::Align::Center,
+                        add_css_class: "title-1",
 
-                        set_spacing: 8,
-
-                        model.carousel.widget(),
-
-                        gtk::Label {
-                            set_align: gtk::Align::Start,
-
-                            add_css_class: "title-4",
-
-                            set_text: "About"
-                        },
-
-                        gtk::TextView {
-                            add_css_class: "body",
-
-                            set_wrap_mode: gtk::WrapMode::Word,
-
-                            set_editable: false,
-                            set_can_target: false,
-                            set_cursor_visible: false,
-
-                            #[watch]
-                            set_buffer: Some(&{
-                                let buffer = gtk::TextBuffer::new(None);
-
-                                buffer.set_text(&model.description_short);
-
-                                buffer
-                            })
-                        },
-
-                        gtk::Expander {
-                            set_label: Some("Read More"),
-
-                            gtk::TextView {
-                                add_css_class: "body",
-
-                                set_wrap_mode: gtk::WrapMode::Word,
-
-                                set_editable: false,
-                                set_can_target: false,
-                                set_cursor_visible: false,
-
-                                #[watch]
-                                set_buffer: Some(&{
-                                    let buffer = gtk::TextBuffer::new(None);
-
-                                    buffer.set_text(&model.description_long);
-
-                                    buffer
-                                })
-                            }
-                        },
-
-                        gtk::Label {
-                            set_align: gtk::Align::Start,
-
-                            add_css_class: "title-4",
-
-                            set_text: "System Requirements",
-                        },
-
-                        model.requirements.widget(),
+                        #[watch]
+                        set_label: &model.title
                     },
 
                     gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_valign: gtk::Align::Start,
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_halign: gtk::Align::Start,
+
                         set_spacing: 16,
 
-                        model.card.widget(),
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Vertical,
+                            set_halign: gtk::Align::Center,
 
-                        gtk::Button {
-                            set_css_classes: &["suggested-action", "pill"],
+                            set_spacing: 8,
 
-                            set_label: "Add",
+                            model.carousel.widget(),
 
-                            connect_clicked => GameDetailsPageInput::AddGameClicked
+                            gtk::Label {
+                                set_align: gtk::Align::Start,
+
+                                add_css_class: "title-4",
+
+                                set_text: "About"
+                            },
+
+                            gtk::Label {
+                                #[watch]
+                                set_text: &model.description
+                            },
+
+                            gtk::Label {
+                                set_align: gtk::Align::Start,
+
+                                add_css_class: "title-4",
+
+                                set_text: "System Requirements",
+                            },
+
+                            model.requirements.widget(),
                         },
 
-                        gtk::Label {
-                            set_align: gtk::Align::Start,
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Vertical,
+                            set_valign: gtk::Align::Start,
+                            set_spacing: 16,
 
-                            add_css_class: "dim-label",
+                            model.card.widget(),
 
-                            #[watch]
-                            set_text: &format!("Developer: {}", model.developer)
-                        },
+                            gtk::Button {
+                                set_css_classes: &["suggested-action", "pill"],
 
-                        gtk::ScrolledWindow {
-                            set_propagate_natural_height: true,
+                                set_label: "Add",
 
-                            gtk::Box {
-                                set_orientation: gtk::Orientation::Vertical,
-                                set_spacing: 16,
+                                connect_clicked => GameDetailsPageInput::AddGameClicked
+                            },
 
-                                model.tags.widget(),
+                            gtk::Label {
+                                set_align: gtk::Align::Start,
 
-                                adw::PreferencesGroup {
-                                    set_title: "Package",
+                                add_css_class: "dim-label",
 
-                                    adw::ActionRow {
-                                        set_title: "Repository",
+                                #[watch]
+                                set_text: &format!("Developer: {}", model.developer)
+                            },
 
-                                        add_suffix = &gtk::Label {
-                                            add_css_class: "dim-label",
+                            gtk::Label {
+                                set_align: gtk::Align::Start,
 
-                                            #[watch]
-                                            set_text: &model.repo_name
+                                add_css_class: "dim-label",
+
+                                #[watch]
+                                set_text: &format!("Publisher: {}", model.publisher)
+                            },
+
+                            gtk::ScrolledWindow {
+                                set_propagate_natural_height: true,
+
+                                gtk::Box {
+                                    set_orientation: gtk::Orientation::Vertical,
+                                    set_spacing: 16,
+
+                                    model.tags.widget(),
+
+                                    adw::PreferencesGroup {
+                                        set_title: "Package",
+
+                                        model.maintainers.widget() {
+                                            set_title: "Maintainers"
                                         }
-                                    },
-
-                                    model.maintainers.widget() {
-                                        set_title: "Maintainers"
                                     }
                                 }
                             }
@@ -225,11 +185,10 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 .launch(())
                 .detach(),
 
-            title: String::from("N/A"),
-            developer: String::from("N/A"),
-            description_short: String::from("N/A"),
-            description_long: String::from("N/A"),
-            repo_name: String::from("N/A")
+            title: String::new(),
+            developer: String::new(),
+            publisher: String::new(),
+            description: String::new()
         };
 
         let widgets = view_output!();
@@ -251,7 +210,25 @@ impl SimpleAsyncComponent for GameDetailsPage {
                     None => manifest.game.title.default_translation()
                 };
 
-                self.card.emit(CardComponentInput::SetTitle(Some(title.to_string())));
+                let description = match &lang {
+                    Some(lang) => manifest.game.description.translate(lang),
+                    None => manifest.game.description.default_translation()
+                };
+
+                let developer = match &lang {
+                    Some(lang) => manifest.game.developer.translate(lang),
+                    None => manifest.game.developer.default_translation()
+                };
+
+                let publisher = match &lang {
+                    Some(lang) => manifest.game.publisher.translate(lang),
+                    None => manifest.game.publisher.default_translation()
+                };
+
+                self.title = title.to_string();
+                self.description = description.to_string();
+                self.developer = developer.to_string();
+                self.publisher = publisher.to_string();
 
                 // TODO: clear components
 

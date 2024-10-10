@@ -19,9 +19,11 @@ pub struct HardwareRequirementsComponent {
     optimal_page: adw::ViewStackPage
 }
 
-#[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HardwareRequirementsComponentMsg {
-    SetRequirements(GameHardwareRequirements)
+    SetRequirements(GameHardwareRequirements),
+    Clear
 }
 
 #[relm4::component(pub, async)]
@@ -73,31 +75,38 @@ impl SimpleAsyncComponent for HardwareRequirementsComponent {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             HardwareRequirementsComponentMsg::SetRequirements(requirements) => {
                 let language = config::get().general.language.parse::<LanguageIdentifier>().ok();
 
-                // TODO: clear state
                 // TODO: proper widgets hiding
+
+                sender.input(HardwareRequirementsComponentMsg::Clear);
+
+                self.minimal_page.set_visible(true);
 
                 self.minimal.emit(HardwareRequirementsSectionMsg::SetRequirements {
                     requirements: requirements.minimal,
                     language: language.clone()
                 });
 
-                match requirements.optimal {
-                    Some(requirements) => {
-                        self.optimal.emit(HardwareRequirementsSectionMsg::SetRequirements {
-                            requirements,
-                            language
-                        });
+                if let Some(requirements) = requirements.optimal {
+                    self.optimal_page.set_visible(true);
 
-                        self.optimal_page.set_visible(true);
-                    }
-
-                    None => self.optimal_page.set_visible(false)
+                    self.optimal.emit(HardwareRequirementsSectionMsg::SetRequirements {
+                        requirements,
+                        language
+                    });
                 }
+            }
+
+            HardwareRequirementsComponentMsg::Clear => {
+                self.minimal.emit(HardwareRequirementsSectionMsg::Clear);
+                self.optimal.emit(HardwareRequirementsSectionMsg::Clear);
+
+                self.minimal_page.set_visible(false);
+                self.optimal_page.set_visible(false);
             }
         }
     }
@@ -109,12 +118,15 @@ pub struct HardwareRequirementsSection {
     pub language: Option<LanguageIdentifier>
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HardwareRequirementsSectionMsg {
     SetRequirements {
         requirements: HardwareRequirements,
         language: Option<LanguageIdentifier>
-    }
+    },
+
+    Clear
 }
 
 #[relm4::component(pub, async)]
@@ -337,6 +349,11 @@ impl SimpleAsyncComponent for HardwareRequirementsSection {
             HardwareRequirementsSectionMsg::SetRequirements { requirements, language } => {
                 self.requirements = requirements;
                 self.language = language;
+            }
+
+            HardwareRequirementsSectionMsg::Clear => {
+                self.requirements = HardwareRequirements::default();
+                self.language = None;
             }
         }
     }
