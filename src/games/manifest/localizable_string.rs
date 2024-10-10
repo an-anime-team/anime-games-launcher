@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde_json::{json, Value as Json};
-use unic_langid::LanguageIdentifier;
+use unic_langid::{langid, LanguageIdentifier};
 use mlua::prelude::*;
 
 use crate::core::prelude::*;
@@ -66,6 +66,15 @@ impl LocalizableString {
                 english_value
             }
         }
+    }
+
+    #[inline]
+    /// Get default translation of the string.
+    /// 
+    /// Will either return the raw value, English
+    /// variant or a stub string.
+    pub fn default_translation(&self) -> &str {
+        self.translate(&langid!("en"))
     }
 }
 
@@ -181,8 +190,6 @@ impl AsHash for LocalizableString {
 
 #[cfg(test)]
 mod tests {
-    use unic_langid::langid;
-
     use super::*;
 
     #[test]
