@@ -1,5 +1,9 @@
+use std::collections::HashSet;
+
 use gtk::prelude::*;
 use relm4::prelude::*;
+
+use serde_json::Value as Json;
 
 use crate::prelude::*;
 
@@ -69,15 +73,10 @@ impl SimpleAsyncComponent for LoadingWindow {
 
         let widgets = view_output!();
 
+        let main_window_sender = model.main_window.sender().clone();
+
         // TODO: errors handling
         tokio::spawn(async move {
-            // Load the config file.
-            tracing::debug!("Loading the config file");
-
-            sender.input(LoadingWindowMsg::SetAction("Loading the config file"));
-
-            let config = config::get();
-
             // Create default folders.
             tracing::debug!("Creating default folders");
 
@@ -88,39 +87,122 @@ impl SimpleAsyncComponent for LoadingWindow {
                 tokio::fs::create_dir_all(CONFIG_FOLDER.as_path()),
                 tokio::fs::create_dir_all(CACHE_FOLDER.as_path()),
 
-                tokio::fs::create_dir_all(&config.packages.resources_store.path),
-                tokio::fs::create_dir_all(&config.packages.modules_store.path),
-                tokio::fs::create_dir_all(&config.packages.persist_store.path),
-                tokio::fs::create_dir_all(&config.generations.store.path)
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.resources_store.path),
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.modules_store.path),
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.persist_store.path),
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.generations.store.path)
             )?;
 
             // Update the config file to create it
             // if it didn't exist before.
-            config::update(&config)?;
+            config::update(&STARTUP_CONFIG)?;
 
             // Start fetching games manifests for the store page.
-            // tokio::spawn(async move {
-            //     let client = reqwest::Client::builder()
-            //         .connect_timeout(config.games.fetch_timeout)
+            tokio::spawn(async move {
+                let client = STARTUP_CONFIG.general.network.builder()?.build()?;
 
-            //     for url in &config.games.registries {
-            //         let manifest = reqwest::get()
+                let mut registries_tasks = Vec::with_capacity(STARTUP_CONFIG.games.registries.len());
 
-            //         GamesRegistryManifest::from_json(json)
-            //     }
-            // });
+                // Start fetching the registries.
+                tracing::debug!("Fetching games registries");
+
+                for url in STARTUP_CONFIG.games.registries.clone() {
+                    let request = client.get(&url);
+
+                    let task = tokio::spawn(async move {
+                        let response = request.send().await?
+                            .bytes().await?;
+
+                        let manifest = serde_json::from_slice::<Json>(&response)?;
+                        let manifest = GamesRegistryManifest::from_json(&manifest)?;
+
+                        Ok::<_, anyhow::Error>(manifest)
+                    });
+
+                    registries_tasks.push((url, task));
+                }
+
+                // Await registries fetching.
+                let mut games = HashSet::new();
+
+                for (url, task) in registries_tasks.drain(..) {
+                    tracing::trace!(?url, "Awaiting game registry");
+
+                    match task.await {
+                        Ok(Ok(manifest)) => {
+                            tracing::trace!(
+                                ?url,
+                                title = manifest.title.default_translation(),
+                                "Added game registry"
+                            );
+
+                            for game in &manifest.games {
+                                games.insert(game.url.clone());
+                            }
+
+                            main_window_sender.emit(MainWindowMsg::AddGamesRegistry { url, manifest });
+                        }
+
+                        Err(err) => tracing::error!(?url, ?err, "Failed to await fetching game registry"),
+                        Ok(Err(err)) => tracing::error!(?url, ?err, "Failed to fetch game registry")
+                    }
+                }
+
+                // Start fetching games.
+                tracing::debug!("Fetching games manifests");
+
+                let mut games_tasks = Vec::with_capacity(games.len());
+
+                for url in games.drain() {
+                    let request = client.get(&url);
+
+                    let task = tokio::spawn(async move {
+                        let response = request.send().await?
+                            .bytes().await?;
+
+                        let manifest = serde_json::from_slice::<Json>(&response)?;
+                        let manifest = GameManifest::from_json(&manifest)?;
+
+                        Ok::<_, anyhow::Error>(manifest)
+                    });
+
+                    games_tasks.push((url, task));
+                }
+
+                // Await games fetching.
+                for (url, task) in games_tasks.drain(..) {
+                    tracing::trace!(?url, "Awaiting game manifest");
+
+                    match task.await {
+                        Ok(Ok(manifest)) => {
+                            tracing::trace!(
+                                ?url,
+                                title = manifest.game.title.default_translation(),
+                                "Added game manifest"
+                            );
+
+                            main_window_sender.emit(MainWindowMsg::AddGame { url, manifest });
+                        }
+
+                        Err(err) => tracing::error!(?url, ?err, "Failed to await fetching game manifest"),
+                        Ok(Err(err)) => tracing::error!(?url, ?err, "Failed to fetch game manifest")
+                    }
+                }
+
+                Ok::<_, anyhow::Error>(())
+            });
 
             // Open generations and packages stores.
             tracing::debug!(
-                generations_store = ?config.generations.store.path,
-                packages_store = ?config.packages.resources_store.path,
+                generations_store = ?STARTUP_CONFIG.generations.store.path,
+                packages_store = ?STARTUP_CONFIG.packages.resources_store.path,
                 "Opening generations and packages stores"
             );
 
             sender.input(LoadingWindowMsg::SetAction("Opening generations and packages stores"));
 
-            let generations_store = GenerationsStore::new(&config.generations.store.path);
-            let packages_store = PackagesStore::new(&config.packages.resources_store.path);
+            let generations_store = GenerationsStore::new(&STARTUP_CONFIG.generations.store.path);
+            let packages_store = PackagesStore::new(&STARTUP_CONFIG.packages.resources_store.path);
 
             // List all available generations.
             tracing::debug!("Listing available generations");

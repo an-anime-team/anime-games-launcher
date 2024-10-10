@@ -21,6 +21,16 @@ pub static mut WINDOW: Option<adw::Window> = None;
 
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
+    AddGamesRegistry {
+        url: String,
+        manifest: GamesRegistryManifest
+    },
+
+    AddGame {
+        url: String,
+        manifest: GameManifest
+    },
+
     SetGeneration(GenerationManifest),
     OpenWindow,
 
@@ -200,6 +210,14 @@ impl SimpleAsyncComponent for MainWindow {
 
     async fn update(&mut self, message: Self::Input, _sender: AsyncComponentSender<Self>) {
         match message {
+            MainWindowMsg::AddGamesRegistry { url, manifest } => {
+                dbg!(manifest);
+            }
+
+            MainWindowMsg::AddGame { url, manifest } => {
+                dbg!(manifest);
+            }
+
             MainWindowMsg::SetGeneration(generation) => self.generation = Some(generation),
 
             MainWindowMsg::OpenWindow => self.visible = true,
