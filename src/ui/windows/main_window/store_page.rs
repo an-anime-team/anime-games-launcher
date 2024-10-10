@@ -15,7 +15,7 @@ pub enum StorePageInput {
         url: String,
         manifest: Arc<GameManifest>
     },
-
+    Activate,
     ToggleSearching,
     HideGamePage,
     OpenGameDetails(DynamicIndex)
@@ -156,6 +156,10 @@ impl SimpleAsyncComponent for StorePage {
                 self.game_details_page.emit(GameDetailsPageInput::SetGameInfo(game.clone()));
 
                 self.show_game_page = true;
+            }
+
+            StorePageInput::Activate => {
+                // Update back button visibility when switching pages
             }
         }
 

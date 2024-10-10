@@ -17,8 +17,9 @@ pub enum MaintainersRowFactoryMsg {
     /// are as follows:
     /// - No application: "John Doe"
     /// - Email: "John Doe <johndoe@mail.com>"
-    /// - Discord User ID: "John Doe <123123123123123123>"
+    /// - URL: "John Doe <https://johndoe.com>"
     /// - Phone number: "John Doe <+123123123123>"
+    /// - Any URI supported by `xdg-open`: "John Doe <magnet:123123123123>"
     Activate,
 }
 
@@ -35,6 +36,7 @@ impl AsyncFactoryComponent for MaintainersRowFactory {
         adw::ActionRow {
             set_title: &self.name,
             set_subtitle: &self.contact.clone().unwrap_or(String::new()),
+            set_tooltip: "Open contact",
             set_activatable: true,
             connect_activated => MaintainersRowFactoryMsg::Activate,
         }
@@ -65,27 +67,25 @@ impl AsyncFactoryComponent for MaintainersRowFactory {
         match msg {
             MaintainersRowFactoryMsg::Activate => {
                 if let Some(contact) = &self.contact {
-                    let at_count = contact.matches('@').count();
-                    let has_dot = contact.contains('.');
-                    let valid_chars = contact
-                        .chars()
-                        .all(|c| c.is_alphanumeric() || "#-_@.".contains(c));
-
-                    let prefix = if at_count == 1 && has_dot && valid_chars {
-                        "mailto:"
-                    } else if contact.chars().all(|c| c.is_numeric()) && contact.len() > 15 {
-                        "https://discordapp.com/users/"
+                     // Email could contain url characters so check url first
+                    // Assume uri is valid if contact is present
+                    let uri = if contact.starts_with("https://") || contact.starts_with("https://") {
+                        contact.to_string()
+                    } else if contact.contains('@') && contact.split('@').count() == 2 && contact.chars().all(|c| c.is_alphanumeric() || ".-_@".contains(c)) {
+                        format!("mailto:{}", contact)
+                    } else if contact.chars().all(|c| c.is_digit(10) || " +-".contains(c)) {
+                        format!("tel:{}", contact.replace([' ', '-'], ""))
                     } else {
-                        "tel:"
+                        contact.to_string()
                     };
 
                     let out = std::process::Command::new("xdg-open")
-                        .arg(&format!("{}{}", prefix, contact.clone()))
+                        .arg(&uri)
                         .output()
                         .expect("Failed to open contact");
 
                     if out.status.success() {
-                        println!("Opened: {}", contact);
+                        println!("Opened: {}", uri);
                     }
                 }
             }

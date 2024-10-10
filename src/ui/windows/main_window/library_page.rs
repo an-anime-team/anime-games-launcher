@@ -139,10 +139,14 @@ impl SimpleAsyncComponent for LibraryPageApp {
                     todo!("{:?}", details);
                 }
             }
+
             LibraryPageAppMsg::ToggleDownloadsPage => {
                 self.show_downloads = !self.show_downloads;
             }
-            LibraryPageAppMsg::Activate => {}
+
+            LibraryPageAppMsg::Activate => {
+                // Update back button visibility when switching pages
+            }
         }
 
         // Update back button visibility
