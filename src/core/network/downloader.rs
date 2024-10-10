@@ -13,9 +13,7 @@ use tokio::runtime::Runtime;
 use reqwest::Client;
 
 use crate::consts::DATA_FOLDER;
-
-// TODO: should get its own config field.
-const DOWNLOADER_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+use crate::config::STARTUP_CONFIG;
 
 // TODO: make a global vector of atomics for all active downloads.
 // Each one will store download speed in b/s. Then, using a user-
@@ -82,9 +80,16 @@ impl Downloader {
             .to_string();
 
         Ok(Self {
-            client: Client::builder()
-                .connect_timeout(DOWNLOADER_REQUEST_TIMEOUT)
-                .build()?,
+            client: {
+                let mut builder = Client::builder()
+                    .connect_timeout(STARTUP_CONFIG.general.network.timeout());
+
+                if let Some(proxy) = &STARTUP_CONFIG.general.network.proxy {
+                    builder = builder.proxy(proxy.proxy()?);
+                }
+
+                builder.build()?
+            },
 
             input_url: url,
             output_file: DATA_FOLDER.join(file_name),

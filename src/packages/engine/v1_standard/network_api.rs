@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use mlua::prelude::*;
 
 use reqwest::{Client, Method};
 
-use super::*;
+use crate::config::STARTUP_CONFIG;
 
-// TODO: should get its own config field.
-const NET_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+use super::*;
 
 fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<LuaTable>) -> Result<reqwest::RequestBuilder, LuaError> {
     let mut method = String::from("get");
@@ -80,10 +78,14 @@ pub struct NetworkAPI<'lua> {
 
 impl<'lua> NetworkAPI<'lua> {
     pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
-        let net_client = Arc::new(Client::builder()
-            .connect_timeout(NET_REQUEST_TIMEOUT)
-            .build()?);
+        let mut builder = Client::builder()
+            .connect_timeout(STARTUP_CONFIG.general.network.timeout());
 
+        if let Some(proxy) = &STARTUP_CONFIG.general.network.proxy {
+            builder = builder.proxy(proxy.proxy()?);
+        }
+
+        let net_client = Arc::new(builder.build()?);
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {

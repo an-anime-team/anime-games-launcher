@@ -37,7 +37,11 @@ pub mod prelude {
     pub use super::games::prelude::*;
     pub use super::ui::prelude::*;
 
-    pub use super::config;
+    pub use super::config::{
+        STARTUP_CONFIG,
+        Config,
+        self
+    };
 
     pub use super::{
         APP_ID,
@@ -64,6 +68,10 @@ async fn main() -> anyhow::Result<()> {
         });
 
     // Prepare debug file logger.
+    if let Some(parent) = consts::DEBUG_FILE.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
     let file = std::fs::File::create(consts::DEBUG_FILE.as_path())?;
 
     let debug_log = tracing_subscriber::fmt::layer()

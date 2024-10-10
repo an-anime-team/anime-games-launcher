@@ -98,6 +98,18 @@ impl SimpleAsyncComponent for LoadingWindow {
             // if it didn't exist before.
             config::update(&config)?;
 
+            // Start fetching games manifests for the store page.
+            // tokio::spawn(async move {
+            //     let client = reqwest::Client::builder()
+            //         .connect_timeout(config.games.fetch_timeout)
+
+            //     for url in &config.games.registries {
+            //         let manifest = reqwest::get()
+
+            //         GamesRegistryManifest::from_json(json)
+            //     }
+            // });
+
             // Open generations and packages stores.
             tracing::debug!(
                 generations_store = ?config.generations.store.path,
@@ -164,7 +176,7 @@ impl SimpleAsyncComponent for LoadingWindow {
                     Some(games) => Generation::with_games(games.into_iter().map(|game| game.url)),
                     None => Generation::new()
                 };
-    
+
                 let generation = generation.build(&packages_store, &generations_store).await
                     .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 

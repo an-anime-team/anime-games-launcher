@@ -4,12 +4,14 @@ use serde_json::{json, Value as Json};
 use crate::prelude::*;
 
 pub mod general;
+pub mod games;
 pub mod packages;
 pub mod generations;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     pub general: general::General,
+    pub games: games::Games,
     pub packages: packages::Packages,
     pub generations: generations::Generations
 }
@@ -18,6 +20,7 @@ impl AsJson for Config {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
             "general": self.general.to_json()?,
+            "games": self.games.to_json()?,
             "packages": self.packages.to_json()?,
             "generations": self.generations.to_json()?
         }))
@@ -28,6 +31,10 @@ impl AsJson for Config {
             general: json.get("general")
                 .map(general::General::from_json)
                 .ok_or_else(|| AsJsonError::FieldNotFound("general"))??,
+
+            games: json.get("games")
+                .map(games::Games::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("games"))??,
 
             packages: json.get("packages")
                 .map(packages::Packages::from_json)
@@ -69,4 +76,8 @@ pub fn set(property: impl AsRef<str>, value: impl Into<Json>) -> anyhow::Result<
 /// Update configuration file
 pub fn update(config: &Config) -> anyhow::Result<()> {
     Ok(std::fs::write(CONFIG_FILE.as_path(), serde_json::to_string_pretty(config)?)?)
+}
+
+lazy_static::lazy_static! {
+    pub static ref STARTUP_CONFIG: Config = get();
 }
