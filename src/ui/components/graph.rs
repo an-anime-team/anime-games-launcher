@@ -63,10 +63,6 @@ impl Graph {
 
         cx.set_operator(Operator::Add);
 
-        // Background
-        cx.set_source_rgba(1.0, 1.0, 1.0, 0.05);
-        cx.paint().expect("Failed to paint background");
-
         // Graph lines
         cx.set_line_width(2.0);
 
@@ -138,6 +134,8 @@ impl AsyncComponent for Graph {
         #[root]
         gtk::Box {
             set_orientation: gtk::Orientation::Horizontal,
+            add_css_class: "card",
+
             #[local_ref]
             area -> gtk::DrawingArea {
                 set_content_width: model.width,

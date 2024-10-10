@@ -50,6 +50,8 @@ pub enum MainWindowMsg {
     SetShowSearch(bool),
     SetShowBack(bool),
     GoBack,
+
+    ActivateStorePage,
     ActivateLibraryPage,
 }
 
@@ -167,6 +169,7 @@ impl SimpleAsyncComponent for MainWindow {
                             ));
 
                             match name.as_str() {
+                                "store" => sender.input(MainWindowMsg::ActivateStorePage),
                                 "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
 
                                 _ => ()
@@ -265,6 +268,10 @@ impl SimpleAsyncComponent for MainWindow {
                         _ => ()
                     }
                 }
+            }
+
+            MainWindowMsg::ActivateStorePage => {
+                self.store_page.emit(StorePageInput::Activate);
             }
 
             MainWindowMsg::ActivateLibraryPage => {
