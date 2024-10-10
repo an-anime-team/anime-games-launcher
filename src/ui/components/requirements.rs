@@ -1,6 +1,5 @@
-use adw::prelude::*;
 use gtk::prelude::*;
-
+use adw::prelude::*;
 use relm4::prelude::*;
 
 use hardware_requirements::{requirements::HardwareRequirements, GameHardwareRequirements};

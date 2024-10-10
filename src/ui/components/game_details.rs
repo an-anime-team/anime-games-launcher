@@ -1,7 +1,7 @@
 use gtk::prelude::*;
 use relm4::prelude::*;
 
-use crate::ui::components::prelude::*;
+use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameDetailsInit {
@@ -15,9 +15,6 @@ pub enum GameDetailsInput {
     Update(GameDetailsInit),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameDetailsOutput {}
-
 #[derive(Debug)]
 pub struct GameDetails {
     pub card: AsyncController<CardComponent>,
@@ -30,7 +27,7 @@ pub struct GameDetails {
 impl SimpleAsyncComponent for GameDetails {
     type Init = ();
     type Input = GameDetailsInput;
-    type Output = GameDetailsOutput;
+    type Output = ();
 
     view! {
         adw::Clamp {

@@ -1,10 +1,9 @@
 use adw::prelude::*;
-use gtk::prelude::*;
 
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::ui::components::{downloads_row::*, prelude::*};
+use crate::ui::components::*;
 
 use super::DownloadsPageApp;
 
@@ -17,7 +16,7 @@ pub enum LibraryPageAppMsg {
 
 #[derive(Debug)]
 pub struct LibraryPageApp {
-    cards_list: AsyncFactoryVecDeque<CardsListFactory>,
+    cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameDetails>,
     active_download: AsyncController<DownloadsRow>,
     downloads_page: AsyncController<DownloadsPageApp>,
@@ -93,15 +92,16 @@ impl SimpleAsyncComponent for LibraryPageApp {
         let TEST_PATH = "card.jpg";
 
         let model = Self {
-            cards_list: AsyncFactoryVecDeque::builder().launch_default().forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    CardsListFactoryOutput::Selected(index) => {
-                        LibraryPageAppMsg::ShowGameDetails(index)
-                    }
-                },
-            ),
-            game_details: GameDetails::builder().launch(()).detach(),
+            cards_list: AsyncFactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |msg| match msg {
+                    CardsListOutput::Selected(index) => LibraryPageAppMsg::ShowGameDetails(index)
+                }),
+
+            game_details: GameDetails::builder()
+                .launch(())
+                .detach(),
+
             active_download: DownloadsRow::builder()
                 .launch(DownloadsRowInit::new(
                     TEST_PATH,

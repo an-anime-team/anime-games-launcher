@@ -1,21 +1,20 @@
-use adw::prelude::*;
 use gtk::prelude::*;
 
-use relm4::{factory::AsyncFactoryVecDeque, prelude::*};
+use relm4::prelude::*;
+use relm4::factory::AsyncFactoryVecDeque;
 
-use crate::{
-    games::{
-        manifest::info::{
-            game_tag::GameTag,
-            hardware_requirements::{
-                cpu::CpuHardwareRequirements, disk::DiskHardwareRequirements, disk_type::DiskType,
-                gpu::GpuHardwareRequirements, ram::RamHardwareRequirements,
-                requirements::HardwareRequirements, GameHardwareRequirements,
-            },
+use crate::ui::components::*;
+
+use crate::games::{
+    manifest::info::{
+        game_tag::GameTag,
+        hardware_requirements::{
+            cpu::CpuHardwareRequirements, disk::DiskHardwareRequirements, disk_type::DiskType,
+            gpu::GpuHardwareRequirements, ram::RamHardwareRequirements,
+            requirements::HardwareRequirements, GameHardwareRequirements,
         },
-        prelude::LocalizableString,
     },
-    ui::components::{card::*, cards_row::*},
+    prelude::LocalizableString,
 };
 
 use super::game_page::*;
@@ -25,20 +24,20 @@ pub enum StorePageAppMsg {
     Activate,
     ToggleSearching,
     HideGamePage,
-    Clicked(DynamicIndex, DynamicIndex),
+    Clicked(DynamicIndex)
 }
 
 #[derive(Debug)]
 pub enum StorePageAppOutput {
-    SetShowBack(bool),
+    SetShowBack(bool)
 }
 
 #[derive(Debug)]
 pub struct StorePageApp {
-    rows: AsyncFactoryVecDeque<CardsRowFactory>,
+    games_cards: AsyncFactoryVecDeque<CardsGrid>,
     game_page: AsyncController<GamePageApp>,
     searching: bool,
-    show_game_page: bool,
+    show_game_page: bool
 }
 
 #[relm4::component(pub, async)]
@@ -58,20 +57,30 @@ impl SimpleAsyncComponent for StorePageApp {
                     set_orientation: gtk::Orientation::Vertical,
                     set_margin_all: 16,
                     set_spacing: 16,
+
                     gtk::SearchEntry {
                         #[watch]
                         set_visible: model.searching,
                     },
-                    gtk::ScrolledWindow {
-                        model.rows.widget() {
-                            set_orientation: gtk::Orientation::Vertical,
-                            set_vexpand: true,
+
+                    adw::ClampScrollable {
+                        set_maximum_size: 900,
+
+                        gtk::ScrolledWindow {
+                            model.games_cards.widget() {
+                                set_row_spacing: 8,
+                                set_column_spacing: 8,
+
+                                set_vexpand: true,
+
+                                set_selection_mode: gtk::SelectionMode::None
+                            }
                         }
                     }
                 }
             } else {
                 gtk::Box {
-                    model.game_page.widget() {}
+                    model.game_page.widget(),
                 }
             }
         }
@@ -83,39 +92,36 @@ impl SimpleAsyncComponent for StorePageApp {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let mut model = Self {
-            rows: AsyncFactoryVecDeque::builder().launch_default().forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    CardsRowFactoryOutput::Clicked(row, column) => {
-                        StorePageAppMsg::Clicked(row, column)
-                    }
-                },
-            ),
+            games_cards: AsyncFactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |msg| match msg {
+                    CardsGridOutput::Clicked(index) => StorePageAppMsg::Clicked(index)
+                }),
+
             game_page: GamePageApp::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    GamePageAppOutput::Hide => StorePageAppMsg::HideGamePage,
+                    GamePageAppOutput::Hide => StorePageAppMsg::HideGamePage
                 }),
+
             searching: false,
-            show_game_page: false,
+            show_game_page: false
         };
 
         let widgets = view_output!();
 
-        for name in 'a'..'z' {
-            let index = model.rows.guard().push_back(String::from(name));
-            for i in 0..4 {
-                model.rows.send(
-                    index.current_index(),
-                    CardsRowFactoryMsg::Add(CardComponent {
-                        image: Some(String::from("card.jpg")),
-                        clickable: true,
-                        title: Some(format!("Card {}", i)),
-                        ..CardComponent::medium()
-                    }),
-                )
-            }
+        let mut guard = model.games_cards.guard();
+
+        for i in 0..100 {
+            guard.push_back(CardComponent {
+                title: Some(format!("Example Game {i}")),
+                clickable: true,
+
+                ..CardComponent::medium()
+            });
         }
+
+        drop(guard);
 
         AsyncComponentParts { model, widgets }
     }
@@ -125,10 +131,12 @@ impl SimpleAsyncComponent for StorePageApp {
             StorePageAppMsg::ToggleSearching => {
                 self.searching = !self.searching;
             }
+
             StorePageAppMsg::HideGamePage => {
                 self.show_game_page = false;
             }
-            StorePageAppMsg::Clicked(r, c) => {
+
+            StorePageAppMsg::Clicked(index) => {
                 // Test data
                 self.game_page.sender().send(GamePageAppMsg::Update(GamePageAppInit {
                     card_image: String::from("cover.jpg"),
@@ -223,9 +231,8 @@ Reddit: https://www.reddit.com/r/Genshin_Impact/"),
                 })).unwrap();
 
                 println!(
-                    "Clicked element {} of row {}",
-                    c.current_index(),
-                    r.current_index()
+                    "Clicked element {}",
+                    index.current_index()
                 );
 
                 self.show_game_page = true;

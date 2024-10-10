@@ -1,12 +1,12 @@
 use gtk::prelude::*;
-use relm4::{factory::AsyncFactoryComponent, prelude::*, AsyncFactorySender};
+use relm4::prelude::*;
 
 // 10:14
 pub const DEFAULT_SIZE: (i32, i32) = (240, 336);
 pub const MEDIUM_SIZE: (i32, i32) = (160, 224);
 pub const SMALL_SIZE: (i32, i32) = (40, 56);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CardComponentInput {
     SetImage(Option<String>),
     SetTitle(Option<String>),
@@ -17,12 +17,12 @@ pub enum CardComponentInput {
     SetClickable(bool),
     SetBlurred(bool),
 
-    EmitClick,
+    EmitClick
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CardComponentOutput {
-    Clicked,
+    Clicked
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +34,7 @@ pub struct CardComponent {
     pub height: i32,
 
     pub clickable: bool,
-    pub blurred: bool,
+    pub blurred: bool
 }
 
 impl Default for CardComponent {
@@ -48,7 +48,7 @@ impl Default for CardComponent {
             height: DEFAULT_SIZE.1,
 
             clickable: false,
-            blurred: false,
+            blurred: false
         }
     }
 }
@@ -72,6 +72,20 @@ impl CardComponent {
 
             ..Self::default()
         }
+    }
+
+    #[inline]
+    pub fn with_image(mut self, image: impl ToString) -> Self {
+        self.image = Some(image.to_string());
+
+        self
+    }
+
+    #[inline]
+    pub fn with_title(mut self, title: impl ToString) -> Self {
+        self.title = Some(title.to_string());
+
+        self
     }
 }
 
@@ -149,11 +163,8 @@ impl SimpleAsyncComponent for CardComponent {
         }
     }
 
-    async fn init(
-        model: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    #[inline]
+    async fn init(model: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
@@ -171,135 +182,6 @@ impl SimpleAsyncComponent for CardComponent {
             CardComponentInput::SetBlurred(blurred) => self.blurred = blurred,
 
             CardComponentInput::EmitClick => sender.output(CardComponentOutput::Clicked).unwrap(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CardComponentFactory {
-    pub image: Option<String>,
-    pub title: Option<String>,
-
-    pub width: i32,
-    pub height: i32,
-
-    pub clickable: bool,
-    pub blurred: bool,
-
-    index: DynamicIndex,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardComponentFactoryOutput {
-    Clicked(DynamicIndex),
-}
-
-#[relm4::factory(pub, async)]
-impl AsyncFactoryComponent for CardComponentFactory {
-    type Init = CardComponent;
-    type Input = CardComponentInput;
-    type Output = CardComponentFactoryOutput;
-    type ParentWidget = gtk::Box;
-    type CommandOutput = ();
-
-    view! {
-        #[root]
-        adw::Clamp {
-            #[watch]
-            set_maximum_size: self.width,
-
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-
-                gtk::Overlay {
-                    #[watch]
-                    set_tooltip?: &self.title,
-
-                    gtk::Picture {
-                        set_valign: gtk::Align::Start,
-                        set_halign: gtk::Align::Start,
-
-                        set_content_fit: gtk::ContentFit::Cover,
-
-                        add_css_class: "card",
-
-                        #[watch]
-                        set_size_request: (self.width, self.height),
-
-                        #[watch]
-                        set_opacity: if self.blurred { 0.4 } else { 1.0 },
-
-                        #[watch]
-                        set_resource?: self.image.as_ref()
-                            .and_then(|image| image
-                                .starts_with(crate::APP_RESOURCE_PREFIX)
-                                .then_some(Some(image.as_str()))),
-
-                        #[watch]
-                        set_filename?: self.image.as_ref()
-                            .and_then(|image| (!image
-                                .starts_with(crate::APP_RESOURCE_PREFIX))
-                                .then_some(Some(image.as_str())))
-                    },
-
-                    add_overlay = &gtk::Button {
-                        add_css_class: "flat",
-
-                        #[watch]
-                        set_visible: self.clickable,
-
-                        connect_clicked => CardComponentInput::EmitClick
-                    }
-                },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_halign: gtk::Align::Center,
-
-                    set_margin_all: 12,
-
-                    #[watch]
-                    set_visible: self.title.is_some(),
-
-                    gtk::Label {
-                        #[watch]
-                        set_label?: &self.title
-                    }
-                }
-            }
-        }
-    }
-
-    async fn init_model(
-        init: Self::Init,
-        index: &DynamicIndex,
-        sender: AsyncFactorySender<Self>,
-    ) -> Self {
-        Self {
-            image: init.image,
-            title: init.title,
-            width: init.width,
-            height: init.height,
-            clickable: init.clickable,
-            blurred: init.blurred,
-            index: index.clone(),
-        }
-    }
-
-    async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
-        match msg {
-            CardComponentInput::SetTitle(title) => self.title = title,
-            CardComponentInput::SetImage(image) => self.image = image,
-
-            CardComponentInput::SetWidth(width) => self.width = width,
-            CardComponentInput::SetHeight(height) => self.height = height,
-
-            CardComponentInput::SetClickable(clickable) => self.clickable = clickable,
-            CardComponentInput::SetBlurred(blurred) => self.blurred = blurred,
-
-            CardComponentInput::EmitClick => sender
-                .output(CardComponentFactoryOutput::Clicked(self.index.clone()))
-                .unwrap(),
         }
     }
 }

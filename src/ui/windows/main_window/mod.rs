@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use gtk::prelude::*;
 use relm4::prelude::*;
 
@@ -19,6 +22,7 @@ pub use store_page::{StorePageApp, StorePageAppMsg, StorePageAppOutput};
 
 pub static mut WINDOW: Option<adw::Window> = None;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
     AddGamesRegistry {
@@ -51,6 +55,8 @@ pub struct MainWindow {
     view_stack: adw::ViewStack,
 
     lua: Lua,
+    registries: HashMap<String, Arc<GamesRegistryManifest>>,
+    games: HashMap<String, Arc<GameManifest>>,
     generation: Option<GenerationManifest>,
 
     visible: bool,
@@ -114,21 +120,6 @@ impl SimpleAsyncComponent for MainWindow {
 
                 #[local_ref]
                 view_stack -> adw::ViewStack {
-                    connect_visible_child_notify => move |stack| {
-                        if let Some(name) = stack.visible_child_name() {
-                            sender.input(MainWindowMsg::SetShowSearch(
-                                ["store", "library", "profile"].contains(&name.as_str())
-                            ));
-
-                            match name.as_str() {
-                                "store"   => sender.input(MainWindowMsg::ActivateStorePage),
-                                "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
-
-                                _ => ()
-                            }
-                        }
-                    },
-
                     add = &gtk::Box {
                         set_vexpand: true,
                         set_hexpand: true,
@@ -160,6 +151,21 @@ impl SimpleAsyncComponent for MainWindow {
                         set_title: Some("Profile"),
                         set_name: Some("profile"),
                         set_icon_name: Some("person-symbolic")
+                    },
+
+                    connect_visible_child_notify => move |stack| {
+                        if let Some(name) = stack.visible_child_name() {
+                            sender.input(MainWindowMsg::SetShowSearch(
+                                ["store", "library", "profile"].contains(&name.as_str())
+                            ));
+
+                            match name.as_str() {
+                                "store"   => sender.input(MainWindowMsg::ActivateStorePage),
+                                "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
+
+                                _ => ()
+                            }
+                        }
                     }
                 }
             }
@@ -187,6 +193,8 @@ impl SimpleAsyncComponent for MainWindow {
             view_stack: adw::ViewStack::new(),
 
             lua: Lua::new(),
+            registries: HashMap::new(),
+            games: HashMap::new(),
             generation: None,
 
             visible: false,
@@ -211,11 +219,11 @@ impl SimpleAsyncComponent for MainWindow {
     async fn update(&mut self, message: Self::Input, _sender: AsyncComponentSender<Self>) {
         match message {
             MainWindowMsg::AddGamesRegistry { url, manifest } => {
-                dbg!(manifest);
+                self.registries.insert(url, Arc::new(manifest));
             }
 
             MainWindowMsg::AddGame { url, manifest } => {
-                dbg!(manifest);
+                self.games.insert(url, Arc::new(manifest));
             }
 
             MainWindowMsg::SetGeneration(generation) => self.generation = Some(generation),

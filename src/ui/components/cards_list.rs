@@ -1,18 +1,17 @@
 use gtk::prelude::*;
-use adw::prelude::*;
 
 use relm4::prelude::*;
 use relm4::factory::*;
 
-use super::prelude::CardComponent;
+use super::CardComponent;
 
 #[derive(Debug, Clone)]
-pub struct CardsListFactoryInit {
+pub struct CardsListInit {
     pub title: String,
     pub image: String
 }
 
-impl CardsListFactoryInit {
+impl CardsListInit {
     #[inline]
     pub fn new(title: impl ToString, image: impl ToString) -> Self {
         Self {
@@ -23,17 +22,17 @@ impl CardsListFactoryInit {
 }
 
 #[derive(Debug)]
-pub enum CardsListFactoryInput {
+pub enum CardsListInput {
     Clicked
 }
 
 #[derive(Debug)]
-pub enum CardsListFactoryOutput {
+pub enum CardsListOutput {
     Selected(DynamicIndex)
 }
 
 #[derive(Debug)]
-pub struct CardsListFactory {
+pub struct CardsList {
     pub card: AsyncController<CardComponent>,
 
     pub title: String,
@@ -42,10 +41,10 @@ pub struct CardsListFactory {
 }
 
 #[relm4::factory(pub, async)]
-impl AsyncFactoryComponent for CardsListFactory {
-    type Init = CardsListFactoryInit;
-    type Input = CardsListFactoryInput;
-    type Output = CardsListFactoryOutput;
+impl AsyncFactoryComponent for CardsList {
+    type Init = CardsListInit;
+    type Input = CardsListInput;
+    type Output = CardsListOutput;
     type CommandOutput = ();
     type ParentWidget = gtk::ListBox;
 
@@ -69,7 +68,7 @@ impl AsyncFactoryComponent for CardsListFactory {
 
             set_activatable: true,
 
-            connect_activate => CardsListFactoryInput::Clicked
+            connect_activate => CardsListInput::Clicked
         }
     }
 
@@ -92,8 +91,10 @@ impl AsyncFactoryComponent for CardsListFactory {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
         match msg {
-            CardsListFactoryInput::Clicked => {
-                sender.output(CardsListFactoryOutput::Selected(self.index.clone())).unwrap();
+            CardsListInput::Clicked => {
+                if let Err(err) = sender.output(CardsListOutput::Selected(self.index.clone())) {
+                    tracing::error!(?err, "Failed to send output message");
+                }
             }
         }
     }

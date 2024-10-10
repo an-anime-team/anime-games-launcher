@@ -4,7 +4,7 @@ use gtk::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use super::prelude::CardComponent;
+use super::CardComponent;
 use crate::utils::pretty_bytes;
 
 #[derive(Debug)]
