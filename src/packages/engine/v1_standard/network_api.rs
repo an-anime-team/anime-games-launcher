@@ -78,12 +78,7 @@ pub struct NetworkAPI<'lua> {
 
 impl<'lua> NetworkAPI<'lua> {
     pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
-        let mut builder = Client::builder()
-            .connect_timeout(STARTUP_CONFIG.general.network.timeout());
-
-        if let Some(proxy) = &STARTUP_CONFIG.general.network.proxy {
-            builder = builder.proxy(proxy.proxy()?);
-        }
+        let builder = STARTUP_CONFIG.general.network.builder()?;
 
         let net_client = Arc::new(builder.build()?);
         let net_handles = Arc::new(Mutex::new(HashMap::new()));

@@ -26,6 +26,17 @@ impl Network {
     pub fn timeout(&self) -> Duration {
         Duration::from_millis(self.timeout)
     }
+
+    pub fn builder(&self) -> reqwest::Result<reqwest::ClientBuilder> {
+        let mut builder = reqwest::Client::builder()
+            .connect_timeout(self.timeout());
+
+        if let Some(proxy) = &self.proxy {
+            builder = builder.proxy(proxy.proxy()?);
+        }
+
+        Ok(builder)
+    }
 }
 
 impl AsJson for Network {

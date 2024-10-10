@@ -80,17 +80,7 @@ impl Downloader {
             .to_string();
 
         Ok(Self {
-            client: {
-                let mut builder = Client::builder()
-                    .connect_timeout(STARTUP_CONFIG.general.network.timeout());
-
-                if let Some(proxy) = &STARTUP_CONFIG.general.network.proxy {
-                    builder = builder.proxy(proxy.proxy()?);
-                }
-
-                builder.build()?
-            },
-
+            client: STARTUP_CONFIG.general.network.builder()?.build()?,
             input_url: url,
             output_file: DATA_FOLDER.join(file_name),
             continue_downloading: false
