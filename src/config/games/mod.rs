@@ -3,20 +3,25 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Games {
-    /// List of URLs to the games manifests' registries.
-    pub registries: Vec<String>,
+    pub registries: Vec<String>
+}
 
-    /// Timeout of the manifests fetching, in seconds.
-    pub fetch_timeout: u64
+impl Default for Games {
+    fn default() -> Self {
+        Self {
+            registries: vec![
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/games/registry.json")
+            ]
+        }
+    }
 }
 
 impl AsJson for Games {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
-            "registries": self.registries,
-            "fetch_timeout": self.fetch_timeout
+            "registries": self.registries
         }))
     }
 
@@ -30,12 +35,7 @@ impl AsJson for Games {
                         .map(|url| url.as_str().map(String::from))
                         .collect::<Option<Vec<_>>>()
                 })
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("games.registries"))?,
-
-            fetch_timeout: json.get("fetch_timeout")
-                .ok_or_else(|| AsJsonError::FieldNotFound("games.fetch_timeout"))?
-                .as_u64()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("games.fetch_timeout"))?
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("games.registries"))?
         })
     }
 }
