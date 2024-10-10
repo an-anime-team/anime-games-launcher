@@ -31,6 +31,7 @@ lazy_static::lazy_static! {
 
 pub mod prelude {
     pub use super::consts::*;
+    pub use super::utils::*;
     pub use super::core::prelude::*;
     pub use super::packages::prelude::*;
     pub use super::generations::prelude::*;

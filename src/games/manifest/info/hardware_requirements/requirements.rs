@@ -8,7 +8,7 @@ use super::gpu::GpuHardwareRequirements;
 use super::ram::RamHardwareRequirements;
 use super::disk::DiskHardwareRequirements;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct HardwareRequirements {
     pub cpu: Option<CpuHardwareRequirements>,
     pub gpu: Option<GpuHardwareRequirements>,

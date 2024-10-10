@@ -84,14 +84,14 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                         adw::ActionRow {
                             set_title: "Current speed",
                             #[watch]
-                            set_subtitle: &format!("{}/s", pretty_bytes(model.speed)),
+                            set_subtitle: &format!("{}/s", pretty_bytes(model.speed).0),
                         }
                     },
                     adw::PreferencesGroup {
                         adw::ActionRow {
                             set_title: "Average speed",
                             #[watch]
-                            set_subtitle: &format!("{}/s", pretty_bytes(model.avg_speed)),
+                            set_subtitle: &format!("{}/s", pretty_bytes(model.avg_speed).0),
                         }
                     },
                     adw::PreferencesGroup {
@@ -117,8 +117,9 @@ impl SimpleAsyncComponent for DownloadsPageApp {
                                 DownloadsAppState::StreamUnpacking => "Total unpacked",
                                 DownloadsAppState::Verifying => "Total verified",
                             },
+
                             #[watch]
-                            set_subtitle: &pretty_bytes(model.total),
+                            set_subtitle: &pretty_bytes(model.total).0.to_string(),
                         }
                     },
                 }

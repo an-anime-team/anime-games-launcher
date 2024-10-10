@@ -2,6 +2,8 @@ pub mod card;
 pub mod cards_list;
 pub mod cards_grid;
 
+pub mod hardware_requirements;
+
 // FIXME: NOT REFACTORED
 pub mod downloads_row;
 pub mod game_details;
@@ -9,7 +11,6 @@ pub mod game_tags;
 pub mod graph;
 pub mod maintainers_row;
 pub mod picture_carousel;
-pub mod requirements;
 
 pub use card::{
     CardComponent,

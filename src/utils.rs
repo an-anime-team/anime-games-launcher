@@ -1,17 +1,10 @@
-pub fn pretty_bytes(bytes: u64) -> String {
-    if bytes <= 1024 {
-        format!("{bytes} B")
-    } else if bytes <= 1024 * 1024 {
-        format!("{:.2} KiB", bytes as f64 / 1024.0)
-    } else if bytes <= 1024 * 1024 * 1024 {
-        format!("{:.2} MiB", bytes as f64 / 1024.0 / 1024.0)
-    } else if bytes <= 1024 * 1024 * 1024 * 1024 {
-        format!("{:.2} GiB", bytes as f64 / 1024.0 / 1024.0 / 1024.0)
-    } else {
-        format!("{bytes} B")
-    }
-}
-
+/// Generate pretty time output from given seconds.
+/// 
+/// ```
+/// assert_eq!(pretty_seconds(1),    "00:00:01");
+/// assert_eq!(pretty_seconds(60),   "00:01:00");
+/// assert_eq!(pretty_seconds(3600), "01:00:00");
+/// ```
 pub fn pretty_seconds(mut seconds: u64) -> String {
     let hours = seconds / 3600;
 
@@ -42,15 +35,61 @@ pub fn pretty_seconds(mut seconds: u64) -> String {
     format!("{hours}:{minutes}:{seconds}")
 }
 
-pub fn pretty_frequency(hz: u64, is_ram: bool) -> String {
-    let (value, unit) = if hz < 1000 {
-        (hz as f64, "Hz")
-    } else if hz < 1_000_000 {
-        (hz as f64 / 1000.0, "kHz")
-    } else if hz < 1_000_000_000 || is_ram {
-        (hz as f64 / 1_000_000.0, "MHz")
-    } else {
-        (hz as f64 / 1_000_000_000.0, "GHz")
-    };
-    format!("{} {}", value, unit)
+/// Generate pretty size output.
+/// Second tuple value should be used for further
+/// translation.
+/// 
+/// ```
+/// let pretty = pretty_bytes(123456);
+/// 
+/// assert_eq!(pretty.0, 1234.56);
+/// assert_eq!(pretty.1, "kb");
+/// ```
+pub fn pretty_bytes(bytes: u64) -> (f64, &'static str) {
+    let units = [
+        (1_000_000_000_000, "gb"),
+        (1_000_000_000,     "gb"),
+        (1_000_000,         "mb"),
+        (1_000,             "kb")
+    ];
+
+    for (value, unit) in units {
+        if bytes >= value {
+            return (
+                (bytes as f64) / (value as f64),
+                unit
+            );
+        }
+    }
+
+    (bytes as f64, "b")
+}
+
+/// Generate pretty frequency output.
+/// Second tuple value should be used for further
+/// translation.
+/// 
+/// ```
+/// let pretty = pretty_frequency(123456);
+/// 
+/// assert_eq!(pretty.0, 1234.56);
+/// assert_eq!(pretty.1, "khz");
+/// ```
+pub fn pretty_frequency(hz: u64) -> (f64, &'static str) {
+    let units = [
+        (1_000_000_000, "ghz"),
+        (1_000_000,     "mhz"),
+        (1_000,         "khz")
+    ];
+
+    for (value, unit) in units {
+        if hz >= value {
+            return (
+                (hz as f64) / (value as f64),
+                unit
+            );
+        }
+    }
+
+    (hz as f64, "hz")
 }

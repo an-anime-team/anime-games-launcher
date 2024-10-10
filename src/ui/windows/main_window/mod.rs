@@ -9,18 +9,26 @@ use mlua::prelude::*;
 use crate::prelude::*;
 
 pub mod downloads_page;
-pub mod game_page;
+pub mod game_details_page;
 pub mod library_page;
 pub mod profile_page;
 pub mod store_page;
 
 pub use downloads_page::{DownloadsPageApp, DownloadsPageAppMsg};
-pub use game_page::{GamePageApp, GamePageAppMsg};
 pub use library_page::{LibraryPageApp, LibraryPageAppMsg, LibraryPageAppOutput};
 pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
-pub use store_page::{StorePageApp, StorePageAppMsg, StorePageAppOutput};
 
-pub static mut WINDOW: Option<adw::Window> = None;
+use store_page::{
+    StorePage,
+    StorePageInput,
+    StorePageOutput
+};
+
+use game_details_page::{
+    GameDetailsPage,
+    GameDetailsPageInput,
+    GameDetailsPageOutput
+};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -42,13 +50,12 @@ pub enum MainWindowMsg {
     SetShowSearch(bool),
     SetShowBack(bool),
     GoBack,
-    ActivateStorePage,
     ActivateLibraryPage,
 }
 
 #[derive(Debug)]
 pub struct MainWindow {
-    store_page: AsyncController<StorePageApp>,
+    store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPageApp>,
     profile_page: AsyncController<ProfilePageApp>,
 
@@ -64,7 +71,7 @@ pub struct MainWindow {
     show_search: bool,
     searching: bool,
 
-    show_back: bool,
+    show_back: bool
 }
 
 #[relm4::component(pub, async)]
@@ -160,7 +167,6 @@ impl SimpleAsyncComponent for MainWindow {
                             ));
 
                             match name.as_str() {
-                                "store"   => sender.input(MainWindowMsg::ActivateStorePage),
                                 "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
 
                                 _ => ()
@@ -174,10 +180,10 @@ impl SimpleAsyncComponent for MainWindow {
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
-            store_page: StorePageApp::builder()
+            store_page: StorePage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    StorePageAppOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+                    StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
 
             library_page: LibraryPageApp::builder()
@@ -209,10 +215,6 @@ impl SimpleAsyncComponent for MainWindow {
 
         let widgets = view_output!();
 
-        unsafe {
-            WINDOW = Some(widgets.window.clone());
-        }
-
         AsyncComponentParts { model, widgets }
     }
 
@@ -223,7 +225,14 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::AddGame { url, manifest } => {
-                self.games.insert(url, Arc::new(manifest));
+                let manifest = Arc::new(manifest);
+
+                self.games.insert(url.clone(), manifest.clone());
+
+                self.store_page.emit(StorePageInput::AddGame {
+                    url,
+                    manifest
+                });
             }
 
             MainWindowMsg::SetGeneration(generation) => self.generation = Some(generation),
@@ -231,9 +240,8 @@ impl SimpleAsyncComponent for MainWindow {
             MainWindowMsg::OpenWindow => self.visible = true,
 
             MainWindowMsg::ToggleSearching => {
-                self.store_page
-                    .sender()
-                    .emit(StorePageAppMsg::ToggleSearching);
+                self.store_page.emit(StorePageInput::ToggleSearching);
+
                 self.searching = !self.searching;
             }
 
@@ -251,22 +259,16 @@ impl SimpleAsyncComponent for MainWindow {
                 // Navigate back only on the visible page
                 if let Some(name) = self.view_stack.visible_child_name() {
                     match name.as_str() {
-                        "store" => self.store_page.sender().emit(StorePageAppMsg::HideGamePage),
-                        "library" => self
-                            .library_page
-                            .sender()
-                            .emit(LibraryPageAppMsg::ToggleDownloadsPage),
-                        _ => {}
+                        "store"   => self.store_page.emit(StorePageInput::HideGamePage),
+                        "library" => self.library_page.emit(LibraryPageAppMsg::ToggleDownloadsPage),
+
+                        _ => ()
                     }
                 }
             }
 
-            MainWindowMsg::ActivateStorePage => {
-                self.store_page.sender().emit(StorePageAppMsg::Activate);
-            }
-
             MainWindowMsg::ActivateLibraryPage => {
-                self.library_page.sender().emit(LibraryPageAppMsg::Activate);
+                self.library_page.emit(LibraryPageAppMsg::Activate);
             }
         }
     }

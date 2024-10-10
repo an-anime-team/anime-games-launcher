@@ -1,5 +1,5 @@
-use adw::prelude::*;
 use gtk::prelude::*;
+use adw::prelude::*;
 
 use relm4::factory::*;
 use relm4::prelude::*;
@@ -80,7 +80,12 @@ impl SimpleAsyncComponent for DownloadsRow {
 
             add_suffix = &gtk::Label {
                 #[watch]
-                set_label: &format!("{} / {}", pretty_bytes(model.current_size.unwrap_or(0)), pretty_bytes(model.size.unwrap_or(0))),
+                set_label: {
+                    let curr = pretty_bytes(model.current_size.unwrap_or(0));
+                    let total = pretty_bytes(model.size.unwrap_or(0));
+
+                    &format!("{} {} / {} {}", curr.0, curr.1, total.0, total.1)
+                }
             },
 
             add_suffix = &gtk::Box {
@@ -193,7 +198,12 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
 
             add_suffix = &gtk::Label {
                 #[watch]
-                set_label: &format!("{} / {}", pretty_bytes(self.current_size.unwrap_or(0)), pretty_bytes(self.size.unwrap_or(0))),
+                set_label: {
+                    let curr = pretty_bytes(self.current_size.unwrap_or(0));
+                    let total = pretty_bytes(self.size.unwrap_or(0));
+
+                    &format!("{} {} / {} {}", curr.0, curr.1, total.0, total.1)
+                }
             },
 
             add_suffix = &gtk::Box {
