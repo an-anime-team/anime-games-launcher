@@ -8,6 +8,7 @@ use clap::Parser;
 pub mod consts;
 pub mod core;
 pub mod config;
+pub mod cache;
 pub mod packages;
 pub mod generations;
 pub mod games;
@@ -32,6 +33,8 @@ lazy_static::lazy_static! {
 pub mod prelude {
     pub use super::consts::*;
     pub use super::utils::*;
+    pub use super::cache::*;
+
     pub use super::core::prelude::*;
     pub use super::packages::prelude::*;
     pub use super::generations::prelude::*;
