@@ -4,8 +4,9 @@ use adw::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use super::CardComponent;
 use crate::utils::pretty_bytes;
+
+use super::*;
 
 #[derive(Debug)]
 pub struct DownloadsRowInit {
@@ -128,7 +129,7 @@ impl SimpleAsyncComponent for DownloadsRow {
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent {
-                    image: init.card_image,
+                    image: init.card_image.map(CardImage::path),
                     title: None,
                     ..CardComponent::small()
                 })
@@ -246,7 +247,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
         Self {
             card: CardComponent::builder()
                 .launch(CardComponent {
-                    image: init.card_image,
+                    image: init.card_image.map(CardImage::path),
                     title: None,
                     ..CardComponent::small()
                 })

@@ -234,7 +234,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 self.store_page.emit(StorePageInput::AddGame {
                     url,
-                    manifest
+                    manifest: manifest.clone()
                 });
             }
 

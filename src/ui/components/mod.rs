@@ -13,6 +13,7 @@ pub mod maintainers_row;
 pub mod picture_carousel;
 
 pub use card::{
+    CardImage,
     CardComponent,
     CardComponentInput,
     CardComponentOutput,

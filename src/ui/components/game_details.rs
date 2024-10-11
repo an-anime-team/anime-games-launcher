@@ -170,8 +170,7 @@ impl SimpleAsyncComponent for GameDetails {
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             GameDetailsInput::Update(init) => {
-                self.card
-                    .emit(CardComponentInput::SetImage(Some(init.card_image)));
+                self.card.emit(CardComponentInput::SetImage(Some(CardImage::path(init.card_image))));
 
                 self.background_image = init.background_image;
                 self.title = init.title;

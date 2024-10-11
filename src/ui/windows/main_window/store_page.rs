@@ -15,6 +15,7 @@ pub enum StorePageInput {
         url: String,
         manifest: Arc<GameManifest>
     },
+
     Activate,
     ToggleSearching,
     HideGamePage,
@@ -125,7 +126,9 @@ impl SimpleAsyncComponent for StorePage {
                 };
 
                 self.games_cards.guard().push_back(CardComponent {
+                    image: Some(CardImage::lazy_load(&manifest.game.images.poster)),
                     title: Some(title.to_string()),
+
                     clickable: true,
 
                     ..CardComponent::medium()

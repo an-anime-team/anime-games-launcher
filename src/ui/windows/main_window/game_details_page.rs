@@ -230,13 +230,15 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 self.developer = developer.to_string();
                 self.publisher = publisher.to_string();
 
-                // TODO: clear components
+                self.requirements.emit(HardwareRequirementsComponentMsg::Clear);
 
                 if let Some(info) = &manifest.info {
                     if let Some(requirements) = &info.hardware_requirements {
                         self.requirements.emit(HardwareRequirementsComponentMsg::SetRequirements(requirements.clone()));
                     }
                 }
+
+                self.card.emit(CardComponentInput::SetImage(Some(CardImage::lazy_load(&manifest.game.images.poster))));
             }
 
             GameDetailsPageInput::AddGameClicked => {

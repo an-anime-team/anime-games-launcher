@@ -3,20 +3,20 @@ use gtk::prelude::*;
 use relm4::prelude::*;
 use relm4::factory::*;
 
-use super::CardComponent;
+use super::*;
 
 #[derive(Debug, Clone)]
 pub struct CardsListInit {
-    pub title: String,
-    pub image: String
+    pub image: CardImage,
+    pub title: String
 }
 
 impl CardsListInit {
     #[inline]
-    pub fn new(title: impl ToString, image: impl ToString) -> Self {
+    pub fn new(image: CardImage, title: impl ToString) -> Self {
         Self {
-            title: title.to_string(),
-            image: image.to_string()
+            image,
+            title: title.to_string()
         }
     }
 }
@@ -92,9 +92,7 @@ impl AsyncFactoryComponent for CardsList {
     async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
         match msg {
             CardsListInput::Clicked => {
-                if let Err(err) = sender.output(CardsListOutput::Selected(self.index.clone())) {
-                    tracing::error!(?err, "Failed to send output message");
-                }
+                let _ = sender.output(CardsListOutput::Selected(self.index.clone()));
             }
         }
     }

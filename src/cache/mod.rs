@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use tokio::sync::oneshot::Sender;
+
 use crate::prelude::*;
 
 pub struct FileCache {
@@ -46,7 +48,7 @@ impl FileCache {
     /// // Use the previous cached file if avaialble.
     /// dbg!(prev);
     /// ```
-    pub fn swap(&self, url: impl ToString, callback: impl FnOnce(PathBuf) + Send + Sync + 'static) -> Option<PathBuf> {
+    pub fn swap(&self, url: impl ToString, callback: Sender<PathBuf>) -> Option<PathBuf> {
         let url = url.to_string();
 
         let key = Hash::for_slice(url.as_bytes());
@@ -114,7 +116,7 @@ impl FileCache {
 
                 tracing::trace!(?cache_path, ?url, "Finished cache file renewing");
 
-                callback(cache_path);
+                let _ = callback.send(cache_path);
             });
         }
 
