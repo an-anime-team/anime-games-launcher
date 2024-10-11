@@ -1,7 +1,6 @@
 pub mod json;
 pub mod network;
 pub mod archives;
-pub mod filesystem;
 
 pub mod prelude {
     pub use super::json::{
@@ -41,6 +40,4 @@ pub mod prelude {
         SevenzArchiveExtractionContext,
         SevenzArchiveError
     };
-
-    pub use super::filesystem::transactions::Transaction;
 }
