@@ -51,20 +51,39 @@ impl SimpleAsyncComponent for StorePage {
 
             #[transition(SlideLeftRight)]
             append = if !model.show_game_page {
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_margin_all: 16,
-                    set_spacing: 16,
+                adw::ClampScrollable {
+                    set_maximum_size: 900,
 
-                    gtk::SearchEntry {
-                        #[watch]
-                        set_visible: model.searching,
-                    },
+                    gtk::ScrolledWindow {
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Vertical,
+                            set_margin_all: 16,
+                            set_spacing: 16,
 
-                    adw::ClampScrollable {
-                        set_maximum_size: 900,
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
 
-                        gtk::ScrolledWindow {
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
+
+                                    add_css_class: "title-1",
+        
+                                    set_label: "Games store"
+                                },
+
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
+
+                                    #[watch]
+                                    set_label: &format!("Loaded {} games", model.games.len())
+                                }
+                            },
+
+                            gtk::SearchEntry {
+                                #[watch]
+                                set_visible: model.searching,
+                            },
+
                             model.games_cards.widget() {
                                 set_row_spacing: 8,
                                 set_column_spacing: 8,
@@ -84,11 +103,7 @@ impl SimpleAsyncComponent for StorePage {
         }
     }
 
-    async fn init(
-        _init: Self::Init,
-        root: Self::Root,
-        sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             games_cards: AsyncFactoryVecDeque::builder()
                 .launch_default()
