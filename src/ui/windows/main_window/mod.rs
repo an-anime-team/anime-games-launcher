@@ -14,21 +14,11 @@ pub mod library_page;
 pub mod profile_page;
 pub mod store_page;
 
-pub use downloads_page::{DownloadsPageApp, DownloadsPageAppMsg};
-pub use library_page::{LibraryPageApp, LibraryPageAppMsg, LibraryPageAppOutput};
-pub use profile_page::{ProfilePageApp, ProfilePageAppMsg};
-
-use store_page::{
-    StorePage,
-    StorePageInput,
-    StorePageOutput
-};
-
-use game_details_page::{
-    GameDetailsPage,
-    GameDetailsPageInput,
-    GameDetailsPageOutput
-};
+use downloads_page::*;
+use game_details_page::*;
+use library_page::*;
+use profile_page::*;
+use store_page::*;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]

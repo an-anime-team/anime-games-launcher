@@ -38,7 +38,16 @@ pub use cards_grid::{
     CardsGridOutput
 };
 
+pub use hardware_requirements::{
+    HardwareRequirementsComponent,
+    HardwareRequirementsComponentMsg,
+    HardwareRequirementsSection,
+    HardwareRequirementsSectionMsg
+};
+
 // FIXME: NOT REFACTORED
+pub use game_tags::GameTagFactory;
+
 pub use downloads_row::{
     DownloadsRow,
     DownloadsRowInit,
@@ -53,4 +62,14 @@ pub use game_details::{
     GameDetails,
     GameDetailsInit,
     GameDetailsInput
+};
+
+pub use maintainers_row::{
+    MaintainersRowFactory,
+    MaintainersRowFactoryMsg
+};
+
+pub use picture_carousel::{
+    PictureCarousel,
+    PictureCarouselMsg
 };

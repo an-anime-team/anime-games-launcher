@@ -8,13 +8,7 @@ use relm4::factory::AsyncFactoryVecDeque;
 use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
-
 use crate::ui::components::*;
-
-use crate::ui::components::{
-    card::*, game_tags::*, maintainers_row::MaintainersRowFactory, picture_carousel::*,
-    hardware_requirements::*,
-};
 
 #[derive(Debug)]
 pub struct GameDetailsPage {
@@ -33,22 +27,17 @@ pub struct GameDetailsPage {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameDetailsPageInput {
+pub enum GameDetailsPageMsg {
     SetGameInfo(Arc<GameManifest>),
 
     AddGameClicked
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameDetailsPageOutput {
-    Hide
-}
-
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameDetailsPage {
     type Init = ();
-    type Input = GameDetailsPageInput;
-    type Output = GameDetailsPageOutput;
+    type Input = GameDetailsPageMsg;
+    type Output = ();
 
     view! {
         #[root]
@@ -134,7 +123,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
                                 set_label: "Add",
 
-                                connect_clicked => GameDetailsPageInput::AddGameClicked
+                                connect_clicked => GameDetailsPageMsg::AddGameClicked
                             },
 
                             gtk::Box {
@@ -166,7 +155,9 @@ impl SimpleAsyncComponent for GameDetailsPage {
                                     set_orientation: gtk::Orientation::Vertical,
                                     set_spacing: 16,
 
-                                    model.tags.widget(),
+                                    model.tags.widget() {
+                                        set_selection_mode: gtk::SelectionMode::None
+                                    },
 
                                     adw::PreferencesGroup {
                                         set_title: "Package",
@@ -221,7 +212,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameDetailsPageInput::SetGameInfo(manifest) => {
+            GameDetailsPageMsg::SetGameInfo(manifest) => {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>().ok();
@@ -256,12 +247,25 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
                 self.carousel.emit(PictureCarouselMsg::SetImages(manifest.game.images.slides.iter().map(ImagePath::lazy_load).collect()));
 
-                // Set hardware requirements.
+                // Reset general game info.
+                self.tags.guard().clear();
+
                 self.requirements.emit(HardwareRequirementsComponentMsg::Clear);
 
                 self.show_requirements = false;
 
+                // Update general game info.
                 if let Some(info) = &manifest.info {
+                    // Set game tags.
+                    if let Some(tags) = &info.tags {
+                        let mut guard = self.tags.guard();
+
+                        for tag in tags {
+                            guard.push_back(tag.to_owned());
+                        }
+                    }
+
+                    // Set hardware requirements.
                     if let Some(requirements) = &info.hardware_requirements {
                         self.show_requirements = true;
 
@@ -270,7 +274,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 }
             }
 
-            GameDetailsPageInput::AddGameClicked => {
+            GameDetailsPageMsg::AddGameClicked => {
                 todo!()
             }
         }

@@ -113,9 +113,7 @@ impl SimpleAsyncComponent for StorePage {
 
             game_details_page: GameDetailsPage::builder()
                 .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    GameDetailsPageOutput::Hide => StorePageInput::HideGamePage
-                }),
+                .detach(),
 
             games: Vec::new(),
 
@@ -169,7 +167,7 @@ impl SimpleAsyncComponent for StorePage {
                     return;
                 };
 
-                self.game_details_page.emit(GameDetailsPageInput::SetGameInfo(game.clone()));
+                self.game_details_page.emit(GameDetailsPageMsg::SetGameInfo(game.clone()));
 
                 self.show_game_page = true;
             }
