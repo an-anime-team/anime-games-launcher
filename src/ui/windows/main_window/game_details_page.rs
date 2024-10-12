@@ -76,6 +76,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
+                                set_spacing: 8,
 
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
@@ -95,6 +96,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
                             gtk::Box {
                                 set_orientation: gtk::Orientation::Vertical,
+                                set_spacing: 8,
 
                                 #[watch]
                                 set_visible: model.show_requirements,
@@ -114,6 +116,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
                         gtk::Box {
                             set_orientation: gtk::Orientation::Vertical,
                             set_valign: gtk::Align::Start,
+
                             set_spacing: 16,
 
                             model.card.widget(),
