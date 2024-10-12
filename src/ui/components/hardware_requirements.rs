@@ -83,7 +83,16 @@ impl SimpleAsyncComponent for HardwareRequirementsComponent {
 
                 sender.input(HardwareRequirementsComponentMsg::Clear);
 
-                self.minimal_page.set_visible(true);
+                fn has_entries(requirements: &HardwareRequirements) -> bool {
+                    requirements.cpu.is_some() ||
+                    requirements.gpu.is_some() ||
+                    requirements.ram.is_some() ||
+                    requirements.disk.is_some()
+                }
+
+                if has_entries(&requirements.minimal) {
+                    self.minimal_page.set_visible(true);
+                }
 
                 self.minimal.emit(HardwareRequirementsSectionMsg::SetRequirements {
                     requirements: requirements.minimal,
@@ -91,7 +100,9 @@ impl SimpleAsyncComponent for HardwareRequirementsComponent {
                 });
 
                 if let Some(requirements) = requirements.optimal {
-                    self.optimal_page.set_visible(true);
+                    if has_entries(&requirements) {
+                        self.minimal_page.set_visible(true);
+                    }
 
                     self.optimal.emit(HardwareRequirementsSectionMsg::SetRequirements {
                         requirements,

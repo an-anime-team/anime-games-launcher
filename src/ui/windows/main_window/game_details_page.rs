@@ -27,7 +27,9 @@ pub struct GameDetailsPage {
     title: String,
     description: String,
     developer: String,
-    publisher: String
+    publisher: String,
+
+    show_requirements: bool
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,32 +81,45 @@ impl SimpleAsyncComponent for GameDetailsPage {
                             set_orientation: gtk::Orientation::Vertical,
                             set_halign: gtk::Align::Center,
 
-                            set_spacing: 8,
+                            set_spacing: 16,
 
                             model.carousel.widget(),
 
-                            gtk::Label {
-                                set_align: gtk::Align::Start,
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
 
-                                add_css_class: "title-4",
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
 
-                                set_text: "About"
+                                    add_css_class: "title-4",
+
+                                    set_text: "About"
+                                },
+    
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
+
+                                    #[watch]
+                                    set_text: &model.description
+                                }
                             },
 
-                            gtk::Label {
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
+
                                 #[watch]
-                                set_text: &model.description
-                            },
+                                set_visible: model.show_requirements,
 
-                            gtk::Label {
-                                set_align: gtk::Align::Start,
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
 
-                                add_css_class: "title-4",
+                                    add_css_class: "title-4",
 
-                                set_text: "System Requirements",
-                            },
+                                    set_text: "System Requirements",
+                                },
 
-                            model.requirements.widget(),
+                                model.requirements.widget(),
+                            }
                         },
 
                         gtk::Box {
@@ -122,22 +137,26 @@ impl SimpleAsyncComponent for GameDetailsPage {
                                 connect_clicked => GameDetailsPageInput::AddGameClicked
                             },
 
-                            gtk::Label {
-                                set_align: gtk::Align::Start,
+                            gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
 
-                                add_css_class: "dim-label",
-
-                                #[watch]
-                                set_text: &format!("Developer: {}", model.developer)
-                            },
-
-                            gtk::Label {
-                                set_align: gtk::Align::Start,
-
-                                add_css_class: "dim-label",
-
-                                #[watch]
-                                set_text: &format!("Publisher: {}", model.publisher)
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
+    
+                                    add_css_class: "dim-label",
+    
+                                    #[watch]
+                                    set_text: &format!("Developer: {}", model.developer)
+                                },
+    
+                                gtk::Label {
+                                    set_align: gtk::Align::Start,
+    
+                                    add_css_class: "dim-label",
+    
+                                    #[watch]
+                                    set_text: &format!("Publisher: {}", model.publisher)
+                                }
                             },
 
                             gtk::ScrolledWindow {
@@ -190,7 +209,9 @@ impl SimpleAsyncComponent for GameDetailsPage {
             title: String::new(),
             developer: String::new(),
             publisher: String::new(),
-            description: String::new()
+            description: String::new(),
+
+            show_requirements: false
         };
 
         let widgets = view_output!();
@@ -204,8 +225,6 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>().ok();
-
-                // TODO: handle images
 
                 let title = match &lang {
                     Some(lang) => manifest.game.title.translate(lang),
@@ -227,18 +246,25 @@ impl SimpleAsyncComponent for GameDetailsPage {
                     None => manifest.game.publisher.default_translation()
                 };
 
+                // Set text info.
                 self.title = title.to_string();
                 self.description = description.to_string();
                 self.developer = developer.to_string();
                 self.publisher = publisher.to_string();
 
+                // Set images.
                 self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
                 self.carousel.emit(PictureCarouselMsg::SetImages(manifest.game.images.slides.iter().map(ImagePath::lazy_load).collect()));
 
+                // Set hardware requirements.
                 self.requirements.emit(HardwareRequirementsComponentMsg::Clear);
+
+                self.show_requirements = false;
 
                 if let Some(info) = &manifest.info {
                     if let Some(requirements) = &info.hardware_requirements {
+                        self.show_requirements = true;
+
                         self.requirements.emit(HardwareRequirementsComponentMsg::SetRequirements(requirements.clone()));
                     }
                 }
