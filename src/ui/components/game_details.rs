@@ -124,7 +124,7 @@ impl SimpleAsyncComponent for GameDetails {
                     set_spacing: 8,
 
                     gtk::DropDown {
-                        set_width_request: CARD_MEDIUM_SIZE.0,
+                        set_width_request: CardSize::Medium.width(),
 
                         add_css_class: "flat",
 
@@ -170,7 +170,7 @@ impl SimpleAsyncComponent for GameDetails {
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             GameDetailsInput::Update(init) => {
-                self.card.emit(CardComponentInput::SetImage(Some(CardImage::path(init.card_image))));
+                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::path(init.card_image))));
 
                 self.background_image = init.background_image;
                 self.title = init.title;

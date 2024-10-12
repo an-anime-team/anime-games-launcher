@@ -1,3 +1,4 @@
+pub mod lazy_picture;
 pub mod card;
 pub mod cards_list;
 pub mod cards_grid;
@@ -12,15 +13,17 @@ pub mod graph;
 pub mod maintainers_row;
 pub mod picture_carousel;
 
+pub use lazy_picture::{
+    ImagePath,
+    LazyPictureComponent,
+    LazyPictureComponentMsg
+};
+
 pub use card::{
-    CardImage,
+    CardSize,
     CardComponent,
     CardComponentInput,
-    CardComponentOutput,
-
-    DEFAULT_SIZE as CARD_DEFAULT_SIZE,
-    SMALL_SIZE as CARD_SMALL_SIZE,
-    MEDIUM_SIZE as CARD_MEDIUM_SIZE
+    CardComponentOutput
 };
 
 pub use cards_list::{

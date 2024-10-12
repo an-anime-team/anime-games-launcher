@@ -1,69 +1,49 @@
-use std::path::PathBuf;
-
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::prelude::*;
+use super::*;
 
-// 10:14
-pub const DEFAULT_SIZE: (i32, i32) = (240, 336);
-pub const MEDIUM_SIZE: (i32, i32) = (160, 224);
-pub const SMALL_SIZE: (i32, i32) = (40, 56);
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CardSize {
+    #[default]
+    Large,
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CardImage {
-    /// Direct path to the existing image.
-    Path(PathBuf),
-
-    /// Path to the GTK resource.
-    Resource(String),
-
-    /// Lazily load the image from the given URL.
-    LazyLoad(String)
+    Medium,
+    Small
 }
 
-impl CardImage {
+impl CardSize {
     #[inline]
-    /// Create new image from the filesystem path.
-    /// 
-    /// ```
-    /// CardImage::lazy_load("/tmp/image.png")
-    /// ```
-    pub fn path(path: impl Into<PathBuf>) -> Self {
-        Self::Path(path.into())
+    pub fn width(&self) -> i32 {
+        match self {
+            Self::Large  => 240,
+            Self::Medium => 160,
+            Self::Small  => 40
+        }
     }
 
     #[inline]
-    /// Create new image stored in the GTK resources.
-    /// This function will automatically append the app prefix.
-    /// 
-    /// ```
-    /// // APP_RESOURCE_PREFIX/images/icon.png
-    /// CardImage::lazy_load("images/icon.png")
-    /// ```
-    pub fn resource(path: impl AsRef<str>) -> Self {
-        Self::Resource(format!("{APP_RESOURCE_PREFIX}/{}", path.as_ref()))
+    pub fn height(&self) -> i32 {
+        // 10:14
+        match self {
+            Self::Large  => 336,
+            Self::Medium => 224,
+            Self::Small  => 56
+        }
     }
 
     #[inline]
-    /// Create new lazy loaded image.
-    /// 
-    /// ```
-    /// CardImage::lazy_load("https://example.com/image.png")
-    /// ```
-    pub fn lazy_load(url: impl ToString) -> Self {
-        Self::LazyLoad(url.to_string())
+    pub fn size(&self) -> (i32, i32) {
+        (self.width(), self.height())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CardComponentInput {
-    SetImage(Option<CardImage>),
+    SetImage(Option<ImagePath>),
     SetTitle(Option<String>),
 
-    SetWidth(i32),
-    SetHeight(i32),
-
+    SetSize(CardSize),
     SetClickable(bool),
     SetBlurred(bool),
 
@@ -75,58 +55,81 @@ pub enum CardComponentOutput {
     Clicked
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct CardComponent {
-    pub image: Option<CardImage>,
+    picture: AsyncController<LazyPictureComponent>,
+
+    pub size: CardSize,
     pub title: Option<String>,
-
-    pub width: i32,
-    pub height: i32,
-
-    pub clickable: bool,
-    pub blurred: bool
-}
-
-impl Default for CardComponent {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            image: None,
-            title: None,
-
-            width: DEFAULT_SIZE.0,
-            height: DEFAULT_SIZE.1,
-
-            clickable: false,
-            blurred: false
-        }
-    }
+    pub clickable: bool
 }
 
 impl CardComponent {
-    #[inline]
+    pub fn large() -> Self {
+        let size = CardSize::Large;
+
+        Self {
+            picture: LazyPictureComponent::builder()
+                .launch(LazyPictureComponent {
+                    image: None,
+
+                    width: Some(size.width()),
+                    height: Some(size.height()),
+
+                    blurred: false
+                })
+                .detach(),
+
+            size,
+            title: None,
+            clickable: false
+        }
+    }
+
     pub fn medium() -> Self {
-        Self {
-            width: MEDIUM_SIZE.0,
-            height: MEDIUM_SIZE.1,
+        let size = CardSize::Medium;
 
-            ..Self::default()
+        Self {
+            picture: LazyPictureComponent::builder()
+                .launch(LazyPictureComponent {
+                    image: None,
+
+                    width: Some(size.width()),
+                    height: Some(size.height()),
+
+                    blurred: false
+                })
+                .detach(),
+
+            size,
+            title: None,
+            clickable: false
         }
     }
 
-    #[inline]
     pub fn small() -> Self {
-        Self {
-            width: SMALL_SIZE.0,
-            height: SMALL_SIZE.1,
+        let size = CardSize::Small;
 
-            ..Self::default()
+        Self {
+            picture: LazyPictureComponent::builder()
+                .launch(LazyPictureComponent {
+                    image: None,
+
+                    width: Some(size.width()),
+                    height: Some(size.height()),
+
+                    blurred: false
+                })
+                .detach(),
+
+            size,
+            title: None,
+            clickable: false
         }
     }
 
-    #[inline]
-    pub fn with_image(mut self, image: CardImage) -> Self {
-        self.image = Some(image);
+    pub fn with_image(self, image: ImagePath) -> Self {
+        self.picture.emit(LazyPictureComponentMsg::SetImage(Some(image)));
 
         self
     }
@@ -134,6 +137,13 @@ impl CardComponent {
     #[inline]
     pub fn with_title(mut self, title: impl ToString) -> Self {
         self.title = Some(title.to_string());
+
+        self
+    }
+
+    #[inline]
+    pub fn with_clickable(mut self, clickable: bool) -> Self {
+        self.clickable = clickable;
 
         self
     }
@@ -149,7 +159,7 @@ impl SimpleAsyncComponent for CardComponent {
         #[root]
         adw::Clamp {
             #[watch]
-            set_maximum_size: model.width,
+            set_maximum_size: model.size.width(),
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -158,68 +168,8 @@ impl SimpleAsyncComponent for CardComponent {
                     #[watch]
                     set_tooltip?: &model.title,
 
-                    gtk::Picture {
-                        set_valign: gtk::Align::Start,
-                        set_halign: gtk::Align::Start,
-
-                        set_content_fit: gtk::ContentFit::Cover,
-
-                        add_css_class: "card",
-
-                        #[watch]
-                        set_size_request: (model.width, model.height),
-
-                        #[watch]
-                        set_opacity: if model.blurred { 0.4 } else { 1.0 },
-
-                        #[watch]
-                        set_filename?: match &model.image {
-                            Some(CardImage::Path(path)) => Some(Some(path.to_path_buf())),
-
-                            Some(CardImage::LazyLoad(url)) => {
-                                let sender = sender.input_sender();
-
-                                let (path_sender, path_reader) = tokio::sync::oneshot::channel();
-
-                                {
-                                    let sender = sender.clone();
-
-                                    tokio::spawn(async move {
-                                        if let Ok(path) = path_reader.await {
-                                            sender.emit(CardComponentInput::SetImage(Some(CardImage::path(path))));
-                                        }
-                                    });
-                                }
-
-                                let path = FileCache::default().swap(url, path_sender);
-
-                                if let Some(path) = &path {
-                                    sender.emit(CardComponentInput::SetImage(Some(CardImage::path(path))));
-                                }
-
-                                Some(path)
-                            },
-
-                            _ => None
-                        },
-
-                        // FUCK YOU, GTK-RS !!!
-
-                        #[watch]
-                        set_resource?: if let Some(CardImage::Resource(path)) = &model.image {
-                            Some(Some(path.as_str()))
-                        } else {
-                            None
-                        },
-
-                        #[watch]
-                        set_resource?: if let Some(CardImage::LazyLoad(_)) = &model.image {
-                            // let path = format!("{APP_RESOURCE_PREFIX}/images/missing-card.png");
-
-                            Some(Some("/moe/launcher/anime-games-launcher/images/missing-card.png"))
-                        } else {
-                            None
-                        }
+                    model.picture.widget() {
+                        add_css_class: "card"
                     },
 
                     add_overlay = &gtk::Button {
@@ -260,13 +210,23 @@ impl SimpleAsyncComponent for CardComponent {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             CardComponentInput::SetTitle(title) => self.title = title,
-            CardComponentInput::SetImage(image) => self.image = image,
 
-            CardComponentInput::SetWidth(width) => self.width = width,
-            CardComponentInput::SetHeight(height) => self.height = height,
+            CardComponentInput::SetImage(image) => {
+                self.picture.emit(LazyPictureComponentMsg::SetImage(image));
+            }
+
+            CardComponentInput::SetSize(size) => {
+                self.size = size;
+
+                self.picture.emit(LazyPictureComponentMsg::SetWidth(Some(size.width())));
+                self.picture.emit(LazyPictureComponentMsg::SetHeight(Some(size.height())));
+            }
 
             CardComponentInput::SetClickable(clickable) => self.clickable = clickable,
-            CardComponentInput::SetBlurred(blurred) => self.blurred = blurred,
+
+            CardComponentInput::SetBlurred(blurred) => {
+                self.picture.emit(LazyPictureComponentMsg::SetBlurred(blurred));
+            }
 
             CardComponentInput::EmitClick => {
                 let _ = sender.output(CardComponentOutput::Clicked);

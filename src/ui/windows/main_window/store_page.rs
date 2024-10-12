@@ -125,14 +125,12 @@ impl SimpleAsyncComponent for StorePage {
                     None => manifest.game.title.default_translation()
                 };
 
-                self.games_cards.guard().push_back(CardComponent {
-                    image: Some(CardImage::lazy_load(&manifest.game.images.poster)),
-                    title: Some(title.to_string()),
+                let card = CardComponent::medium()
+                    .with_image(ImagePath::lazy_load(&manifest.game.images.poster))
+                    .with_title(title)
+                    .with_clickable(true);
 
-                    clickable: true,
-
-                    ..CardComponent::medium()
-                });
+                self.games_cards.guard().push_back(card);
 
                 self.games.push(manifest);
             }

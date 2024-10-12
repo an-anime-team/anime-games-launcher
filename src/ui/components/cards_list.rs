@@ -7,13 +7,13 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct CardsListInit {
-    pub image: CardImage,
+    pub image: ImagePath,
     pub title: String
 }
 
 impl CardsListInit {
     #[inline]
-    pub fn new(image: CardImage, title: impl ToString) -> Self {
+    pub fn new(image: ImagePath, title: impl ToString) -> Self {
         Self {
             image,
             title: title.to_string()
@@ -33,10 +33,9 @@ pub enum CardsListOutput {
 
 #[derive(Debug)]
 pub struct CardsList {
-    pub card: AsyncController<CardComponent>,
+    card: AsyncController<CardComponent>,
 
-    pub title: String,
-
+    title: String,
     index: DynamicIndex
 }
 
@@ -75,17 +74,12 @@ impl AsyncFactoryComponent for CardsList {
     async fn init_model(init: Self::Init, index: &DynamicIndex, _sender: AsyncFactorySender<Self>) -> Self {
         Self {
             card: CardComponent::builder()
-                .launch(CardComponent {
-                    image: Some(init.image),
-                    title: None,
-
-                    ..CardComponent::small()
-                })
+                .launch(CardComponent::small().with_image(init.image))
                 .detach(),
 
             title: init.title,
 
-            index: index.clone()
+            index: index.to_owned()
         }
     }
 

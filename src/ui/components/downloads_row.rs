@@ -127,11 +127,7 @@ impl SimpleAsyncComponent for DownloadsRow {
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
-                .launch(CardComponent {
-                    image: init.card_image.map(CardImage::path),
-                    title: None,
-                    ..CardComponent::small()
-                })
+                .launch(CardComponent::small())
                 .detach(),
             title: init.title,
             version: init.version,
@@ -245,11 +241,7 @@ impl AsyncFactoryComponent for DownloadsRowFactory {
     ) -> Self {
         Self {
             card: CardComponent::builder()
-                .launch(CardComponent {
-                    image: init.card_image.map(CardImage::path),
-                    title: None,
-                    ..CardComponent::small()
-                })
+                .launch(CardComponent::small())
                 .detach(),
             title: init.title,
             version: init.version,

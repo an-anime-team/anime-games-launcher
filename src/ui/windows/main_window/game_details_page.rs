@@ -9,6 +9,8 @@ use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 
+use crate::ui::components::*;
+
 use crate::ui::components::{
     card::*, game_tags::*, maintainers_row::MaintainersRowFactory, picture_carousel::*,
     hardware_requirements::*,
@@ -165,7 +167,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
-                .launch(CardComponent::default())
+                .launch(CardComponent::large())
                 .detach(),
 
             carousel: PictureCarousel::builder()
@@ -237,7 +239,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
                     }
                 }
 
-                self.card.emit(CardComponentInput::SetImage(Some(CardImage::lazy_load(&manifest.game.images.poster))));
+                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
             }
 
             GameDetailsPageInput::AddGameClicked => {
