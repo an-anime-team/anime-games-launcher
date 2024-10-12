@@ -231,6 +231,9 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 self.developer = developer.to_string();
                 self.publisher = publisher.to_string();
 
+                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
+                self.carousel.emit(PictureCarouselMsg::SetImages(manifest.game.images.slides.iter().map(ImagePath::lazy_load).collect()));
+
                 self.requirements.emit(HardwareRequirementsComponentMsg::Clear);
 
                 if let Some(info) = &manifest.info {
@@ -238,8 +241,6 @@ impl SimpleAsyncComponent for GameDetailsPage {
                         self.requirements.emit(HardwareRequirementsComponentMsg::SetRequirements(requirements.clone()));
                     }
                 }
-
-                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
             }
 
             GameDetailsPageInput::AddGameClicked => {
