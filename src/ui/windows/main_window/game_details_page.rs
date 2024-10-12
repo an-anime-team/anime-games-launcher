@@ -61,6 +61,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
+                        set_margin_bottom: 16,
 
                         add_css_class: "title-1",
 

@@ -29,7 +29,7 @@ impl SimpleAsyncComponent for PictureCarousel {
         gtk::Overlay {
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 16,
+                set_spacing: 8,
 
                 model.pictures.widget() {
                     set_width_request: (CardSize::Large.width() as f32 * 16.0 / 9.0) as i32,
@@ -138,7 +138,9 @@ impl AsyncFactoryComponent for PictureCarouselFactory {
     view! {
         #[root]
         gtk::Box {
-            self.picture.widget(),
+            self.picture.widget() {
+                add_css_class: "card"
+            }
         }
     }
 
