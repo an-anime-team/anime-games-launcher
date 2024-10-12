@@ -10,6 +10,7 @@ use v1_standard::{
     InstallationDiff
 };
 
+#[derive(Debug, Clone)]
 /// Unified wrapper around game integration standards.
 pub enum GameEngine<'lua> {
     V1(v1_standard::GameIntegration<'lua>)

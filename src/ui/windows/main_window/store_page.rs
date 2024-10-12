@@ -32,7 +32,7 @@ pub struct StorePage {
     games_cards: AsyncFactoryVecDeque<CardsGrid>,
     game_details_page: AsyncController<GameDetailsPage>,
 
-    games: Vec<Arc<GameManifest>>,
+    games: Vec<(String, Arc<GameManifest>)>,
 
     searching: bool,
     show_game_page: bool
@@ -128,7 +128,7 @@ impl SimpleAsyncComponent for StorePage {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            StorePageInput::AddGame { url: _, manifest } => {
+            StorePageInput::AddGame { url, manifest } => {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>().ok();
@@ -145,7 +145,7 @@ impl SimpleAsyncComponent for StorePage {
 
                 self.games_cards.guard().push_back(card);
 
-                self.games.push(manifest);
+                self.games.push((url, manifest));
             }
 
             StorePageInput::ToggleSearching => {
@@ -157,7 +157,7 @@ impl SimpleAsyncComponent for StorePage {
             }
 
             StorePageInput::OpenGameDetails(index) => {
-                let Some(game) = self.games.get(index.current_index()) else {
+                let Some((url, game)) = self.games.get(index.current_index()) else {
                     tracing::error!(
                         index = index.current_index(),
                         length = self.games.len(),
@@ -167,7 +167,10 @@ impl SimpleAsyncComponent for StorePage {
                     return;
                 };
 
-                self.game_details_page.emit(GameDetailsPageMsg::SetGameInfo(game.clone()));
+                self.game_details_page.emit(GameDetailsPageMsg::SetGameInfo {
+                    url: url.clone(),
+                    manifest: game.clone()
+                });
 
                 self.show_game_page = true;
             }

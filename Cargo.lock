@@ -64,6 +64,7 @@ dependencies = [
  "md-5",
  "mimalloc",
  "mlua",
+ "once_cell",
  "rand",
  "relm4",
  "reqwest",

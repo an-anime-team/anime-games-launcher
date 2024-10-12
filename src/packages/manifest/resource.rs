@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
 
@@ -31,8 +33,9 @@ impl AsJson for Resource {
 
             format: json.get("format")
                 .and_then(Json::as_str)
-                .map(PackageResourceFormat::predict)
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("format"))?,
+                .map(PackageResourceFormat::from_str)
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("format"))?
+                .map_err(|err| AsJsonError::Other(err.into()))?,
 
             hash: {
                 match json.get("hash") {

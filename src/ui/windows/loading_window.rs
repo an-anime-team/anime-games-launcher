@@ -13,7 +13,6 @@ pub enum LoadingWindowMsg {
     LoadMainWindow(GenerationManifest)
 }
 
-#[derive(Debug)]
 pub struct LoadingWindow {
     main_window: AsyncController<MainWindow>,
 

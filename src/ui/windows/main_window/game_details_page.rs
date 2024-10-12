@@ -18,6 +18,8 @@ pub struct GameDetailsPage {
     tags: AsyncFactoryVecDeque<GameTagFactory>,
     requirements: AsyncController<HardwareRequirementsComponent>,
 
+    game_url: String,
+
     title: String,
     description: String,
     developer: String,
@@ -28,7 +30,10 @@ pub struct GameDetailsPage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameDetailsPageMsg {
-    SetGameInfo(Arc<GameManifest>),
+    SetGameInfo {
+        url: String,
+        manifest: Arc<GameManifest>
+    },
 
     AddGameClicked
 }
@@ -200,6 +205,8 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 .launch(())
                 .detach(),
 
+            game_url: String::new(),
+
             title: String::new(),
             developer: String::new(),
             publisher: String::new(),
@@ -215,7 +222,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameDetailsPageMsg::SetGameInfo(manifest) => {
+            GameDetailsPageMsg::SetGameInfo { url, manifest } => {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>().ok();
@@ -241,6 +248,8 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 };
 
                 // Set text info.
+                self.game_url = url;
+
                 self.title = title.to_string();
                 self.description = description.to_string();
                 self.developer = developer.to_string();
@@ -278,7 +287,55 @@ impl SimpleAsyncComponent for GameDetailsPage {
             }
 
             GameDetailsPageMsg::AddGameClicked => {
-                todo!()
+                tracing::trace!("Loading latest generation");
+
+                let packages_store = PackagesStore::new(&STARTUP_CONFIG.packages.resources_store.path);
+                let generations_store = GenerationsStore::new(&STARTUP_CONFIG.generations.store.path);
+
+                // FIXME
+                let generation = generations_store.latest()
+                    .unwrap()
+                    .and_then(|generation| generations_store.load(&generation).transpose())
+                    .transpose()
+                    .unwrap();
+
+                tracing::trace!("Preparing locked games list");
+
+                let games = match generation {
+                    Some(generation) => {
+                        let mut games = generation.games.into_iter()
+                            .map(|game| game.url)
+                            .collect::<Vec<_>>();
+
+                        games.push(self.game_url.clone());
+
+                        games
+                    }
+
+                    None => vec![
+                        self.game_url.clone()
+                    ]
+                };
+
+                tracing::trace!(?games, "Building new generation");
+
+                let generation = Generation::with_games(games)
+                    .build(&packages_store, &generations_store)
+                    .await;
+
+                match generation {
+                    Ok(generation) => {
+                        if let Err(err) = generations_store.insert(&generation) {
+                            tracing::error!(?err, ?generations_store, ?generation, "Failed to index new generation");
+                        }
+
+                        tracing::debug!(generation = generation.hash().to_base32(), "Built new generation");
+                    }
+
+                    Err(err) => {
+                        tracing::error!(?err, "Failed to build new generation");
+                    }
+                }
             }
         }
     }

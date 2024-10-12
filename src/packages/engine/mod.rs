@@ -85,8 +85,11 @@ impl<'lua> PackagesEngine<'lua> {
             match resource.format {
                 PackageResourceFormat::Package => {
                     let package = lua.create_table()?;
+
                     let inputs_table = lua.create_table()?;
                     let outputs_table = lua.create_table()?;
+
+                    resource_table.set("value", package.clone())?;
 
                     // Load inputs and outputs of the package,
                     // push to the queue which weren't processed yet.
@@ -116,8 +119,6 @@ impl<'lua> PackagesEngine<'lua> {
 
                     package.set("inputs", inputs_table)?;
                     package.set("outputs", outputs_table)?;
-
-                    resource_table.set("value", package)?;
                 }
 
                 PackageResourceFormat::Module(standard) => {
@@ -234,6 +235,43 @@ impl<'lua> PackagesEngine<'lua> {
         }
 
         Ok(root)
+    }
+
+    /// Try to load modules of the root packages
+    /// from the engine.
+    /// 
+    /// Resource keys are taken from the lock file.
+    pub fn load_root_modules(&self) -> Result<Vec<LuaTable<'lua>>, PackagesEngineError> {
+        let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
+        let resources = engine.get::<_, LuaTable>("resources")?;
+
+        let mut modules = Vec::with_capacity(self.lock_file.root.len());
+
+        // Iterate through the root resources.
+        for key in &self.lock_file.root {
+            let resource = resources.get::<_, LuaTable>(*key)?;
+
+            // If the resource is a package.
+            if resource.get::<_, LuaString>("format")?.as_bytes() == b"package" {
+                let package = resource.get::<_, LuaTable>("value")?;
+                let outputs = package.get::<_, LuaTable>("outputs")?;
+
+                // Iterate through the outputs of this package.
+                for pair in outputs.pairs::<LuaValue, u64>() {
+                    let (_, key) = pair?;
+
+                    // Load the output of this package.
+                    let resource = resources.get::<_, LuaTable>(key)?;
+
+                    // If this output is a module - store it.
+                    if resource.get::<_, LuaString>("format")?.as_bytes().starts_with(b"module") {
+                        modules.push(resource);
+                    }
+                }
+            }
+        }
+
+        Ok(modules)
     }
 
     /// Try to load resource from the engine.

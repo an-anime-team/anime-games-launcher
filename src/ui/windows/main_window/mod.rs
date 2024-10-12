@@ -4,8 +4,6 @@ use std::sync::Arc;
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use mlua::prelude::*;
-
 use crate::prelude::*;
 
 pub mod downloads_page;
@@ -45,18 +43,15 @@ pub enum MainWindowMsg {
     ActivateLibraryPage,
 }
 
-#[derive(Debug)]
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
-    library_page: AsyncController<LibraryPageApp>,
+    library_page: AsyncController<LibraryPage>,
     profile_page: AsyncController<ProfilePageApp>,
 
     view_stack: adw::ViewStack,
 
-    lua: Lua,
     registries: HashMap<String, Arc<GamesRegistryManifest>>,
     games: HashMap<String, Arc<GameManifest>>,
-    generation: Option<GenerationManifest>,
 
     visible: bool,
 
@@ -179,10 +174,10 @@ impl SimpleAsyncComponent for MainWindow {
                     StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
 
-            library_page: LibraryPageApp::builder()
+            library_page: LibraryPage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    LibraryPageAppOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+                    LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
 
             profile_page: ProfilePageApp::builder()
@@ -191,10 +186,8 @@ impl SimpleAsyncComponent for MainWindow {
 
             view_stack: adw::ViewStack::new(),
 
-            lua: Lua::new(),
             registries: HashMap::new(),
             games: HashMap::new(),
-            generation: None,
 
             visible: false,
 
@@ -228,7 +221,9 @@ impl SimpleAsyncComponent for MainWindow {
                 });
             }
 
-            MainWindowMsg::SetGeneration(generation) => self.generation = Some(generation),
+            MainWindowMsg::SetGeneration(generation) => {
+                self.library_page.emit(LibraryPageInput::SetGeneration(generation));
+            }
 
             MainWindowMsg::OpenWindow => self.visible = true,
 
@@ -253,7 +248,7 @@ impl SimpleAsyncComponent for MainWindow {
                 if let Some(name) = self.view_stack.visible_child_name() {
                     match name.as_str() {
                         "store"   => self.store_page.emit(StorePageInput::HideGamePage),
-                        "library" => self.library_page.emit(LibraryPageAppMsg::ToggleDownloadsPage),
+                        "library" => self.library_page.emit(LibraryPageInput::ToggleDownloadsPage),
 
                         _ => ()
                     }
@@ -265,7 +260,7 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::ActivateLibraryPage => {
-                self.library_page.emit(LibraryPageAppMsg::Activate);
+                self.library_page.emit(LibraryPageInput::Activate);
             }
         }
     }
