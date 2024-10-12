@@ -14,7 +14,7 @@ enum Hasher {
     Xxh64(xxhash_rust::xxh64::Xxh64),
     Xxh3_64(xxhash_rust::xxh3::Xxh3),
     Xxh3_128(xxhash_rust::xxh3::Xxh3),
-    Md5(md5::Context),
+    Md5(md5::Md5),
     Sha1(sha1::Sha1),
     Sha2_224(sha2::Sha224),
     Sha2_256(sha2::Sha256),
@@ -39,7 +39,7 @@ impl Hasher {
             "xxh64"    => Some(Self::Xxh64(Default::default())),
             "xxh3-64"  => Some(Self::Xxh3_64(Default::default())),
             "xxh3-128" => Some(Self::Xxh3_128(Default::default())),
-            "md5"      => Some(Self::Md5(md5::Context::new())),
+            "md5"      => Some(Self::Md5(Default::default())),
             "sha1"     => Some(Self::Sha1(Default::default())),
             "sha2-224" => Some(Self::Sha2_224(Default::default())),
             "sha2-256" => Some(Self::Sha2_256(Default::default())),
@@ -105,7 +105,7 @@ impl Hasher {
                 .to_be_bytes()
                 .to_vec(),
 
-            Self::Md5(hasher) => hasher.compute().to_vec(),
+            Self::Md5(hasher) => hasher.finalize().to_vec(),
             Self::Sha1(hasher) => hasher.finalize().to_vec(),
             Self::Sha2_224(hasher) => hasher.finalize().to_vec(),
             Self::Sha2_256(hasher) => hasher.finalize().to_vec(),
