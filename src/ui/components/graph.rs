@@ -3,7 +3,6 @@ use std::{collections::VecDeque, time::Duration};
 use tokio::time::sleep;
 
 use adw::prelude::*;
-use gtk::prelude::*;
 
 use gtk::cairo::{Context, Operator};
 

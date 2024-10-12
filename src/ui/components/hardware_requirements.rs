@@ -1,4 +1,3 @@
-use gtk::prelude::*;
 use adw::prelude::*;
 use relm4::prelude::*;
 

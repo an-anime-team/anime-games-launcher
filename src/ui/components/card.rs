@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use gtk::prelude::*;
+use adw::prelude::*;
 use relm4::prelude::*;
 
 use crate::prelude::*;
@@ -260,10 +260,7 @@ impl SimpleAsyncComponent for CardComponent {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             CardComponentInput::SetTitle(title) => self.title = title,
-            CardComponentInput::SetImage(image) => {
-                tracing::info!("set image: {image:?}");
-                self.image = image;
-            },
+            CardComponentInput::SetImage(image) => self.image = image,
 
             CardComponentInput::SetWidth(width) => self.width = width,
             CardComponentInput::SetHeight(height) => self.height = height,

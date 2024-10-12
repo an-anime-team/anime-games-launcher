@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use gtk::prelude::*;
+use adw::prelude::*;
 use relm4::prelude::*;
 
 use serde_json::Value as Json;

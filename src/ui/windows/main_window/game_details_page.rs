@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use gtk::prelude::*;
 use adw::prelude::*;
 
 use relm4::prelude::*;

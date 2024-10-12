@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gtk::prelude::*;
+use adw::prelude::*;
 use relm4::prelude::*;
 
 use mlua::prelude::*;
