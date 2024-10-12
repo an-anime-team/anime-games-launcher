@@ -29,5 +29,5 @@ pub mod prelude {
         StoreError as PackagesStoreError
     };
 
-    pub use super::engine::Engine;
+    pub use super::engine::PackagesEngine;
 }

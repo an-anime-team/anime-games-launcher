@@ -64,7 +64,7 @@ pub struct PathAPI<'lua> {
 }
 
 impl<'lua> PathAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             lua,
 
@@ -268,7 +268,7 @@ impl<'lua> PathAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 10)?;
 
         env.set("temp_dir", (self.path_temp_dir)(self.lua, context)?)?;

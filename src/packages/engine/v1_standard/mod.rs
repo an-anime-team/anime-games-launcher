@@ -5,7 +5,7 @@ use mlua::prelude::*;
 use crate::core::prelude::*;
 use crate::packages::prelude::*;
 
-use super::EngineError;
+use super::PackagesEngineError;
 
 mod string_api;
 mod path_api;
@@ -128,7 +128,7 @@ pub struct Standard<'lua> {
 }
 
 impl<'lua> Standard<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             lua,
 
@@ -179,7 +179,7 @@ impl<'lua> Standard<'lua> {
 
     /// Create new environment for the v1 modules standard
     /// using provided module context.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 10)?;
 
         env.set("clone", self.clone.clone())?;

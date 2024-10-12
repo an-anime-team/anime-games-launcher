@@ -37,7 +37,7 @@ pub struct FilesystemAPI<'lua> {
 }
 
 impl<'lua> FilesystemAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -568,7 +568,7 @@ impl<'lua> FilesystemAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 18)?;
 
         env.set("exists", (self.fs_exists)(self.lua, context)?)?;

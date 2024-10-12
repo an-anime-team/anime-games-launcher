@@ -9,7 +9,7 @@ use crate::config;
 pub mod v1_standard;
 
 #[derive(Debug, thiserror::Error)]
-pub enum EngineError {
+pub enum PackagesEngineError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
@@ -20,17 +20,17 @@ pub enum EngineError {
     Reqwest(#[from] reqwest::Error)
 }
 
-pub struct Engine<'lua> {
+pub struct PackagesEngine<'lua> {
     lua: &'lua Lua,
     lock_file: LockFileManifest,
 
     _v1_standard: v1_standard::Standard<'lua>
 }
 
-impl<'lua> Engine<'lua> {
+impl<'lua> PackagesEngine<'lua> {
     /// Create new packages engine and load all the resources
     /// from the provided lock file.
-    pub fn create(lua: &'lua Lua, store: &PackagesStore, lock_file: LockFileManifest) -> Result<Self, EngineError> {
+    pub fn create(lua: &'lua Lua, store: &PackagesStore, lock_file: LockFileManifest) -> Result<Self, PackagesEngineError> {
         let engine_table = lua.create_table()?;
         let resources_table = lua.create_table()?;
 
@@ -223,7 +223,7 @@ impl<'lua> Engine<'lua> {
     /// Try to load root resources from the engine.
     ///
     /// Resource keys are taken from the lock file.
-    pub fn load_root_resources(&self) -> Result<Vec<LuaTable<'lua>>, EngineError> {
+    pub fn load_root_resources(&self) -> Result<Vec<LuaTable<'lua>>, PackagesEngineError> {
         let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
         let resources = engine.get::<_, LuaTable>("resources")?;
 
@@ -241,7 +241,7 @@ impl<'lua> Engine<'lua> {
     /// This function will try to find the resource
     /// by given identifier. It can be a direct index
     /// to the resource, or a hash (or a part of hash).
-    pub fn load_resource(&self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable<'lua>>, EngineError> {
+    pub fn load_resource(&self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable<'lua>>, PackagesEngineError> {
         let engine = self.lua.globals().get::<_, LuaTable>("#!ENGINE")?;
         let resources = engine.get::<_, LuaTable>("resources")?;
 
@@ -280,7 +280,7 @@ impl<'lua> Engine<'lua> {
     }
 }
 
-impl Drop for Engine<'_> {
+impl Drop for PackagesEngine<'_> {
     fn drop(&mut self) {
         let _ = self.lua.gc_collect();
         let _ = self.lua.gc_collect();
@@ -315,7 +315,7 @@ mod tests {
 
         let lua = Lua::new();
 
-        let engine = Engine::create(&lua, &store, lock_file)?;
+        let engine = PackagesEngine::create(&lua, &store, lock_file)?;
 
         let resource = engine.load_resource("gqj0qechfgcge")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;

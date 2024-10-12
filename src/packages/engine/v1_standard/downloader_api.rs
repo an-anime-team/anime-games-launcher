@@ -11,7 +11,7 @@ pub struct DownloaderAPI<'lua> {
 }
 
 impl<'lua> DownloaderAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             lua,
 
@@ -98,7 +98,7 @@ impl<'lua> DownloaderAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 1)?;
 
         env.set("download", (self.downloader_download)(self.lua, context)?)?;

@@ -77,7 +77,7 @@ pub struct NetworkAPI<'lua> {
 }
 
 impl<'lua> NetworkAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         let builder = STARTUP_CONFIG.general.network.builder()?;
 
         let net_client = Arc::new(builder.build()?);
@@ -206,7 +206,7 @@ impl<'lua> NetworkAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.set("fetch", self.net_fetch.clone())?;

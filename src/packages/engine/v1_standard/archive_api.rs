@@ -21,7 +21,7 @@ pub struct ArchiveAPI<'lua> {
 }
 
 impl<'lua> ArchiveAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         let archive_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -220,7 +220,7 @@ impl<'lua> ArchiveAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.set("open", (self.archive_open)(self.lua, context)?)?;

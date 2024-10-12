@@ -182,7 +182,7 @@ pub struct StringAPI<'lua> {
 }
 
 impl<'lua> StringAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             lua,
 
@@ -236,7 +236,7 @@ impl<'lua> StringAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.set("to_bytes", self.str_to_bytes.clone())?;

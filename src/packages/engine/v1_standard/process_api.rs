@@ -23,7 +23,7 @@ pub struct ProcessAPI<'lua> {
 }
 
 impl<'lua> ProcessAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, EngineError> {
+    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
         let process_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -264,7 +264,7 @@ impl<'lua> ProcessAPI<'lua> {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, EngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
         env.set("exec", (self.process_exec)(self.lua, context)?)?;
