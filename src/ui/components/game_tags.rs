@@ -1,7 +1,5 @@
 use adw::prelude::*;
-
 use relm4::prelude::*;
-use relm4::factory::*;
 
 use crate::games::manifest::info::game_tag::GameTag;
 

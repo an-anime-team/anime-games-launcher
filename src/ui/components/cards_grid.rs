@@ -1,5 +1,4 @@
 use relm4::prelude::*;
-use relm4::factory::*;
 
 use super::*;
 

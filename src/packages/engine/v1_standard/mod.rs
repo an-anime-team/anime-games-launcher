@@ -2,6 +2,11 @@ use std::path::{Path, PathBuf};
 
 use mlua::prelude::*;
 
+use tokio::runtime::{
+    Runtime,
+    Builder as RuntimeBuilder
+};
+
 use crate::core::prelude::*;
 use crate::packages::prelude::*;
 
@@ -28,7 +33,7 @@ pub use sync_api::SyncAPI;
 pub use process_api::ProcessAPI;
 
 lazy_static::lazy_static! {
-    static ref RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+    static ref RUNTIME: Runtime = RuntimeBuilder::new_multi_thread()
         .thread_name("v1_runtime")
         .enable_all()
         .build()

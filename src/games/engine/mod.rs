@@ -2,7 +2,7 @@ use mlua::prelude::*;
 
 pub mod v1_standard;
 
-use v1_standard::{
+pub use v1_standard::{
     GameEdition,
     GameComponent,
     GameLaunchInfo,

@@ -1,20 +1,50 @@
+use std::sync::Arc;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
 use mlua::prelude::*;
+
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::error::TryRecvError;
+use tokio::sync::oneshot::Sender as OneshotSender;
+
+use tokio::runtime::{
+    Runtime,
+    Builder as RuntimeBuilder
+};
+
+use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 use crate::ui::components::*;
 
 use super::DownloadsPageApp;
 
-thread_local! {
-    static LUA_ENGINE: Lua = Lua::new();
+lazy_static::lazy_static! {
+    static ref RUNTIME: Runtime = RuntimeBuilder::new_current_thread()
+        .thread_name("games-daemon")
+        .enable_all()
+        .build()
+        .expect("Failed to create games integrations daemon");
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
+pub enum SyncGameCommand {
+    GetEditions(OneshotSender<Vec<GameEdition>>),
+    // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>)
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum LibraryPageInput {
     SetGeneration(GenerationManifest),
+
+    AddGameFromGeneration {
+        url: String,
+        manifest: GameManifest,
+        listener: UnboundedSender<SyncGameCommand>
+    },
 
     Activate,
     ShowGameDetails(DynamicIndex),
@@ -32,8 +62,7 @@ pub struct LibraryPage {
     active_download: AsyncController<DownloadsRow>,
     downloads_page: AsyncController<DownloadsPageApp>,
 
-    packages_store: PackagesStore,
-    packages_engine: Option<PackagesEngine<'static>>,
+    games: Vec<(String, Arc<GameManifest>, UnboundedSender<SyncGameCommand>)>,
 
     show_downloads: bool
 }
@@ -128,8 +157,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 .launch(())
                 .detach(),
 
-            packages_store: PackagesStore::new(&STARTUP_CONFIG.packages.resources_store.path),
-            packages_engine: None,
+            games: Vec::new(),
 
             show_downloads: false
         };
@@ -148,8 +176,16 @@ impl SimpleAsyncComponent for LibraryPage {
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             LibraryPageInput::SetGeneration(generation) => {
-                LUA_ENGINE.with(|lua| {
-                    let engine = match PackagesEngine::create(lua, &self.packages_store, generation.lock_file) {
+                let config = config::get();
+
+                let packages_store = PackagesStore::new(config.packages.resources_store.path);
+
+                std::thread::spawn(move || {
+                    let lua = Lua::new();
+
+                    let root_resources = generation.lock_file.root.clone();
+
+                    let engine = match PackagesEngine::create(&lua, &packages_store, generation.lock_file) {
                         Ok(engine) => engine,
                         Err(err) => {
                             tracing::error!(?err, "Failed to load locked packages to the lua engine");
@@ -158,37 +194,133 @@ impl SimpleAsyncComponent for LibraryPage {
                         }
                     };
 
-                    let root_modules = match engine.load_root_modules() {
-                        Ok(modules) => modules,
-                        Err(err) => {
-                            tracing::error!(?err, "Failed to get loaded modules from the lua engine");
+                    let mut games = Vec::with_capacity(root_resources.len());
 
-                            return;
-                        }
-                    };
+                    // FIXME: Unsafe operation. We expect here that games have the same order as the root packages,
+                    // but this may not be true.
+                    for (id, game) in root_resources.into_iter().zip(generation.games.into_iter()) {
+                        let resource = match engine.load_resource(id) {
+                            Ok(Some(resource)) => resource,
 
-                    for module in root_modules {
-                        let module = match module.get::<_, LuaTable>("value") {
-                            Ok(module) => module,
+                            Ok(None) => {
+                                tracing::error!(?id, "Failed to load root resource from the lua engine");
+
+                                continue;
+                            }
+
+                            Err(err) => {
+                                tracing::error!(?id, ?err, "Failed to load root resource from the lua engine");
+
+                                continue;
+                            }
+                        };
+
+                        let module = resource.get::<_, LuaTable>("value")
+                            .and_then(|package| package.get::<_, LuaTable>("outputs"))
+                            .and_then(|outputs| outputs.get::<_, u32>(game.manifest.package.output.as_str()))
+                            .map(|module| engine.load_resource(module));
+
+                        let module = match module {
+                            Ok(Ok(Some(module))) => {
+                                match module.get::<_, LuaTable>("value") {
+                                    Ok(module) => module,
+                                    Err(err) => {
+                                        tracing::error!(?err, "Failed to get lua table of the game integration");
+
+                                        continue;
+                                    }
+                                }
+                            }
+
+                            Ok(Ok(None)) => {
+                                tracing::error!(?id, "Couldn't find lua table of the game integration");
+
+                                continue;
+                            }
+
+                            Ok(Err(err)) => {
+                                tracing::error!(?err, "Failed to get lua table of the game integration");
+
+                                continue;
+                            }
+
                             Err(err) => {
                                 tracing::error!(?err, "Failed to get lua table of the game integration");
 
-                                return;
+                                continue;
                             }
                         };
 
-                        let game = match GameEngine::from_lua(lua, &module) {
-                            Ok(game) => game,
+                        let engine = match GameEngine::from_lua(&lua, &module) {
+                            Ok(engine) => engine,
                             Err(err) => {
                                 tracing::error!(?err, "Failed to create game integration engine from the loaded package");
 
-                                return;
+                                continue;
                             }
                         };
 
-                        dbg!(game);
+                        let (listener, receiver) = tokio::sync::mpsc::unbounded_channel();
+
+                        tracing::debug!(
+                            url = game.url,
+                            title = game.manifest.game.title.default_translation(),
+                            "Loaded game integration engine"
+                        );
+
+                        sender.input(LibraryPageInput::AddGameFromGeneration {
+                            url: game.url,
+                            manifest: game.manifest,
+                            listener
+                        });
+
+                        games.push((engine, receiver, true));
+                    }
+
+                    loop {
+                        let mut has_working = false;
+
+                        for (game, listener, working) in &mut games {
+                            if *working {
+                                match listener.try_recv() {
+                                    Ok(command) => {
+                                        match command {
+                                            SyncGameCommand::GetEditions(listener) => {
+                                                let _ = listener.send(game.editions().to_vec());
+                                            }
+                                        }
+                                    }
+
+                                    Err(TryRecvError::Empty) => (),
+                                    Err(TryRecvError::Disconnected) => *working = false
+                                }
+
+                                has_working |= *working;
+                            }
+                        }
+
+                        if !has_working {
+                            break;
+                        }
                     }
                 });
+            }
+
+            LibraryPageInput::AddGameFromGeneration { url, manifest, listener } => {
+                let config = config::get();
+
+                let language = config.general.language.parse::<LanguageIdentifier>();
+
+                self.cards_list.guard().push_back(CardsListInit {
+                    image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
+
+                    title: match language {
+                        Ok(lang) => manifest.game.title.translate(&lang).to_string(),
+                        Err(_) => manifest.game.title.default_translation().to_string()
+                    }
+                });
+
+                self.games.push((url, Arc::new(manifest), listener));
             }
 
             LibraryPageInput::ShowGameDetails(index) => {
@@ -205,8 +337,5 @@ impl SimpleAsyncComponent for LibraryPage {
                 // Update back button visibility when switching pages
             }
         }
-
-        // Update back button visibility
-        let _ = sender.output(LibraryPageOutput::SetShowBack(self.show_downloads));
     }
 }

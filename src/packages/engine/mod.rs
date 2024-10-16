@@ -294,7 +294,7 @@ impl<'lua> PackagesEngine<'lua> {
         }
 
         // Otherwise search it through the whole list of resources.
-        for resource in resources.sequence_values::<LuaTable>() {
+        for (id, resource) in resources.sequence_values::<LuaTable>().enumerate() {
             let resource = resource?;
 
             // Check the base32 encoded hash.
@@ -306,6 +306,10 @@ impl<'lua> PackagesEngine<'lua> {
 
             // Or if can - check integer representation of the hash.
             if let Some(numeric_identifier) = numeric_identifier {
+                if id as u64 == numeric_identifier {
+                    return Ok(Some(resource));
+                }
+
                 if let Some(numeric_hash) = Hash::from_base32(hash) {
                     if numeric_hash.0 == numeric_identifier {
                         return Ok(Some(resource));
