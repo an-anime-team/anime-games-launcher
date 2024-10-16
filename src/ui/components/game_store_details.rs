@@ -8,10 +8,21 @@ use relm4::factory::AsyncFactoryVecDeque;
 use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
-use crate::ui::components::*;
+
+use super::*;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GameStoreDetailsMsg {
+    SetGameInfo {
+        url: String,
+        manifest: Arc<GameManifest>
+    },
+
+    AddGameClicked
+}
 
 #[derive(Debug)]
-pub struct GameDetailsPage {
+pub struct GameStoreDetails {
     card: AsyncController<CardComponent>,
     carousel: AsyncController<PictureCarousel>,
     maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
@@ -28,20 +39,10 @@ pub struct GameDetailsPage {
     show_requirements: bool
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameDetailsPageMsg {
-    SetGameInfo {
-        url: String,
-        manifest: Arc<GameManifest>
-    },
-
-    AddGameClicked
-}
-
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for GameDetailsPage {
+impl SimpleAsyncComponent for GameStoreDetails {
     type Init = ();
-    type Input = GameDetailsPageMsg;
+    type Input = GameStoreDetailsMsg;
     type Output = ();
 
     view! {
@@ -131,7 +132,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
                                 set_label: "Add",
 
-                                connect_clicked => GameDetailsPageMsg::AddGameClicked
+                                connect_clicked => GameStoreDetailsMsg::AddGameClicked
                             },
 
                             gtk::Box {
@@ -222,7 +223,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameDetailsPageMsg::SetGameInfo { url, manifest } => {
+            GameStoreDetailsMsg::SetGameInfo { url, manifest } => {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>().ok();
@@ -286,7 +287,7 @@ impl SimpleAsyncComponent for GameDetailsPage {
                 }
             }
 
-            GameDetailsPageMsg::AddGameClicked => {
+            GameStoreDetailsMsg::AddGameClicked => {
                 tracing::trace!("Loading latest generation");
 
                 let packages_store = PackagesStore::new(&STARTUP_CONFIG.packages.resources_store.path);

@@ -30,7 +30,7 @@ pub enum StorePageOutput {
 #[derive(Debug)]
 pub struct StorePage {
     games_cards: AsyncFactoryVecDeque<CardsGrid>,
-    game_details_page: AsyncController<GameDetailsPage>,
+    game_details: AsyncController<GameStoreDetails>,
 
     games: Vec<(String, Arc<GameManifest>)>,
 
@@ -97,7 +97,7 @@ impl SimpleAsyncComponent for StorePage {
                 }
             } else {
                 gtk::Box {
-                    model.game_details_page.widget(),
+                    model.game_details.widget(),
                 }
             }
         }
@@ -111,7 +111,7 @@ impl SimpleAsyncComponent for StorePage {
                     CardsGridOutput::Clicked(index) => StorePageInput::OpenGameDetails(index)
                 }),
 
-            game_details_page: GameDetailsPage::builder()
+            game_details: GameStoreDetails::builder()
                 .launch(())
                 .detach(),
 
@@ -131,11 +131,11 @@ impl SimpleAsyncComponent for StorePage {
             StorePageInput::AddGame { url, manifest } => {
                 let config = config::get();
 
-                let lang = config.general.language.parse::<LanguageIdentifier>().ok();
+                let lang = config.general.language.parse::<LanguageIdentifier>();
 
                 let title = match &lang {
-                    Some(lang) => manifest.game.title.translate(lang),
-                    None => manifest.game.title.default_translation()
+                    Ok(lang) => manifest.game.title.translate(lang),
+                    Err(_) => manifest.game.title.default_translation()
                 };
 
                 let card = CardComponent::medium()
@@ -167,7 +167,7 @@ impl SimpleAsyncComponent for StorePage {
                     return;
                 };
 
-                self.game_details_page.emit(GameDetailsPageMsg::SetGameInfo {
+                self.game_details.emit(GameStoreDetailsMsg::SetGameInfo {
                     url: url.clone(),
                     manifest: game.clone()
                 });

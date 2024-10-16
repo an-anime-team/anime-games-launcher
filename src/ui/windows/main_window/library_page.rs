@@ -9,25 +9,12 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot::Sender as OneshotSender;
 
-use tokio::runtime::{
-    Runtime,
-    Builder as RuntimeBuilder
-};
-
 use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 use crate::ui::components::*;
 
 use super::DownloadsPageApp;
-
-lazy_static::lazy_static! {
-    static ref RUNTIME: Runtime = RuntimeBuilder::new_current_thread()
-        .thread_name("games-daemon")
-        .enable_all()
-        .build()
-        .expect("Failed to create games integrations daemon");
-}
 
 #[derive(Debug)]
 pub enum SyncGameCommand {
@@ -58,7 +45,7 @@ pub enum LibraryPageOutput {
 
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
-    game_details: AsyncController<GameDetails>,
+    game_details: AsyncController<GameLibraryDetails>,
     active_download: AsyncController<DownloadsRow>,
     downloads_page: AsyncController<DownloadsPageApp>,
 
@@ -138,7 +125,7 @@ impl SimpleAsyncComponent for LibraryPage {
                     CardsListOutput::Selected(index) => LibraryPageInput::ShowGameDetails(index)
                 }),
 
-            game_details: GameDetails::builder()
+            game_details: GameLibraryDetails::builder()
                 .launch(())
                 .detach(),
 
@@ -179,6 +166,9 @@ impl SimpleAsyncComponent for LibraryPage {
                 let config = config::get();
 
                 let packages_store = PackagesStore::new(config.packages.resources_store.path);
+
+                self.games.clear();
+                self.cards_list.guard().clear();
 
                 std::thread::spawn(move || {
                     let lua = Lua::new();
@@ -325,12 +315,12 @@ impl SimpleAsyncComponent for LibraryPage {
             LibraryPageInput::AddGameFromGeneration { url, manifest, listener } => {
                 let config = config::get();
 
-                let language = config.general.language.parse::<LanguageIdentifier>();
+                let lang = config.general.language.parse::<LanguageIdentifier>();
 
                 self.cards_list.guard().push_back(CardsListInit {
                     image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
 
-                    title: match language {
+                    title: match lang {
                         Ok(lang) => manifest.game.title.translate(&lang).to_string(),
                         Err(_) => manifest.game.title.default_translation().to_string()
                     }
@@ -340,9 +330,16 @@ impl SimpleAsyncComponent for LibraryPage {
             }
 
             LibraryPageInput::ShowGameDetails(index) => {
-                if let Some(details) = self.cards_list.get(index.current_index()) {
-                    todo!("{:?}", details);
-                }
+                let Some((_, manifest, listener)) = self.games.get(index.current_index()) else {
+                    tracing::error!(index = index.current_index(), "Failed to read game info");
+
+                    return;
+                };
+
+                self.game_details.emit(GameLibraryDetailsMsg::SetGameInfo {
+                    manifest: manifest.to_owned(),
+                    listener: listener.clone()
+                });
             }
 
             LibraryPageInput::ToggleDownloadsPage => {

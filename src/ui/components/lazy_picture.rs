@@ -73,7 +73,7 @@ pub struct LazyPictureComponent {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for LazyPictureComponent {
-    type Init = LazyPictureComponent;
+    type Init = Self;
     type Input = LazyPictureComponentMsg;
     type Output = ();
 

@@ -20,9 +20,9 @@ pub enum PictureCarouselMsg {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for PictureCarousel {
+    type Init = ();
     type Input = PictureCarouselMsg;
     type Output = ();
-    type Init = ();
 
     view! {
         #[root]

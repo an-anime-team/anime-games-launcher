@@ -1,32 +1,40 @@
+use std::sync::Arc;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use tokio::sync::mpsc::UnboundedSender;
+
+use unic_langid::LanguageIdentifier;
+
+use crate::prelude::*;
+
 use super::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GameDetailsInit {
-    pub title: String,
-    pub card_image: String,
-    pub background_image: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameDetailsInput {
-    Update(GameDetailsInit),
+#[derive(Debug)]
+pub enum GameLibraryDetailsMsg {
+    SetGameInfo {
+        manifest: Arc<GameManifest>,
+        listener: UnboundedSender<SyncGameCommand>
+    }
 }
 
 #[derive(Debug)]
-pub struct GameDetails {
-    pub card: AsyncController<CardComponent>,
+pub struct GameLibraryDetails {
+    card: AsyncController<CardComponent>,
+    background: AsyncController<LazyPictureComponent>,
 
-    pub background_image: String,
-    pub title: String,
+    listener: Option<UnboundedSender<SyncGameCommand>>,
+
+    title: String,
+    developer: String,
+    publisher: String
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for GameDetails {
+impl SimpleAsyncComponent for GameLibraryDetails {
     type Init = ();
-    type Input = GameDetailsInput;
+    type Input = GameLibraryDetailsMsg;
     type Output = ();
 
     view! {
@@ -42,13 +50,8 @@ impl SimpleAsyncComponent for GameDetails {
                         set_height_request: 340,
                         set_tightening_threshold: 600,
 
-                        gtk::Picture {
-                            set_content_fit: gtk::ContentFit::Cover,
-
-                            add_css_class: "card",
-
-                            #[watch]
-                            set_filename: Some(&model.background_image)
+                        model.background.widget() {
+                            add_css_class: "card"
                         }
                     },
 
@@ -78,7 +81,15 @@ impl SimpleAsyncComponent for GameDetails {
                             gtk::Label {
                                 set_halign: gtk::Align::Start,
 
-                                set_label: "Hoyoverse",
+                                #[watch]
+                                set_label: &model.developer
+                            },
+
+                            gtk::Label {
+                                set_halign: gtk::Align::Start,
+
+                                #[watch]
+                                set_label: &model.publisher
                             },
 
                             gtk::Box {
@@ -149,17 +160,21 @@ impl SimpleAsyncComponent for GameDetails {
         }
     }
 
-    async fn init(
-        _init: Self::Init,
-        root: Self::Root,
-        _sender: AsyncComponentSender<Self>,
-    ) -> AsyncComponentParts<Self> {
+    async fn init(_init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent::medium())
                 .detach(),
-            background_image: String::new(),
+
+            background: LazyPictureComponent::builder()
+                .launch(LazyPictureComponent::default())
+                .detach(),
+
+            listener: None,
+
             title: String::new(),
+            developer: String::new(),
+            publisher: String::new()
         };
 
         let widgets = view_output!();
@@ -169,11 +184,34 @@ impl SimpleAsyncComponent for GameDetails {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameDetailsInput::Update(init) => {
-                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::path(init.card_image))));
+            GameLibraryDetailsMsg::SetGameInfo { manifest, listener } => {
+                let config = config::get();
 
-                self.background_image = init.background_image;
-                self.title = init.title;
+                let lang = config.general.language.parse::<LanguageIdentifier>();
+
+                let title = match &lang {
+                    Ok(lang) => manifest.game.title.translate(lang),
+                    Err(_) => manifest.game.title.default_translation()
+                };
+
+                let developer = match &lang {
+                    Ok(lang) => manifest.game.developer.translate(lang),
+                    Err(_) => manifest.game.developer.default_translation()
+                };
+
+                let publisher = match &lang {
+                    Ok(lang) => manifest.game.publisher.translate(lang),
+                    Err(_) => manifest.game.publisher.default_translation()
+                };
+
+                self.listener = Some(listener);
+
+                self.title = title.to_string();
+                self.developer = developer.to_string();
+                self.publisher = publisher.to_string();
+
+                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
+                self.background.emit(LazyPictureComponentMsg::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.background))));
             }
         }
     }

@@ -3,11 +3,12 @@ pub mod card;
 pub mod cards_list;
 pub mod cards_grid;
 
+pub mod game_store_details;
 pub mod hardware_requirements;
 
 // FIXME: NOT REFACTORED
 pub mod downloads_row;
-pub mod game_details;
+pub mod game_library_details;
 pub mod game_tags;
 pub mod graph;
 pub mod maintainers_row;
@@ -38,6 +39,11 @@ pub use cards_grid::{
     CardsGridOutput
 };
 
+pub use game_store_details::{
+    GameStoreDetails,
+    GameStoreDetailsMsg
+};
+
 pub use hardware_requirements::{
     HardwareRequirementsComponent,
     HardwareRequirementsComponentMsg,
@@ -58,10 +64,9 @@ pub use downloads_row::{
     DownloadsRowFactoryMsg
 };
 
-pub use game_details::{
-    GameDetails,
-    GameDetailsInit,
-    GameDetailsInput
+pub use game_library_details::{
+    GameLibraryDetails,
+    GameLibraryDetailsMsg
 };
 
 pub use maintainers_row::{

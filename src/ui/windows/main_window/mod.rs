@@ -7,13 +7,11 @@ use relm4::prelude::*;
 use crate::prelude::*;
 
 pub mod downloads_page;
-pub mod game_details_page;
 pub mod library_page;
 pub mod profile_page;
 pub mod store_page;
 
 use downloads_page::*;
-use game_details_page::*;
 use library_page::*;
 use profile_page::*;
 use store_page::*;

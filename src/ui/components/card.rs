@@ -151,7 +151,7 @@ impl CardComponent {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for CardComponent {
-    type Init = CardComponent;
+    type Init = Self;
     type Input = CardComponentInput;
     type Output = CardComponentOutput;
 
