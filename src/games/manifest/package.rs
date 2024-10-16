@@ -13,7 +13,8 @@ pub struct Package {
 impl AsJson for Package {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
-            "url": self.url
+            "url": self.url,
+            "output": self.output
         }))
     }
 
