@@ -144,17 +144,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             "China"
                         ]))
                     }
-                },
-
-                gtk::Box {
-                    set_margin_top: 32,
-                    set_spacing: 16,
-
-                    set_orientation: gtk::Orientation::Vertical,
-
-                    gtk::Button {
-                        set_label: "123"
-                    }
                 }
             }
         }
