@@ -36,7 +36,10 @@ type Manifest = {
 
     package: {
         // URL to the game integration package.
-        url: string
+        url: string,
+
+        // Name of the output lua module containing the game's integration code.
+        output: string
     },
 
     // Information displayed on the game's details page.

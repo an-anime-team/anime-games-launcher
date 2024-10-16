@@ -6,7 +6,8 @@ use crate::packages::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Package {
-    pub url: String
+    pub url: String,
+    pub output: String
 }
 
 impl AsJson for Package {
@@ -22,6 +23,12 @@ impl AsJson for Package {
                 .ok_or_else(|| AsJsonError::FieldNotFound("package.url"))?
                 .as_str()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("package.url"))?
+                .to_string(),
+
+            output: json.get("output")
+                .ok_or_else(|| AsJsonError::FieldNotFound("package.output"))?
+                .as_str()
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("package.output"))?
                 .to_string()
         })
     }
@@ -30,6 +37,6 @@ impl AsJson for Package {
 impl AsHash for Package {
     #[inline]
     fn hash(&self) -> Hash {
-        self.url.hash()
+        self.url.hash().chain(self.output.hash())
     }
 }
