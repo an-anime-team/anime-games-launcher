@@ -91,7 +91,12 @@ impl LockFile {
         #[inline]
         /// Normalize given URL.
         fn normalize_url(url: impl AsRef<str>) -> String {
-            let url = url.as_ref()
+            let (scheme, url) = url.as_ref()
+                .split_once("://")
+                .map(|(scheme, url)| (Some(scheme), url))
+                .unwrap_or((None, url.as_ref()));
+
+            let url = url
                 .replace('\\', "/")
                 .replace("/./", "/")
                 .replace("//", "/");
@@ -118,7 +123,13 @@ impl LockFile {
 
             clean_parts.push(url[n]);
 
-            clean_parts.join("/")
+            let url = clean_parts.join("/");
+
+            if let Some(scheme) = scheme {
+                format!("{scheme}://{url}")
+            } else {
+                url
+            }
         }
 
         // Keep downloading stuff while we have packages to process.

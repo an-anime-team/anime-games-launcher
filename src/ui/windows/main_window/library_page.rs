@@ -183,8 +183,20 @@ impl SimpleAsyncComponent for LibraryPage {
                 std::thread::spawn(move || {
                     let lua = Lua::new();
 
-                    let root_resources = generation.lock_file.root.clone();
+                    // Iterate through locked resources and find manifests
+                    // for appropriate games packages.
+                    let mut games_resources = Vec::with_capacity(generation.games.len());
 
+                    for game in generation.games {
+                        let resource = generation.lock_file.resources.iter()
+                            .find(|resource| game.manifest.package.url == resource.url);
+
+                        if let Some(resource) = resource {
+                            games_resources.push((game, resource.clone()));
+                        }
+                    }
+
+                    // Load generation's lock file into the packages engine.
                     let engine = match PackagesEngine::create(&lua, &packages_store, generation.lock_file) {
                         Ok(engine) => engine,
                         Err(err) => {
@@ -194,58 +206,62 @@ impl SimpleAsyncComponent for LibraryPage {
                         }
                     };
 
-                    let mut games = Vec::with_capacity(root_resources.len());
+                    // Prepare games engines for locked games.
+                    let mut games = Vec::with_capacity(games_resources.len());
 
-                    // FIXME: Unsafe operation. We expect here that games have the same order as the root packages,
-                    // but this may not be true.
-                    for (id, game) in root_resources.into_iter().zip(generation.games.into_iter()) {
-                        let resource = match engine.load_resource(id) {
-                            Ok(Some(resource)) => resource,
+                    for (game, resource) in games_resources {
+                        tracing::trace!(
+                            game = game.manifest.game.title.default_translation(),
+                            manifest = resource.url,
+                            "Trying to load the game engine"
+                        );
 
-                            Ok(None) => {
-                                tracing::error!(?id, "Failed to load root resource from the lua engine");
+                        let Some(integration_resource) = resource.outputs.and_then(|outputs| outputs.get(&game.manifest.package.output).copied()) else {
+                            tracing::error!(
+                                game = game.manifest.game.title.default_translation(),
+                                manifest = resource.url,
+                                output = game.manifest.package.output,
+                                "Game package doesn't have requested output"
+                            );
 
-                                continue;
-                            }
-
-                            Err(err) => {
-                                tracing::error!(?id, ?err, "Failed to load root resource from the lua engine");
-
-                                continue;
-                            }
+                            continue;
                         };
 
-                        let module = resource.get::<_, LuaTable>("value")
-                            .and_then(|package| package.get::<_, LuaTable>("outputs"))
-                            .and_then(|outputs| outputs.get::<_, u32>(game.manifest.package.output.as_str()))
-                            .map(|module| engine.load_resource(module));
+                        let module = match engine.load_resource(integration_resource) {
+                            Ok(Some(module)) => match module.get::<_, LuaTable>("value") {
+                                Ok(module) => module,
+                                Err(err) => {
+                                    tracing::error!(
+                                        game = game.manifest.game.title.default_translation(),
+                                        manifest = resource.url,
+                                        ?integration_resource,
+                                        ?err,
+                                        "Failed to get lua table of the game integration"
+                                    );
 
-                        let module = match module {
-                            Ok(Ok(Some(module))) => {
-                                match module.get::<_, LuaTable>("value") {
-                                    Ok(module) => module,
-                                    Err(err) => {
-                                        tracing::error!(?err, "Failed to get lua table of the game integration");
-
-                                        continue;
-                                    }
+                                    continue;
                                 }
                             }
 
-                            Ok(Ok(None)) => {
-                                tracing::error!(?id, "Couldn't find lua table of the game integration");
-
-                                continue;
-                            }
-
-                            Ok(Err(err)) => {
-                                tracing::error!(?err, "Failed to get lua table of the game integration");
+                            Ok(None) => {
+                                tracing::error!(
+                                    game = game.manifest.game.title.default_translation(),
+                                    manifest = resource.url,
+                                    ?integration_resource,
+                                    "Failed to load game integration module from the lua engine"
+                                );
 
                                 continue;
                             }
 
                             Err(err) => {
-                                tracing::error!(?err, "Failed to get lua table of the game integration");
+                                tracing::error!(
+                                    game = game.manifest.game.title.default_translation(),
+                                    manifest = resource.url,
+                                    ?integration_resource,
+                                    ?err,
+                                    "Failed to load game integration module from the lua engine"
+                                );
 
                                 continue;
                             }
