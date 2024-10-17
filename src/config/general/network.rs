@@ -102,11 +102,11 @@ impl AsJson for Proxy {
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.proxy.address"))?
                 .to_string(),
 
-            mode: json.get("address")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.network.proxy.address"))?
+            mode: json.get("mode")
+                .ok_or_else(|| AsJsonError::FieldNotFound("general.network.proxy.mode"))?
                 .as_str()
                 .map(ProxyMode::from_str)
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.proxy.address"))??
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.proxy.mode"))??
         })
     }
 }
@@ -133,7 +133,7 @@ impl FromStr for ProxyMode {
     type Err = AsJsonError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_ascii_lowercase().as_str() {
             "all"   => Ok(Self::All),
             "http"  => Ok(Self::Http),
             "https" => Ok(Self::Https),
