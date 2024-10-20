@@ -2,23 +2,29 @@ name: Compile release build
 
 on:
   push:
-    branches: [ "master" ]
-    paths: [ "src/**" ]
+    branches:
+      - "master"
+      - "next"
+
+    paths:
+      - "src/**"
 
   release:
-    types: [ published ]
+    types:
+      - published
 
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
-jobs:   
-  build_and_upload:
+jobs:
+  "Compile Ubuntu Devel release build":
     runs-on: ubuntu-latest
 
     container:
       image: ubuntu:devel
+
       env:
         DEBIAN_FRONTEND: noninteractive
 
@@ -26,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y libgtk-4-dev libadwaita-1-dev libluajit-5.1-dev liblua5.1-0-dev git curl build-essential
+          apt install -y git curl build-essential libgtk-4-dev libadwaita-1-dev libssl-dev
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -39,7 +45,52 @@ jobs:
         run: cargo build --release --verbose
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v4
         with:
-          name: Release build
+          name: ubuntu-native-build
           path: target/release/anime-games-launcher
+
+  "Bundle NixOS release build":
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Create DEB package
+        run: nix bundle .#deb
+
+      - name: Upload DEB package
+        uses: actions/upload-artifact@v4
+
+        with:
+          name: nixos-deb-build
+          compression-level: 9
+          path: deb-single-anime-games-launcher/*.deb
+
+      - name: Create RPM package
+        run: nix bundle .#rpm
+
+      - name: Upload RPM package
+        uses: actions/upload-artifact@v4
+
+        with:
+          name: nixos-rpm-build
+          compression-level: 9
+          path: rpm-single-anime-games-launcher/*.rpm
+
+      - name: Create AppImage package
+        run: nix bundle .#arx
+
+      - name: Upload AppImage package
+        uses: actions/upload-artifact@v4
+
+        with:
+          name: nixos-appimage-build
+          compression-level: 9
+          path: anime-games-launcher-arx

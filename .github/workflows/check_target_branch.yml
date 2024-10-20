@@ -1,0 +1,27 @@
+name: Prevent PRs against `master`
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+
+jobs:
+  "Check target branch":
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: Vankka/pr-target-branch-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          target: master
+          exclude: next
+          change-to: next
+
+          comment: |
+              Your pull request was set to target `master` instead of `next`.
+
+              The target branch of this pull request has been automatically changed.
+              Please verify that there are no merge conflicts.
