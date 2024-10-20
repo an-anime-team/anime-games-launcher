@@ -353,16 +353,6 @@ impl SimpleAsyncComponent for LibraryPage {
                     }
                 };
 
-                editions.push(GameEdition {
-                    name: String::from("global"),
-                    title: LocalizableString::raw("China")
-                });
-
-                editions.push(GameEdition {
-                    name: String::from("global"),
-                    title: LocalizableString::raw("Amogus Land")
-                });
-
                 self.cards_list.guard().push_back(CardsListInit {
                     image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
 
