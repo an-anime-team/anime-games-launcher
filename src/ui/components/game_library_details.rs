@@ -17,7 +17,9 @@ pub enum GameLibraryDetailsMsg {
         manifest: Arc<GameManifest>,
         edition: GameEdition,
         listener: UnboundedSender<SyncGameCommand>
-    }
+    },
+
+    SetGameLaunchInfo(GameLaunchInfo)
 }
 
 #[derive(Debug)]
@@ -29,7 +31,9 @@ pub struct GameLibraryDetails {
 
     title: String,
     developer: String,
-    publisher: String
+    publisher: String,
+
+    launch_info: GameLaunchInfo
 }
 
 #[relm4::component(pub, async)]
@@ -65,8 +69,30 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     set_spacing: 12,
 
                     gtk::Button {
-                        add_css_class: "pill",
-                        add_css_class: "suggested-action",
+                        #[watch]
+                        set_css_classes: match model.launch_info.status {
+                            GameLaunchStatus::Normal    => &["pill", "suggested-action"],
+                            GameLaunchStatus::Warning   => &["pill", "warning-action"],
+                            GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
+                            GameLaunchStatus::Disabled  => &["pill"]
+                        },
+
+                        #[watch]
+                        set_sensitive: model.launch_info.status != GameLaunchStatus::Disabled,
+
+                        #[watch]
+                        set_tooltip?: model.launch_info.hint.as_ref()
+                            .map(|hint| {
+                                // FIXME: IO-heavy thing (there's around 6 update calls each time)
+                                let config = config::get();
+
+                                let lang = config.general.language.parse::<LanguageIdentifier>();
+
+                                match &lang {
+                                    Ok(lang) => hint.translate(lang),
+                                    Err(_) => hint.default_translation()
+                                }
+                            }),
 
                         adw::ButtonContent {
                             set_icon_name: "media-playback-start-symbolic",
@@ -93,7 +119,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             title: String::new(),
             developer: String::new(),
-            publisher: String::new()
+            publisher: String::new(),
+
+            launch_info: GameLaunchInfo::default()
         };
 
         let widgets = view_output!();
@@ -101,7 +129,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             GameLibraryDetailsMsg::SetGameInfo { manifest, edition, listener } => {
                 let config = config::get();
@@ -123,7 +151,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     Err(_) => manifest.game.publisher.default_translation()
                 };
 
-                self.listener = Some(listener);
+                self.listener = Some(listener.clone());
 
                 self.title = title.to_string();
                 self.developer = developer.to_string();
@@ -143,7 +171,28 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 };
 
                 self.background.emit(LazyPictureComponentMsg::SetImage(Some(image)));
+
+                tokio::spawn(async move {
+                    let (send, recv) = tokio::sync::oneshot::channel();
+
+                    if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo(send)) {
+                        tracing::error!(?err, "Failed to request game launch info");
+
+                        return;
+                    }
+
+                    match recv.await {
+                        Ok(Ok(info)) => {
+                            sender.input(GameLibraryDetailsMsg::SetGameLaunchInfo(info));
+                        }
+
+                        Ok(Err(err)) => tracing::error!(?err, "Failed to request game launch info"),
+                        Err(err) => tracing::error!(?err, "Failed to request game launch info")
+                    }
+                });
             }
+
+            GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = info
         }
     }
 }

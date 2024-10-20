@@ -26,6 +26,18 @@ pub struct GameLaunchInfo {
     pub env: Option<HashMap<String, String>>
 }
 
+impl Default for GameLaunchInfo {
+    fn default() -> Self {
+        Self {
+            status: GameLaunchStatus::Disabled,
+            hint: None,
+            binary: PathBuf::new(),
+            args: None,
+            env: None
+        }
+    }
+}
+
 impl TryFrom<&LuaTable<'_>> for GameLaunchInfo {
     type Error = LuaError;
 

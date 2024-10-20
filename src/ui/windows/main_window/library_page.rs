@@ -19,7 +19,9 @@ use super::DownloadsPageApp;
 #[derive(Debug)]
 pub enum SyncGameCommand {
     GetEditions(OneshotSender<Vec<GameEdition>>),
-    // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>)
+    // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>),
+    GetStatus(OneshotSender<Result<InstallationStatus, LuaError>>),
+    GetLaunchInfo(OneshotSender<Result<GameLaunchInfo, LuaError>>)
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -311,6 +313,14 @@ impl SimpleAsyncComponent for LibraryPage {
                                             SyncGameCommand::GetEditions(listener) => {
                                                 let _ = listener.send(game.editions().to_vec());
                                             }
+
+                                            SyncGameCommand::GetStatus(listener) => {
+                                                let _ = listener.send(game.game_status());
+                                            }
+
+                                            SyncGameCommand::GetLaunchInfo(listener) => {
+                                                let _ = listener.send(game.game_launch_info());
+                                            }
                                         }
                                     }
 
@@ -344,7 +354,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 }
 
                 // TODO: build Arc-s here
-                let mut editions = match recv.await {
+                let editions = match recv.await {
                     Ok(editions) => editions,
                     Err(err) => {
                         tracing::error!(?err, "Failed to request game's editions");

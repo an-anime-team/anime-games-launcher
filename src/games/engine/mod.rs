@@ -5,6 +5,7 @@ pub mod v1_standard;
 pub use v1_standard::{
     GameEdition,
     GameComponent,
+    GameLaunchStatus,
     GameLaunchInfo,
     InstallationStatus,
     InstallationDiff
