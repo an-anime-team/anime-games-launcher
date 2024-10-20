@@ -36,6 +36,4 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Check source code
-        run: |
-          nix develop
-          cargo check --verbose
+        run: nix develop --command cargo check --verbose
