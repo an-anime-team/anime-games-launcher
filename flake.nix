@@ -70,13 +70,15 @@
                     cmake
                     glib
                     pkg-config
+
+                    gtk4
+                    gobject-introspection
+                    wrapGAppsHook4
                 ];
 
                 buildInputs = with pkgs; [
                     libadwaita
-                    gtk4
                     gdk-pixbuf
-                    gobject-introspection
 
                     openssl
                     luau
@@ -93,6 +95,10 @@
                     cmake
                     pkg-config
 
+                    gtk4
+                    gobject-introspection
+                    wrapGAppsHook4
+
                     git
                     unzip
                     p7zip
@@ -104,9 +110,7 @@
 
                 buildInputs = with pkgs; [
                     libadwaita
-                    gtk4
                     gdk-pixbuf
-                    gobject-introspection
 
                     openssl
                     luau
