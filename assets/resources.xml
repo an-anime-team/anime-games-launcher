@@ -2,6 +2,7 @@
 <gresources>
   <gresource prefix="/moe/launcher/anime-games-launcher">
     <file>images/missing-card.png</file>
+    <file>images/april-fools.jpg</file>
     <file>images/component.png</file>
   </gresource>
 

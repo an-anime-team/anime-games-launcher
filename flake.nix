@@ -1,7 +1,14 @@
 {
     description = "Anime Games Launcher";
 
-    inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    inputs = {
+        nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+
+        rust-overlay = {
+            url = "github:oxalica/rust-overlay";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
+    };
 
     nixConfig = {
         extra-substituters = [
@@ -17,28 +24,71 @@
         ];
     };
 
-    outputs = { self, nixpkgs }:
+    outputs = { self, nixpkgs, rust-overlay }:
         let
             system = "x86_64-linux";
 
-            pkgs = import nixpkgs { inherit system; };
+            pkgs = import nixpkgs {
+                inherit system;
+
+                overlays = [
+                    rust-overlay.overlays.default
+                ];
+            };
 
             config = pkgs.lib.importTOML ./Cargo.toml;
 
         in {
             packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
-                pname = config.name;
-                version = config.version;
+                pname = config.package.name;
+                version = config.package.version;
 
                 src = ./.;
+                cargoLock.lockFile = ./Cargo.lock;
+                doCheck = false;
 
-                cargoLock = {
-                    lockFile = ./Cargo.lock;
+                meta = with pkgs.lib; {
+                    description = config.package.description;
+                    homepage = config.package.homepage;
+                    license = licenses.gpl3Only;
+
+                    maintainers = [
+                        {
+                            name = "Nikita Podvirnyi";
+                            email = "krypt0nn@vk.com";
+                            matrix = "@krypt0nn:mozilla.org";
+                            github = "krypt0nn";
+                            githubId = 29639507;
+                        }
+                    ];
                 };
+
+                nativeBuildInputs = with pkgs; [
+                    rust-bin.stable.latest.minimal
+
+                    gcc
+                    cmake
+                    glib
+                    pkg-config
+                ];
+
+                buildInputs = with pkgs; [
+                    libadwaita
+                    gtk4
+                    gdk-pixbuf
+                    gobject-introspection
+
+                    openssl
+                    luau
+                ];
             };
 
             devShells.${system}.default = pkgs.mkShell {
                 nativeBuildInputs = with pkgs; [
+                    (rust-bin.stable.latest.default.override {
+                        extensions = [ "rust-src" ];
+                    })
+
                     gcc
                     cmake
                     pkg-config

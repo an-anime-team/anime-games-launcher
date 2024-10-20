@@ -56,6 +56,8 @@ reqwest = { version = "0.12", features = ["stream", "socks", "rustls-tls", "brot
 mlua = { version = "0.9", features = ["luau-jit", "serialize"] }
 
 rand = "0.8"
+time = "0.3"
+os_info = "3.8"
 
 seahash = "4.1"
 crc32fast = "1.4"

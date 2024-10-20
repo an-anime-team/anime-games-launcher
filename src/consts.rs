@@ -1,6 +1,22 @@
 use std::path::PathBuf;
 
+use crate::prelude::*;
+
+pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
+pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 lazy_static::lazy_static! {
+    pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
+
+    pub static ref CURRENT_PLATFORM: Option<TargetPlatform> = {
+        let platform = TargetPlatform::current();
+
+        tracing::info!("Current platform: {:?}", platform.map(|platform| platform.to_string()));
+
+        platform
+    };
+
     /// Path to the data folder.
     ///
     /// Default is `$XDG_DATA_HOME/anime-games-launcher`.

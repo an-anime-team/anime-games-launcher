@@ -20,7 +20,7 @@ pub enum ImagePath {
 impl ImagePath {
     #[inline]
     /// Create new image from the filesystem path.
-    /// 
+    ///
     /// ```
     /// ImagePath::path("/tmp/image.png")
     /// ```
@@ -31,7 +31,7 @@ impl ImagePath {
     #[inline]
     /// Create new image stored in the GTK resources.
     /// This function will automatically append the app prefix.
-    /// 
+    ///
     /// ```
     /// // APP_RESOURCE_PREFIX/images/icon.png
     /// ImagePath::lazy_load("images/icon.png")
@@ -42,7 +42,7 @@ impl ImagePath {
 
     #[inline]
     /// Create new lazy loaded image.
-    /// 
+    ///
     /// ```
     /// ImagePath::lazy_load("https://example.com/image.png")
     /// ```

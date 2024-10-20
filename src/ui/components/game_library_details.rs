@@ -15,6 +15,7 @@ use super::*;
 pub enum GameLibraryDetailsMsg {
     SetGameInfo {
         manifest: Arc<GameManifest>,
+        edition: GameEdition,
         listener: UnboundedSender<SyncGameCommand>
     }
 }
@@ -39,110 +40,35 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
     view! {
         adw::Clamp {
-            set_hexpand: true,
-
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 
-                gtk::Overlay {
-                    #[wrap(Some)]
-                    set_child = &adw::Clamp {
-                        set_height_request: 340,
-                        set_tightening_threshold: 600,
+                set_margin_top: 16,
+                set_spacing: 16,
 
-                        model.background.widget() {
-                            add_css_class: "card"
-                        }
-                    },
+                gtk::Label {
+                    set_halign: gtk::Align::Start,
 
-                    add_overlay = &gtk::Box {
-                        set_margin_top: 234,
-                        set_margin_start: 16,
-                        set_margin_end: 16,
-                        set_spacing: 16,
+                    add_css_class: "title-1",
 
-                        model.card.widget(),
+                    #[watch]
+                    set_label: &model.title
+                },
 
-                        gtk::Box {
-                            set_orientation: gtk::Orientation::Vertical,
-                            set_valign: gtk::Align::End,
-                            set_margin_top: 126,
-                            set_margin_start: 16,
-
-                            gtk::Label {
-                                set_halign: gtk::Align::Start,
-
-                                add_css_class: "title-1",
-
-                                #[watch]
-                                set_label: &model.title
-                            },
-
-                            gtk::Label {
-                                set_halign: gtk::Align::Start,
-
-                                #[watch]
-                                set_label: &model.developer
-                            },
-
-                            gtk::Label {
-                                set_halign: gtk::Align::Start,
-
-                                #[watch]
-                                set_label: &model.publisher
-                            },
-
-                            gtk::Box {
-                                set_margin_top: 16,
-
-                                set_hexpand: true,
-
-                                gtk::Box {
-                                    set_orientation: gtk::Orientation::Vertical,
-
-                                    gtk::Label {
-                                        set_halign: gtk::Align::Start,
-
-                                        set_label: "Played for 317 hours"
-                                    },
-
-                                    gtk::Label {
-                                        set_halign: gtk::Align::Start,
-
-                                        set_label: "Last played yesterday"
-                                    }
-                                },
-
-                                gtk::Button {
-                                    set_hexpand: true,
-
-                                    set_halign: gtk::Align::End,
-
-                                    add_css_class: "pill",
-                                    add_css_class: "suggested-action",
-
-                                    set_label: "Play"
-                                }
-                            }
-                        }
-                    }
+                model.background.widget() {
+                    add_css_class: "card"
                 },
 
                 gtk::Box {
-                    set_margin_top: 130,
-                    set_margin_start: 16,
-                    set_margin_end: 16,
-                    set_spacing: 8,
+                    set_orientation: gtk::Orientation::Horizontal,
 
-                    gtk::DropDown {
-                        set_width_request: CardSize::Medium.width(),
+                    set_spacing: 16,
 
-                        add_css_class: "flat",
+                    gtk::Button {
+                        add_css_class: "pill",
+                        add_css_class: "suggested-action",
 
-                        set_model: Some(&gtk::StringList::new(&[
-                            "Global",
-                            "China"
-                        ]))
+                        set_label: "Play"
                     }
                 }
             }
@@ -173,7 +99,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            GameLibraryDetailsMsg::SetGameInfo { manifest, listener } => {
+            GameLibraryDetailsMsg::SetGameInfo { manifest, edition, listener } => {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>();
@@ -200,7 +126,19 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 self.publisher = publisher.to_string();
 
                 self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
-                self.background.emit(LazyPictureComponentMsg::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.background))));
+
+                // Little trolling. I think you can sorry me.
+                let date = time::OffsetDateTime::now_utc();
+
+                let image = if (date.month() == time::Month::April && date.day() == 1) || (date.hour() == 19 && date.minute() == 17) {
+                    tracing::info!("＜( ￣︿￣)");
+
+                    ImagePath::resource("images/april-fools.jpg")
+                } else {
+                    ImagePath::lazy_load(&manifest.game.images.background)
+                };
+
+                self.background.emit(LazyPictureComponentMsg::SetImage(Some(image)));
             }
         }
     }

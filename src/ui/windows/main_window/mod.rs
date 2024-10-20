@@ -80,8 +80,6 @@ impl SimpleAsyncComponent for MainWindow {
                 set_orientation: gtk::Orientation::Vertical,
 
                 adw::HeaderBar {
-                    add_css_class: "flat",
-
                     pack_start = &gtk::Button {
                         set_icon_name: "loupe-symbolic",
                         add_css_class: "flat",

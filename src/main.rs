@@ -22,14 +22,6 @@ pub mod ui;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
-pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
-pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-lazy_static::lazy_static! {
-    pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
-}
-
 pub mod prelude {
     pub use super::consts::*;
     pub use super::utils::*;
@@ -46,14 +38,9 @@ pub mod prelude {
         Config,
         self
     };
-
-    pub use super::{
-        APP_ID,
-        APP_RESOURCE_PREFIX,
-        APP_VERSION,
-        APP_DEBUG
-    };
 }
+
+use prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -100,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
     else {
         tracing::info!("Starting application ({APP_VERSION})");
 
-        adw::init().expect("Libadwaita initialization failed");
+        adw::init().expect("Failed to initializa libadwaita");
 
         // Register and include resources.
         gtk::gio::resources_register_include!("resources.gresource")

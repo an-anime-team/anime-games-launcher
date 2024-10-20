@@ -80,3 +80,16 @@ impl AsHash for GameTag {
         self.to_string().hash()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash() -> anyhow::Result<()> {
+        assert_eq!(GameTag::Payments.hash(), "payments".hash());
+        assert_eq!(GameTag::GraphicViolence.hash(), "graphic-violence".hash());
+
+        Ok(())
+    }
+}

@@ -1,5 +1,6 @@
 /target
 /.direnv
+/result
 
 /flamegraph.svg
 /perf.data

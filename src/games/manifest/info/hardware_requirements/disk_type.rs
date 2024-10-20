@@ -37,3 +37,17 @@ impl AsHash for DiskType {
         self.to_string().hash()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash() -> anyhow::Result<()> {
+        assert_eq!(DiskType::Hdd.hash(), "hdd".hash());
+        assert_eq!(DiskType::Ssd.hash(), "ssd".hash());
+        assert_eq!(DiskType::Nvme.hash(), "nvme".hash());
+
+        Ok(())
+    }
+}

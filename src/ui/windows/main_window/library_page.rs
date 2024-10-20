@@ -34,7 +34,15 @@ pub enum LibraryPageInput {
     },
 
     Activate,
-    ShowGameDetails(DynamicIndex),
+
+    GameRowSelected(usize),
+    HideOtherGamesEditions(DynamicIndex),
+
+    ShowGameDetails {
+        game: DynamicIndex,
+        variant: Option<DynamicIndex>
+    },
+
     ToggleDownloadsPage
 }
 
@@ -49,7 +57,8 @@ pub struct LibraryPage {
     active_download: AsyncController<DownloadsRow>,
     downloads_page: AsyncController<DownloadsPageApp>,
 
-    games: Vec<(String, Arc<GameManifest>, UnboundedSender<SyncGameCommand>)>,
+    #[allow(clippy::type_complexity)]
+    games: Vec<(String, Arc<GameManifest>, Vec<GameEdition>, UnboundedSender<SyncGameCommand>)>,
 
     show_downloads: bool
 }
@@ -81,7 +90,11 @@ impl SimpleAsyncComponent for LibraryPage {
 
                             #[wrap(Some)]
                             set_child = model.cards_list.widget() {
-                                add_css_class: "navigation-sidebar"
+                                add_css_class: "navigation-sidebar",
+
+                                connect_row_activated[sender] => move |_, row| {
+                                    sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
+                                }
                             }
                         },
 
@@ -97,17 +110,17 @@ impl SimpleAsyncComponent for LibraryPage {
                         }
                     },
 
-                    adw::PreferencesPage {
-                        adw::PreferencesGroup {
-                            model.active_download.widget() {
-                                set_width_request: 1000,
+                    // adw::PreferencesPage {
+                    //     adw::PreferencesGroup {
+                    //         model.active_download.widget() {
+                    //             set_width_request: 1000,
 
-                                set_activatable: true,
+                    //             set_activatable: true,
 
-                                connect_activated => LibraryPageInput::ToggleDownloadsPage
-                            }
-                        }
-                    }
+                    //             connect_activated => LibraryPageInput::ToggleDownloadsPage
+                    //         }
+                    //     }
+                    // }
                 }
             } else {
                 gtk::Box {
@@ -122,7 +135,11 @@ impl SimpleAsyncComponent for LibraryPage {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .forward(sender.input_sender(), |msg| match msg {
-                    CardsListOutput::Selected(index) => LibraryPageInput::ShowGameDetails(index)
+                    CardsListOutput::Selected { card: game, variant }
+                        => LibraryPageInput::ShowGameDetails { game, variant },
+
+                    CardsListOutput::HideOtherVariants(index)
+                        => LibraryPageInput::HideOtherGamesEditions(index)
                 }),
 
             game_details: GameLibraryDetails::builder()
@@ -317,27 +334,98 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 let lang = config.general.language.parse::<LanguageIdentifier>();
 
+                let (send, recv) = tokio::sync::oneshot::channel();
+
+                // TODO: better errors handling
+                if let Err(err) = listener.send(SyncGameCommand::GetEditions(send)) {
+                    tracing::error!(?err, "Failed to request game's editions");
+
+                    return;
+                }
+
+                // TODO: build Arc-s here
+                let mut editions = match recv.await {
+                    Ok(editions) => editions,
+                    Err(err) => {
+                        tracing::error!(?err, "Failed to request game's editions");
+
+                        return;
+                    }
+                };
+
+                editions.push(GameEdition {
+                    name: String::from("global"),
+                    title: LocalizableString::raw("China")
+                });
+
+                editions.push(GameEdition {
+                    name: String::from("global"),
+                    title: LocalizableString::raw("Amogus Land")
+                });
+
                 self.cards_list.guard().push_back(CardsListInit {
                     image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
 
-                    title: match lang {
-                        Ok(lang) => manifest.game.title.translate(&lang).to_string(),
+                    title: match &lang {
+                        Ok(lang) => manifest.game.title.translate(lang).to_string(),
                         Err(_) => manifest.game.title.default_translation().to_string()
-                    }
+                    },
+
+                    variants: Some(editions.iter()
+                        .map(|edition| {
+                            match &lang {
+                                Ok(lang) => edition.title.translate(lang).to_string(),
+                                Err(_) => edition.title.default_translation().to_string()
+                            }
+                        })
+                        .collect::<Vec<_>>())
                 });
 
-                self.games.push((url, Arc::new(manifest), listener));
+                self.games.push((url, Arc::new(manifest), editions, listener));
             }
 
-            LibraryPageInput::ShowGameDetails(index) => {
-                let Some((_, manifest, listener)) = self.games.get(index.current_index()) else {
-                    tracing::error!(index = index.current_index(), "Failed to read game info");
+            LibraryPageInput::GameRowSelected(index) => {
+                self.cards_list.send(index, CardsListInput::EmitClick);
+            }
+
+            LibraryPageInput::HideOtherGamesEditions(index) => {
+                self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
+            }
+
+            LibraryPageInput::ShowGameDetails { game, variant } => {
+                // FIXME: don't update details page if it's already open for the given game.
+
+                self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
+
+                // TODO: proper errors handling
+                let Some((_, manifest, editions, listener)) = self.games.get(game.current_index()) else {
+                    tracing::error!(
+                        game = game.current_index(),
+                        variant = variant.map(|variant| variant.current_index()),
+                        "Failed to read game info"
+                    );
+
+                    return;
+                };
+
+                let edition = match &variant {
+                    Some(variant) => editions.get(variant.current_index()),
+                    None => editions.first()
+                };
+
+                let Some(edition) = edition.cloned() else {
+                    tracing::error!(
+                        game = game.current_index(),
+                        variant = variant.map(|variant| variant.current_index()),
+                        "Failed to get game edition"
+                    );
 
                     return;
                 };
 
                 self.game_details.emit(GameLibraryDetailsMsg::SetGameInfo {
                     manifest: manifest.to_owned(),
+                    edition,
                     listener: listener.clone()
                 });
             }
