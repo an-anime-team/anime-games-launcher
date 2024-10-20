@@ -8,6 +8,11 @@
             url = "github:oxalica/rust-overlay";
             inputs.nixpkgs.follows = "nixpkgs";
         };
+
+        nixos-bundlers = {
+            url = "github:NixOS/bundlers";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
     };
 
     nixConfig = {
@@ -24,7 +29,7 @@
         ];
     };
 
-    outputs = { self, nixpkgs, rust-overlay }:
+    outputs = { self, nixpkgs, rust-overlay, nixos-bundlers }:
         let
             system = "x86_64-linux";
 
@@ -81,8 +86,13 @@
                     gdk-pixbuf
 
                     openssl
-                    luau
                 ];
+            };
+
+            bundlers.${system} = with nixos-bundlers.bundlers.${system}; {
+                deb = toDEB;
+                rpm = toRPM;
+                arx = toArx;
             };
 
             devShells.${system}.default = pkgs.mkShell {
@@ -113,7 +123,6 @@
                     gdk-pixbuf
 
                     openssl
-                    luau
                 ];
 
                 # CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
