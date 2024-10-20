@@ -63,7 +63,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Create DEB package
-        run: nix bundle .#deb
+        run: nix bundle --bundler .#deb
 
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
@@ -74,7 +74,7 @@ jobs:
           path: deb-single-anime-games-launcher/*.deb
 
       - name: Create RPM package
-        run: nix bundle .#rpm
+        run: nix bundle --bundler .#rpm
 
       - name: Upload RPM package
         uses: actions/upload-artifact@v4
@@ -85,7 +85,7 @@ jobs:
           path: rpm-single-anime-games-launcher/*.rpm
 
       - name: Create AppImage package
-        run: nix bundle .#arx
+        run: nix bundle --bundler .#arx
 
       - name: Upload AppImage package
         uses: actions/upload-artifact@v4
