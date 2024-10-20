@@ -2,39 +2,40 @@ name: Check source code
 
 on:
   push:
-    branches: [ "master" ]
-    paths: [ "src/**" ]
+    branches:
+      - "master"
+      - "next"
+
+    paths:
+      - "src/**"
 
   pull_request:
-    branches: [ "master" ]
-    paths: [ "src/**" ]
+    branches:
+      - "master"
+      - "next"
+
+    paths:
+      - "src/**"
 
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
-jobs:   
-  check_source_code:
+jobs:
+  check:
     runs-on: ubuntu-latest
 
-    container:
-      image: ubuntu:devel
-      env:
-        DEBIAN_FRONTEND: noninteractive
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
-      - name: Install dependencies
-        run: |
-          apt update
-          apt install -y libgtk-4-dev libadwaita-1-dev libluajit-5.1-dev liblua5.1-0-dev git curl build-essential
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Check source code
-        run: cargo check --verbose
+        run: |
+          nix develop
+          cargo check --verbose
