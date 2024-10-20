@@ -89,6 +89,9 @@ impl<'lua> PackagesEngine<'lua> {
                     let inputs_table = lua.create_table()?;
                     let outputs_table = lua.create_table()?;
 
+                    package.set("inputs", inputs_table.clone())?;
+                    package.set("outputs", outputs_table.clone())?;
+
                     resource_table.set("value", package.clone())?;
 
                     // Load inputs and outputs of the package,
@@ -116,9 +119,6 @@ impl<'lua> PackagesEngine<'lua> {
                             }
                         }
                     }
-
-                    package.set("inputs", inputs_table)?;
-                    package.set("outputs", outputs_table)?;
                 }
 
                 PackageResourceFormat::Module(standard) => {
@@ -158,13 +158,12 @@ impl<'lua> PackagesEngine<'lua> {
                     match standard {
                         PackageResourceModuleStandard::Auto |
                         PackageResourceModuleStandard::V1 => {
+                            // TODO: resolve packages
                             env.set("load", lua.create_function(move |lua, name: String| {
-                                // Load the engine table.
-                                let engine = lua.globals().get::<_, LuaTable>("#!ENGINE")?;
-
                                 // Read the parent package if it exists (must be at this point).
                                 if let Some(parent_context) = parent_context {
                                     // Load the parent resource table from the engine.
+                                    let engine = lua.globals().get::<_, LuaTable>("#!ENGINE")?;
                                     let resources_table = engine.get::<_, LuaTable>("resources")?;
                                     let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
 
@@ -183,7 +182,7 @@ impl<'lua> PackagesEngine<'lua> {
                                     let parent_inputs_table = parent_value.get::<_, LuaTable>("inputs")?;
 
                                     // Try to read the requested input.
-                                    if let Ok(resource_key) = parent_inputs_table.get::<_, u64>(name) {
+                                    if let Ok(resource_key) = parent_inputs_table.get::<_, u32>(name) {
                                         return resources_table.get::<_, LuaTable>(resource_key);
                                     }
                                 }
@@ -257,7 +256,7 @@ impl<'lua> PackagesEngine<'lua> {
                 let outputs = package.get::<_, LuaTable>("outputs")?;
 
                 // Iterate through the outputs of this package.
-                for pair in outputs.pairs::<LuaValue, u64>() {
+                for pair in outputs.pairs::<LuaValue, u32>() {
                     let (_, key) = pair?;
 
                     // Load the output of this package.
@@ -288,7 +287,7 @@ impl<'lua> PackagesEngine<'lua> {
 
         // Try to directly load the resource.
         if let Some(index) = numeric_identifier {
-            if resources.contains_key(index)? {
+            if resources.contains_key(index as u32)? {
                 return Ok(Some(resources.get(index)?));
             }
         }

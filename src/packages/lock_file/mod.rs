@@ -216,7 +216,7 @@ impl LockFile {
                 });
 
                 if is_root {
-                    lock_root.insert(lock_resource_index as u64);
+                    lock_root.insert(lock_resource_index as u32);
                 }
 
                 // Process inputs if there are some.
@@ -443,10 +443,10 @@ impl LockFile {
                     // Update the package's reference.
                     if is_input {
                         if let Some(inputs) = &mut lock_resources[index].inputs {
-                            inputs.insert(name, *resource_index as u64);
+                            inputs.insert(name, *resource_index as u32);
                         }
                     } else if let Some(outputs) = &mut lock_resources[index].outputs {
-                        outputs.insert(name, *resource_index as u64);
+                        outputs.insert(name, *resource_index as u32);
                     }
                 }
             }

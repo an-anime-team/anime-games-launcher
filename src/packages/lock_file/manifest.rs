@@ -11,7 +11,7 @@ use crate::packages::prelude::*;
 pub struct Manifest {
     pub standard: u64,
     pub metadata: LockFileMetadata,
-    pub root: Vec<u64>,
+    pub root: Vec<u32>,
     pub resources: Vec<ResourceLock>
 }
 
@@ -44,7 +44,7 @@ impl AsJson for Manifest {
                 .as_array()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("root"))?
                 .iter()
-                .map(Json::as_u64)
+                .map(|root| root.as_u64().map(|root| root as u32))
                 .collect::<Option<Vec<_>>>()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("root"))?,
 
@@ -108,8 +108,8 @@ pub struct ResourceLock {
     pub url: String,
     pub format: PackageResourceFormat,
     pub lock: ResourceLockData,
-    pub inputs: Option<HashMap<String, u64>>,
-    pub outputs: Option<HashMap<String, u64>>
+    pub inputs: Option<HashMap<String, u32>>,
+    pub outputs: Option<HashMap<String, u32>>
 }
 
 impl AsJson for ResourceLock {
@@ -150,7 +150,7 @@ impl AsJson for ResourceLock {
                         .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].inputs"))?
                         .into_iter()
                         .map(|(k, v)| {
-                            v.as_u64().map(|v| (k.to_string(), v))
+                            v.as_u64().map(|v| (k.to_string(), v as u32))
                         })
                         .collect::<Option<HashMap<_, _>>>()
                         .map(Some)
@@ -168,7 +168,7 @@ impl AsJson for ResourceLock {
                         .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].outputs"))?
                         .into_iter()
                         .map(|(k, v)| {
-                            v.as_u64().map(|v| (k.to_string(), v))
+                            v.as_u64().map(|v| (k.to_string(), v as u32))
                         })
                         .collect::<Option<HashMap<_, _>>>()
                         .map(Some)
