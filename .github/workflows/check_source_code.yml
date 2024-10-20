@@ -23,7 +23,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  "Check source code":
+  check_source_code:
     runs-on: ubuntu-latest
 
     permissions:

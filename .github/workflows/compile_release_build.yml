@@ -19,7 +19,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  "Compile Ubuntu Devel release build":
+  compile_ubuntu_build:
     runs-on: ubuntu-latest
 
     container:
@@ -50,7 +50,7 @@ jobs:
           name: ubuntu-native-build
           path: target/release/anime-games-launcher
 
-  "Bundle NixOS release build":
+  bundle_nixos_build:
     runs-on: ubuntu-latest
 
     permissions:
