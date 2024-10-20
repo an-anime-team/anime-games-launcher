@@ -62,13 +62,17 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
 
-                    set_spacing: 16,
+                    set_spacing: 12,
 
                     gtk::Button {
                         add_css_class: "pill",
                         add_css_class: "suggested-action",
 
-                        set_label: "Play"
+                        adw::ButtonContent {
+                            set_icon_name: "media-playback-start-symbolic",
+
+                            set_label: "Play"
+                        }
                     }
                 }
             }

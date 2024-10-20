@@ -116,6 +116,7 @@
 
                     # adwaita-1-demo
                     libadwaita.devdoc
+                    icon-library
                 ];
 
                 buildInputs = with pkgs; [

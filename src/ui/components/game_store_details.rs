@@ -128,9 +128,14 @@ impl SimpleAsyncComponent for GameStoreDetails {
                             model.card.widget(),
 
                             gtk::Button {
-                                set_css_classes: &["suggested-action", "pill"],
+                                add_css_class: "pill",
+                                add_css_class: "suggested-action",
 
-                                set_label: "Add",
+                                adw::ButtonContent {
+                                    set_icon_name: "list-add-symbolic",
+
+                                    set_label: "Add"
+                                },
 
                                 connect_clicked => GameStoreDetailsMsg::AddGameClicked
                             },
