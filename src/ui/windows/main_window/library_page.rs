@@ -192,6 +192,12 @@ impl SimpleAsyncComponent for LibraryPage {
                 std::thread::spawn(move || {
                     let lua = Lua::new();
 
+                    lua.enable_jit(true);
+
+                    if let Err(err) = lua.sandbox(true) {
+                        tracing::error!(?err, "Failed to enable lua sandbox. Packages evaluation can be unsafe!");
+                    }
+
                     // Iterate through locked resources and find manifests
                     // for appropriate games packages.
                     let mut games_resources = Vec::with_capacity(generation.games.len());

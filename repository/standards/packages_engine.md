@@ -42,11 +42,28 @@ type LoadedResource = {
 
 ```lua
 -- v1 module standard.
-local file = load('file-input')
+local file = load("file-input")
 
 print(file.format) -- "file"
 print(file.hash)   -- "<base32 value>"
 print(file.value)  -- "<path to the file>"
+```
+
+## Inputs importing
+
+Unlike loading, inputs importing doesn't fetch metadata of input resources.
+You're directly loading their values instead. Importing is prefered way of
+using inputs for most cases.
+
+> From the technical aspect, `import` function uses `load` output and strips
+> all the metadata from it.
+
+```lua
+local input_file   = import("file-input")
+local input_module = import("module-input")
+
+print(input_file)   -- "<path to the file>"
+print(input_module) -- "<content of the module>"
 ```
 
 ## Values cloning
