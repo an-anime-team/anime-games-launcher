@@ -84,8 +84,6 @@
                 buildInputs = with pkgs; [
                     libadwaita
                     gdk-pixbuf
-
-                    openssl
                 ];
             };
 
@@ -122,9 +120,10 @@
                 buildInputs = with pkgs; [
                     libadwaita
                     gdk-pixbuf
-
-                    openssl
                 ];
+
+                # CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+                # CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
 
                 # CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
                 # CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
