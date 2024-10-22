@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use relm4::prelude::*;
 
 use tracing_subscriber::prelude::*;
@@ -51,6 +53,11 @@ async fn main() -> anyhow::Result<()> {
     let stdout = tracing_subscriber::fmt::layer()
         // .pretty()
         .with_filter({
+            filter_fn(|metadata| {
+                metadata.target().starts_with("anime_games_launcher")
+            })
+        })
+        .with_filter({
             if *APP_DEBUG {
                 LevelFilter::TRACE
             } else {
@@ -63,17 +70,30 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
 
-    let file = std::fs::File::create(consts::DEBUG_FILE.as_path())?;
+    if let Some(parent) = consts::TRACE_FILE.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
 
     let debug_log = tracing_subscriber::fmt::layer()
+        .with_writer(File::create(consts::DEBUG_FILE.as_path())?)
         .pretty()
         .with_ansi(false)
-        .with_writer(file);
+        .with_filter({
+            filter_fn(|metadata| {
+                metadata.target().starts_with("anime_games_launcher")
+            })
+        });
+
+    let trace_log = tracing_subscriber::fmt::layer()
+        .with_writer(File::create(consts::TRACE_FILE.as_path())?)
+        .pretty()
+        .with_ansi(false);
 
     // Setup loggers.
     tracing_subscriber::registry()
         .with(stdout)
         .with(debug_log)
+        .with(trace_log)
         .init();
 
     // Try to parse and execute CLI command.
