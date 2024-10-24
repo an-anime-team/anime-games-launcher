@@ -144,7 +144,7 @@ mod tests {
         assert_eq!(generation.games.len(), 1);
         assert_eq!(&generation.lock_file.root, &[0]);
         assert_eq!(generation.lock_file.resources.len(), 8);
-        assert_eq!(Hash::for_entry(path)?, Hash(9585216612201553270));
+        assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
 
         Ok(())
     }

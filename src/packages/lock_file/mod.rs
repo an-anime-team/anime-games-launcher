@@ -492,7 +492,7 @@ mod tests {
 
         assert_eq!(lock_file.root, &[0]);
         assert_eq!(lock_file.resources.len(), 8);
-        assert_eq!(Hash::for_entry(path)?, Hash(9585216612201553270));
+        assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
 
         let Some(inputs) = lock_file.resources[0].inputs.take() else {
             anyhow::bail!("No inputs in the root package");

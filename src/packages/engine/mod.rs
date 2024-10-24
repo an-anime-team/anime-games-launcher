@@ -467,7 +467,7 @@ mod tests {
 
         let engine = PackagesEngine::create(&lua, &store, lock_file)?;
 
-        let resource = engine.load_resource("gqj0qechfgcge")?
+        let resource = engine.load_resource("0peottaa6s1co")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;
 
         let value = resource.get::<_, LuaTable>("value")?;
@@ -478,7 +478,7 @@ mod tests {
         assert!(!value.get::<_, bool>("test_load_invalid_output")?);
         assert!(!value.get::<_, bool>("test_load_unexisting_input")?);
 
-        assert_eq!(value.get::<_, String>("greeting")?, "Hello, World!");
+        assert_eq!(value.call_function::<_, String>("greeting", ())?, "Hello, World!");
 
         Ok(())
     }

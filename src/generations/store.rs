@@ -186,16 +186,16 @@ mod tests {
         assert_eq!(generation.games.len(), 1);
         assert_eq!(&generation.lock_file.root, &[0]);
         assert_eq!(generation.lock_file.resources.len(), 8);
-        assert_eq!(Hash::for_entry(path)?, Hash(9585216612201553270));
+        assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
 
         generations_store.insert(&generation)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
-
+        
         assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
-        assert!(generations_store.has_generation(&Hash(3371458331281458332)));
+        assert!(generations_store.has_generation(&Hash(11380745776938094419)));
 
-        let generation = generations_store.load(&Hash(3371458331281458332))
+        let generation = generations_store.load(&Hash(11380745776938094419))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .ok_or_else(|| anyhow::anyhow!("Generation expected, got none"))?;
 
@@ -203,14 +203,13 @@ mod tests {
         assert_eq!(&generation.lock_file.root, &[0]);
         assert_eq!(generation.lock_file.resources.len(), 8);
 
-        generations_store.remove(&Hash(3371458331281458332))
+        generations_store.remove(&Hash(11380745776938094419))
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());
         assert!(!generations_store.has_generation(&Hash(535491346813091909)));
 
-        // TODO: would be good to insert couple more generations to verify
-        // their ordering and deduplication mechanism.
+        // TODO: would be good to insert couple more generations to verify their ordering and deduplication mechanism.
 
         Ok(())
     }
