@@ -308,6 +308,9 @@ impl<'lua> PackagesEngine<'lua> {
             }
         }
 
+        // Enable sandbox for modules execution.
+        lua.sandbox(true)?;
+
         // Evaluate all the modules in dependency growth order.
         while let Some((resource_table, module, env)) = evaluation_queue.pop() {
             let value = module.set_environment(env)

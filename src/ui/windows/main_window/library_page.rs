@@ -18,7 +18,7 @@ use super::DownloadsPageApp;
 
 #[derive(Debug)]
 pub enum SyncGameCommand {
-    GetEditions(OneshotSender<Vec<GameEdition>>),
+    GetEditions(OneshotSender<Result<Vec<GameEdition>, LuaError>>),
     // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>),
     GetStatus(OneshotSender<Result<InstallationStatus, LuaError>>),
     GetLaunchInfo(OneshotSender<Result<GameLaunchInfo, LuaError>>)
@@ -194,10 +194,6 @@ impl SimpleAsyncComponent for LibraryPage {
 
                     lua.enable_jit(true);
 
-                    if let Err(err) = lua.sandbox(true) {
-                        tracing::error!(?err, "Failed to enable lua sandbox. Packages evaluation can be unsafe!");
-                    }
-
                     // Iterate through locked resources and find manifests
                     // for appropriate games packages.
                     let mut games_resources = Vec::with_capacity(generation.games.len());
@@ -317,7 +313,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                     Ok(command) => {
                                         match command {
                                             SyncGameCommand::GetEditions(listener) => {
-                                                let _ = listener.send(game.editions().to_vec());
+                                                let _ = listener.send(game.editions());
                                             }
 
                                             SyncGameCommand::GetStatus(listener) => {
@@ -361,7 +357,14 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 // TODO: build Arc-s here
                 let editions = match recv.await {
-                    Ok(editions) => editions,
+                    Ok(Ok(editions)) => editions,
+
+                    Ok(Err(err)) => {
+                        tracing::error!(?err, "Failed to request game's editions");
+
+                        return;
+                    }
+
                     Err(err) => {
                         tracing::error!(?err, "Failed to request game's editions");
 

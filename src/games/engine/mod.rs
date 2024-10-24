@@ -28,7 +28,7 @@ impl<'lua> GameEngine<'lua> {
 
     #[inline]
     /// Get list of available game editions.
-    pub fn editions(&self) -> &[GameEdition] {
+    pub fn editions(&self) -> Result<Vec<GameEdition>, LuaError> {
         match self {
             Self::V1(engine) => engine.editions()
         }
@@ -36,7 +36,7 @@ impl<'lua> GameEngine<'lua> {
 
     #[inline]
     /// Get list of game components.
-    pub fn components(&self) -> &[GameComponent] {
+    pub fn components(&self) -> Result<Vec<GameComponent>, LuaError> {
         match self {
             Self::V1(engine) => engine.components()
         }

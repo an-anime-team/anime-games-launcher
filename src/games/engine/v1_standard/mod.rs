@@ -24,9 +24,8 @@ pub use progress_report::*;
 pub struct GameIntegration<'lua> {
     lua: &'lua Lua,
 
-    editions: Vec<GameEdition>,
-    components: Vec<GameComponent<'lua>>,
-
+    editions: LuaFunction<'lua>,
+    components: LuaFunction<'lua>,
     game_get_status: LuaFunction<'lua>,
     game_get_diff: LuaFunction<'lua>,
     game_get_launch_info: LuaFunction<'lua>
@@ -43,20 +42,8 @@ impl<'lua> GameIntegration<'lua> {
         Ok(Self {
             lua,
 
-            editions: table.get::<_, Vec<LuaTable>>("editions")
-                .and_then(|editions| {
-                    editions.iter()
-                        .map(GameEdition::try_from)
-                        .collect::<Result<Vec<_>, _>>()
-                })?,
-
-            components: table.get::<_, Vec<LuaTable>>("components")
-                .and_then(|components| {
-                    components.iter()
-                        .map(|component| GameComponent::from_lua(lua, component))
-                        .collect::<Result<Vec<_>, _>>()
-                })?,
-
+            editions: table.get("editions")?,
+            components: table.get("components")?,
             game_get_status: game.get("get_status")?,
             game_get_diff: game.get("get_diff")?,
             game_get_launch_info: game.get("get_launch_info")?
@@ -65,14 +52,24 @@ impl<'lua> GameIntegration<'lua> {
 
     #[inline]
     /// Get list of available game editions.
-    pub fn editions(&self) -> &[GameEdition] {
-        &self.editions
+    pub fn editions(&self) -> Result<Vec<GameEdition>, LuaError> {
+        self.editions.call::<_, Vec<LuaTable>>(())
+            .and_then(|editions| {
+                editions.iter()
+                    .map(GameEdition::try_from)
+                    .collect::<Result<Vec<_>, _>>()
+            })
     }
 
     #[inline]
     /// Get list of game components.
-    pub fn components(&self) -> &[GameComponent] {
-        &self.components
+    pub fn components(&self) -> Result<Vec<GameComponent>, LuaError> {
+        self.components.call::<_, Vec<LuaTable>>(())
+            .and_then(|components| {
+                components.iter()
+                    .map(|component| GameComponent::from_lua(self.lua, component))
+                    .collect::<Result<Vec<_>, _>>()
+            })
     }
 
     /// Get status of the game installation.
