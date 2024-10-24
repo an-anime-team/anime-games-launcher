@@ -94,7 +94,7 @@ you can use `dbg` function. It will print all the input values into the
 application's debug logger.
 
 ```lua
-dbg("test", 123, { a = { hello = "world", 1 }, 2 });
+dbg("test", 123, { a = { hello = "world", 1 }, 2 })
 ```
 
 ## Extended privileges
