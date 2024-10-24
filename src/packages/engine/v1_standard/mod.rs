@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use mlua::prelude::*;
+use mlua::Variadic;
 
 use tokio::runtime::{
     Runtime,
@@ -120,6 +121,7 @@ pub struct Standard<'lua> {
     lua: &'lua Lua,
 
     clone: LuaFunction<'lua>,
+    dbg: LuaFunction<'lua>,
 
     string_api: StringAPI<'lua>,
     path_api: PathAPI<'lua>,
@@ -170,6 +172,14 @@ impl<'lua> Standard<'lua> {
                 clone_value(lua, value)
             })?,
 
+            dbg: lua.create_function(|_, values: Variadic<LuaValue>| {
+                for value in values {
+                    tracing::debug!("{value:#?}");
+                }
+
+                Ok(())
+            })?,
+
             string_api: StringAPI::new(lua)?,
             path_api: PathAPI::new(lua)?,
             filesystem_api: FilesystemAPI::new(lua)?,
@@ -185,9 +195,10 @@ impl<'lua> Standard<'lua> {
     /// Create new environment for the v1 modules standard
     /// using provided module context.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 10)?;
+        let env = self.lua.create_table_with_capacity(0, 11)?;
 
         env.set("clone", self.clone.clone())?;
+        env.set("dbg", self.dbg.clone())?;
 
         env.set("str", self.string_api.create_env()?)?;
         env.set("path", self.path_api.create_env(context)?)?;

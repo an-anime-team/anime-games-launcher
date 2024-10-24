@@ -87,6 +87,16 @@ print(table_2.hello) -- "sugoma"
 print(table_3.hello) -- "world"
 ```
 
+## Debug logging
+
+To perform well-known, time-proven debug technique called "printf each line"
+you can use `dbg` function. It will print all the input values into the
+application's debug logger.
+
+```lua
+dbg("test", 123, { a = { hello = "world", 1 }, 2 });
+```
+
 ## Extended privileges
 
 Every package can be digitally signed by the launcher developer. Modules in
