@@ -1,7 +1,9 @@
-local package = load("another-package-module")
-
 return {
-    greeting = package.value.hello("World"),
+    greeting = function()
+        local package = import("another-package-module")
+
+        return package.hello("World")
+    end,
 
     test_load_valid_input = pcall(load, "another-package"),
     test_load_valid_output = pcall(load, "module"),
