@@ -313,6 +313,8 @@ impl<'lua> PackagesEngine<'lua> {
 
         // Evaluate all the modules in dependency growth order.
         while let Some((resource_table, module, env)) = evaluation_queue.pop() {
+            tracing::trace!(resource_table = format!("{resource_table:#?}"), "Evaluating lua module");
+
             let value = module.set_environment(env)
                 .call::<_, LuaTable>(())?;
 
