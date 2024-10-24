@@ -21,7 +21,11 @@
         }
     },
     "package": {
-        "url": "https://github.com/an-anime-team/anime-games-launcher/raw/next/tests/packages/1/package.json"
+        "url": "https://github.com/an-anime-team/anime-games-launcher/raw/next/tests/packages/1/package.json",
+        "output": "module",
+        "runtime": {
+            "platform": "x86_64-linux-native"
+        }
     },
     "info": {
         "hardware_requirements": {
