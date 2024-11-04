@@ -3,16 +3,16 @@ name: Check source code
 on:
   push:
     branches:
-      - "master"
-      - "next"
+      - master
+      - next
 
     paths:
       - "src/**"
 
   pull_request:
     branches:
-      - "master"
-      - "next"
+      - master
+      - next
 
     paths:
       - "src/**"
@@ -23,7 +23,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
+  check_source_code:
     runs-on: ubuntu-latest
 
     permissions:
@@ -31,11 +31,15 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
+      - name: Check flake format
+        run: nix flake check
+
       - name: Check source code
-        run: |
-          nix develop
-          cargo check --verbose
+        run: nix develop --command cargo check --verbose
+
+      - name: Perform source code tests
+        run: nix develop --command cargo test --verbose

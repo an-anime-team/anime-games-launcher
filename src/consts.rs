@@ -98,4 +98,9 @@ lazy_static::lazy_static! {
     ///
     /// Default is `DATA_FOLDER/debug.log`.
     pub static ref DEBUG_FILE: PathBuf = DATA_FOLDER.join("debug.log");
+
+    /// Path to the trace log file.
+    ///
+    /// Default is `DATA_FOLDER/trace.log`.
+    pub static ref TRACE_FILE: PathBuf = DATA_FOLDER.join("trace.log");
 }

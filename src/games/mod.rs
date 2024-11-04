@@ -14,8 +14,10 @@ pub mod prelude {
         GameEngine,
         GameEdition,
         GameComponent,
+        GameLaunchStatus,
         GameLaunchInfo,
         InstallationStatus,
-        InstallationDiff
+        InstallationDiff,
+        ProgressReport
     };
 }

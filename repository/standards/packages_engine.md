@@ -42,11 +42,28 @@ type LoadedResource = {
 
 ```lua
 -- v1 module standard.
-local file = load('file-input')
+local file = load("file-input")
 
 print(file.format) -- "file"
 print(file.hash)   -- "<base32 value>"
 print(file.value)  -- "<path to the file>"
+```
+
+## Inputs importing
+
+Unlike loading, inputs importing doesn't fetch metadata of input resources.
+You're directly loading their values instead. Importing is prefered way of
+using inputs for most cases.
+
+> From the technical aspect, `import` function uses `load` output and strips
+> all the metadata from it.
+
+```lua
+local input_file   = import("file-input")
+local input_module = import("module-input")
+
+print(input_file)   -- "<path to the file>"
+print(input_module) -- "<content of the module>"
 ```
 
 ## Values cloning
@@ -68,6 +85,16 @@ table_1.hello = "sugoma"
 print(table_1.hello) -- "sugoma"
 print(table_2.hello) -- "sugoma"
 print(table_3.hello) -- "world"
+```
+
+## Debug logging
+
+To perform well-known, time-proven debug technique called "printf each line"
+you can use `dbg` function. It will print all the input values into the
+application's debug logger.
+
+```lua
+dbg("test", 123, { a = { hello = "world", 1 }, 2 })
 ```
 
 ## Extended privileges

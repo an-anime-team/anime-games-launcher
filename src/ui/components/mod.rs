@@ -1,23 +1,22 @@
 pub mod lazy_picture;
+pub mod picture_carousel;
 pub mod card;
 pub mod cards_list;
 pub mod cards_grid;
+pub mod graph;
 
 pub mod game_store_details;
 pub mod hardware_requirements;
-
-// FIXME: NOT REFACTORED
-pub mod downloads_row;
-pub mod game_library_details;
-pub mod game_tags;
-pub mod graph;
-pub mod maintainers_row;
-pub mod picture_carousel;
 
 pub use lazy_picture::{
     ImagePath,
     LazyPictureComponent,
     LazyPictureComponentMsg
+};
+
+pub use picture_carousel::{
+    PictureCarousel,
+    PictureCarouselMsg
 };
 
 pub use card::{
@@ -39,6 +38,12 @@ pub use cards_grid::{
     CardsGridOutput
 };
 
+pub use graph::{
+    Graph,
+    GraphInit,
+    GraphMsg
+};
+
 pub use game_store_details::{
     GameStoreDetails,
     GameStoreDetailsMsg
@@ -52,6 +57,11 @@ pub use hardware_requirements::{
 };
 
 // FIXME: NOT REFACTORED
+pub mod downloads_row;
+pub mod game_library_details;
+pub mod game_tags;
+pub mod maintainers_row;
+
 pub use game_tags::GameTagFactory;
 
 pub use downloads_row::{
@@ -72,9 +82,4 @@ pub use game_library_details::{
 pub use maintainers_row::{
     MaintainersRowFactory,
     MaintainersRowFactoryMsg
-};
-
-pub use picture_carousel::{
-    PictureCarousel,
-    PictureCarouselMsg
 };

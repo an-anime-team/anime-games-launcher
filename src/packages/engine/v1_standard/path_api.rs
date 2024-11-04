@@ -128,14 +128,14 @@ impl<'lua> PathAPI<'lua> {
                 }
             })?,
 
-            path_join: lua.create_function(|lua, parts: Vec<LuaString>| {
+            path_join: lua.create_function(|lua, parts: LuaMultiValue| {
                 if parts.is_empty() {
                     return Ok(LuaNil);
                 }
 
                 let parts = parts.iter()
+                    .flat_map(|part| part.to_string())
                     .filter(|part| !part.as_bytes().is_empty())
-                    .map(LuaString::to_string_lossy)
                     .collect::<Vec<_>>();
 
                 let (parts, is_absolute) = match parts.first() {
@@ -295,54 +295,54 @@ mod tests {
         let lua = Lua::new();
         let api = PathAPI::new(&lua)?;
 
-        assert_eq!( api.path_normalize.call::<_, String>("/")?, "/");
-        assert_eq!( api.path_normalize.call::<_, String>("a/b/c")?, "a/b/c");
-        assert_eq!( api.path_normalize.call::<_, String>("/a/b/c")?, "/a/b/c");
-        assert_eq!( api.path_normalize.call::<_, String>("a/./c")?, "a/c");
-        assert_eq!( api.path_normalize.call::<_, String>("a/../c")?, "c");
-        assert_eq!( api.path_normalize.call::<_, String>("a/../c/./")?, "c");
-        assert_eq!( api.path_normalize.call::<_, String>("./a//\\./../b")?, "b");
-        assert_eq!( api.path_normalize.call::<_, String>(" ")?, " "); // space is a correct entry name
-        assert_eq!( api.path_normalize.call::<_, Option<String>>("")?, None); // entry name cannot be empty
-        assert_eq!( api.path_normalize.call::<_, Option<String>>(".")?, None); // we do not support relative paths
-        assert_eq!( api.path_normalize.call::<_, Option<String>>("..")?, None);
-        assert_eq!( api.path_normalize.call::<_, Option<String>>("./..")?, None);
-        assert_eq!( api.path_normalize.call::<_, Option<String>>("a/..")?, None);
+        assert_eq!(api.path_normalize.call::<_, String>("/")?, "/");
+        assert_eq!(api.path_normalize.call::<_, String>("a/b/c")?, "a/b/c");
+        assert_eq!(api.path_normalize.call::<_, String>("/a/b/c")?, "/a/b/c");
+        assert_eq!(api.path_normalize.call::<_, String>("a/./c")?, "a/c");
+        assert_eq!(api.path_normalize.call::<_, String>("a/../c")?, "c");
+        assert_eq!(api.path_normalize.call::<_, String>("a/../c/./")?, "c");
+        assert_eq!(api.path_normalize.call::<_, String>("./a//\\./../b")?, "b");
+        assert_eq!(api.path_normalize.call::<_, String>(" ")?, " "); // space is a correct entry name
+        assert_eq!(api.path_normalize.call::<_, Option<String>>("")?, None); // entry name cannot be empty
+        assert_eq!(api.path_normalize.call::<_, Option<String>>(".")?, None); // we do not support relative paths
+        assert_eq!(api.path_normalize.call::<_, Option<String>>("..")?, None);
+        assert_eq!(api.path_normalize.call::<_, Option<String>>("./..")?, None);
+        assert_eq!(api.path_normalize.call::<_, Option<String>>("a/..")?, None);
 
-        assert_eq!( api.path_join.call::<_, String>(vec!["a", "b", "c"])?, "a/b/c");
-        assert_eq!( api.path_join.call::<_, String>(vec!["/", "a", "b", "c"])?, "/a/b/c");
-        assert_eq!( api.path_join.call::<_, String>(vec!["a", "..", "b"])?, "b");
-        assert_eq!( api.path_join.call::<_, String>(vec![".", "a", ".", "b"])?, "a/b");
-        assert_eq!( api.path_join.call::<_, Option<String>>(vec![""])?, None);
-        assert_eq!( api.path_join.call::<_, Option<String>>(vec!["."])?, None);
-        assert_eq!( api.path_join.call::<_, Option<String>>(vec![".."])?, None);
-        assert_eq!( api.path_join.call::<_, Option<String>>(vec![".", ".."])?, None);
-        assert_eq!( api.path_join.call::<_, Option<String>>(vec!["a", ".."])?, None);
+        assert_eq!(api.path_join.call::<_, String>(("a", "b", "c"))?, "a/b/c");
+        assert_eq!(api.path_join.call::<_, String>(("/", "a", "b", "c"))?, "/a/b/c");
+        assert_eq!(api.path_join.call::<_, String>(("a", "..", "b"))?, "b");
+        assert_eq!(api.path_join.call::<_, String>((".", "a", ".", "b"))?, "a/b");
+        assert_eq!(api.path_join.call::<_, Option<String>>("")?, None);
+        assert_eq!(api.path_join.call::<_, Option<String>>(".")?, None);
+        assert_eq!(api.path_join.call::<_, Option<String>>("..")?, None);
+        assert_eq!(api.path_join.call::<_, Option<String>>((".", ".."))?, None);
+        assert_eq!(api.path_join.call::<_, Option<String>>(("a", ".."))?, None);
 
-        assert_eq!( api.path_parts.call::<_, Vec<String>>("a/b/c")?, &["a", "b", "c"]);
-        assert_eq!( api.path_parts.call::<_, Vec<String>>("a/./c")?, &["a", "c"]);
-        assert_eq!( api.path_parts.call::<_, Vec<String>>("a/./c/..")?, &["a"]);
-        assert_eq!( api.path_parts.call::<_, Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
-        assert_eq!( api.path_parts.call::<_, Option<Vec<String>>>("")?, None);
-        assert_eq!( api.path_parts.call::<_, Option<Vec<String>>>(".")?, None);
-        assert_eq!( api.path_parts.call::<_, Option<Vec<String>>>("..")?, None);
-        assert_eq!( api.path_parts.call::<_, Option<Vec<String>>>("./..")?, None);
-        assert_eq!( api.path_parts.call::<_, Option<Vec<String>>>("a/..")?, None);
+        assert_eq!(api.path_parts.call::<_, Vec<String>>("a/b/c")?, &["a", "b", "c"]);
+        assert_eq!(api.path_parts.call::<_, Vec<String>>("a/./c")?, &["a", "c"]);
+        assert_eq!(api.path_parts.call::<_, Vec<String>>("a/./c/..")?, &["a"]);
+        assert_eq!(api.path_parts.call::<_, Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
+        assert_eq!(api.path_parts.call::<_, Option<Vec<String>>>("")?, None);
+        assert_eq!(api.path_parts.call::<_, Option<Vec<String>>>(".")?, None);
+        assert_eq!(api.path_parts.call::<_, Option<Vec<String>>>("..")?, None);
+        assert_eq!(api.path_parts.call::<_, Option<Vec<String>>>("./..")?, None);
+        assert_eq!(api.path_parts.call::<_, Option<Vec<String>>>("a/..")?, None);
 
-        assert_eq!( api.path_parent.call::<_, String>("a/b/c")?, "a/b");
-        assert_eq!( api.path_parent.call::<_, String>("/a/b/c")?, "/a/b");
-        assert_eq!( api.path_parent.call::<_, String>("a\\./b")?, "a");
-        assert_eq!( api.path_parent.call::<_, Option<Vec<String>>>("a")?, None);
-        assert_eq!( api.path_parent.call::<_, Option<Vec<String>>>("a/.")?, None);
-        assert_eq!( api.path_parent.call::<_, Option<Vec<String>>>("a/../b")?, None);
+        assert_eq!(api.path_parent.call::<_, String>("a/b/c")?, "a/b");
+        assert_eq!(api.path_parent.call::<_, String>("/a/b/c")?, "/a/b");
+        assert_eq!(api.path_parent.call::<_, String>("a\\./b")?, "a");
+        assert_eq!(api.path_parent.call::<_, Option<Vec<String>>>("a")?, None);
+        assert_eq!(api.path_parent.call::<_, Option<Vec<String>>>("a/.")?, None);
+        assert_eq!(api.path_parent.call::<_, Option<Vec<String>>>("a/../b")?, None);
 
-        assert_eq!( api.path_file_name.call::<_, String>("/")?, "/");
-        assert_eq!( api.path_file_name.call::<_, String>("a")?, "a");
-        assert_eq!( api.path_file_name.call::<_, String>("a/b/c")?, "c");
-        assert_eq!( api.path_file_name.call::<_, String>("/a/b/c")?, "c");
-        assert_eq!( api.path_file_name.call::<_, String>("a\\./b")?, "b");
-        assert_eq!( api.path_file_name.call::<_, Option<Vec<String>>>(".")?, None);
-        assert_eq!( api.path_file_name.call::<_, Option<Vec<String>>>("a/..")?, None);
+        assert_eq!(api.path_file_name.call::<_, String>("/")?, "/");
+        assert_eq!(api.path_file_name.call::<_, String>("a")?, "a");
+        assert_eq!(api.path_file_name.call::<_, String>("a/b/c")?, "c");
+        assert_eq!(api.path_file_name.call::<_, String>("/a/b/c")?, "c");
+        assert_eq!(api.path_file_name.call::<_, String>("a\\./b")?, "b");
+        assert_eq!(api.path_file_name.call::<_, Option<Vec<String>>>(".")?, None);
+        assert_eq!(api.path_file_name.call::<_, Option<Vec<String>>>("a/..")?, None);
 
         Ok(())
     }

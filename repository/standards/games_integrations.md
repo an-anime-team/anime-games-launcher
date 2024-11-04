@@ -17,10 +17,10 @@ type GameIntegration = {
     standard: 1,
 
     // List of available game editions.
-    editions: Edition[],
+    editions: (): Edition[],
 
     // List of game components.
-    components: Component[],
+    components: (): Component[],
 
     game: {
         // Get status of the game installation.

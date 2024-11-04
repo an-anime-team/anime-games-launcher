@@ -216,7 +216,7 @@ impl LockFile {
                 });
 
                 if is_root {
-                    lock_root.insert(lock_resource_index as u64);
+                    lock_root.insert(lock_resource_index as u32);
                 }
 
                 // Process inputs if there are some.
@@ -443,10 +443,10 @@ impl LockFile {
                     // Update the package's reference.
                     if is_input {
                         if let Some(inputs) = &mut lock_resources[index].inputs {
-                            inputs.insert(name, *resource_index as u64);
+                            inputs.insert(name, *resource_index as u32);
                         }
                     } else if let Some(outputs) = &mut lock_resources[index].outputs {
-                        outputs.insert(name, *resource_index as u64);
+                        outputs.insert(name, *resource_index as u32);
                     }
                 }
             }
@@ -492,7 +492,7 @@ mod tests {
 
         assert_eq!(lock_file.root, &[0]);
         assert_eq!(lock_file.resources.len(), 8);
-        assert_eq!(Hash::for_entry(path)?, Hash(9585216612201553270));
+        assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
 
         let Some(inputs) = lock_file.resources[0].inputs.take() else {
             anyhow::bail!("No inputs in the root package");

@@ -3,9 +3,15 @@
 
     inputs = {
         nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+        flake-utils.url = "github:numtide/flake-utils";
 
         rust-overlay = {
             url = "github:oxalica/rust-overlay";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
+
+        nixos-bundlers = {
+            url = "github:NixOS/bundlers";
             inputs.nixpkgs.follows = "nixpkgs";
         };
     };
@@ -24,98 +30,97 @@
         ];
     };
 
-    outputs = { self, nixpkgs, rust-overlay }:
-        let
-            system = "x86_64-linux";
+    outputs = { self, nixpkgs, flake-utils, rust-overlay, nixos-bundlers }:
+        flake-utils.lib.eachDefaultSystem (system:
+            let
+                pkgs = import nixpkgs {
+                    inherit system;
 
-            pkgs = import nixpkgs {
-                inherit system;
+                    overlays = [ rust-overlay.overlays.default ];
+                };
 
-                overlays = [
-                    rust-overlay.overlays.default
-                ];
-            };
+                config = pkgs.lib.importTOML ./Cargo.toml;
 
-            config = pkgs.lib.importTOML ./Cargo.toml;
+            in {
+                packages.default = pkgs.rustPlatform.buildRustPackage {
+                    pname = config.package.name;
+                    version = config.package.version;
 
-        in {
-            packages.${system}.default = pkgs.rustPlatform.buildRustPackage {
-                pname = config.package.name;
-                version = config.package.version;
+                    src = ./.;
+                    cargoLock.lockFile = ./Cargo.lock;
 
-                src = ./.;
-                cargoLock.lockFile = ./Cargo.lock;
-                doCheck = false;
+                    doCheck = false;
 
-                meta = with pkgs.lib; {
-                    description = config.package.description;
-                    homepage = config.package.homepage;
-                    license = licenses.gpl3Only;
+                    meta = with pkgs.lib; {
+                        description = config.package.description;
+                        homepage = config.package.homepage;
+                        license = licenses.gpl3Only;
 
-                    maintainers = [
-                        {
-                            name = "Nikita Podvirnyi";
-                            email = "krypt0nn@vk.com";
-                            matrix = "@krypt0nn:mozilla.org";
-                            github = "krypt0nn";
-                            githubId = 29639507;
-                        }
+                        maintainers = [
+                            {
+                                name = "Nikita Podvirnyi";
+                                email = "krypt0nn@vk.com";
+                                matrix = "@krypt0nn:mozilla.org";
+                                github = "krypt0nn";
+                                githubId = 29639507;
+                            }
+                        ];
+                    };
+
+                    nativeBuildInputs = with pkgs; [
+                        rust-bin.stable.latest.minimal
+
+                        gcc
+                        cmake
+                        glib
+                        pkg-config
+
+                        gtk4
+                        gobject-introspection
+                        wrapGAppsHook4
+                    ];
+
+                    buildInputs = with pkgs; [
+                        libadwaita
+                        gdk-pixbuf
                     ];
                 };
 
-                nativeBuildInputs = with pkgs; [
-                    rust-bin.stable.latest.minimal
+                bundlers = with nixos-bundlers.bundlers.${system}; {
+                    deb = toDEB;
+                    rpm = toRPM;
+                    arx = toArx;
+                };
 
-                    gcc
-                    cmake
-                    glib
-                    pkg-config
-                ];
+                devShells.default = pkgs.mkShell {
+                    nativeBuildInputs = with pkgs; [
+                        (rust-bin.stable.latest.default.override {
+                            extensions = [ "rust-src" ];
+                        })
 
-                buildInputs = with pkgs; [
-                    libadwaita
-                    gtk4
-                    gdk-pixbuf
-                    gobject-introspection
+                        gcc
+                        cmake
+                        glib
+                        pkg-config
 
-                    openssl
-                    luau
-                ];
-            };
+                        gtk4
+                        gobject-introspection
+                        wrapGAppsHook4
 
-            devShells.${system}.default = pkgs.mkShell {
-                nativeBuildInputs = with pkgs; [
-                    (rust-bin.stable.latest.default.override {
-                        extensions = [ "rust-src" ];
-                    })
+                        git
+                        unzip
+                        p7zip
+                        libwebp
 
-                    gcc
-                    cmake
-                    pkg-config
+                        # adwaita-1-demo
+                        libadwaita.devdoc
+                        icon-library
+                    ];
 
-                    git
-                    unzip
-                    p7zip
-                    libwebp
-
-                    # adwaita-1-demo
-                    libadwaita.devdoc
-                ];
-
-                buildInputs = with pkgs; [
-                    libadwaita
-                    gtk4
-                    gdk-pixbuf
-                    gobject-introspection
-
-                    openssl
-                    luau
-                ];
-
-                # CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
-                # CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = "${pkgs.llvmPackages.clangUseLLVM}/bin/clang";
-
-                # CARGO_ENCODED_RUSTFLAGS = "-Clink-arg=--ld-path=${pkgs.mold}/bin/mold";
-            };
-        };
+                    buildInputs = with pkgs; [
+                        libadwaita
+                        gdk-pixbuf
+                    ];
+                };
+            });
 }

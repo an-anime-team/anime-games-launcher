@@ -25,7 +25,13 @@ impl<'lua> PipelineAction<'lua> {
                 .and_then(|title| LocalizableString::try_from(&title))?,
 
             description: table.get::<_, LuaValue>("description")
-                .map(|desc| LocalizableString::try_from(&desc).map(Some))
+                .map(|desc| {
+                    if desc.is_nil() || desc.is_null() {
+                        Ok(None)
+                    } else {
+                        LocalizableString::try_from(&desc).map(Some)
+                    }
+                })
                 .unwrap_or(Ok(None))?,
 
             before: table.get::<_, LuaFunction>("before").ok(),
@@ -56,16 +62,14 @@ impl<'lua> PipelineAction<'lua> {
         };
 
         let progress = self.lua.create_function(move |_, report: LuaTable| {
-            progress(ProgressReport::try_from(&report)?);
-
-            Ok(())
+            Ok(progress(ProgressReport::try_from(&report)?))
         })?;
 
         before.call::<_, bool>(progress).map(Some)
     }
 
     /// Perform the action.
-    pub fn perform(&self, progress: impl Fn(ProgressReport) -> bool + 'static) -> Result<(), LuaError> {
+    pub fn perform(&self, progress: impl Fn(ProgressReport) + 'static) -> Result<(), LuaError> {
         let progress = self.lua.create_function(move |_, report: LuaTable| {
             progress(ProgressReport::try_from(&report)?);
 
@@ -85,9 +89,7 @@ impl<'lua> PipelineAction<'lua> {
         };
 
         let progress = self.lua.create_function(move |_, report: LuaTable| {
-            progress(ProgressReport::try_from(&report)?);
-
-            Ok(())
+            Ok(progress(ProgressReport::try_from(&report)?))
         })?;
 
         after.call::<_, bool>(progress).map(Some)

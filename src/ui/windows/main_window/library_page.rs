@@ -13,13 +13,30 @@ use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 use crate::ui::components::*;
+use crate::ui::windows::download_manager::PipelineActionProgressReport;
 
-use super::DownloadsPageApp;
-
-#[derive(Debug)]
 pub enum SyncGameCommand {
-    GetEditions(OneshotSender<Vec<GameEdition>>),
-    // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>)
+    /// Get list of available game editions.
+    GetEditions(OneshotSender<Result<Vec<GameEdition>, LuaError>>),
+    // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>),
+
+    /// Get status of the game installation.
+    GetStatus {
+        edition: String,
+        listener: OneshotSender<Result<InstallationStatus, LuaError>>
+    },
+
+    /// Get information about the game launching.
+    GetLaunchInfo {
+        edition: String,
+        listener: OneshotSender<Result<GameLaunchInfo, LuaError>>
+    },
+
+    /// Start game diff pipeline execution. This can be
+    /// update downloading or full game installation.
+    StartDiffPipeline {
+        edition: String
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -41,9 +58,7 @@ pub enum LibraryPageInput {
     ShowGameDetails {
         game: DynamicIndex,
         variant: Option<DynamicIndex>
-    },
-
-    ToggleDownloadsPage
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,13 +69,11 @@ pub enum LibraryPageOutput {
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameLibraryDetails>,
-    active_download: AsyncController<DownloadsRow>,
-    downloads_page: AsyncController<DownloadsPageApp>,
+
+    download_manager: AsyncController<DownloadManagerWindow>,
 
     #[allow(clippy::type_complexity)]
-    games: Vec<(String, Arc<GameManifest>, Vec<GameEdition>, UnboundedSender<SyncGameCommand>)>,
-
-    show_downloads: bool
+    games: Vec<(String, Arc<GameManifest>, Vec<GameEdition>, UnboundedSender<SyncGameCommand>)>
 }
 
 #[relm4::component(pub, async)]
@@ -74,57 +87,34 @@ impl SimpleAsyncComponent for LibraryPage {
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
 
-            #[transition(SlideLeftRight)]
-            append = if !model.show_downloads {
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
+            adw::NavigationSplitView {
+                set_vexpand: true,
+                set_hexpand: true,
 
-                    adw::NavigationSplitView {
-                        set_vexpand: true,
-                        set_hexpand: true,
+                #[wrap(Some)]
+                set_sidebar = &adw::NavigationPage {
+                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
+                    set_title: "Games",
 
-                        #[wrap(Some)]
-                        set_sidebar = &adw::NavigationPage {
-                            // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
-                            set_title: "Games",
+                    #[wrap(Some)]
+                    set_child = model.cards_list.widget() {
+                        add_css_class: "navigation-sidebar",
 
-                            #[wrap(Some)]
-                            set_child = model.cards_list.widget() {
-                                add_css_class: "navigation-sidebar",
-
-                                connect_row_activated[sender] => move |_, row| {
-                                    sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
-                                }
-                            }
-                        },
-
-                        #[wrap(Some)]
-                        set_content = &adw::NavigationPage {
-                            set_hexpand: true,
-
-                            // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
-                            set_title: "Details",
-
-                            #[wrap(Some)]
-                            set_child = model.game_details.widget(),
+                        connect_row_activated[sender] => move |_, row| {
+                            sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
                         }
-                    },
+                    }
+                },
 
-                    // adw::PreferencesPage {
-                    //     adw::PreferencesGroup {
-                    //         model.active_download.widget() {
-                    //             set_width_request: 1000,
+                #[wrap(Some)]
+                set_content = &adw::NavigationPage {
+                    set_hexpand: true,
 
-                    //             set_activatable: true,
+                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
+                    set_title: "Details",
 
-                    //             connect_activated => LibraryPageInput::ToggleDownloadsPage
-                    //         }
-                    //     }
-                    // }
-                }
-            } else {
-                gtk::Box {
-                    model.downloads_page.widget(),
+                    #[wrap(Some)]
+                    set_child = model.game_details.widget(),
                 }
             }
         }
@@ -146,24 +136,11 @@ impl SimpleAsyncComponent for LibraryPage {
                 .launch(())
                 .detach(),
 
-            active_download: DownloadsRow::builder()
-                .launch(DownloadsRowInit::new(
-                    "123",
-                    String::from("Punishing: Gray Raven"),
-                    String::from("69.42.0"),
-                    String::from("Global"),
-                    696969696969,
-                    true,
-                ))
-                .detach(),
-
-            downloads_page: DownloadsPageApp::builder()
+            download_manager: DownloadManagerWindow::builder()
                 .launch(())
                 .detach(),
 
-            games: Vec::new(),
-
-            show_downloads: false
+            games: Vec::new()
         };
 
         model.cards_list.widget().connect_row_selected(|_, row| {
@@ -187,8 +164,12 @@ impl SimpleAsyncComponent for LibraryPage {
                 self.games.clear();
                 self.cards_list.guard().clear();
 
+                let download_manager_sender = self.download_manager.sender().clone();
+
                 std::thread::spawn(move || {
                     let lua = Lua::new();
+
+                    lua.enable_jit(true);
 
                     // Iterate through locked resources and find manifests
                     // for appropriate games packages.
@@ -309,7 +290,164 @@ impl SimpleAsyncComponent for LibraryPage {
                                     Ok(command) => {
                                         match command {
                                             SyncGameCommand::GetEditions(listener) => {
-                                                let _ = listener.send(game.editions().to_vec());
+                                                let _ = listener.send(game.editions());
+                                            }
+
+                                            SyncGameCommand::GetStatus { edition, listener } => {
+                                                let _ = listener.send(game.game_status(edition));
+                                            }
+
+                                            SyncGameCommand::GetLaunchInfo { edition, listener } => {
+                                                let _ = listener.send(game.game_launch_info(edition));
+                                            }
+
+                                            // TODO: handle errors
+                                            SyncGameCommand::StartDiffPipeline { edition } => {
+                                                match game.game_diff(edition) {
+                                                    Ok(Some(diff)) => {
+                                                        download_manager_sender.emit(DownloadManagerWindowMsg::Show);
+
+                                                        // Iterate over actions of the pipeline.
+                                                        for action in diff.pipeline() {
+                                                            // Get list of handlers for this action.
+                                                            let (sender, listener) = flume::bounded(1);
+
+                                                            download_manager_sender.emit(DownloadManagerWindowMsg::PrepareAction {
+                                                                diff_title: diff.title().clone(),
+                                                                diff_description: diff.description().cloned(),
+
+                                                                action_title: action.title().clone(),
+                                                                action_description: action.description().cloned(),
+
+                                                                handlers_listener: sender
+                                                            });
+
+                                                            let handlers = match listener.recv() {
+                                                                Ok(handlers) => handlers,
+                                                                Err(err) => {
+                                                                    tracing::error!(?err, "Failed to get pipeline action handlers");
+
+                                                                    break;
+                                                                }
+                                                            };
+
+                                                            // Process the hook before action execution.
+                                                            let result = action.before(move |progress: ProgressReport| {
+                                                                (handlers.before)(PipelineActionProgressReport {
+                                                                    progress: if let Ok(Some(progress)) = progress.format() {
+                                                                        progress
+                                                                    } else {
+                                                                        LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
+                                                                    },
+
+                                                                    current: progress.progress_current,
+                                                                    total: progress.progress_total,
+
+                                                                    title: progress.title,
+                                                                    description: progress.description
+                                                                })
+                                                            });
+
+                                                            // Check hook execution result, if it's `false` then skip the action.
+                                                            match result {
+                                                                Ok(Some(true)) | Ok(None) => {
+                                                                    // Perform the action.
+                                                                    let result = action.perform(move |progress: ProgressReport| {
+                                                                        (handlers.perform)(PipelineActionProgressReport {
+                                                                            progress: if let Ok(Some(progress)) = progress.format() {
+                                                                                progress
+                                                                            } else {
+                                                                                LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
+                                                                            },
+
+                                                                            current: progress.progress_current,
+                                                                            total: progress.progress_total,
+
+                                                                            title: progress.title,
+                                                                            description: progress.description
+                                                                        })
+                                                                    });
+
+                                                                    // Check the result of the action execution.
+                                                                    if let Err(err) = result {
+                                                                        tracing::error!(
+                                                                            title = action.title().default_translation(),
+                                                                            ?err,
+                                                                            "Failed to execute action"
+                                                                        );
+
+                                                                        break;
+                                                                    }
+
+                                                                    // Process the hook after action execution.
+                                                                    let result = action.after(move |progress: ProgressReport| {
+                                                                        (handlers.after)(PipelineActionProgressReport {
+                                                                            progress: if let Ok(Some(progress)) = progress.format() {
+                                                                                progress
+                                                                            } else {
+                                                                                LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
+                                                                            },
+
+                                                                            current: progress.progress_current,
+                                                                            total: progress.progress_total,
+
+                                                                            title: progress.title,
+                                                                            description: progress.description
+                                                                        })
+                                                                    });
+
+                                                                    // Check hook execution result, if it's `false` then skip all the following actions.
+                                                                    match result {
+                                                                        Ok(Some(true)) | Ok(None) => continue,
+
+                                                                        Ok(Some(false)) => {
+                                                                            tracing::debug!(
+                                                                                title = action.title().default_translation(),
+                                                                                "Diff pipeline skipped"
+                                                                            );
+
+                                                                            break;
+                                                                        }
+
+                                                                        Err(err) => {
+                                                                            tracing::error!(
+                                                                                title = action.title().default_translation(),
+                                                                                ?err,
+                                                                                "Failed to execute action's after hook"
+                                                                            );
+
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                }
+
+                                                                Ok(Some(false)) => {
+                                                                    tracing::debug!(
+                                                                        title = action.title().default_translation(),
+                                                                        "Diff pipeline action skipped"
+                                                                    );
+
+                                                                    continue;
+                                                                }
+
+                                                                Err(err) => {
+                                                                    tracing::error!(
+                                                                        title = action.title().default_translation(),
+                                                                        ?err,
+                                                                        "Failed to execute action's before hook"
+                                                                    );
+
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+
+                                                        download_manager_sender.emit(DownloadManagerWindowMsg::Hide);
+                                                    }
+
+                                                    Ok(None) => tracing::info!("Game diff is not available"),
+                                                    Err(err) => tracing::error!(?err, "Failed to get game diff")
+                                                }
                                             }
                                         }
                                     }
@@ -344,24 +482,21 @@ impl SimpleAsyncComponent for LibraryPage {
                 }
 
                 // TODO: build Arc-s here
-                let mut editions = match recv.await {
-                    Ok(editions) => editions,
+                let editions = match recv.await {
+                    Ok(Ok(editions)) => editions,
+
+                    Ok(Err(err)) => {
+                        tracing::error!(?err, "Failed to request game's editions");
+
+                        return;
+                    }
+
                     Err(err) => {
                         tracing::error!(?err, "Failed to request game's editions");
 
                         return;
                     }
                 };
-
-                editions.push(GameEdition {
-                    name: String::from("global"),
-                    title: LocalizableString::raw("China")
-                });
-
-                editions.push(GameEdition {
-                    name: String::from("global"),
-                    title: LocalizableString::raw("Amogus Land")
-                });
 
                 self.cards_list.guard().push_back(CardsListInit {
                     image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
@@ -428,10 +563,6 @@ impl SimpleAsyncComponent for LibraryPage {
                     edition,
                     listener: listener.clone()
                 });
-            }
-
-            LibraryPageInput::ToggleDownloadsPage => {
-                self.show_downloads = !self.show_downloads;
             }
 
             LibraryPageInput::Activate => {

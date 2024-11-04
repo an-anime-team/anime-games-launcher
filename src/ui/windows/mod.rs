@@ -1,15 +1,17 @@
-mod loading_window;
 mod main_window;
 mod profiles_window;
-
-pub use loading_window::{
-    LoadingWindow,
-    LoadingWindowMsg
-};
+mod download_manager;
+mod create_wine_profile;
 
 pub use main_window::{
     MainWindow,
-    MainWindowMsg
+    MainWindowMsg,
+    WINDOW as MAIN_WINDOW
 };
 
 pub use main_window::library_page::SyncGameCommand;
+
+pub use download_manager::{
+    DownloadManagerWindow,
+    DownloadManagerWindowMsg
+};

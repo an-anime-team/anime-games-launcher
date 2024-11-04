@@ -1,6 +1,9 @@
 /target
 /.direnv
 /result
+/deb-single-anime-games-launcher
+/rpm-single-anime-games-launcher
+/anime-games-launcher-arx
 
 /flamegraph.svg
 /perf.data

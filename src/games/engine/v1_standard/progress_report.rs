@@ -10,8 +10,8 @@ pub struct ProgressReport<'lua> {
     /// Optional description of the current action.
     pub description: Option<LocalizableString>,
 
-    pub progress_current: u32,
-    pub progress_total: u32,
+    pub progress_current: u64,
+    pub progress_total: u64,
 
     progress_format: Option<LuaFunction<'lua>>
 }
@@ -43,11 +43,23 @@ impl<'lua> TryFrom<&LuaTable<'lua>> for ProgressReport<'lua> {
 
         Ok(Self {
             title: value.get::<_, LuaValue>("title")
-                .map(|title| LocalizableString::try_from(&title).map(Some))
+                .map(|title| {
+                    if title.is_nil() || title.is_null() {
+                        Ok(None)
+                    } else {
+                        LocalizableString::try_from(&title).map(Some)
+                    }
+                })
                 .unwrap_or(Ok(None))?,
 
             description: value.get::<_, LuaValue>("description")
-                .map(|desc| LocalizableString::try_from(&desc).map(Some))
+                .map(|desc| {
+                    if desc.is_nil() || desc.is_null() {
+                        Ok(None)
+                    } else {
+                        LocalizableString::try_from(&desc).map(Some)
+                    }
+                })
                 .unwrap_or(Ok(None))?,
 
             progress_current: progress.get("current")?,

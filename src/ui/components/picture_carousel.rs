@@ -1,7 +1,5 @@
 use adw::prelude::*;
-
 use relm4::prelude::*;
-use relm4::factory::*;
 
 use super::*;
 
@@ -32,7 +30,7 @@ impl SimpleAsyncComponent for PictureCarousel {
                 set_spacing: 8,
 
                 model.pictures.widget() {
-                    set_width_request: (CardSize::Large.width() as f32 * 16.0 / 9.0) as i32,
+                    // set_width_request: (CardSize::Large.width() as f32 * 16.0 / 9.0) as i32,
                     set_height_request: CardSize::Large.height()
                 },
 
@@ -40,7 +38,7 @@ impl SimpleAsyncComponent for PictureCarousel {
                     set_carousel: Some(model.pictures.widget()),
                 }
             },
-            
+
             add_overlay = &gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,
                 set_valign: gtk::Align::Center,
@@ -139,6 +137,8 @@ impl AsyncFactoryComponent for PictureCarouselFactory {
         #[root]
         gtk::Box {
             self.picture.widget() {
+                set_valign: gtk::Align::Fill,
+
                 add_css_class: "card"
             }
         }

@@ -6,7 +6,7 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct InstallationDiff<'lua> {
-    title: Option<LocalizableString>,
+    title: LocalizableString,
     description: Option<LocalizableString>,
     pipeline: Vec<PipelineAction<'lua>>
 }
@@ -14,15 +14,18 @@ pub struct InstallationDiff<'lua> {
 impl<'lua> InstallationDiff<'lua> {
     pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
         Ok(Self {
-            title: table.get::<_, LuaValue>("title").ok()
-                .as_ref()
-                .map(LocalizableString::try_from)
-                .transpose()?,
+            title: table.get::<_, LuaValue>("title")
+                .and_then(|title| LocalizableString::try_from(&title))?,
 
-            description: table.get::<_, LuaValue>("description").ok()
-                .as_ref()
-                .map(LocalizableString::try_from)
-                .transpose()?,
+            description: table.get::<_, LuaValue>("description")
+                .map(|desc| {
+                    if desc.is_nil() || desc.is_null() {
+                        Ok(None)
+                    } else {
+                        LocalizableString::try_from(&desc).map(Some)
+                    }
+                })
+                .unwrap_or(Ok(None))?,
 
             pipeline: table.get::<_, Vec<LuaTable>>("pipeline")
                 .and_then(|pipeline| {
@@ -35,8 +38,8 @@ impl<'lua> InstallationDiff<'lua> {
 
     #[inline]
     /// Title of the diff.
-    pub fn title(&self) -> Option<&LocalizableString> {
-        self.title.as_ref()
+    pub fn title(&self) -> &LocalizableString {
+        &self.title
     }
 
     #[inline]
