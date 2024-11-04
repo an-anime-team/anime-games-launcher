@@ -1,7 +1,6 @@
 mod main_window;
 mod profiles_window;
 mod download_manager;
-mod create_wine_profile;
 
 pub use main_window::{
     MainWindow,
