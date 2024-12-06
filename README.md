@@ -39,6 +39,7 @@
 
 ```sh
 git clone https://github.com/an-anime-team/anime-games-launcher
+cd anime-games-launcher
 ```
 
 ## Run app
