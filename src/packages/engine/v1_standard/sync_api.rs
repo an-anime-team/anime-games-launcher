@@ -151,7 +151,7 @@ impl<'lua> SyncAPI<'lua> {
 
                     for consumer in consumers {
                         if consumer != &handle {
-                            if let Some((_, ref mut data)) = listeners.get_mut(consumer) {
+                            if let Some((_, data)) = listeners.get_mut(consumer) {
                                 data.push_back(message.clone());
                             }
                         }

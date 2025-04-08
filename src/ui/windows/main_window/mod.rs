@@ -20,8 +20,6 @@ use library_page::*;
 use profile_page::*;
 use store_page::*;
 
-pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
-
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
@@ -47,6 +45,7 @@ pub struct MainWindow {
     library_page: AsyncController<LibraryPage>,
     profile_page: AsyncController<ProfilePage>,
 
+    window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
 
     games: HashMap<String, Arc<GameManifest>>,
@@ -58,6 +57,12 @@ pub struct MainWindow {
     searching: bool,
 
     show_back: bool
+}
+
+impl MainWindow {
+    pub fn window(&self) -> &adw::ApplicationWindow {
+        self.window.as_ref().expect("Failed to load application window")
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -193,7 +198,7 @@ impl SimpleAsyncComponent for MainWindow {
     }
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             store_page: StorePage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
@@ -210,6 +215,7 @@ impl SimpleAsyncComponent for MainWindow {
                 .launch(())
                 .detach(),
 
+            window: None,
             view_stack: adw::ViewStack::new(),
 
             is_loading: true,
@@ -227,9 +233,7 @@ impl SimpleAsyncComponent for MainWindow {
 
         let widgets = view_output!();
 
-        unsafe {
-            WINDOW = Some(widgets.window.clone());
-        }
+        model.window = Some(widgets.window.clone());
 
         let task = tokio::spawn(async move {
             // Create default folders.

@@ -34,7 +34,7 @@ impl AsyncFactoryComponent for MaintainersRowFactory {
         #[root]
         adw::ActionRow {
             set_title: &self.name,
-            set_subtitle: &self.contact.clone().unwrap_or(String::new()),
+            set_subtitle: &self.contact.clone().unwrap_or_default(),
             set_tooltip: "Open contact",
             set_activatable: true,
             connect_activated => MaintainersRowFactoryMsg::Activate,
@@ -72,7 +72,7 @@ impl AsyncFactoryComponent for MaintainersRowFactory {
                         contact.to_string()
                     } else if contact.contains('@') && contact.split('@').count() == 2 && contact.chars().all(|c| c.is_alphanumeric() || ".-_@".contains(c)) {
                         format!("mailto:{}", contact)
-                    } else if contact.chars().all(|c| c.is_digit(10) || " +-".contains(c)) {
+                    } else if contact.chars().all(|c| c.is_ascii_digit() || " +-".contains(c)) {
                         format!("tel:{}", contact.replace([' ', '-'], ""))
                     } else {
                         contact.to_string()

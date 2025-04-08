@@ -5,8 +5,6 @@ use relm4::factory::AsyncFactoryVecDeque;
 
 use unic_langid::LanguageIdentifier;
 
-use crate::ui::components::*;
-
 use super::*;
 
 #[derive(Debug)]
@@ -67,7 +65,7 @@ impl SimpleAsyncComponent for StorePage {
                                     set_align: gtk::Align::Start,
 
                                     add_css_class: "title-1",
-        
+
                                     set_label: "Games store"
                                 },
 

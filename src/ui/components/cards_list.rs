@@ -136,8 +136,8 @@ impl AsyncFactoryComponent for CardsList {
                 if self.has_variants {
                     if self.variants.widget().selected_row().is_none() {
                         if let Some(variant) = self.variants.widget().first_child() {
-                            self.variants.widget().select_row(Some(unsafe {
-                                &variant.unsafe_cast::<gtk::ListBoxRow>()
+                            self.variants.widget().select_row(Some(&unsafe {
+                                variant.unsafe_cast::<gtk::ListBoxRow>()
                             }));
                         }
                     }

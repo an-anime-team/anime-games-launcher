@@ -172,10 +172,10 @@ impl SimpleAsyncComponent for ProfilePage {
                 }
             }
 
-            ProfilePageMsg::OpenNewProfileDialog => unsafe {
-                if let Some(window) = MAIN_WINDOW.as_ref() {
-                    self.builder_window.widget().set_transient_for(Some(window));
-                }
+            ProfilePageMsg::OpenNewProfileDialog => {
+                // if let Some(window) = MAIN_WINDOW.lock().as_ref() {
+                //     self.builder_window.widget().set_transient_for(Some(window));
+                // }
 
                 self.builder_window.emit(ProfileBuilderWindowInput::OpenWindow);
             }
@@ -202,13 +202,11 @@ impl SimpleAsyncComponent for ProfilePage {
                                 );
                             }
 
-                            unsafe {
-                                if let Some(window) = MAIN_WINDOW.as_ref() {
-                                    self.manager_window.widget().set_transient_for(Some(window));
-                                }
+                            // if let Some(window) = MAIN_WINDOW.lock().as_ref() {
+                            //     self.manager_window.widget().set_transient_for(Some(window));
+                            // }
 
-                                self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(profile));
-                            }
+                            self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(profile));
                         }
 
                         Err(err) => {

@@ -12,7 +12,6 @@ use tokio::sync::oneshot::Sender as OneshotSender;
 use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
-use crate::ui::components::*;
 use crate::ui::windows::download_manager::PipelineActionProgressReport;
 
 pub enum SyncGameCommand {

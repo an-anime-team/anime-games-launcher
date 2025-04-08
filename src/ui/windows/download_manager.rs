@@ -7,8 +7,6 @@ use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 
-static mut WINDOW: Option<adw::Window> = None;
-
 pub struct PipelineActionHandlers {
     pub before: Box<dyn Fn(PipelineActionProgressReport) -> bool + Send + Sync>,
     pub perform: Box<dyn Fn(PipelineActionProgressReport) + Send + Sync>,
@@ -34,6 +32,7 @@ pub struct PipelineActionProgressReport {
 pub struct DownloadManagerWindow {
     graph: AsyncController<Graph>,
 
+    window: Option<adw::Window>,
     progress_bar: gtk::ProgressBar,
 
     updates_lang: Option<LanguageIdentifier>,
@@ -189,7 +188,7 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
     }
 
     async fn init(_init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             graph: Graph::builder()
                 .launch(GraphInit {
                     width: 600,
@@ -199,6 +198,7 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
                 })
                 .detach(),
 
+            window: None,
             progress_bar: gtk::ProgressBar::new(),
 
             updates_lang: None,
@@ -217,29 +217,27 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
 
         let widgets = view_output!();
 
-        unsafe {
-            WINDOW = Some(widgets.window.clone());
-        }
+        model.window = Some(widgets.window.clone());
 
         AsyncComponentParts { model, widgets }
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            DownloadManagerWindowMsg::Show => unsafe {
-                if let Some(window) = WINDOW.as_ref() {
-                    if let Some(main_window) = MAIN_WINDOW.as_ref() {
-                        let main_window = main_window.upcast_ref::<gtk::Window>();
+            DownloadManagerWindowMsg::Show => {
+                if let Some(window) = self.window.as_ref() {
+                    // if let Some(main_window) = MAIN_WINDOW.lock().as_ref() {
+                    //     let main_window = main_window.upcast_ref::<gtk::Window>();
 
-                        window.set_transient_for(Some(main_window));
-                    }
+                    //     window.set_transient_for(Some(main_window));
+                    // }
 
                     window.present();
                 }
             }
 
-            DownloadManagerWindowMsg::Hide => unsafe {
-                if let Some(window) = WINDOW.as_ref() {
+            DownloadManagerWindowMsg::Hide => {
+                if let Some(window) = self.window.as_ref() {
                     window.close();
                 }
             }
