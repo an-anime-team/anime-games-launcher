@@ -12,12 +12,10 @@ pub use actions::prelude::*;
 
 // pub mod downloads_page;
 pub mod library_page;
-pub mod profile_page;
 pub mod store_page;
 
 // use downloads_page::*;
 use library_page::*;
-use profile_page::*;
 use store_page::*;
 
 #[allow(clippy::large_enum_variant)]
@@ -37,13 +35,12 @@ pub enum MainWindowMsg {
     GoBack,
 
     ActivateStorePage,
-    ActivateLibraryPage,
+    ActivateLibraryPage
 }
 
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
-    profile_page: AsyncController<ProfilePage>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
@@ -166,21 +163,10 @@ impl SimpleAsyncComponent for MainWindow {
                             set_icon_name: Some("applications-games-symbolic")
                         },
 
-                        add = &gtk::Box {
-                            set_vexpand: true,
-                            set_hexpand: true,
-
-                            model.profile_page.widget(),
-                        } -> {
-                            set_title: Some("Profile"),
-                            set_name: Some("profile"),
-                            set_icon_name: Some("person-symbolic")
-                        },
-
                         connect_visible_child_notify[sender] => move |stack| {
                             if let Some(name) = stack.visible_child_name() {
                                 sender.input(MainWindowMsg::SetShowSearch(
-                                    ["store", "library", "profile"].contains(&name.as_str())
+                                    ["store", "library"].contains(&name.as_str())
                                 ));
 
                                 match name.as_str() {
@@ -210,10 +196,6 @@ impl SimpleAsyncComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
-
-            profile_page: ProfilePage::builder()
-                .launch(())
-                .detach(),
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -250,9 +232,7 @@ impl SimpleAsyncComponent for MainWindow {
                 tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.modules_store.path),
                 tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.persist_store.path),
                 tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.temp_store.path),
-
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.generations.store.path),
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.profiles.store.path)
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.generations.store.path)
             )?;
 
             // Update the config file to create it
@@ -332,12 +312,7 @@ impl SimpleAsyncComponent for MainWindow {
             let new_generation_task = tokio::spawn(async move {
                 tracing::debug!("Fetching new components variants list from the registries");
 
-                let components = fetch_components().await?;
-
-                let generation = match games {
-                    Some(games) => Generation::new(games, components),
-                    None => Generation::new(vec![], components)
-                };
+                let generation = games.map(Generation::new).unwrap_or_default();
 
                 tracing::debug!(?generation, "Building new generation");
 

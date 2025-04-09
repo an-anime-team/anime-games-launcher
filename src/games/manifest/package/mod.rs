@@ -56,60 +56,39 @@ impl AsHash for Package {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageRuntime {
-    pub platform: TargetPlatform,
-    pub supported_platforms: Option<Vec<TargetPlatform>>
+    pub platforms: Vec<TargetPlatform>
 }
 
 impl AsJson for PackageRuntime {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
-            "platform": self.platform.to_string(),
-
-            "supported_platforms": self.supported_platforms.as_ref()
-                .map(|platforms| {
-                    platforms.iter()
-                        .map(TargetPlatform::to_string)
-                        .collect::<Vec<_>>()
-                })
+            "platforms": self.platforms.iter()
+                .map(TargetPlatform::to_string)
+                .collect::<Vec<_>>()
         }))
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
         Ok(Self {
-            platform: json.get("platform")
-                .ok_or_else(|| AsJsonError::FieldNotFound("package.runtime.platform"))?
-                .as_str()
-                .map(TargetPlatform::from_str)
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("package.runtime.platform"))?
-                .map_err(|err| AsJsonError::Other(err.into()))?,
-
-            supported_platforms: match json.get("supported_platforms") {
-                Some(supported) if supported.is_null() => None,
-
-                Some(supported) => {
-                    supported.as_array()
-                        .ok_or_else(|| AsJsonError::InvalidFieldValue("package.runtime.supported_platforms"))?
-                        .iter()
-                        .map(|platform| {
-                            platform.as_str()
-                                .ok_or_else(|| AsJsonError::InvalidFieldValue("package.runtime.supported_platforms[]"))
-                                .and_then(|platform| {
-                                    TargetPlatform::from_str(platform)
-                                        .map_err(|err| AsJsonError::Other(err.into()))
-                                })
+            platforms: json.get("platforms")
+                .and_then(Json::as_array)
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("package.runtime.platforms"))?
+                .iter()
+                .map(|platform| {
+                    platform.as_str()
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("package.runtime.platforms[]"))
+                        .and_then(|platform| {
+                            TargetPlatform::from_str(platform)
+                                .map_err(|err| AsJsonError::Other(err.into()))
                         })
-                        .collect::<Result<Vec<_>, _>>()
-                        .map(Some)?
-                }
-
-                None => None
-            }
+                })
+                .collect::<Result<Vec<_>, _>>()?
         })
     }
 }
 
 impl AsHash for PackageRuntime {
     fn hash(&self) -> Hash {
-        self.platform.hash().chain(self.supported_platforms.hash())
+        self.platforms.hash()
     }
 }

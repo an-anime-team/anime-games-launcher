@@ -5,15 +5,10 @@ use serde::{Serialize, Deserialize};
 use crate::prelude::*;
 
 #[allow(non_camel_case_types)]
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TargetPlatform {
-    X86_64_windows_native,
-
-    #[default]
-    X86_64_linux_native,
-
-    X86_64_linux_wine32,
-    X86_64_linux_wine64
+    X86_64_windows,
+    X86_64_linux
 }
 
 impl TargetPlatform {
@@ -21,57 +16,20 @@ impl TargetPlatform {
     /// Get list of all available platforms.
     pub const fn list() -> &'static [Self] {
         &[
-            Self::X86_64_windows_native,
-            Self::X86_64_linux_native,
-            Self::X86_64_linux_wine32,
-            Self::X86_64_linux_wine64
+            Self::X86_64_windows,
+            Self::X86_64_linux
         ]
     }
 
     /// Try to get current platform.
     pub fn current() -> Option<Self> {
         let info = os_info::get();
-
         let arch = info.architecture()?;
 
         if info.os_type() == os_info::Type::Windows {
-            Self::from_str(&format!("{arch}-windows-native")).ok()
+            Self::from_str(&format!("{arch}-windows")).ok()
         } else {
-            Self::from_str(&format!("{arch}-linux-native")).ok()
-        }
-    }
-
-    /// Suggest platform that should be emulated by the current target platform.
-    ///
-    /// | Current platform        | Suggested platform      |
-    /// | ----------------------- | ----------------------- |
-    /// | `x86_64-windows-native` | `x86_64-windows-native` |
-    /// | `x86_64-linux-native`   | `x86_64-linux-wine64`   |
-    /// | `x86_64-linux-wine32`   | `x86_64-linux-wine32`   |
-    /// | `x86_64-linux-wine64`   | `x86_64-linux-wine64`   |
-    pub const fn suggested_emulation(&self) -> Self {
-        match self {
-            TargetPlatform::X86_64_windows_native => TargetPlatform::X86_64_windows_native,
-            TargetPlatform::X86_64_linux_native   => TargetPlatform::X86_64_linux_wine64,
-            TargetPlatform::X86_64_linux_wine32   => TargetPlatform::X86_64_linux_wine32,
-            TargetPlatform::X86_64_linux_wine64   => TargetPlatform::X86_64_linux_wine64
-        }
-    }
-
-    /// Suggest platform that could emulate current platform.
-    ///
-    /// | Current platform        | Suggested platform      |
-    /// | ----------------------- | ----------------------- |
-    /// | `x86_64-windows-native` | `x86_64-windows-native` |
-    /// | `x86_64-linux-native`   | `x86_64-linux-native`   |
-    /// | `x86_64-linux-wine32`   | `x86_64-linux-native`   |
-    /// | `x86_64-linux-wine64`   | `x86_64-linux-native`   |
-    pub const fn suggested_emulator(&self) -> Self {
-        match self {
-            TargetPlatform::X86_64_windows_native => TargetPlatform::X86_64_windows_native,
-            TargetPlatform::X86_64_linux_native   => TargetPlatform::X86_64_linux_native,
-            TargetPlatform::X86_64_linux_wine32   => TargetPlatform::X86_64_linux_native,
-            TargetPlatform::X86_64_linux_wine64   => TargetPlatform::X86_64_linux_native
+            Self::from_str(&format!("{arch}-linux")).ok()
         }
     }
 }
@@ -79,10 +37,8 @@ impl TargetPlatform {
 impl std::fmt::Display for TargetPlatform {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::X86_64_windows_native => f.write_str("x86_64-windows-native"),
-            Self::X86_64_linux_native   => f.write_str("x86_64-linux-native"),
-            Self::X86_64_linux_wine32   => f.write_str("x86_64-linux-wine32"),
-            Self::X86_64_linux_wine64   => f.write_str("x86_64-linux-wine64")
+            Self::X86_64_windows => f.write_str("x86_64-windows"),
+            Self::X86_64_linux   => f.write_str("x86_64-linux")
         }
     }
 }
@@ -92,10 +48,8 @@ impl FromStr for TargetPlatform {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "x86_64-windows-native" => Ok(Self::X86_64_windows_native),
-            "x86_64-linux-native"   => Ok(Self::X86_64_linux_native),
-            "x86_64-linux-wine32"   => Ok(Self::X86_64_linux_wine32),
-            "x86_64-linux-wine64"   => Ok(Self::X86_64_linux_wine64),
+            "x86_64-windows" => Ok(Self::X86_64_windows),
+            "x86_64-linux"   => Ok(Self::X86_64_linux),
 
             _ => anyhow::bail!("Unsupported target platform: {s}")
         }
@@ -115,8 +69,8 @@ mod tests {
 
     #[test]
     fn hash() -> anyhow::Result<()> {
-        assert_eq!(TargetPlatform::X86_64_windows_native.hash(), "x86_64-windows-native".hash());
-        assert_eq!(TargetPlatform::X86_64_linux_wine64.hash(), "x86_64-linux-wine64".hash());
+        assert_eq!(TargetPlatform::X86_64_windows.hash(), "x86_64-windows".hash());
+        assert_eq!(TargetPlatform::X86_64_linux.hash(), "x86_64-linux".hash());
 
         Ok(())
     }

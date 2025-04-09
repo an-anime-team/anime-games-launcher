@@ -17,14 +17,6 @@ pub struct Manifest {
     /// subset of the whole store page.
     pub games: Vec<GameLock>,
 
-    /// List of component variants added by the user.
-    ///
-    /// These component variants, unlike games, were added
-    /// on the launcher startup from the config file. It's
-    /// a full list of all the components from all the registries.
-    /// They are used to render profiles manager window.
-    pub components: Vec<ComponentLock>,
-
     /// Lock file of the game integration packages.
     pub lock_file: LockFileManifest
 }
@@ -33,14 +25,12 @@ impl Manifest {
     /// Compose new generation manifest from given parts.
     pub fn compose(
         games: impl IntoIterator<Item = GameLock>,
-        components: impl IntoIterator<Item = ComponentLock>,
         lock_file: LockFileManifest
     ) -> Self {
         Self {
             format: 1,
             generated_at: lock_file.metadata.generated_at,
             games: games.into_iter().collect(),
-            components: components.into_iter().collect(),
             lock_file
         }
     }
@@ -54,10 +44,6 @@ impl AsJson for Manifest {
 
             "games": self.games.iter()
                 .map(GameLock::to_json)
-                .collect::<Result<Vec<_>, _>>()?,
-
-            "components": self.components.iter()
-                .map(ComponentLock::to_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             "lock_file": self.lock_file.to_json()?
@@ -84,14 +70,6 @@ impl AsJson for Manifest {
                 .map(GameLock::from_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
-            components: json.get("components")
-                .ok_or_else(|| AsJsonError::FieldNotFound("components"))?
-                .as_array()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components"))?
-                .iter()
-                .map(ComponentLock::from_json)
-                .collect::<Result<Vec<_>, _>>()?,
-
             lock_file: json.get("lock_file")
                 .map(LockFileManifest::from_json)
                 .ok_or_else(|| AsJsonError::FieldNotFound("lock_file"))??
@@ -104,14 +82,12 @@ impl AsHash for Manifest {
         self.format.hash()
             .chain(self.generated_at.hash())
             .chain(self.games.hash())
-            .chain(self.components.hash())
             .chain(self.lock_file.hash())
     }
 
     fn partial_hash(&self) -> Hash {
         self.format.partial_hash()
             .chain(self.games.partial_hash())
-            .chain(self.components.partial_hash())
             .chain(self.lock_file.partial_hash())
     }
 }
@@ -149,45 +125,6 @@ impl AsJson for GameLock {
 }
 
 impl AsHash for GameLock {
-    #[inline]
-    fn hash(&self) -> Hash {
-        self.url.hash().chain(self.manifest.hash())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ComponentLock {
-    /// URL of the component's manifest.
-    pub url: String,
-
-    /// Fetched manifest of the component.
-    pub manifest: ComponentsVariantManifest
-}
-
-impl AsJson for ComponentLock {
-    fn to_json(&self) -> Result<Json, AsJsonError> {
-        Ok(json!({
-            "url": self.url,
-            "manifest": self.manifest.to_json()?
-        }))
-    }
-
-    fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
-        Ok(Self {
-            url: json.get("url")
-                .ok_or_else(|| AsJsonError::FieldNotFound("components[].url"))?
-                .as_str()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components[].url"))?
-                .to_string(),
-
-            manifest: json.get("manifest")
-                .map(ComponentsVariantManifest::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("components[].manifest"))??
-        })
-    }
-}
-
-impl AsHash for ComponentLock {
     #[inline]
     fn hash(&self) -> Hash {
         self.url.hash().chain(self.manifest.hash())

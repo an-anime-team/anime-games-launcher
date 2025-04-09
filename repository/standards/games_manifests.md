@@ -41,22 +41,10 @@ type Manifest = {
         // Name of the output lua module containing the game's integration code.
         output: string,
 
-        // Information about the profile (runtime) which should be used
-        // to execute the integration script.
+        // Information about the environment which is required to run this game.
         runtime: {
-            // Platform native for the integration script.
-            // In most cases it's `x86_64-windows-native`.
-            //
-            // Game will be executed without additional compatibility layers
-            // if the current platform is native for it.
-            platform: TargetPlatform,
-
             // Target platforms supported by the integration script.
-            // In most cases it's `x86_64-linux-wine64`.
-            //
-            // If the current platform is not native for the game, but it's supported
-            // then the game will be run using special compatibility tools.
-            supported_platforms?: TargetPlatform[]
+            platforms: TargetPlatform[]
         }
     },
 
@@ -73,16 +61,10 @@ type Manifest = {
 
 type TargetPlatform =
     // Native x86_64 windows game.
-    | 'x86_64-windows-native'
+    | 'x86_64-windows'
 
     // Native x86_64 linux game.
-    | 'x86_64-linux-native'
-
-    // x86_64 windows game which can be run on linux via 32 bit wine.
-    | 'x86_64-linux-wine32'
-
-    // x86_64 windows game which can be run on linux via 64 bit wine.
-    | 'x86_64-linux-wine64';
+    | 'x86_64-linux';
 
 type HardwareRequirements = {
     cpu?: {
@@ -168,18 +150,6 @@ type GameTag =
 // will be used, or, if not set, fallback to en-us.
 type Localizable = string | [locale: string]: string;
 ```
-
-## Target platforms
-
-Most of games are made for 64 bit windows machines which makes it difficult
-to run on other platforms. Several different compatibility tools exist to
-play windows-native games on linux and macOS. Launcher allows integration
-scripts developers to specify their platforms so launcher could automatically
-decide which tools it should use to run the game.
-
-| Platform                | Supported platforms   | Description                               |
-| ----------------------- | --------------------- | ----------------------------------------- |
-| `x86_64-windows-native` | `x86_64-linux-wine64` | Most of games can run on linux using wine |
 
 ## Games registry
 

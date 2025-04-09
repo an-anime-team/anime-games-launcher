@@ -305,29 +305,23 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                 tracing::trace!("Preparing locked games list");
 
-                let (games, components) = match generation {
+                let games = match generation {
                     Some(generation) => {
                         let mut games = generation.games.into_iter()
                             .map(|game| game.url)
                             .collect::<Vec<_>>();
 
-                        let components = generation.components.into_iter()
-                            .map(|component| component.url)
-                            .collect::<Vec<_>>();
-
                         games.push(self.game_url.clone());
 
-                        (games, components)
+                        games
                     }
 
-                    None => (vec![self.game_url.clone()], vec![])
+                    None => vec![self.game_url.clone()]
                 };
 
                 tracing::trace!(?games, "Building new generation");
 
-                let generation = Generation::default()
-                    .with_games(games)
-                    .with_components(components)
+                let generation = Generation::new(games)
                     .build(&packages_store, &generations_store)
                     .await;
 

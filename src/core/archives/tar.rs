@@ -51,7 +51,7 @@ impl ArchiveExt for TarArchive {
             .flat_map(|mut words| {
                 let flags = words.next();
                 let size = words.nth(1).map(|size| size.parse());
-                let path = words.last().map(PathBuf::from);
+                let path = words.next_back().map(PathBuf::from);
 
                 if let (Some(flags), Some(path), Some(Ok(size))) = (flags, path, size) {
                     // Skip symlinks

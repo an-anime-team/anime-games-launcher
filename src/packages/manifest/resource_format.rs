@@ -33,7 +33,7 @@ impl ResourceFormat {
             .replace('\\', "/");
 
         // Empty URI tail = package expected.
-        let Some(tail) = uri.split('/').last() else {
+        let Some(tail) = uri.split('/').next_back() else {
             return Self::Package;
         };
 
