@@ -38,13 +38,13 @@ type GameIntegration = {
 
     settings: {
         // Get some property value.
-        get: (name: string): any,
+        get_property: (name: string): any,
 
         // Update some settings property.
-        set: (name: string, value: any): void,
+        set_property: (name: string, value: any): void,
 
         // Get information required to render game settings UI.
-        layout: (variant: GameVariant): GameSettingsGroup[]
+        get_layout: (variant: GameVariant): GameSettingsGroup[]
     }
 };
 ```
