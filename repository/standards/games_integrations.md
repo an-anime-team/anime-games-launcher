@@ -13,25 +13,38 @@ used in the launcher.
 Top-level modules are expected to return the game integration object:
 
 ```ts
+type GameVariant = {
+    platform: TargetPlatform,
+    edition: Edition
+};
+
 type GameIntegration = {
     standard: 1,
 
     // List of available game editions.
-    editions: (): Edition[],
-
-    // List of game components.
-    components: (): Component[],
+    editions: (platform: TargetPlatform): Edition[],
 
     game: {
         // Get status of the game installation.
-        get_status: (edition: string): InstallationStatus,
+        get_status: (variant: GameVariant): InstallationStatus,
 
         // Get installation diff. If no diff
         // available (not required) - return nil.
-        get_diff: (edition: string): InstallationDiff | null,
+        get_diff: (variant: GameVariant): InstallationDiff | null,
 
         // Get params used to launch the game.
-        get_launch_info: (edition: string): GameLaunchInfo
+        get_launch_info: (variant: GameVariant): GameLaunchInfo
+    },
+
+    settings: {
+        // Get some property value.
+        get: (name: string): any,
+
+        // Update some settings property.
+        set: (name: string, value: any): void,
+
+        // Get information required to render game settings UI.
+        layout: (variant: GameVariant): GameSettingsGroup[]
     }
 };
 ```
@@ -99,41 +112,6 @@ type GameLaunchInfo = {
 };
 ```
 
-## Game components
-
-Components are separate parts used by the game or the
-integration script. This can be a special binary without which
-the game cannot be launched, or an optional part of
-the game - e.g. a language pack.
-
-```ts
-type Component = {
-    // Unique name of the component.
-    name: string,
-
-    // Title used in UI.
-    title: Localizable,
-
-    // Optional description of the component.
-    description?: Localizable,
-
-    // Optional field. If set, then component will be
-    // forcely installed by the launcher.
-    required?: boolean | ((): boolean),
-
-    // Optional field. When specified, components with
-    // greater value are installed (updated) first.
-    priority?: number | ((): number),
-
-    // Get status of the component installation.
-    get_status: (): InstallationStatus,
-
-    // Get installation diff of the component.
-    // If no diff available (not required) - return nil.
-    get_diff: (): InstallationDiff | null
-};
-```
-
 ## Installation diffs
 
 Integration script must return information about the game's
@@ -188,17 +166,17 @@ to the launcher using provided status updating callback.
 ```ts
 type PipelineAction = {
     // Title of the action.
-    // 
+    //
     // Example: "Download"
     title: Localizable,
 
     // Optional description of the action.
-    // 
+    //
     // Example: "Download base game files"
     description?: Localizable,
 
     // Optional hook used before launching the action.
-    // 
+    //
     // If `true` is returned, then the action should be started.
     // If `false`, then the action should be skipped.
     before?: (progress: ProgressReporter): boolean,
@@ -207,7 +185,7 @@ type PipelineAction = {
     perform: (progress: ProgressReporter): void,
 
     // Optional hook used after the action.
-    // 
+    //
     // If `true` is returned, then the pipeline should continue execution.
     // If `false`, then all the following actions should be skipped.
     after?: (progress: ProgressReporter): boolean
@@ -217,12 +195,12 @@ type ProgressReporter = (status: ProgressReport): void;
 
 type ProgressReport = {
     // Optional title of the current action.
-    // 
+    //
     // Example: "Downloading <something>"
     title?: Localizable,
 
     // Optional description of the current action.
-    // 
+    //
     // Example: "Downloading base game files"
     description?: Localizable,
 
@@ -241,3 +219,66 @@ type ProgressReport = {
     }
 };
 ```
+
+## Game settings
+
+Every game can specify settings it has which launcher will render for a user
+in a special, dynamically constructed settings window. Changes in this window
+made by user will be returned back to the game integration script which can
+affect some of its inner working. For example, a setting can be currently
+selected voice language, and changing it will make your integration script
+to change the game's installation status and pipeline.
+
+```ts
+type GameSettingsGroup = {
+    // Title of the settings group.
+    title?: Localizable,
+
+    // Optional description added close to the title.
+    description?: Localizable,
+
+    // Entries of the settings group.
+    entries: GameSettingsEnty[]
+};
+
+type GameSettingsEnty = {
+    // Unique name of the settings entry.
+    // Will be used by the launcher to keep track of the value.
+    name: string,
+
+    // Title of the setting.
+    title: Localizable,
+
+    // Optional description of the setting.
+    description?: Localizable,
+
+    // Information about the settings entry.
+    entry:
+        | GameSettingsEntrySwitch
+        | GameSettingsEntryText
+        | GameSettingsEntryEnum
+};
+
+// Switch which can be enabled or disabled.
+type GameSettingsEntrySwitch = {
+    format: 'switch',
+    value: boolean
+};
+
+// Input text row where user writes a string.
+type GameSettingsEntryText = {
+    format: 'text',
+    value: string
+};
+
+// List with different values from which user makes a choice.
+type GameSettingsEntryEnum = {
+    format: 'enum',
+
+    // Table of list values.
+    values: [key: string]: Localizable,
+
+    // Key of a chosen value.
+    selected: string
+};
+````
