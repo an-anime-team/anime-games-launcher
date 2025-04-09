@@ -9,12 +9,12 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 lazy_static::lazy_static! {
     pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
 
-    pub static ref CURRENT_PLATFORM: Option<TargetPlatform> = {
+    pub static ref CURRENT_PLATFORM: TargetPlatform = {
         let platform = TargetPlatform::current();
 
         tracing::info!("Current platform: {:?}", platform.map(|platform| platform.to_string()));
 
-        platform
+        platform.expect("Failed to detect current system platform")
     };
 
     /// Path to the data folder.

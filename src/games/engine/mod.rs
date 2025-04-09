@@ -6,7 +6,7 @@ pub mod v1_standard;
 
 pub use v1_standard::{
     GameEdition,
-    GameComponent,
+    GameVariant,
     GameLaunchStatus,
     GameLaunchInfo,
     InstallationStatus,
@@ -31,41 +31,33 @@ impl<'lua> GameEngine<'lua> {
 
     #[inline]
     /// Get list of available game editions.
-    pub fn editions(&self) -> Result<Vec<GameEdition>, LuaError> {
+    pub fn editions(&self, platform: TargetPlatform) -> Result<Vec<GameEdition>, LuaError> {
         match self {
-            Self::V1(engine) => engine.editions()
-        }
-    }
-
-    #[inline]
-    /// Get list of game components.
-    pub fn components(&self) -> Result<Vec<GameComponent>, LuaError> {
-        match self {
-            Self::V1(engine) => engine.components()
+            Self::V1(engine) => engine.editions(platform)
         }
     }
 
     #[inline]
     /// Get status of the game installation.
-    pub fn game_status(&self, edition: impl AsRef<str>) -> Result<InstallationStatus, LuaError> {
+    pub fn game_status(&self, variant: &GameVariant) -> Result<InstallationStatus, LuaError> {
         match self {
-            Self::V1(engine) => engine.game_status(edition)
+            Self::V1(engine) => engine.game_status(variant)
         }
     }
 
     #[inline]
     /// Get installation diff.
-    pub fn game_diff(&self, edition: impl AsRef<str>) -> Result<Option<InstallationDiff>, LuaError> {
+    pub fn game_diff(&self, variant: &GameVariant) -> Result<Option<InstallationDiff>, LuaError> {
         match self {
-            Self::V1(engine) => engine.game_diff(edition)
+            Self::V1(engine) => engine.game_diff(variant)
         }
     }
 
     #[inline]
     /// Get params used to launch the game.
-    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, AsLuaError> {
+    pub fn game_launch_info(&self, variant: &GameVariant) -> Result<GameLaunchInfo, AsLuaError> {
         match self {
-            Self::V1(engine) => engine.game_launch_info(edition)
+            Self::V1(engine) => engine.game_launch_info(variant)
         }
     }
 }

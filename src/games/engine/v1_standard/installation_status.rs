@@ -24,11 +24,11 @@ pub enum InstallationStatus {
 impl std::fmt::Display for InstallationStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Installed         => write!(f, "installed"),
-            Self::UpdateAvailable   => write!(f, "update-available"),
-            Self::UpdateRequired    => write!(f, "update-required"),
-            Self::UpdateUnavailable => write!(f, "update-unavailable"),
-            Self::NotInstalled      => write!(f, "not-installed")
+            Self::Installed         => f.write_str("installed"),
+            Self::UpdateAvailable   => f.write_str("update-available"),
+            Self::UpdateRequired    => f.write_str("update-required"),
+            Self::UpdateUnavailable => f.write_str("update-unavailable"),
+            Self::NotInstalled      => f.write_str("not-installed")
         }
     }
 }

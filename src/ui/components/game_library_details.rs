@@ -223,16 +223,18 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 self.background.emit(LazyPictureComponentMsg::SetImage(Some(image)));
 
+                let variant = GameVariant::from_edition(&edition.name);
+
                 // Request game installation status update.
                 {
                     let listener = listener.clone();
                     let sender = sender.clone();
-                    let edition_name = edition.name.clone();
+                    let variant = variant.clone();
 
                     tokio::spawn(async move {
                         let (send, recv) = tokio::sync::oneshot::channel();
 
-                        if let Err(err) = listener.send(SyncGameCommand::GetStatus { edition: edition_name, listener: send }) {
+                        if let Err(err) = listener.send(SyncGameCommand::GetStatus { variant, listener: send }) {
                             tracing::error!(?err, "Failed to request game installation status");
 
                             return;
@@ -253,7 +255,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 tokio::spawn(async move {
                     let (send, recv) = tokio::sync::oneshot::channel();
 
-                    if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo { edition: edition.name, listener: send }) {
+                    if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo { variant, listener: send }) {
                         tracing::error!(?err, "Failed to request game launch info");
 
                         return;
@@ -276,7 +278,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsMsg::EmitInstallDiff => {
                 if let Some(listener) = &self.listener {
                     if let Some(edition) = &self.edition {
-                        let _ = listener.send(SyncGameCommand::StartDiffPipeline { edition: edition.name.clone() });
+                        let variant = GameVariant::from_edition(&edition.name);
+
+                        let _ = listener.send(SyncGameCommand::StartDiffPipeline { variant });
                     }
                 }
             }

@@ -16,25 +16,26 @@ use crate::ui::windows::download_manager::PipelineActionProgressReport;
 
 pub enum SyncGameCommand {
     /// Get list of available game editions.
-    GetEditions(OneshotSender<Result<Vec<GameEdition>, LuaError>>),
-    // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>),
+    GetEditions {
+        listener: OneshotSender<Result<Vec<GameEdition>, LuaError>>
+    },
 
     /// Get status of the game installation.
     GetStatus {
-        edition: String,
+        variant: GameVariant,
         listener: OneshotSender<Result<InstallationStatus, LuaError>>
     },
 
     /// Get information about the game launching.
     GetLaunchInfo {
-        edition: String,
+        variant: GameVariant,
         listener: OneshotSender<Result<GameLaunchInfo, LuaError>>
     },
 
     /// Start game diff pipeline execution. This can be
     /// update downloading or full game installation.
     StartDiffPipeline {
-        edition: String
+        variant: GameVariant
     }
 }
 
@@ -288,21 +289,24 @@ impl SimpleAsyncComponent for LibraryPage {
                                 match listener.try_recv() {
                                     Ok(command) => {
                                         match command {
-                                            SyncGameCommand::GetEditions(listener) => {
-                                                let _ = listener.send(game.editions());
+                                            SyncGameCommand::GetEditions { listener } => {
+                                                let _ = listener.send(game.editions(*CURRENT_PLATFORM));
                                             }
 
-                                            SyncGameCommand::GetStatus { edition, listener } => {
-                                                let _ = listener.send(game.game_status(edition));
+                                            SyncGameCommand::GetStatus { variant, listener } => {
+                                                let _ = listener.send(game.game_status(&variant));
                                             }
 
-                                            SyncGameCommand::GetLaunchInfo { edition, listener } => {
-                                                let _ = listener.send(game.game_launch_info(edition).map_err(LuaError::from));
+                                            SyncGameCommand::GetLaunchInfo { variant, listener } => {
+                                                let info = game.game_launch_info(&variant)
+                                                    .map_err(LuaError::from);
+
+                                                let _ = listener.send(info);
                                             }
 
                                             // TODO: handle errors
-                                            SyncGameCommand::StartDiffPipeline { edition } => {
-                                                match game.game_diff(edition) {
+                                            SyncGameCommand::StartDiffPipeline { variant } => {
+                                                match game.game_diff(&variant) {
                                                     Ok(Some(diff)) => {
                                                         download_manager_sender.emit(DownloadManagerWindowMsg::Show);
 
@@ -474,7 +478,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 let (send, recv) = tokio::sync::oneshot::channel();
 
                 // TODO: better errors handling
-                if let Err(err) = listener.send(SyncGameCommand::GetEditions(send)) {
+                if let Err(err) = listener.send(SyncGameCommand::GetEditions { listener: send }) {
                     tracing::error!(?err, "Failed to request game's editions");
 
                     return;

@@ -12,7 +12,7 @@ pub mod prelude {
     pub use super::engine::{
         GameEngine,
         GameEdition,
-        GameComponent,
+        GameVariant,
         GameLaunchStatus,
         GameLaunchInfo,
         InstallationStatus,
