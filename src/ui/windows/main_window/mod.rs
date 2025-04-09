@@ -310,8 +310,6 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Start building the new generation with potentially updated games info.
             let new_generation_task = tokio::spawn(async move {
-                tracing::debug!("Fetching new components variants list from the registries");
-
                 let generation = games.map(Generation::new).unwrap_or_default();
 
                 tracing::debug!(?generation, "Building new generation");

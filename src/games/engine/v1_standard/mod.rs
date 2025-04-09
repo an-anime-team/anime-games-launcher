@@ -76,13 +76,13 @@ impl<'lua> GameIntegration<'lua> {
 
     /// Get status of the game installation.
     pub fn game_status(&self, variant: &GameVariant) -> Result<InstallationStatus, LuaError> {
-        self.game_get_status.call::<_, LuaString>(variant.to_lua(&self.lua)?)
+        self.game_get_status.call::<_, LuaString>(variant.to_lua(self.lua)?)
             .and_then(|status| InstallationStatus::from_str(&status.to_string_lossy()))
     }
 
     /// Get installation diff.
     pub fn game_diff(&self, variant: &GameVariant) -> Result<Option<InstallationDiff>, LuaError> {
-        self.game_get_diff.call::<_, Option<LuaTable>>(variant.to_lua(&self.lua)?)
+        self.game_get_diff.call::<_, Option<LuaTable>>(variant.to_lua(self.lua)?)
             .and_then(|diff| {
                 diff.map(|diff| InstallationDiff::from_lua(self.lua, &diff))
                     .transpose()
@@ -91,7 +91,7 @@ impl<'lua> GameIntegration<'lua> {
 
     /// Get params used to launch the game.
     pub fn game_launch_info(&self, variant: &GameVariant) -> Result<GameLaunchInfo, AsLuaError> {
-        self.game_get_launch_info.call::<_, LuaValue>(variant.to_lua(&self.lua)?)
+        self.game_get_launch_info.call::<_, LuaValue>(variant.to_lua(self.lua)?)
             .map_err(AsLuaError::LuaError)
             .and_then(|info| GameLaunchInfo::from_lua(&info))
     }
@@ -110,7 +110,7 @@ impl<'lua> GameIntegration<'lua> {
 
     /// Get game settings UI layout.
     pub fn get_settings_layout(&self, variant: &GameVariant) -> Result<Vec<GameSettingsGroup>, AsLuaError> {
-        self.settings_get_layout.call::<_, Vec<LuaValue>>(variant.to_lua(&self.lua)?)
+        self.settings_get_layout.call::<_, Vec<LuaValue>>(variant.to_lua(self.lua)?)
             .map_err(AsLuaError::LuaError)
             .and_then(|groups| {
                 groups.iter()

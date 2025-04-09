@@ -788,7 +788,7 @@ end
 print_dir("my_dir", "")
 ```
 
-### `fs.remove_dir(path. string)`
+### `fs.remove_dir(path: string)`
 
 Remove given folder and all its content.
 

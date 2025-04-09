@@ -201,6 +201,7 @@ impl SimpleAsyncComponent for LibraryPage {
                         tracing::trace!(
                             game = game.manifest.game.title.default_translation(),
                             manifest = resource.url,
+                            hash = resource.lock.hash.to_base32(),
                             "Trying to load the game engine"
                         );
 
@@ -208,6 +209,7 @@ impl SimpleAsyncComponent for LibraryPage {
                             tracing::error!(
                                 game = game.manifest.game.title.default_translation(),
                                 manifest = resource.url,
+                                hash = resource.lock.hash.to_base32(),
                                 output = game.manifest.package.output,
                                 "Game package doesn't have requested output"
                             );
@@ -222,6 +224,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                     tracing::error!(
                                         game = game.manifest.game.title.default_translation(),
                                         manifest = resource.url,
+                                        hash = resource.lock.hash.to_base32(),
                                         ?integration_resource,
                                         ?err,
                                         "Failed to get lua table of the game integration"
@@ -235,6 +238,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                 tracing::error!(
                                     game = game.manifest.game.title.default_translation(),
                                     manifest = resource.url,
+                                    hash = resource.lock.hash.to_base32(),
                                     ?integration_resource,
                                     "Failed to load game integration module from the lua engine"
                                 );
@@ -246,6 +250,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                 tracing::error!(
                                     game = game.manifest.game.title.default_translation(),
                                     manifest = resource.url,
+                                    hash = resource.lock.hash.to_base32(),
                                     ?integration_resource,
                                     ?err,
                                     "Failed to load game integration module from the lua engine"
