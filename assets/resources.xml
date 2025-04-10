@@ -3,7 +3,6 @@
   <gresource prefix="/moe/launcher/anime-games-launcher">
     <file>images/missing-card.png</file>
     <file>images/april-fools.jpg</file>
-    <file>images/component.png</file>
   </gresource>
 
   <gresource prefix="/moe/launcher/anime-games-launcher/icons/hicolor/scalable/apps">
@@ -40,6 +39,7 @@
     <file preprocess="xml-stripblanks" alias="test-symbolic.svg">images/icons/test-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="loupe-symbolic.svg">images/icons/loupe-symbolic.svg</file>
     <file preprocess="xml-stripblanks" alias="globe-symbolic.svg">images/icons/globe-symbolic.svg</file>
+    <file preprocess="xml-stripblanks" alias="settings-symbolic.svg">images/icons/settings-symbolic.svg</file>
 
     <!-- Additional icons icons -->
 

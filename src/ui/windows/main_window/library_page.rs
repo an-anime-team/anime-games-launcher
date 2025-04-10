@@ -108,10 +108,10 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 #[wrap(Some)]
                 set_content = &adw::NavigationPage {
-                    set_hexpand: true,
-
                     // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
                     set_title: "Details",
+
+                    set_hexpand: true,
 
                     #[wrap(Some)]
                     set_child = model.game_details.widget(),

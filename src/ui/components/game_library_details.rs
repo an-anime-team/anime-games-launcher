@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use adw::prelude::*;
 use relm4::prelude::*;
+use adw::prelude::*;
 
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -147,6 +147,15 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         },
 
                         connect_clicked => GameLibraryDetailsMsg::EmitInstallDiff
+                    },
+
+                    gtk::Button {
+                        add_css_class: "pill",
+
+                        adw::ButtonContent {
+                            set_icon_name: "settings-symbolic",
+                            set_label: "Settings"
+                        }
                     }
                 }
             }
