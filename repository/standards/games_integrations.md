@@ -253,11 +253,14 @@ type GameSettingsEnty = {
     description?: Localizable,
 
     // Information about the settings entry.
-    entry:
-        | GameSettingsEntrySwitch
-        | GameSettingsEntryText
-        | GameSettingsEntryEnum
+    entry: GameSettingsEntryFormat
 };
+
+type GameSettingsEntryFormat =
+    | GameSettingsEntrySwitch
+    | GameSettingsEntryText
+    | GameSettingsEntryEnum
+    | GameSettingsEntryExpandable;
 
 // Switch which can be enabled or disabled.
 type GameSettingsEntrySwitch = {
@@ -281,4 +284,10 @@ type GameSettingsEntryEnum = {
     // Key of a chosen value.
     selected: string
 };
-````
+
+// Foldable (expandable) list of other entries.
+type GameSettingsEntryExpandable = {
+    format: 'expandable',
+    entries: GameSettingsEnty[]
+};
+```

@@ -133,6 +133,10 @@ pub enum GameSettingsEntryFormat {
     Enum {
         values: HashMap<String, LocalizableString>,
         selected: String
+    },
+
+    Expandable {
+        entries: Vec<GameSettingsEntry>
     }
 }
 
@@ -160,6 +164,17 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
 
                 for (key, value) in values {
                     enum_values.set(key.as_str(), value.to_lua(lua)?)?;
+                }
+            }
+
+            Self::Expandable { entries } => {
+                let row_entries = lua.create_table_with_capacity(entries.len(), 0)?;
+
+                table.set("format", "expandable")?;
+                table.set("entries", row_entries.clone())?;
+
+                for entry in entries {
+                    row_entries.push(entry.to_lua(lua)?)?;
                 }
             }
         }
@@ -202,6 +217,16 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
 
                 selected: value.get("selected")
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.selected"))?
+            }),
+
+            b"expandable" => Ok(Self::Expandable {
+                entries: value.get::<_, Vec<LuaValue>>("entries")
+                    .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.entries"))
+                    .and_then(|entries| {
+                        entries.iter()
+                            .map(GameSettingsEntry::from_lua)
+                            .collect::<Result<Vec<_>, AsLuaError>>()
+                    })?
             }),
 
             _ => Err(AsLuaError::InvalidFieldValue("settings.entries[].entry.format"))
