@@ -46,3 +46,10 @@ impl<'lua> AsLua<'lua> for GameVariant {
         })
     }
 }
+
+impl AsRef<GameVariant> for GameVariant {
+    #[inline(always)]
+    fn as_ref(&self) -> &GameVariant {
+        self
+    }
+}

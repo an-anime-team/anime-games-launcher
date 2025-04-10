@@ -20,7 +20,8 @@ pub enum GameLibraryDetailsMsg {
     SetGameInstallationStatus(InstallationStatus),
     SetGameLaunchInfo(GameLaunchInfo),
 
-    EmitInstallDiff
+    EmitInstallDiff,
+    EmitOpenSettingsWindow
 }
 
 #[derive(Debug)]
@@ -155,7 +156,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         adw::ButtonContent {
                             set_icon_name: "settings-symbolic",
                             set_label: "Settings"
-                        }
+                        },
+
+                        connect_clicked => GameLibraryDetailsMsg::EmitOpenSettingsWindow
                     }
                 }
             }
@@ -290,6 +293,48 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         let variant = GameVariant::from_edition(&edition.name);
 
                         let _ = listener.send(SyncGameCommand::StartDiffPipeline { variant });
+                    }
+                }
+            }
+
+            GameLibraryDetailsMsg::EmitOpenSettingsWindow => {
+                if let Some(listener) = &self.listener {
+                    if let Some(edition) = &self.edition {
+                        let listener = listener.clone();
+
+                        let variant = GameVariant::from_edition(&edition.name);
+
+                        tokio::spawn(async move {
+                            let (send, recv) = tokio::sync::oneshot::channel();
+
+                            if let Err(err) = listener.send(SyncGameCommand::GetSettingsLayout { variant, listener: send }) {
+                                tracing::error!(?err, "Failed to request game settings layout");
+
+                                return;
+                            }
+
+                            match recv.await {
+                                Ok(Ok(layout)) => {
+                                    let config = config::get();
+
+                                    let language = config.general.language.parse::<LanguageIdentifier>().ok();
+
+                                    gtk::glib::spawn_future(async move {
+                                        let window = GameSettingsWindow::builder()
+                                            .launch(GameSettingsWindowInit {
+                                                layout,
+                                                language
+                                            })
+                                            .detach();
+
+                                        window.widget().present(None::<&gtk::Window>);
+                                    });
+                                }
+
+                                Ok(Err(err)) => tracing::error!(?err, "Failed to request game settings layout"),
+                                Err(err) => tracing::error!(?err, "Failed to request game settings layout")
+                            }
+                        });
                     }
                 }
             }

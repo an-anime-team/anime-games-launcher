@@ -11,7 +11,10 @@ pub use v1_standard::{
     GameLaunchInfo,
     InstallationStatus,
     InstallationDiff,
-    ProgressReport
+    ProgressReport,
+    GameSettingsGroup,
+    GameSettingsEntry,
+    GameSettingsEntryFormat
 };
 
 #[derive(Debug, Clone)]
@@ -58,6 +61,30 @@ impl<'lua> GameEngine<'lua> {
     pub fn game_launch_info(&self, variant: &GameVariant) -> Result<GameLaunchInfo, AsLuaError> {
         match self {
             Self::V1(engine) => engine.game_launch_info(variant)
+        }
+    }
+
+    #[inline]
+    /// Get settings param from the game integration module.
+    pub fn get_property(&self, name: impl AsRef<str>) -> Result<LuaValue, AsLuaError> {
+        match self {
+            Self::V1(engine) => engine.get_property(name)
+        }
+    }
+
+    #[inline]
+    /// Set settings param value.
+    pub fn set_property(&self, name: impl AsRef<str>, value: LuaValue) -> Result<(), AsLuaError> {
+        match self {
+            Self::V1(engine) => engine.set_property(name, value)
+        }
+    }
+
+    #[inline]
+    /// Get game settings UI layout.
+    pub fn get_settings_layout(&self, variant: impl AsRef<GameVariant>) -> Result<Vec<GameSettingsGroup>, AsLuaError> {
+        match self {
+            Self::V1(engine) => engine.get_settings_layout(variant)
         }
     }
 }

@@ -1,5 +1,6 @@
 pub mod main_window;
 pub mod download_manager;
+pub mod game_settings;
 
 pub mod prelude {
     pub use super::main_window::{
@@ -12,5 +13,12 @@ pub mod prelude {
     pub use super::download_manager::{
         DownloadManagerWindow,
         DownloadManagerWindowMsg
+    };
+
+    pub use super::game_settings::{
+        GameSettingsWindow,
+        GameSettingsWindowInput,
+        GameSettingsWindowOutput,
+        GameSettingsWindowInit
     };
 }

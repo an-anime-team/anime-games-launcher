@@ -29,13 +29,19 @@ pub enum SyncGameCommand {
     /// Get information about the game launching.
     GetLaunchInfo {
         variant: GameVariant,
-        listener: OneshotSender<Result<GameLaunchInfo, LuaError>>
+        listener: OneshotSender<Result<GameLaunchInfo, AsLuaError>>
     },
 
     /// Start game diff pipeline execution. This can be
     /// update downloading or full game installation.
     StartDiffPipeline {
         variant: GameVariant
+    },
+
+    /// Get game settings layout.
+    GetSettingsLayout {
+        variant: GameVariant,
+        listener: OneshotSender<Result<Vec<GameSettingsGroup>, AsLuaError>>
     }
 }
 
@@ -303,8 +309,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                             }
 
                                             SyncGameCommand::GetLaunchInfo { variant, listener } => {
-                                                let info = game.game_launch_info(&variant)
-                                                    .map_err(LuaError::from);
+                                                let info = game.game_launch_info(&variant);
 
                                                 let _ = listener.send(info);
                                             }
@@ -456,6 +461,10 @@ impl SimpleAsyncComponent for LibraryPage {
                                                     Ok(None) => tracing::info!("Game diff is not available"),
                                                     Err(err) => tracing::error!(?err, "Failed to get game diff")
                                                 }
+                                            }
+
+                                            SyncGameCommand::GetSettingsLayout { variant, listener } => {
+                                                let _ = listener.send(game.get_settings_layout(&variant));
                                             }
                                         }
                                     }

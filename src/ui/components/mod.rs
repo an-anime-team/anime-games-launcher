@@ -7,7 +7,6 @@ pub mod graph;
 
 pub mod game_store_details;
 pub mod hardware_requirements;
-pub mod dynamic_settings;
 
 // FIXME: NOT REFACTORED
 
@@ -63,13 +62,6 @@ pub mod prelude {
         HardwareRequirementsComponentMsg,
         HardwareRequirementsSection,
         HardwareRequirementsSectionMsg
-    };
-
-    pub use super::dynamic_settings::{
-        DynamicSettingsComponentRow,
-        DynamicSettingsComponent,
-        DynamicSettingsComponentInput,
-        DynamicSettingsComponentOutput
     };
 
     // FIXME: NOT REFACTORED
