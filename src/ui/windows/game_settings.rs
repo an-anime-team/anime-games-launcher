@@ -1,9 +1,6 @@
-use std::sync::Arc;
-
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use tokio::sync::Mutex;
 use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
@@ -38,7 +35,11 @@ impl SimpleAsyncComponent for GameSettingsWindow {
     view! {
         #[root]
         window = adw::PreferencesDialog {
-            set_title: "Settings"
+            set_title: "Settings",
+
+            set_content_width: 800,
+            set_content_height: 600,
+            set_search_enabled: true
         }
     }
 
