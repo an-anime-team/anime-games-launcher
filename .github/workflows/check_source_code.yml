@@ -26,24 +26,30 @@ jobs:
   check_source_code:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      id-token: write
+    container:
+      image: ubuntu:devel
+
+      env:
+        DEBIAN_FRONTEND: noninteractive
 
     steps:
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install -y git curl build-essential libgtk-4-dev libadwaita-1-dev
+
+      - name: Download rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-
-      - name: Check flake format
-        run: nix flake check --accept-flake-config
-
       - name: Check source code
-        run: nix develop --accept-flake-config --command cargo check --verbose
+        run: cargo check --verbose
 
       - name: Perform source code tests
-        run: nix develop --accept-flake-config --command cargo test --verbose
+        run: cargo test --verbose
