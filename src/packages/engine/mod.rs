@@ -1,6 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use std::str::FromStr;
+use std::path::PathBuf;
 
 use mlua::prelude::*;
 
@@ -18,7 +19,10 @@ pub enum PackagesEngineError {
     Lua(#[from] LuaError),
 
     #[error("Network error: {0}")]
-    Reqwest(#[from] reqwest::Error)
+    Reqwest(#[from] reqwest::Error),
+
+    #[error("Invalid resource format: {0}")]
+    InvalidResourceFormat(String)
 }
 
 pub struct PackagesEngine<'lua> {
@@ -73,7 +77,7 @@ impl<'lua> PackagesEngine<'lua> {
             let path = store.get_path(&resource.lock.hash, &resource.format);
 
             // Store basic info to the lua representation.
-            let resource_table = lua.create_table()?;
+            let resource_table = lua.create_table_with_capacity(0, 3)?;
 
             resource_table.set("format", resource.format.to_string())?;
             resource_table.set("hash", resource.lock.hash.to_base32())?;
@@ -132,11 +136,59 @@ impl<'lua> PackagesEngine<'lua> {
                         std::fs::create_dir_all(&module_folder)?;
                     }
 
+                    let mut input_resources = vec![path.clone()];
+
+                    if let Some(parent_context) = parent_context {
+                        let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
+
+                        // Load the parent resource table from the engine.
+                        let resources_table = engine_table.get::<_, LuaTable>("resources")?;
+                        let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
+
+                        // Try to parse its format.
+                        let parent_format = parent_resource.get::<_, String>("format")?;
+
+                        let Ok(parent_format) = PackageResourceFormat::from_str(&parent_format) else {
+                            return Err(PackagesEngineError::InvalidResourceFormat(parent_format));
+                        };
+
+                        // Look into inputs of the parent resource if it's a package.
+                        if parent_format == PackageResourceFormat::Package {
+                            // Read the inputs of the parent package.
+                            let parent_value = parent_resource.get::<_, LuaTable>("value")?;
+                            let parent_inputs_table = parent_value.get::<_, LuaTable>("inputs")?;
+
+                            // Iterate over input resources.
+                            for resource_key in parent_inputs_table.pairs::<LuaValue, u32>() {
+                                let (_, resource_key) = resource_key?;
+
+                                // Load the requested input resource.
+                                let resource = resources_table.get::<_, LuaTable>(resource_key)?;
+
+                                // Try to parse its format.
+                                let resource_format = resource.get::<_, String>("format")?;
+
+                                let Ok(resource_format) = PackageResourceFormat::from_str(&resource_format) else {
+                                    return Err(PackagesEngineError::InvalidResourceFormat(resource_format));
+                                };
+
+                                if matches!(resource_format, PackageResourceFormat::File | PackageResourceFormat::Archive(_)) {
+                                    let path = resource.get::<_, String>("value")?;
+
+                                    dbg!(&path);
+
+                                    input_resources.push(PathBuf::from(path));
+                                }
+                            }
+                        }
+                    }
+
                     // Prepare special environment for the module.
                     let env = v1_standard.create_env(&v1_standard::Context {
                         temp_folder: config.packages.temp_store.path.clone(),
                         persistent_folder: config.packages.persist_store.path.clone(),
                         module_folder,
+                        input_resources,
 
                         // TODO: implement packages authorities system
                         ext_process_api: false

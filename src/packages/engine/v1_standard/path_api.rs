@@ -135,7 +135,7 @@ impl<'lua> PathAPI<'lua> {
 
                 let parts = parts.iter()
                     .flat_map(|part| part.to_string())
-                    .filter(|part| !part.as_bytes().is_empty())
+                    .filter(|part| !part.is_empty())
                     .collect::<Vec<_>>();
 
                 let (parts, is_absolute) = match parts.first() {

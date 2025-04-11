@@ -90,6 +90,7 @@ pub struct Context {
     pub temp_folder: PathBuf,
     pub module_folder: PathBuf,
     pub persistent_folder: PathBuf,
+    pub input_resources: Vec<PathBuf>,
 
     /// Include Process API in the environment.
     pub ext_process_api: bool
@@ -104,6 +105,9 @@ impl Context {
             &self.temp_folder,
             &self.persistent_folder
         ];
+
+        let allowed_paths = allowed_paths.into_iter()
+            .chain(self.input_resources.iter());
 
         let path = path.as_ref();
 

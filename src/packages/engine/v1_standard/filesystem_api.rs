@@ -634,6 +634,7 @@ mod tests {
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
+            input_resources: vec![],
             ext_process_api: false
         })?;
 
@@ -716,6 +717,7 @@ mod tests {
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
+            input_resources: vec![],
             ext_process_api: false
         })?;
 
@@ -774,6 +776,7 @@ mod tests {
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
+            input_resources: vec![],
             ext_process_api: false
         })?;
 
@@ -865,6 +868,7 @@ mod tests {
             temp_folder: path_a.clone(),
             module_folder: path_b.clone(),
             persistent_folder: path_c.clone(),
+            input_resources: vec![],
             ext_process_api: false
         })?;
 
