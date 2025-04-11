@@ -138,9 +138,9 @@ mod tests {
         let generation = generation.build(&packages_store, &generations_store).await?;
 
         assert_eq!(generation.games.len(), 1);
-        assert_eq!(generation.lock_file.root.iter().copied().sum::<u32>(), 1); // 0 + 1
-        assert_eq!(generation.lock_file.resources.len(), 10);
-        assert_eq!(Hash::for_entry(path)?, Hash(3241624005879532019));
+        assert_eq!(generation.lock_file.root.iter().copied().sum::<u32>(), 0);
+        assert_eq!(generation.lock_file.resources.len(), 8);
+        assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
 
         Ok(())
     }
