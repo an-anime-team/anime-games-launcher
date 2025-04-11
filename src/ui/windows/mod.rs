@@ -8,11 +8,18 @@ pub mod prelude {
         MainWindowMsg
     };
 
-    pub use super::main_window::library_page::SyncGameCommand;
+    pub use super::main_window::library_page::{
+        LibraryPage,
+        LibraryPageInput,
+        LibraryPageOutput
+    };
+
+    pub use super::main_window::SyncGameCommand;
 
     pub use super::download_manager::{
         DownloadManagerWindow,
-        DownloadManagerWindowMsg
+        DownloadManagerWindowMsg,
+        PipelineActionProgressReport
     };
 
     pub use super::game_settings::{
