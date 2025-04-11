@@ -215,7 +215,8 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
                     })
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.values"))?,
 
-                selected: value.get("selected")
+                selected: value.get::<_, LuaString>("selected")
+                    .map(|selected| selected.to_string_lossy().to_string())
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.selected"))?
             }),
 

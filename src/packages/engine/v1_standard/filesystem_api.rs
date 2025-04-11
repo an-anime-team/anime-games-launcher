@@ -62,11 +62,11 @@ impl<'lua> FilesystemAPI<'lua> {
 
                 lua.create_function(move |lua, path: LuaString| {
                     let path = resolve_path(path.to_string_lossy())?;
-    
+
                     let metadata = path.metadata()?;
-    
+
                     let result = lua.create_table()?;
-    
+
                     result.set("created_at", {
                         metadata.created()?
                             .duration_since(UNIX_EPOCH)
@@ -74,7 +74,7 @@ impl<'lua> FilesystemAPI<'lua> {
                             .map(Duration::as_secs)
                             .unwrap_or_default()
                     })?;
-    
+
                     result.set("modified_at", {
                         metadata.modified()?
                             .duration_since(UNIX_EPOCH)
@@ -82,10 +82,10 @@ impl<'lua> FilesystemAPI<'lua> {
                             .map(Duration::as_secs)
                             .unwrap_or_default() as u32
                     })?;
-    
+
                     result.set("length", metadata.len() as u32)?;
                     result.set("is_accessible", context.is_accessible(path))?;
-    
+
                     result.set("type", {
                         if metadata.is_symlink() {
                             "symlink"
@@ -95,7 +95,7 @@ impl<'lua> FilesystemAPI<'lua> {
                             "file"
                         }
                     })?;
-    
+
                     Ok(result)
                 })
             }),
@@ -265,6 +265,12 @@ impl<'lua> FilesystemAPI<'lua> {
 
                         if !context.is_accessible(&path) {
                             return Err(LuaError::external("path is inaccessible"));
+                        }
+
+                        if let Some(parent) = path.parent() {
+                            if !parent.is_dir() {
+                                std::fs::create_dir_all(parent)?;
+                            }
                         }
 
                         let mut read = true;
@@ -445,6 +451,12 @@ impl<'lua> FilesystemAPI<'lua> {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
+                    if let Some(parent) = path.parent() {
+                        if !parent.is_dir() {
+                            std::fs::create_dir_all(parent)?;
+                        }
+                    }
+
                     std::fs::write(path, [])?;
 
                     Ok(())
@@ -473,6 +485,12 @@ impl<'lua> FilesystemAPI<'lua> {
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
+                    }
+
+                    if let Some(parent) = path.parent() {
+                        if !parent.is_dir() {
+                            std::fs::create_dir_all(parent)?;
+                        }
                     }
 
                     std::fs::write(path, &content)?;
