@@ -17,13 +17,15 @@ pub enum GameLibraryDetailsMsg {
         listener: UnboundedSender<SyncGameCommand>
     },
 
+    ReloadGameStatus,
+
     SetGameInstallationStatus(InstallationStatus),
     SetGameLaunchInfo(GameLaunchInfo),
 
     EmitInstallDiff,
     EmitOpenSettingsWindow,
 
-    SendSettingsWindowMsg(GameSettingsWindowMsg)
+    SendSettingsWindowMsg(GameSettingsWindowInput)
 }
 
 #[derive(Debug)]
@@ -168,7 +170,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
         }
     }
 
-    async fn init(parent: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(parent: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent::medium())
@@ -180,7 +182,12 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             settings_window: GameSettingsWindow::builder()
                 .launch(parent)
-                .detach(),
+                .forward(sender.input_sender(), |msg| {
+                    match msg {
+                        GameSettingsWindowOutput::ReloadSettingsWindow => GameLibraryDetailsMsg::EmitOpenSettingsWindow,
+                        GameSettingsWindowOutput::ReloadGameStatus => GameLibraryDetailsMsg::ReloadGameStatus
+                    }
+                }),
 
             listener: None,
 
@@ -233,7 +240,13 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 let date = time::OffsetDateTime::now_utc();
 
                 let image = if date.month() == time::Month::April && date.day() == 1 {
-                    tracing::info!("＜( ￣︿￣)");
+                    tracing::info!("");
+                    tracing::info!("");
+                    tracing::info!("Happy April Fools!");
+                    tracing::info!("");
+                    tracing::info!("I hope you have a great day today ＜( ￣︿￣)");
+                    tracing::info!("");
+                    tracing::info!("");
 
                     ImagePath::resource("images/april-fools.jpg")
                 } else {
@@ -242,108 +255,116 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 self.background.emit(LazyPictureComponentMsg::SetImage(Some(image)));
 
-                let variant = GameVariant::from_edition(&edition.name);
+                sender.input(GameLibraryDetailsMsg::ReloadGameStatus);
+            }
 
-                // Request game installation status update.
-                {
-                    let sender = sender.clone();
-                    let listener = listener.clone();
-                    let variant = variant.clone();
+            GameLibraryDetailsMsg::ReloadGameStatus => {
+                if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
+                    let variant = GameVariant::from_edition(&edition.name);
 
-                    tokio::spawn(async move {
-                        let (send, recv) = tokio::sync::oneshot::channel();
+                    // Request game installation status update.
+                    {
+                        let sender = sender.clone();
+                        let listener = listener.clone();
+                        let variant = variant.clone();
 
-                        if let Err(err) = listener.send(SyncGameCommand::GetStatus { variant, listener: send }) {
-                            tracing::error!(?err, "Failed to request game installation status");
+                        tokio::spawn(async move {
+                            let (send, recv) = tokio::sync::oneshot::channel();
 
-                            return;
-                        }
+                            if let Err(err) = listener.send(SyncGameCommand::GetStatus { variant, listener: send }) {
+                                tracing::error!(?err, "Failed to request game installation status");
 
-                        match recv.await {
-                            Ok(Ok(status)) => {
-                                sender.input(GameLibraryDetailsMsg::SetGameInstallationStatus(status));
+                                return;
                             }
 
-                            Ok(Err(err)) => tracing::error!(?err, "Failed to request game installation status"),
-                            Err(err) => tracing::error!(?err, "Failed to request game installation status")
-                        }
-                    });
+                            match recv.await {
+                                Ok(Ok(status)) => {
+                                    sender.input(GameLibraryDetailsMsg::SetGameInstallationStatus(status));
+                                }
+
+                                Ok(Err(err)) => tracing::error!(?err, "Failed to request game installation status"),
+                                Err(err) => tracing::error!(?err, "Failed to request game installation status")
+                            }
+                        });
+                    }
+
+                    // Request game launching info update.
+                    {
+                        let sender = sender.clone();
+                        let listener = listener.clone();
+                        let variant = variant.clone();
+
+                        tokio::spawn(async move {
+                            let (send, recv) = tokio::sync::oneshot::channel();
+
+                            if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo { variant, listener: send }) {
+                                tracing::error!(?err, "Failed to request game launch info");
+
+                                return;
+                            }
+
+                            match recv.await {
+                                Ok(Ok(info)) => {
+                                    sender.input(GameLibraryDetailsMsg::SetGameLaunchInfo(info));
+                                }
+
+                                Ok(Err(err)) => tracing::error!(?err, "Failed to request game launch info"),
+                                Err(err) => tracing::error!(?err, "Failed to request game launch info")
+                            }
+                        });
+                    }
                 }
-
-                // Request game launching info update.
-                tokio::spawn(async move {
-                    let (send, recv) = tokio::sync::oneshot::channel();
-
-                    if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo { variant, listener: send }) {
-                        tracing::error!(?err, "Failed to request game launch info");
-
-                        return;
-                    }
-
-                    match recv.await {
-                        Ok(Ok(info)) => {
-                            sender.input(GameLibraryDetailsMsg::SetGameLaunchInfo(info));
-                        }
-
-                        Ok(Err(err)) => tracing::error!(?err, "Failed to request game launch info"),
-                        Err(err) => tracing::error!(?err, "Failed to request game launch info")
-                    }
-                });
             }
 
             GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = Some(status),
             GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = Some(info),
 
             GameLibraryDetailsMsg::EmitInstallDiff => {
-                if let Some(listener) = &self.listener {
-                    if let Some(edition) = &self.edition {
-                        let variant = GameVariant::from_edition(&edition.name);
+                if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
+                    let variant = GameVariant::from_edition(&edition.name);
 
-                        let _ = listener.send(SyncGameCommand::StartDiffPipeline { variant });
-                    }
+                    let _ = listener.send(SyncGameCommand::StartDiffPipeline { variant });
                 }
             }
 
             GameLibraryDetailsMsg::EmitOpenSettingsWindow => {
-                if let Some(listener) = &self.listener {
-                    if let Some(edition) = &self.edition {
-                        let sender = sender.clone();
-                        let listener = listener.clone();
+                if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
+                    let sender = sender.clone();
+                    let listener = listener.clone();
 
-                        let variant = GameVariant::from_edition(&edition.name);
+                    let variant = GameVariant::from_edition(&edition.name);
 
-                        tokio::spawn(async move {
-                            let (send, recv) = tokio::sync::oneshot::channel();
+                    tokio::spawn(async move {
+                        let (send, recv) = tokio::sync::oneshot::channel();
 
-                            if let Err(err) = listener.send(SyncGameCommand::GetSettingsLayout { variant, listener: send }) {
-                                tracing::error!(?err, "Failed to request game settings layout");
+                        if let Err(err) = listener.send(SyncGameCommand::GetSettingsLayout { variant, listener: send }) {
+                            tracing::error!(?err, "Failed to request game settings layout");
 
-                                return;
+                            return;
+                        }
+
+                        match recv.await {
+                            Ok(Ok(layout)) => {
+                                let config = config::get();
+
+                                let language = config.general.language.parse::<LanguageIdentifier>().ok();
+
+                                // Don't mind it.
+                                gtk::glib::spawn_future(async move {
+                                    sender.input(GameLibraryDetailsMsg::SendSettingsWindowMsg(GameSettingsWindowInput::RenderLayout {
+                                        layout,
+                                        language,
+                                        sender: listener
+                                    }));
+
+                                    sender.input(GameLibraryDetailsMsg::SendSettingsWindowMsg(GameSettingsWindowInput::EmitPresent));
+                                });
                             }
 
-                            match recv.await {
-                                Ok(Ok(layout)) => {
-                                    let config = config::get();
-
-                                    let language = config.general.language.parse::<LanguageIdentifier>().ok();
-
-                                    // Don't mind it.
-                                    gtk::glib::spawn_future(async move {
-                                        sender.input(GameLibraryDetailsMsg::SendSettingsWindowMsg(GameSettingsWindowMsg::RenderLayout {
-                                            layout,
-                                            language,
-                                            sender: listener
-                                        }));
-
-                                        sender.input(GameLibraryDetailsMsg::SendSettingsWindowMsg(GameSettingsWindowMsg::EmitPresent));
-                                    });
-                                }
-
-                                Ok(Err(err)) => tracing::error!(?err, "Failed to request game settings layout"),
-                                Err(err) => tracing::error!(?err, "Failed to request game settings layout")
-                            }
-                        });
-                    }
+                            Ok(Err(err)) => tracing::error!(?err, "Failed to request game settings layout"),
+                            Err(err) => tracing::error!(?err, "Failed to request game settings layout")
+                        }
+                    });
                 }
             }
 

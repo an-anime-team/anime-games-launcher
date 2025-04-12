@@ -20,6 +20,7 @@ pub mod prelude {
         ProgressReport,
         GameSettingsGroup,
         GameSettingsEntry,
+        GameSettingsEntryReactivity,
         GameSettingsEntryFormat
     };
 }

@@ -24,7 +24,7 @@ fn render_entry(
     group_widget: ParentWidget<'_>,
     entry: GameSettingsEntry,
     lang: Option<&LanguageIdentifier>,
-    listener: relm4::Sender<GameSettingsWindowMsg>
+    listener: relm4::Sender<GameSettingsWindowInput>
 ) {
     match entry.entry {
         GameSettingsEntryFormat::Switch { value } => {
@@ -49,10 +49,13 @@ fn render_entry(
             widget.set_active(value);
 
             if let Some(name) = entry.name {
+                let reactivity = entry.reactivity.unwrap_or_default();
+
                 widget.connect_active_notify(move |widget| {
-                    listener.emit(GameSettingsWindowMsg::SetBoolProperty {
+                    listener.emit(GameSettingsWindowInput::SetBoolProperty {
                         name: name.clone(),
-                        value: widget.is_active()
+                        value: widget.is_active(),
+                        reactivity
                     });
                 });
             }
@@ -83,9 +86,12 @@ fn render_entry(
 
             if let Some(name) = entry.name {
                 widget.connect_changed(move |widget| {
-                    listener.emit(GameSettingsWindowMsg::SetStringProperty {
+                    let reactivity = entry.reactivity.unwrap_or_default();
+
+                    listener.emit(GameSettingsWindowInput::SetStringProperty {
                         name: name.clone(),
-                        value: widget.text().to_string()
+                        value: widget.text().to_string(),
+                        reactivity
                     });
                 });
             }
@@ -137,9 +143,12 @@ fn render_entry(
                     let selected = widget.selected();
 
                     if let Some((key, _)) = values.get(selected as usize) {
-                        listener.emit(GameSettingsWindowMsg::SetStringProperty {
+                        let reactivity = entry.reactivity.unwrap_or_default();
+
+                        listener.emit(GameSettingsWindowInput::SetStringProperty {
                             name: name.clone(),
-                            value: key.to_owned()
+                            value: key.to_owned(),
+                            reactivity
                         });
                     }
                 });
@@ -177,7 +186,7 @@ fn render_entry(
 }
 
 #[derive(Debug)]
-pub enum GameSettingsWindowMsg {
+pub enum GameSettingsWindowInput {
     EmitPresent,
 
     RenderLayout {
@@ -188,13 +197,21 @@ pub enum GameSettingsWindowMsg {
 
     SetBoolProperty {
         name: String,
-        value: bool
+        value: bool,
+        reactivity: GameSettingsEntryReactivity
     },
 
     SetStringProperty {
         name: String,
-        value: String
+        value: String,
+        reactivity: GameSettingsEntryReactivity
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GameSettingsWindowOutput {
+    ReloadSettingsWindow,
+    ReloadGameStatus
 }
 
 #[derive(Debug, Clone)]
@@ -208,8 +225,8 @@ pub struct GameSettingsWindow {
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameSettingsWindow {
     type Init = adw::ApplicationWindow;
-    type Input = GameSettingsWindowMsg;
-    type Output = ();
+    type Input = GameSettingsWindowInput;
+    type Output = GameSettingsWindowOutput;
 
     view! {
         #[root]
@@ -238,14 +255,29 @@ impl SimpleAsyncComponent for GameSettingsWindow {
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+        fn handle_reactivity(reactivity: GameSettingsEntryReactivity, sender: AsyncComponentSender<GameSettingsWindow>) {
+            match reactivity {
+                GameSettingsEntryReactivity::Relaxed => {
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameStatus);
+                }
+
+                GameSettingsEntryReactivity::Release => {
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameStatus);
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadSettingsWindow);
+                }
+
+                _ => ()
+            }
+        }
+
         match msg {
-            GameSettingsWindowMsg::EmitPresent => {
+            GameSettingsWindowInput::EmitPresent => {
                 if let Some(window) = self.window.as_ref() {
                     window.present(Some(&self.parent));
                 }
             }
 
-            GameSettingsWindowMsg::RenderLayout { layout, language, sender: server_sender } => {
+            GameSettingsWindowInput::RenderLayout { layout, language, sender: server_sender } => {
                 self.sender = Some(server_sender);
 
                 if let Some(window) = self.window.clone() {
@@ -303,9 +335,9 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 }
             }
 
-            GameSettingsWindowMsg::SetBoolProperty { name, value } => {
-                if let Some(sender) = self.sender.as_ref() {
-                    let result = sender.send(SyncGameCommand::SetBoolProperty {
+            GameSettingsWindowInput::SetBoolProperty { name, value, reactivity } => {
+                if let Some(server_sender) = self.sender.as_ref() {
+                    let result = server_sender.send(SyncGameCommand::SetBoolProperty {
                         name,
                         value
                     });
@@ -313,12 +345,14 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                     if let Err(err) = result {
                         tracing::error!(?err, "Failed to set game property value");
                     }
+
+                    handle_reactivity(reactivity, sender);
                 }
             }
 
-            GameSettingsWindowMsg::SetStringProperty { name, value } => {
-                if let Some(sender) = self.sender.as_ref() {
-                    let result = sender.send(SyncGameCommand::SetStringProperty {
+            GameSettingsWindowInput::SetStringProperty { name, value, reactivity } => {
+                if let Some(server_sender) = self.sender.as_ref() {
+                    let result = server_sender.send(SyncGameCommand::SetStringProperty {
                         name,
                         value
                     });
@@ -326,6 +360,8 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                     if let Err(err) = result {
                         tracing::error!(?err, "Failed to set game property value");
                     }
+
+                    handle_reactivity(reactivity, sender);
                 }
             }
         }

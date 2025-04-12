@@ -14,6 +14,7 @@ pub use v1_standard::{
     ProgressReport,
     GameSettingsGroup,
     GameSettingsEntry,
+    GameSettingsEntryReactivity,
     GameSettingsEntryFormat
 };
 
