@@ -22,6 +22,8 @@ pub enum GameLibraryDetailsMsg {
     SetGameInstallationStatus(InstallationStatus),
     SetGameLaunchInfo(GameLaunchInfo),
 
+    SetLoading(bool),
+
     EmitInstallDiff,
     EmitOpenSettingsWindow,
 
@@ -42,7 +44,9 @@ pub struct GameLibraryDetails {
 
     edition: Option<GameEdition>,
     status: Option<InstallationStatus>,
-    launch_info: Option<GameLaunchInfo>
+    launch_info: Option<GameLaunchInfo>,
+
+    loading: bool
 }
 
 #[relm4::component(pub, async)]
@@ -52,118 +56,147 @@ impl SimpleAsyncComponent for GameLibraryDetails {
     type Output = ();
 
     view! {
-        adw::Clamp {
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
+        gtk::Box {
+            set_vexpand: true,
+            set_hexpand: true,
 
-                set_margin_top: 16,
-                set_spacing: 16,
+            set_orientation: gtk::Orientation::Vertical,
 
-                gtk::Label {
-                    set_halign: gtk::Align::Start,
+            adw::StatusPage {
+                set_vexpand: true,
+                set_hexpand: true,
 
-                    add_css_class: "title-1",
+                set_icon_name: Some(APP_ID),
 
-                    #[watch]
-                    set_label?: model.title.as_deref()
+                set_title: if model.listener.is_some() {
+                    "Loading"
+                } else {
+                    "No game selected"
                 },
 
-                model.background.widget() {
-                    add_css_class: "card"
-                },
+                #[watch]
+                set_visible: model.loading
+            },
+
+            adw::Clamp {
+                set_vexpand: true,
+                set_hexpand: true,
+
+                #[watch]
+                set_visible: !model.loading,
 
                 gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
+                    set_orientation: gtk::Orientation::Vertical,
 
-                    set_spacing: 12,
+                    set_margin_top: 16,
+                    set_spacing: 16,
 
-                    // Play button
-                    gtk::Button {
-                        #[watch]
-                        set_css_classes?: model.launch_info.as_ref()
-                            .map(|launch_info| {
-                                match launch_info.status {
-                                    GameLaunchStatus::Normal    => &["pill", "suggested-action"],
-                                    GameLaunchStatus::Warning   => &["pill", "warning-action"],
-                                    GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
-                                    GameLaunchStatus::Disabled  => &["pill", ""]
-                                }
-                            }),
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
+
+                        add_css_class: "title-1",
 
                         #[watch]
-                        set_visible: model.status.as_ref()
-                            .map(|status| {
-                                [InstallationStatus::Installed, InstallationStatus::UpdateAvailable].contains(status)
-                            })
-                            .unwrap_or_default(),
-
-                        #[watch]
-                        set_sensitive?: model.launch_info.as_ref()
-                            .map(|launch_info| launch_info.status != GameLaunchStatus::Disabled),
-
-                        #[watch]
-                        set_tooltip?: model.launch_info.as_ref()
-                            .map(|launch_info| launch_info.hint.as_ref())
-                            .and_then(|hint| {
-                                hint.as_ref()
-                                    .map(|hint| {
-                                        // FIXME: IO-heavy thing (there's around 6 update calls each time)
-                                        let config = config::get();
-
-                                        let lang = config.general.language.parse::<LanguageIdentifier>();
-
-                                        match &lang {
-                                            Ok(lang) => hint.translate(lang),
-                                            Err(_) => hint.default_translation()
-                                        }
-                                    })
-                            }),
-
-                        adw::ButtonContent {
-                            set_icon_name: "media-playback-start-symbolic",
-
-                            set_label: "Play"
-                        }
+                        set_label?: model.title.as_deref()
                     },
 
-                    // Update / Install (execute diff) button
-                    gtk::Button {
-                        #[watch]
-                        set_css_classes?: model.status.as_ref()
-                            .map(|status| {
-                                if status == &InstallationStatus::UpdateAvailable {
-                                    &["pill", ""]
-                                } else {
-                                    &["pill", "suggested-action"]
-                                }
-                            }),
+                    model.background.widget() {
+                        add_css_class: "card"
+                    },
 
-                        #[watch]
-                        set_visible: model.status != Some(InstallationStatus::Installed),
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Horizontal,
 
-                        adw::ButtonContent {
-                            set_icon_name: "document-save-symbolic",
+                        set_spacing: 12,
+
+                        // Play button
+                        gtk::Button {
+                            #[watch]
+                            set_css_classes?: model.launch_info.as_ref()
+                                .map(|launch_info| {
+                                    match launch_info.status {
+                                        GameLaunchStatus::Normal    => &["pill", "suggested-action"],
+                                        GameLaunchStatus::Warning   => &["pill", "warning-action"],
+                                        GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
+                                        GameLaunchStatus::Disabled  => &["pill", ""]
+                                    }
+                                }),
 
                             #[watch]
-                            set_label: if model.status == Some(InstallationStatus::NotInstalled) {
-                                "Install"
-                            } else {
-                                "Update"
+                            set_visible: model.status.as_ref()
+                                .map(|status| {
+                                    [InstallationStatus::Installed, InstallationStatus::UpdateAvailable].contains(status)
+                                })
+                                .unwrap_or_default(),
+
+                            #[watch]
+                            set_sensitive?: model.launch_info.as_ref()
+                                .map(|launch_info| launch_info.status != GameLaunchStatus::Disabled),
+
+                            #[watch]
+                            set_tooltip?: model.launch_info.as_ref()
+                                .map(|launch_info| launch_info.hint.as_ref())
+                                .and_then(|hint| {
+                                    hint.as_ref()
+                                        .map(|hint| {
+                                            // FIXME: IO-heavy thing (there's around 6 update calls each time)
+                                            let config = config::get();
+
+                                            let lang = config.general.language.parse::<LanguageIdentifier>();
+
+                                            match &lang {
+                                                Ok(lang) => hint.translate(lang),
+                                                Err(_) => hint.default_translation()
+                                            }
+                                        })
+                                }),
+
+                            adw::ButtonContent {
+                                set_icon_name: "media-playback-start-symbolic",
+
+                                set_label: "Play"
                             }
                         },
 
-                        connect_clicked => GameLibraryDetailsMsg::EmitInstallDiff
-                    },
+                        // Update / Install (execute diff) button
+                        gtk::Button {
+                            #[watch]
+                            set_css_classes?: model.status.as_ref()
+                                .map(|status| {
+                                    if status == &InstallationStatus::UpdateAvailable {
+                                        &["pill", ""]
+                                    } else {
+                                        &["pill", "suggested-action"]
+                                    }
+                                }),
 
-                    gtk::Button {
-                        add_css_class: "pill",
+                            #[watch]
+                            set_visible: model.status != Some(InstallationStatus::Installed),
 
-                        adw::ButtonContent {
-                            set_icon_name: "settings-symbolic",
-                            set_label: "Settings"
+                            adw::ButtonContent {
+                                set_icon_name: "document-save-symbolic",
+
+                                #[watch]
+                                set_label: if model.status == Some(InstallationStatus::NotInstalled) {
+                                    "Install"
+                                } else {
+                                    "Update"
+                                }
+                            },
+
+                            connect_clicked => GameLibraryDetailsMsg::EmitInstallDiff
                         },
 
-                        connect_clicked => GameLibraryDetailsMsg::EmitOpenSettingsWindow
+                        gtk::Button {
+                            add_css_class: "pill",
+
+                            adw::ButtonContent {
+                                set_icon_name: "settings-symbolic",
+                                set_label: "Settings"
+                            },
+
+                            connect_clicked => GameLibraryDetailsMsg::EmitOpenSettingsWindow
+                        }
                     }
                 }
             }
@@ -197,7 +230,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             edition: None,
             status: None,
-            launch_info: None
+            launch_info: None,
+
+            loading: true
         };
 
         let widgets = view_output!();
@@ -260,10 +295,12 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             GameLibraryDetailsMsg::ReloadGameStatus => {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
+                    sender.input(GameLibraryDetailsMsg::SetLoading(true));
+
                     let variant = GameVariant::from_edition(&edition.name);
 
                     // Request game installation status update.
-                    {
+                    let game_installation_status = {
                         let sender = sender.clone();
                         let listener = listener.clone();
                         let variant = variant.clone();
@@ -285,11 +322,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 Ok(Err(err)) => tracing::error!(?err, "Failed to request game installation status"),
                                 Err(err) => tracing::error!(?err, "Failed to request game installation status")
                             }
-                        });
-                    }
+                        })
+                    };
 
                     // Request game launching info update.
-                    {
+                    let game_launch_info = {
                         let sender = sender.clone();
                         let listener = listener.clone();
                         let variant = variant.clone();
@@ -311,13 +348,21 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 Ok(Err(err)) => tracing::error!(?err, "Failed to request game launch info"),
                                 Err(err) => tracing::error!(?err, "Failed to request game launch info")
                             }
-                        });
-                    }
+                        })
+                    };
+
+                    tokio::spawn(async move {
+                        let _ = tokio::join!(game_installation_status, game_launch_info);
+
+                        sender.input(GameLibraryDetailsMsg::SetLoading(false));
+                    });
                 }
             }
 
             GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = Some(status),
             GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = Some(info),
+
+            GameLibraryDetailsMsg::SetLoading(loading) => self.loading = loading,
 
             GameLibraryDetailsMsg::EmitInstallDiff => {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
