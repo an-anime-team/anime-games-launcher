@@ -294,7 +294,8 @@ mod tests {
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         let output = env.call_function::<_, LuaTable>("exec", (
@@ -321,7 +322,8 @@ mod tests {
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         let handle = env.call_function::<_, u32>("open", (

@@ -175,8 +175,6 @@ impl<'lua> PackagesEngine<'lua> {
                                 if matches!(resource_format, PackageResourceFormat::File | PackageResourceFormat::Archive(_)) {
                                     let path = resource.get::<_, String>("value")?;
 
-                                    dbg!(&path);
-
                                     input_resources.push(PathBuf::from(path));
                                 }
                             }
@@ -191,7 +189,9 @@ impl<'lua> PackagesEngine<'lua> {
                         input_resources,
 
                         // TODO: implement packages authorities system
-                        ext_process_api: false
+                        ext_process_api: false,
+
+                        ext_allowed_paths: vec![]
                     })?;
 
                     // Clone the lua globals.

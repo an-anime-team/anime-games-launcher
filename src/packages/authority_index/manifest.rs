@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use serde::{Serialize, Deserialize};
 use serde_json::{json, Value as Json};
@@ -9,7 +10,7 @@ use crate::prelude::*;
 pub struct Manifest {
     pub format: u64,
     pub title: LocalizableString,
-    pub resources: HashMap<Hash, ResourceInfo>
+    pub resources: Vec<ResourceInfo>
 }
 
 impl AsJson for Manifest {
@@ -19,11 +20,8 @@ impl AsJson for Manifest {
             "title": self.title.to_json()?,
 
             "resources": self.resources.iter()
-                .map(|(hash, resource)| {
-                    resource.to_json()
-                        .map(|resource| (hash.to_base32(), resource))
-                })
-                .collect::<Result<HashMap<_, _>, _>>()?
+                .map(ResourceInfo::to_json)
+                .collect::<Result<Vec<_>, _>>()?
         }))
     }
 
@@ -40,18 +38,11 @@ impl AsJson for Manifest {
 
             resources: json.get("resources")
                 .ok_or_else(|| AsJsonError::FieldNotFound("resources"))?
-                .as_object()
+                .as_array()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("resources"))?
                 .iter()
-                .map(|(hash, resource)| {
-                    let hash = Hash::from_base32(hash)
-                        .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[hash]"))?;
-
-                    let resource = ResourceInfo::from_json(resource)?;
-
-                    Ok((hash, resource))
-                })
-                .collect::<Result<HashMap<_, _>, AsJsonError>>()?
+                .map(ResourceInfo::from_json)
+                .collect::<Result<Vec<_>, AsJsonError>>()?
         })
     }
 }
@@ -59,16 +50,22 @@ impl AsJson for Manifest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceInfo {
     pub title: LocalizableString,
-    pub description: LocalizableString,
-    pub status: ResourceStatus
+    pub description: Option<LocalizableString>,
+    pub variants: HashMap<Hash, ResourceStatus>
 }
 
 impl AsJson for ResourceInfo {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
             "title": self.title.to_json()?,
-            "description": self.description.to_json()?,
-            "status": self.status.to_json()?
+
+            "description": self.description.as_ref()
+                .map(LocalizableString::to_json)
+                .transpose()?,
+
+            "variants": self.variants.iter()
+                .map(|(hash, status)| Ok::<_, AsJsonError>((hash.to_base32(), status.to_json()?)))
+                .collect::<Result<HashMap<String, Json>, _>>()?
         }))
     }
 
@@ -79,20 +76,44 @@ impl AsJson for ResourceInfo {
                 .ok_or_else(|| AsJsonError::FieldNotFound("resources[].title"))??,
 
             description: json.get("description")
-                .map(LocalizableString::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("resources[].description"))??,
+                .map(|description| LocalizableString::from_json(description).map(Some))
+                .unwrap_or(Ok(None))?,
 
-            status: json.get("status")
-                .map(ResourceStatus::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("resources[].status"))??
+            variants: json.get("variants")
+                .ok_or_else(|| AsJsonError::FieldNotFound("resources[].variants"))?
+                .as_object()
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants"))?
+                .iter()
+                .map(|(hash, status)| {
+                    let hash = Hash::from_base32(hash)
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants[hash]"))?;
+
+                    let status = ResourceStatus::from_json(status)?;
+
+                    Ok((hash, status))
+                })
+                .collect::<Result<HashMap<_, _>, AsJsonError>>()?
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceStatus {
+    /// Trusted resources are made by known people, proven
+    /// to not contain any malicious code.
+    Trusted {
+        /// ! Extended privilege: allow access to the Process API.
+        ///
+        /// Process API allows luau module to run any binaries
+        /// or shell commands on the host system without sandboxing.
+        ext_process_api: Option<bool>,
+
+        /// List of extra paths allowed to be accessed by the module.
+        allowed_paths: Option<Vec<PathBuf>>
+    },
+
     /// Compromised resources are general resources which were
-    /// designed with good intentions but were proved to contain
+    /// designed with good intentions but were proven to contain
     /// code exploitable by malicious actors. For example,
     /// a compromised resource can be a luau module with extended
     /// privileges which was using them for good purposes but
@@ -111,23 +132,40 @@ pub enum ResourceStatus {
     Malicious {
         /// URL to the page with detailed explanation.
         details_url: Option<String>
-    },
-
-    /// Trusted resources are made by known people, proved
-    /// to not contain any malicious code and which require extended
-    /// privileges to function.
-    Trusted {
-        /// ! Extended privilege: allow access to the Process API.
-        /// 
-        /// Process API allows luau module to run any binaries
-        /// or shell commands on the host system without sandboxing.
-        allow_process_api: bool
     }
 }
 
 impl AsJson for ResourceStatus {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         match self {
+            Self::Trusted { ext_process_api: Some(ext_process_api), allowed_paths: Some(allowed_paths) } => {
+                Ok(json!({
+                    "type": "trusted",
+                    "privileges": {
+                        "process_api": ext_process_api
+                    },
+                    "allowed_paths": allowed_paths
+                }))
+            },
+
+            Self::Trusted { ext_process_api: Some(ext_process_api), allowed_paths: None } => {
+                Ok(json!({
+                    "type": "trusted",
+                    "privileges": {
+                        "process_api": ext_process_api
+                    }
+                }))
+            },
+
+            Self::Trusted { ext_process_api: None, allowed_paths: Some(allowed_paths) } => {
+                Ok(json!({
+                    "type": "trusted",
+                    "allowed_paths": allowed_paths
+                }))
+            },
+
+            Self::Trusted { ext_process_api: None, allowed_paths: None } => Ok(json!("trusted")),
+
             Self::Compromised { details_url: Some(details_url) } => {
                 Ok(json!({
                     "type": "compromised",
@@ -144,67 +182,69 @@ impl AsJson for ResourceStatus {
                 }))
             }
 
-            Self::Malicious { details_url: None } => Ok(json!("malicious")),
-
-            Self::Trusted { allow_process_api } => {
-                Ok(json!({
-                    "type": "trusted",
-                    "extended_privileges": {
-                        "process_api": allow_process_api
-                    }
-                }))
-            }
+            Self::Malicious { details_url: None } => Ok(json!("malicious"))
         }
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
         if let Some(status) = json.as_str() {
             match status {
+                "trusted"     => Ok(Self::Trusted { ext_process_api: None, allowed_paths: None }),
                 "compromised" => Ok(Self::Compromised { details_url: None }),
                 "malicious"   => Ok(Self::Malicious { details_url: None }),
 
-                _ => Err(AsJsonError::InvalidFieldValue("resources[].status"))
+                _ => Err(AsJsonError::InvalidFieldValue("resources[].variants[]"))
             }
         }
 
         else {
-            let status = json.get("type")
-                .ok_or_else(|| AsJsonError::FieldNotFound("resources[].status.type"))?
+            let status = json.get("status")
+                .ok_or_else(|| AsJsonError::FieldNotFound("resources[].variants[].status"))?
                 .as_str()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].status.type"))?;
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants[].status"))?;
 
             match status {
+                "trusted" => {
+                    // TODO: handle invalid format instead of silencing it with None.
+                    Ok(Self::Trusted {
+                        ext_process_api: json.get("privileges")
+                            .and_then(|privileges| {
+                                privileges.get("process_api")
+                                    .and_then(Json::as_bool)
+                            }),
+
+                        allowed_paths: json.get("allowed_paths")
+                            .and_then(|allowed_paths| {
+                                allowed_paths.as_array()
+                                    .map(|allowed_paths| {
+                                        allowed_paths.iter()
+                                            .flat_map(Json::as_str)
+                                            .map(PathBuf::from)
+                                            .collect::<Vec<_>>()
+                                    })
+                            })
+                    })
+                }
+
                 "compromised" => Ok(Self::Compromised {
                     details_url: json.get("details_url")
-                        .ok_or_else(|| AsJsonError::FieldNotFound("resources[].status.details_url"))?
+                        .ok_or_else(|| AsJsonError::FieldNotFound("resources[].variants[].details_url"))?
                         .as_str()
                         .map(String::from)
                         .map(Some)
-                        .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].status.details_url"))?
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants[].details_url"))?
                 }),
 
                 "malicious" => Ok(Self::Malicious {
                     details_url: json.get("details_url")
-                    .ok_or_else(|| AsJsonError::FieldNotFound("resources[].status.details_url"))?
-                    .as_str()
-                    .map(String::from)
-                    .map(Some)
-                    .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].status.details_url"))?
+                        .ok_or_else(|| AsJsonError::FieldNotFound("resources[].variants[].details_url"))?
+                        .as_str()
+                        .map(String::from)
+                        .map(Some)
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants[].details_url"))?
                 }),
 
-                "trusted" => {
-                    let extended_privileges = json.get("extended_privileges")
-                        .ok_or_else(|| AsJsonError::FieldNotFound("resources[].status.extended_privileges"))?;
-
-                    Ok(Self::Trusted {
-                        allow_process_api: extended_privileges.get("process_api")
-                            .ok_or_else(|| AsJsonError::FieldNotFound("resources[].status.extended_privileges.process_api"))?
-                            .as_bool()
-                            .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].status.extended_privileges.process_api"))?
-                    })
-                }
-
-                _ => Err(AsJsonError::InvalidFieldValue("resources[].status.type"))
+                _ => Err(AsJsonError::InvalidFieldValue("resources[].variants[].status"))
             }
         }
     }

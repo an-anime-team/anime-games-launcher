@@ -652,7 +652,8 @@ mod tests {
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         assert!(!env.call_function::<_, bool>("exists", path.clone())?);
@@ -735,7 +736,8 @@ mod tests {
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         assert!(!env.call_function::<_, bool>("exists", path.clone())?);
@@ -794,7 +796,8 @@ mod tests {
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         assert!(!env.call_function::<_, bool>("exists", path.clone())?);
@@ -886,7 +889,8 @@ mod tests {
             module_folder: path_b.clone(),
             persistent_folder: path_c.clone(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         let path_a = path_a.to_string_lossy().to_string();

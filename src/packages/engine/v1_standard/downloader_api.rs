@@ -128,7 +128,8 @@ mod tests {
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
-            ext_process_api: false
+            ext_process_api: false,
+            ext_allowed_paths: vec![]
         })?;
 
         let path = std::env::temp_dir().join(".agl-v1-downloader-test-dxvk.tar.gz");

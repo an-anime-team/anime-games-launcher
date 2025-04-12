@@ -93,7 +93,10 @@ pub struct Context {
     pub input_resources: Vec<PathBuf>,
 
     /// Include Process API in the environment.
-    pub ext_process_api: bool
+    pub ext_process_api: bool,
+
+    /// Allow to access extra paths.
+    pub ext_allowed_paths: Vec<PathBuf>
 }
 
 impl Context {
@@ -107,7 +110,8 @@ impl Context {
         ];
 
         let allowed_paths = allowed_paths.into_iter()
-            .chain(self.input_resources.iter());
+            .chain(self.input_resources.iter())
+            .chain(self.ext_allowed_paths.iter());
 
         let path = path.as_ref();
 

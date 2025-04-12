@@ -277,7 +277,7 @@ impl SimpleAsyncComponent for MainWindow {
             // Iterate over available generations, from newest to oldest,
             // and try to load them.
             while let Some(generation) = generations.pop() {
-                tracing::debug!("Trying to load generation {}", generation.to_base32());
+                tracing::debug!(hash = generation.to_base32(), "Trying to load generation");
 
                 sender.input(MainWindowMsg::SetLoadingAction(String::from("Loading generation")));
 
