@@ -480,7 +480,7 @@ impl<'lua> FilesystemAPI<'lua> {
             fs_write_file: Box::new(|lua: &'lua Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (path, content): (LuaString, Vec<u8>)| {
+                lua.create_function(move |_, (path, content): (LuaString, LuaValue)| {
                     let path = resolve_path(path.to_string_lossy())?;
 
                     if !context.is_accessible(&path) {
@@ -493,7 +493,24 @@ impl<'lua> FilesystemAPI<'lua> {
                         }
                     }
 
-                    std::fs::write(path, &content)?;
+                    match content {
+                        LuaValue::Table(bytes) => {
+                            let bytes = bytes.sequence_values()
+                                .collect::<Result<Vec<u8>, _>>()?;
+
+                            std::fs::write(path, bytes)?;
+                        }
+
+                        LuaValue::String(str) => {
+                            std::fs::write(path, str.as_bytes())?;
+                        }
+
+                        _ => return Err(LuaError::FromLuaConversionError {
+                            from: "table | string",
+                            to: "[u8]",
+                            message: Some(String::from("bytes table or string expected"))
+                        })
+                    }
 
                     Ok(())
                 })

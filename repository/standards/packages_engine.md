@@ -736,13 +736,13 @@ local content = fs.read_file("my_file.txt")
 print("Read " .. #content .. " bytes")
 ```
 
-### `fs.write_file(path: string, content: [number])`
+### `fs.write_file(path: string, content: [number] | string)`
 
-Overwrite existing file with given content, or create
-a new one.
+Overwrite existing file with given content, or create a new one.
 
 ```lua
-fs.write_file("my_file.txt", { 1, 2, 3 })
+fs.write_file("my_file.txt", { 1, 2, 3 }) -- bytes 1, 2 and 3
+fs.write_file("my_file.txt", "123") -- ASCII characters for 1, 2 and 3
 ```
 
 ### `fs.remove_file(path: string)`
