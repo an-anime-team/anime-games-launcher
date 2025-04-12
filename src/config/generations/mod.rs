@@ -36,15 +36,18 @@ impl AsJson for Generations {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
             store: json.get("store")
-                .map(GenerationsStore::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("generations.store"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("generations.store"))
+                .and_then(GenerationsStore::from_json)
+                .unwrap_or(default.store),
 
             lazy_load: json.get("lazy_load")
-                .ok_or_else(|| AsJsonError::FieldNotFound("generations.lazy_load"))?
-                .as_bool()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("generations.lazy_load"))?
+                .and_then(Json::as_bool)
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("generations.lazy_load"))
+                .unwrap_or(default.lazy_load)
         })
     }
 }

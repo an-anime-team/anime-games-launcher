@@ -30,16 +30,18 @@ impl AsJson for General {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
             language: json.get("language")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.language"))?
-                .as_str()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.language"))?
-                .to_string(),
+                .and_then(Json::as_str)
+                .map(String::from)
+                .unwrap_or(default.language),
 
             network: json.get("network")
                 .ok_or_else(|| AsJsonError::FieldNotFound("general.network"))
-                .and_then(network::Network::from_json)?
+                .and_then(network::Network::from_json)
+                .unwrap_or(default.network)
         })
     }
 }

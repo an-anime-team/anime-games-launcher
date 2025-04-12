@@ -31,22 +31,28 @@ impl AsJson for Config {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
             general: json.get("general")
-                .map(general::General::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("general"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("general"))
+                .and_then(general::General::from_json)
+                .unwrap_or(default.general),
 
             packages: json.get("packages")
-                .map(packages::Packages::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages"))
+                .and_then(packages::Packages::from_json)
+                .unwrap_or(default.packages),
 
             games: json.get("games")
-                .map(games::Games::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("games"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("games"))
+                .and_then(games::Games::from_json)
+                .unwrap_or(default.games),
 
             generations: json.get("generations")
-                .map(generations::Generations::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("generations"))??
+                .ok_or_else(|| AsJsonError::FieldNotFound("generations"))
+                .and_then(generations::Generations::from_json)
+                .unwrap_or(default.generations)
         })
     }
 }

@@ -26,16 +26,17 @@ impl AsJson for Games {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
             registries: json.get("registries")
-                .ok_or_else(|| AsJsonError::FieldNotFound("games.registries"))?
-                .as_array()
+                .and_then(Json::as_array)
                 .and_then(|registries| {
                     registries.iter()
                         .map(|url| url.as_str().map(String::from))
                         .collect::<Option<Vec<_>>>()
                 })
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("games.registries"))?
+                .unwrap_or(default.registries)
         })
     }
 }

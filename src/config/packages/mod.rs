@@ -5,8 +5,11 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Packages {
+    /// List of authority index URLs.
+    pub authorities: Vec<String>,
+
     /// Information about the resources store.
     ///
     /// It is used to download all the packages' resources,
@@ -35,9 +38,26 @@ pub struct Packages {
     pub temp_store: TempStore
 }
 
+impl Default for Packages {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            authorities: vec![
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/packages/authority.json")
+            ],
+
+            resources_store: ResourcesStore::default(),
+            modules_store: ModulesStore::default(),
+            persist_store: PersistStore::default(),
+            temp_store: TempStore::default()
+        }
+    }
+}
+
 impl AsJson for Packages {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
+            "authorities": self.authorities,
             "resources_store": self.resources_store.to_json()?,
             "modules_store": self.modules_store.to_json()?,
             "persist_store": self.persist_store.to_json()?,
@@ -46,22 +66,37 @@ impl AsJson for Packages {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
+            authorities: json.get("authorities")
+                .and_then(Json::as_array)
+                .and_then(|authorities| {
+                    authorities.iter()
+                        .map(|url| url.as_str().map(String::from))
+                        .collect::<Option<Vec<_>>>()
+                })
+                .unwrap_or(default.authorities),
+
             resources_store: json.get("resources_store")
-                .map(ResourcesStore::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages.resources_store"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.resources_store"))
+                .and_then(ResourcesStore::from_json)
+                .unwrap_or(default.resources_store),
 
             modules_store: json.get("modules_store")
-                .map(ModulesStore::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages.modules_store"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.modules_store"))
+                .and_then(ModulesStore::from_json)
+                .unwrap_or(default.modules_store),
 
             persist_store: json.get("persist_store")
-                .map(PersistStore::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages.persist_store"))??,
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.persist_store"))
+                .and_then(PersistStore::from_json)
+                .unwrap_or(default.persist_store),
 
             temp_store: json.get("temp_store")
-                .map(TempStore::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages.temp_store"))??
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.temp_store"))
+                .and_then(TempStore::from_json)
+                .unwrap_or(default.temp_store)
         })
     }
 }
@@ -73,6 +108,7 @@ pub struct ResourcesStore {
 }
 
 impl Default for ResourcesStore {
+    #[inline]
     fn default() -> Self {
         Self {
             path: DATA_FOLDER
@@ -107,6 +143,7 @@ pub struct ModulesStore {
 }
 
 impl Default for ModulesStore {
+    #[inline]
     fn default() -> Self {
         Self {
             path: DATA_FOLDER
@@ -141,6 +178,7 @@ pub struct PersistStore {
 }
 
 impl Default for PersistStore {
+    #[inline]
     fn default() -> Self {
         Self {
             path: DATA_FOLDER
@@ -175,6 +213,7 @@ pub struct TempStore {
 }
 
 impl Default for TempStore {
+    #[inline]
     fn default() -> Self {
         Self {
             path: DATA_FOLDER

@@ -51,6 +51,8 @@ impl AsJson for Network {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
             proxy: json.get("proxy")
                 .ok_or_else(|| AsJsonError::FieldNotFound("general.network.proxy"))
@@ -60,20 +62,30 @@ impl AsJson for Network {
                     } else {
                         Proxy::from_json(proxy).map(Some)
                     }
-                })?,
+                })
+                .unwrap_or(default.proxy),
 
             timeout: json.get("timeout")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.network.timeout"))?
-                .as_u64()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.timeout"))?
+                .and_then(Json::as_u64)
+                .unwrap_or(default.timeout)
         })
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Proxy {
     pub address: String,
     pub mode: ProxyMode
+}
+
+impl Default for Proxy {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            address: String::from("socks5://127.0.0.1:9050"),
+            mode: ProxyMode::All
+        }
+    }
 }
 
 impl Proxy {
@@ -95,18 +107,19 @@ impl AsJson for Proxy {
     }
 
     fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        let default = Self::default();
+
         Ok(Self {
             address: json.get("address")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.network.proxy.address"))?
-                .as_str()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.proxy.address"))?
-                .to_string(),
+                .and_then(Json::as_str)
+                .map(String::from)
+                .unwrap_or(default.address),
 
             mode: json.get("mode")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.network.proxy.mode"))?
-                .as_str()
-                .map(ProxyMode::from_str)
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.proxy.mode"))??
+                .and_then(Json::as_str)
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.network.proxy.mode"))
+                .and_then(ProxyMode::from_str)
+                .unwrap_or(default.mode)
         })
     }
 }
