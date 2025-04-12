@@ -333,10 +333,10 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
                 };
 
                 self.progress_bar.set_text(Some(progress_label));
-                self.progress_bar.set_fraction(progress.current as f64 / progress.total as f64);
+                self.progress_bar.set_fraction(if progress.total != 0 { progress.current as f64 / progress.total as f64 } else { 0.0 });
 
                 if self.last_update.elapsed().as_millis() > 1000 {
-                    self.graph.emit(GraphMsg::AddPoint(progress.current - self.last_current));
+                    self.graph.emit(GraphMsg::AddPoint(progress.current.checked_sub(self.last_current).unwrap_or_default()));
 
                     if let Some(title) = progress.title {
                         let title = match &self.updates_lang {
