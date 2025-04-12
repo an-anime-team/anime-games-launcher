@@ -60,10 +60,7 @@ type Manifest = {
 };
 
 type TargetPlatform =
-    // Native x86_64 windows game.
     | 'x86_64-windows'
-
-    // Native x86_64 linux game.
     | 'x86_64-linux';
 
 type HardwareRequirements = {

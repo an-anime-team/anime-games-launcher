@@ -15,7 +15,7 @@ Top-level modules are expected to return the game integration object:
 ```ts
 type GameVariant = {
     platform: TargetPlatform,
-    edition: Edition
+    edition: string
 };
 
 type GameIntegration = {
