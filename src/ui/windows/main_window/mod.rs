@@ -40,7 +40,7 @@ pub enum MainWindowMsg {
 
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
-    library_page: AsyncController<LibraryPage>,
+    library_page: Option<AsyncController<LibraryPage>>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
@@ -152,11 +152,10 @@ impl SimpleAsyncComponent for MainWindow {
                             set_icon_name: Some("folder-download-symbolic")
                         },
 
+                        #[name(library_page_box)]
                         add = &gtk::Box {
                             set_vexpand: true,
-                            set_hexpand: true,
-
-                            model.library_page.widget(),
+                            set_hexpand: true
                         } -> {
                             set_title: Some("Library"),
                             set_name: Some("library"),
@@ -191,11 +190,7 @@ impl SimpleAsyncComponent for MainWindow {
                     StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
 
-            library_page: LibraryPage::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
-                }),
+            library_page: None,
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -215,7 +210,16 @@ impl SimpleAsyncComponent for MainWindow {
 
         let widgets = view_output!();
 
+        let library_page = LibraryPage::builder()
+            .launch(widgets.window.clone())
+            .forward(sender.input_sender(), |msg| match msg {
+                LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+            });
+
+        widgets.library_page_box.append(library_page.widget());
+
         model.window = Some(widgets.window.clone());
+        model.library_page = Some(library_page);
 
         let task = tokio::spawn(async move {
             // Create default folders.
@@ -394,7 +398,9 @@ impl SimpleAsyncComponent for MainWindow {
             MainWindowMsg::SetLoadingAction(action) => self.loading_action = Some(action),
 
             MainWindowMsg::FinishLoading(generation) => {
-                self.library_page.emit(LibraryPageInput::SetGeneration(generation));
+                if let Some(library_page) = self.library_page.as_ref() {
+                    library_page.emit(LibraryPageInput::SetGeneration(generation));
+                }
 
                 self.is_loading = false;
             }
@@ -443,7 +449,9 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::ActivateLibraryPage => {
-                self.library_page.emit(LibraryPageInput::Activate);
+                if let Some(library_page) = self.library_page.as_ref() {
+                    library_page.emit(LibraryPageInput::Activate);
+                }
             }
         }
     }

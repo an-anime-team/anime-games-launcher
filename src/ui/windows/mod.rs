@@ -24,8 +24,6 @@ pub mod prelude {
 
     pub use super::game_settings::{
         GameSettingsWindow,
-        GameSettingsWindowInput,
-        GameSettingsWindowOutput,
-        GameSettingsWindowInit
+        GameSettingsWindowMsg
     };
 }

@@ -21,13 +21,16 @@ pub enum GameLibraryDetailsMsg {
     SetGameLaunchInfo(GameLaunchInfo),
 
     EmitInstallDiff,
-    EmitOpenSettingsWindow
+    EmitOpenSettingsWindow,
+
+    SendSettingsWindowMsg(GameSettingsWindowMsg)
 }
 
 #[derive(Debug)]
 pub struct GameLibraryDetails {
     card: AsyncController<CardComponent>,
     background: AsyncController<LazyPictureComponent>,
+    settings_window: AsyncController<GameSettingsWindow>,
 
     listener: Option<UnboundedSender<SyncGameCommand>>,
 
@@ -42,7 +45,7 @@ pub struct GameLibraryDetails {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameLibraryDetails {
-    type Init = ();
+    type Init = adw::ApplicationWindow;
     type Input = GameLibraryDetailsMsg;
     type Output = ();
 
@@ -165,7 +168,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(parent: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent::medium())
@@ -173,6 +176,10 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             background: LazyPictureComponent::builder()
                 .launch(LazyPictureComponent::default())
+                .detach(),
+
+            settings_window: GameSettingsWindow::builder()
+                .launch(parent)
                 .detach(),
 
             listener: None,
@@ -239,8 +246,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 // Request game installation status update.
                 {
-                    let listener = listener.clone();
                     let sender = sender.clone();
+                    let listener = listener.clone();
                     let variant = variant.clone();
 
                     tokio::spawn(async move {
@@ -300,6 +307,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsMsg::EmitOpenSettingsWindow => {
                 if let Some(listener) = &self.listener {
                     if let Some(edition) = &self.edition {
+                        let sender = sender.clone();
                         let listener = listener.clone();
 
                         let variant = GameVariant::from_edition(&edition.name);
@@ -319,15 +327,15 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                                     let language = config.general.language.parse::<LanguageIdentifier>().ok();
 
+                                    // Don't mind it.
                                     gtk::glib::spawn_future(async move {
-                                        let window = GameSettingsWindow::builder()
-                                            .launch(GameSettingsWindowInit {
-                                                layout,
-                                                language
-                                            })
-                                            .detach();
+                                        sender.input(GameLibraryDetailsMsg::SendSettingsWindowMsg(GameSettingsWindowMsg::RenderLayout {
+                                            layout,
+                                            language,
+                                            sender: listener
+                                        }));
 
-                                        window.widget().present(None::<&gtk::Window>);
+                                        sender.input(GameLibraryDetailsMsg::SendSettingsWindowMsg(GameSettingsWindowMsg::EmitPresent));
                                     });
                                 }
 
@@ -337,6 +345,10 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         });
                     }
                 }
+            }
+
+            GameLibraryDetailsMsg::SendSettingsWindowMsg(msg) => {
+                self.settings_window.emit(msg);
             }
         }
     }

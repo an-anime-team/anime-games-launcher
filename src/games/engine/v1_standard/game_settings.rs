@@ -141,7 +141,9 @@ pub enum GameSettingsEntryFormat {
     },
 
     Enum {
-        values: HashMap<String, LocalizableString>,
+        /// Vector instead of a HashMap to preserve original order.
+        values: Vec<(String, LocalizableString)>,
+
         selected: String
     },
 
@@ -213,12 +215,15 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
             b"enum" => Ok(Self::Enum {
                 values: value.get::<_, LuaTable>("values")
                     .and_then(|values| {
-                        let mut table = HashMap::new();
+                        let mut table = Vec::with_capacity(values.len()? as usize);
 
                         for pair in values.pairs::<LuaString, LuaValue>() {
                             let (key, value) = pair?;
 
-                            table.insert(key.to_string_lossy().to_string(), LocalizableString::from_lua(&value)?);
+                            table.push((
+                                key.to_string_lossy().to_string(),
+                                LocalizableString::from_lua(&value)?
+                            ));
                         }
 
                         Ok(table)

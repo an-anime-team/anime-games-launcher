@@ -33,6 +33,18 @@ pub enum SyncGameCommand {
         variant: GameVariant
     },
 
+    /// Call `set_property` method with a boolean value.
+    SetBoolProperty {
+        name: String,
+        value: bool
+    },
+
+    /// Call `set_property` method with a string value.
+    SetStringProperty {
+        name: String,
+        value: String
+    },
+
     /// Get game settings layout.
     GetSettingsLayout {
         variant: GameVariant,
@@ -336,6 +348,24 @@ pub fn serve_generation(
 
                                     Ok(None) => tracing::info!("Game diff is not available"),
                                     Err(err) => tracing::error!(?err, "Failed to get game diff")
+                                }
+                            }
+
+                            SyncGameCommand::SetBoolProperty { name, value } => {
+                                if let Err(err) = game.set_property(&name, LuaValue::Boolean(value)) {
+                                    tracing::error!(?name, ?value, ?err, "Failed to set property value");
+                                }
+                            }
+
+                            SyncGameCommand::SetStringProperty { name, value } => {
+                                match lua.create_string(&value) {
+                                    Ok(lua_value) => {
+                                        if let Err(err) = game.set_property(&name, LuaValue::String(lua_value)) {
+                                            tracing::error!(?name, ?value, ?err, "Failed to set property value");
+                                        }
+                                    }
+
+                                    Err(err) => tracing::error!(?err, "Failed to cast property value to lua string")
                                 }
                             }
 

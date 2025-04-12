@@ -1,6 +1,7 @@
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use tokio::sync::mpsc::UnboundedSender;
 use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
@@ -19,7 +20,12 @@ impl ParentWidget<'_> {
     }
 }
 
-fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: Option<&LanguageIdentifier>) {
+fn render_entry(
+    group_widget: ParentWidget<'_>,
+    entry: GameSettingsEntry,
+    lang: Option<&LanguageIdentifier>,
+    listener: relm4::Sender<GameSettingsWindowMsg>
+) {
     match entry.entry {
         GameSettingsEntryFormat::Switch { value } => {
             let widget = adw::SwitchRow::new();
@@ -41,6 +47,15 @@ fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: 
             }
 
             widget.set_active(value);
+
+            if let Some(name) = entry.name {
+                widget.connect_active_notify(move |widget| {
+                    listener.emit(GameSettingsWindowMsg::SetBoolProperty {
+                        name: name.clone(),
+                        value: widget.is_active()
+                    });
+                });
+            }
 
             group_widget.add(&widget);
         }
@@ -66,6 +81,15 @@ fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: 
 
             widget.set_text(&value);
 
+            if let Some(name) = entry.name {
+                widget.connect_changed(move |widget| {
+                    listener.emit(GameSettingsWindowMsg::SetStringProperty {
+                        name: name.clone(),
+                        value: widget.text().to_string()
+                    });
+                });
+            }
+
             group_widget.add(&widget);
         }
 
@@ -90,19 +114,35 @@ fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: 
 
             let model = gtk::StringList::new(&[]);
 
-            for item in values.values() {
-                let item = match lang {
-                    Some(lang) => item.translate(lang),
-                    None => item.default_translation()
+            let mut selected_index = 0;
+
+            for (i, (key, value)) in values.iter().enumerate() {
+                let value = match lang {
+                    Some(lang) => value.translate(lang),
+                    None => value.default_translation()
                 };
 
-                model.append(item);
+                model.append(value);
+
+                if key == &selected {
+                    selected_index = i;
+                }
             }
 
             widget.set_model(Some(&model));
+            widget.set_selected(selected_index as u32);
 
-            if let Some((k, _)) = values.keys().enumerate().find(|(_, k)| k == &&selected) {
-                widget.set_selected(k as u32);
+            if let Some(name) = entry.name {
+                widget.connect_selected_notify(move |widget| {
+                    let selected = widget.selected();
+
+                    if let Some((key, _)) = values.get(selected as usize) {
+                        listener.emit(GameSettingsWindowMsg::SetStringProperty {
+                            name: name.clone(),
+                            value: key.to_owned()
+                        });
+                    }
+                });
             }
 
             group_widget.add(&widget);
@@ -128,7 +168,7 @@ fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: 
             }
 
             for entry in entries {
-                render_entry(ParentWidget::Expandable(&widget), entry, lang);
+                render_entry(ParentWidget::Expandable(&widget), entry, lang, listener.clone());
             }
 
             group_widget.add(&widget);
@@ -136,32 +176,40 @@ fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: 
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GameSettingsWindowInit {
-    pub layout: Vec<GameSettingsGroup>,
-    pub language: Option<LanguageIdentifier>
+#[derive(Debug)]
+pub enum GameSettingsWindowMsg {
+    EmitPresent,
+
+    RenderLayout {
+        layout: Vec<GameSettingsGroup>,
+        language: Option<LanguageIdentifier>,
+        sender: UnboundedSender<SyncGameCommand>
+    },
+
+    SetBoolProperty {
+        name: String,
+        value: bool
+    },
+
+    SetStringProperty {
+        name: String,
+        value: String
+    }
 }
 
-#[derive(Debug)]
-pub enum GameSettingsWindowInput {
-
-}
-
-#[derive(Debug)]
-pub enum GameSettingsWindowOutput {
-
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GameSettingsWindow {
-
+    window: Option<adw::PreferencesDialog>,
+    parent: adw::ApplicationWindow,
+    sender: Option<UnboundedSender<SyncGameCommand>>,
+    pages: Vec<adw::PreferencesPage>
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameSettingsWindow {
-    type Init = GameSettingsWindowInit;
-    type Input = GameSettingsWindowInput;
-    type Output = GameSettingsWindowOutput;
+    type Init = adw::ApplicationWindow;
+    type Input = GameSettingsWindowMsg;
+    type Output = ();
 
     view! {
         #[root]
@@ -174,51 +222,112 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         }
     }
 
-    async fn init(init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let model = Self {};
+    async fn init(parent: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+        let mut model = Self {
+            window: None,
+            parent,
+            sender: None,
+            pages: Vec::with_capacity(1)
+        };
 
         let widgets = view_output!();
 
-        let window = widgets.window.clone();
-
-        gtk::glib::spawn_future_local(async move {
-            let page_widget = adw::PreferencesPage::new();
-
-            window.add(&page_widget);
-
-            for group in init.layout {
-                let group_widget = adw::PreferencesGroup::new();
-
-                if let Some(title) = group.title.as_ref() {
-                    let title = match init.language.as_ref() {
-                        Some(lang) => title.translate(lang),
-                        None => title.default_translation()
-                    };
-
-                    group_widget.set_title(title);
-                }
-
-                if let Some(description) = group.description.as_ref() {
-                    let description = match init.language.as_ref() {
-                        Some(lang) => description.translate(lang),
-                        None => description.default_translation()
-                    };
-
-                    group_widget.set_description(Some(description));
-                }
-
-                page_widget.add(&group_widget);
-
-                for entry in group.entries {
-                    render_entry(ParentWidget::Group(&group_widget), entry, init.language.as_ref());
-                }
-            }
-        });
+        model.window = Some(widgets.window.clone());
 
         AsyncComponentParts { model, widgets }
     }
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+        match msg {
+            GameSettingsWindowMsg::EmitPresent => {
+                if let Some(window) = self.window.as_ref() {
+                    window.present(Some(&self.parent));
+                }
+            }
 
+            GameSettingsWindowMsg::RenderLayout { layout, language, sender: server_sender } => {
+                self.sender = Some(server_sender);
+
+                if let Some(window) = self.window.clone() {
+                    let pages = self.pages.drain(..).collect::<Vec<_>>();
+
+                    let page_widget = gtk::glib::spawn_future_local(async move {
+                        for page in pages {
+                            window.remove(&page);
+                        }
+
+                        let page_widget = adw::PreferencesPage::new();
+
+                        window.add(&page_widget);
+
+                        for group in layout {
+                            let group_widget = adw::PreferencesGroup::new();
+
+                            if let Some(title) = group.title.as_ref() {
+                                let title = match language.as_ref() {
+                                    Some(lang) => title.translate(lang),
+                                    None => title.default_translation()
+                                };
+
+                                group_widget.set_title(title);
+                            }
+
+                            if let Some(description) = group.description.as_ref() {
+                                let description = match language.as_ref() {
+                                    Some(lang) => description.translate(lang),
+                                    None => description.default_translation()
+                                };
+
+                                group_widget.set_description(Some(description));
+                            }
+
+                            page_widget.add(&group_widget);
+
+                            for entry in group.entries {
+                                render_entry(
+                                    ParentWidget::Group(&group_widget),
+                                    entry,
+                                    language.as_ref(),
+                                    sender.input_sender().clone()
+                                );
+                            }
+                        }
+
+                        page_widget
+                    }).await;
+
+                    match page_widget {
+                        Ok(page_widget) => self.pages.push(page_widget),
+                        Err(err) => tracing::error!(?err, "Failed to render game settings page")
+                    }
+                }
+            }
+
+            GameSettingsWindowMsg::SetBoolProperty { name, value } => {
+                if let Some(sender) = self.sender.as_ref() {
+                    let result = sender.send(SyncGameCommand::SetBoolProperty {
+                        name,
+                        value
+                    });
+
+                    if let Err(err) = result {
+                        tracing::error!(?err, "Failed to set game property value");
+                    }
+                }
+            }
+
+            GameSettingsWindowMsg::SetStringProperty { name, value } => {
+                if let Some(sender) = self.sender.as_ref() {
+                    let result = sender.send(SyncGameCommand::SetStringProperty {
+                        name,
+                        value
+                    });
+
+                    if let Err(err) = result {
+                        tracing::error!(?err, "Failed to set game property value");
+                    }
+                }
+            }
+        }
     }
 }

@@ -47,7 +47,7 @@ pub struct LibraryPage {
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for LibraryPage {
-    type Init = ();
+    type Init = adw::ApplicationWindow;
     type Input = LibraryPageInput;
     type Output = LibraryPageOutput;
 
@@ -89,7 +89,7 @@ impl SimpleAsyncComponent for LibraryPage {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(parent: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
@@ -102,7 +102,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 }),
 
             game_details: GameLibraryDetails::builder()
-                .launch(())
+                .launch(parent)
                 .detach(),
 
             download_manager: DownloadManagerWindow::builder()
