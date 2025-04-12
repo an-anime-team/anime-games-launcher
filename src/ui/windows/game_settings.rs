@@ -130,6 +130,8 @@ fn render_entry(group_widget: ParentWidget<'_>, entry: GameSettingsEntry, lang: 
             for entry in entries {
                 render_entry(ParentWidget::Expandable(&widget), entry, lang);
             }
+
+            group_widget.add(&widget);
         }
     }
 }
