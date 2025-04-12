@@ -244,7 +244,9 @@ type GameSettingsGroup = {
 type GameSettingsEnty = {
     // Unique name of the settings entry.
     // Will be used by the launcher to keep track of the value.
-    name: string,
+    //
+    // If not presented - launcher will not update its value.
+    name?: string,
 
     // Title of the setting.
     title: Localizable,

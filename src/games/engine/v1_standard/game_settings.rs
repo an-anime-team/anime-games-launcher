@@ -70,7 +70,7 @@ impl<'lua> AsLua<'lua> for GameSettingsGroup {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameSettingsEntry {
-    pub name: String,
+    pub name: Option<String>,
     pub title: LocalizableString,
     pub description: Option<LocalizableString>,
     pub entry: GameSettingsEntryFormat
@@ -80,9 +80,12 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
     fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 4)?;
 
-        table.set("name", lua.create_string(&self.name)?)?;
         table.set("title", self.title.to_lua(lua)?)?;
         table.set("entry", self.entry.to_lua(lua)?)?;
+
+        if let Some(name) = &self.name {
+            table.set("name", lua.create_string(name)?)?;
+        }
 
         if let Some(desc) = &self.description {
             table.set("description", desc.to_lua(lua)?)?;
@@ -96,8 +99,15 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
             .ok_or_else(|| AsLuaError::InvalidFieldValue("settings.entries[]"))?;
 
         Ok(Self {
-            name: value.get("name")
-                .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].name"))?,
+            name: value.get::<_, LuaValue>("name")
+                .map(|name| -> Result<Option<String>, AsLuaError> {
+                    if name.is_nil() || name.is_null() {
+                        Ok(None)
+                    } else {
+                        Ok(name.as_string_lossy().map(String::from))
+                    }
+                })
+                .unwrap_or(Ok(None))?,
 
             title: value.get::<_, LuaValue>("title")
                 .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].title"))
