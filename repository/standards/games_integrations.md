@@ -254,9 +254,24 @@ type GameSettingsEnty = {
     // Optional description of the setting.
     description?: Localizable,
 
+    // How launcher should react on changes of this entry.
+    // If unset - `relaxed` is assumed by default, though this can change in future.
+    reactivity?: GameSettingsEntryReactivity,
+
     // Information about the settings entry.
     entry: GameSettingsEntryFormat
 };
+
+type GameSettingsEntryReactivity =
+    // Do not refresh game status after changing this entry.
+    | 'none'
+
+    // Refresh game status after closing the settings window.
+    | 'relaxed'
+
+    // Reload whole settings window immediately after changing this entry
+    // and refresh game status after closing it.
+    | 'release';
 
 type GameSettingsEntryFormat =
     | GameSettingsEntrySwitch

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use mlua::prelude::*;
 
 use crate::prelude::*;
@@ -73,22 +71,27 @@ pub struct GameSettingsEntry {
     pub name: Option<String>,
     pub title: LocalizableString,
     pub description: Option<LocalizableString>,
+    pub reactivity: Option<GameSettingsEntryReactivity>,
     pub entry: GameSettingsEntryFormat
 }
 
 impl<'lua> AsLua<'lua> for GameSettingsEntry {
     fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
-        let table = lua.create_table_with_capacity(0, 4)?;
+        let table = lua.create_table_with_capacity(0, 5)?;
 
         table.set("title", self.title.to_lua(lua)?)?;
         table.set("entry", self.entry.to_lua(lua)?)?;
 
-        if let Some(name) = &self.name {
+        if let Some(name) = self.name.as_ref() {
             table.set("name", lua.create_string(name)?)?;
         }
 
-        if let Some(desc) = &self.description {
-            table.set("description", desc.to_lua(lua)?)?;
+        if let Some(description) = self.description.as_ref() {
+            table.set("description", description.to_lua(lua)?)?;
+        }
+
+        if let Some(reactivity) = self.reactivity.as_ref() {
+            table.set("reactivity", reactivity.to_lua(lua)?)?;
         }
 
         Ok(LuaValue::Table(table))
@@ -123,10 +126,56 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
                 })
                 .unwrap_or(Ok(None))?,
 
+            reactivity: value.get::<_, LuaValue>("reactivity")
+                .map(|reactivity| -> Result<Option<GameSettingsEntryReactivity>, AsLuaError> {
+                    if reactivity.is_nil() || reactivity.is_null() {
+                        Ok(None)
+                    } else {
+                        Ok(Some(GameSettingsEntryReactivity::from_lua(&reactivity)?))
+                    }
+                })
+                .unwrap_or(Ok(None))?,
+
             entry: value.get::<_, LuaValue>("entry")
                 .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry"))
                 .and_then(|title| GameSettingsEntryFormat::from_lua(&title))?
         })
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GameSettingsEntryReactivity {
+    /// Do not refresh game status after changing this entry.
+    None,
+
+    /// Refresh game status after closing the settings window.
+    #[default]
+    Relaxed,
+
+    /// Reload whole settings window immediately after changing this entry
+    /// and refresh game status after closing it.
+    Release
+}
+
+impl<'lua> AsLua<'lua> for GameSettingsEntryReactivity {
+    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+        let value = match self {
+            Self::None    => "none",
+            Self::Relaxed => "relaxed",
+            Self::Release => "release"
+        };
+
+        Ok(LuaValue::String(lua.create_string(value)?))
+    }
+
+    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+        match value.to_string()?.as_str() {
+            "none"    => Ok(Self::None),
+            "relaxed" => Ok(Self::Relaxed),
+            "release" => Ok(Self::Release),
+
+            _ => Err(AsLuaError::InvalidFieldValue("<entry reactivity>"))
+        }
     }
 }
 
