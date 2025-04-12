@@ -5,7 +5,7 @@
     <file>images/april-fools.jpg</file>
   </gresource>
 
-  <gresource prefix="/moe/launcher/anime-games-launcher/icons/hicolor/scalable/apps">
+  <gresource prefix="/moe/launcher/anime-games-launcher/icons/scalable/apps">
     <file alias="moe.launcher.anime-games-launcher.png">images/icon.png</file>
   </gresource>
 

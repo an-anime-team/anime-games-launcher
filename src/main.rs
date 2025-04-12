@@ -115,8 +115,9 @@ async fn main() -> anyhow::Result<()> {
 
         // Set icons search path.
         if let Some(display) = gtk::gdk::Display::default() {
-            gtk::IconTheme::for_display(&display)
-                .add_resource_path(&format!("{APP_RESOURCE_PREFIX}/icons"));
+            let theme = gtk::IconTheme::for_display(&display);
+
+            theme.add_resource_path(&format!("{APP_RESOURCE_PREFIX}/icons"));
         }
 
         // Set application's title.
