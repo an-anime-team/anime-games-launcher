@@ -61,6 +61,13 @@ impl<'lua> DownloaderAPI<'lua> {
                         }
                     };
 
+                    // Create folder where the output file should be downloaded.
+                    if let Some(parent) = downloader.output_file().parent() {
+                        if !parent.is_dir() {
+                            std::fs::create_dir_all(parent)?;
+                        }
+                    }
+
                     // Start downloading.
                     let (send, recv) = std::sync::mpsc::channel();
 
