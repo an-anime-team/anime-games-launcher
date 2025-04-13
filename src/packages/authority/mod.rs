@@ -66,6 +66,11 @@ impl AuthorityValidator {
             let manifest = serde_json::from_slice::<Json>(&manifest)?;
             let manifest = manifest::Manifest::from_json(&manifest)?;
 
+            tracing::trace!(
+                title = manifest.title.default_translation(),
+                "Fetched authority index"
+            );
+
             result.push(manifest);
         }
 

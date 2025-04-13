@@ -252,6 +252,13 @@ impl SimpleAsyncComponent for MainWindow {
                 }));
             }
 
+            // Fetch authority indexes.
+            tracing::debug!("Fetching authority indexes");
+
+            sender.input(MainWindowMsg::SetLoadingAction(String::from("Fetching authority indexes")));
+
+            let validator = AuthorityValidator::build(&STARTUP_CONFIG.packages.authorities).await?;
+
             // Open generations and packages stores.
             tracing::debug!(
                 generations_store = ?STARTUP_CONFIG.generations.store.path,
@@ -301,9 +308,22 @@ impl SimpleAsyncComponent for MainWindow {
                 sender.input(MainWindowMsg::SetLoadingAction(String::from("Validating generation")));
 
                 if !packages_store.validate(&generation.lock_file)? {
-                    tracing::warn!("Generation is invalid");
+                    tracing::warn!("Generation is invalid. Skipping it");
 
                     continue;
+                }
+
+                for resource in &generation.lock_file.resources {
+                    if let Some(status) = validator.get_status(&resource.lock.hash) {
+                        if !status.is_trusted() {
+                            tracing::warn!(
+                                resource = resource.lock.hash.to_base32(),
+                                "Generation resource is NOT trusted. Skipping it"
+                            );
+
+                            continue;
+                        }
+                    }
                 }
 
                 // Store the valid generation for future use.
@@ -361,6 +381,18 @@ impl SimpleAsyncComponent for MainWindow {
                     new_generation_task.await??
                 }
             };
+
+            for resource in &valid_generation.lock_file.resources {
+                if let Some(status) = validator.get_status(&resource.lock.hash) {
+                    if !status.is_trusted() {
+                        let hash = resource.lock.hash.to_base32();
+
+                        tracing::warn!(resource = hash, "Generation resource is NOT trusted. Skipping it");
+
+                        anyhow::bail!("Failed to find generation without malicious resources: '{hash}' is unsafe to use")
+                    }
+                }
+            }
 
             // Load the main window.
             tracing::debug!("Load main window");

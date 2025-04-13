@@ -145,6 +145,12 @@ impl ResourceStatus {
             Self::Malicious { hashes, .. } => hashes.contains(hash)
         }
     }
+
+    /// Check if current status is `trusted`.
+    #[inline]
+    pub const fn is_trusted(&self) -> bool {
+        matches!(self, Self::Trusted { .. })
+    }
 }
 
 impl AsJson for ResourceStatus {
@@ -261,22 +267,16 @@ impl AsJson for ResourceStatus {
 
             "compromised" => Ok(Self::Compromised {
                 details_url: json.get("details_url")
-                    .ok_or_else(|| AsJsonError::FieldNotFound("resources[].variants[].details_url"))?
-                    .as_str()
-                    .map(String::from)
-                    .map(Some)
-                    .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants[].details_url"))?,
+                    .and_then(Json::as_str)
+                    .map(String::from),
 
                 hashes
             }),
 
             "malicious" => Ok(Self::Malicious {
                 details_url: json.get("details_url")
-                    .ok_or_else(|| AsJsonError::FieldNotFound("resources[].variants[].details_url"))?
-                    .as_str()
-                    .map(String::from)
-                    .map(Some)
-                    .ok_or_else(|| AsJsonError::InvalidFieldValue("resources[].variants[].details_url"))?,
+                    .and_then(Json::as_str)
+                    .map(String::from),
 
                 hashes
             }),
