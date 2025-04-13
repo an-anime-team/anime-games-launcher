@@ -127,7 +127,15 @@ impl AuthorityValidator {
                                 allowed_paths,
                                 hashes
                             }) => {
-                                *curr_ext_process_api = (*curr_ext_process_api).max(ext_process_api);
+                                if curr_ext_process_api.is_none() {
+                                    *curr_ext_process_api = ext_process_api;
+                                }
+
+                                // If at least one authority index *implicitly* disabled process API
+                                // we *should* disable it here as a safety guaranty.
+                                else if ext_process_api == Some(false) {
+                                    *curr_ext_process_api = Some(false);
+                                }
 
                                 if let Some(allowed_paths) = allowed_paths {
                                     match curr_allowed_paths {
