@@ -1,7 +1,7 @@
 pub mod hash;
 pub mod manifest;
 pub mod lock_file;
-pub mod authority_index;
+pub mod authority;
 pub mod store;
 pub mod engine;
 
@@ -25,7 +25,8 @@ pub mod prelude {
         ResourceLockData as LockFileResourceLockData
     };
 
-    pub use super::authority_index::manifest::Manifest as AuthorityIndexManifest;
+    pub use super::authority::AuthorityValidator;
+    pub use super::authority::manifest::Manifest as AuthorityManifest;
 
     pub use super::store::{
         Store as PackagesStore,

@@ -76,11 +76,17 @@ impl AuthorityValidator {
 
     /// Search for the first ocurrence of the resource information within
     /// the stored authority indexes.
+    ///
+    /// ! Note that this should not be used to determine resource's status.
+    /// ! This method must be used to retrieve its general information only.
+    /// ! Use `get_status` to acquire proper status instead.
     pub fn lookup(&self, hash: &Hash) -> Option<&manifest::ResourceInfo> {
         for manifest in &self.manifests {
             for resource in &manifest.resources {
-                if resource.variants.contains_key(hash) {
-                    return Some(resource);
+                for variant in &resource.variants {
+                    if variant.contains(hash) {
+                        return Some(resource);
+                    }
                 }
             }
         }
@@ -90,43 +96,52 @@ impl AuthorityValidator {
 
     /// Read all the stored authority indexes and merge their statuses about
     /// the requested resource.
+    ///
+    /// Safe method for retrieving resource's status. Will immediately return
+    /// malicious or compromised resources if any found.
     pub fn get_status(&self, hash: &Hash) -> Option<manifest::ResourceStatus> {
         let mut status = None;
 
         for manifest in &self.manifests {
             for resource in &manifest.resources {
-                if let Some(resource_status) = resource.variants.get(hash).cloned() {
-                    match (&mut status, resource_status) {
-                        // Immediately return status if the resource is marked
-                        // as malicious or compromised.
-                        (_, resource_status) if matches!(resource_status, manifest::ResourceStatus::Compromised { .. }) => return Some(resource_status),
-                        (_, resource_status) if matches!(resource_status, manifest::ResourceStatus::Malicious { .. }) => return Some(resource_status),
+                for variant in &resource.variants {
+                    if variant.contains(hash) {
+                        match (&mut status, variant.to_owned()) {
+                            // Immediately return status if the resource is marked
+                            // as malicious or compromised.
+                            (_, resource_status) if matches!(resource_status, manifest::ResourceStatus::Compromised { .. }) => return Some(resource_status),
+                            (_, resource_status) if matches!(resource_status, manifest::ResourceStatus::Malicious { .. }) => return Some(resource_status),
 
-                        // Merge information about trusted resource status.
-                        (Some(manifest::ResourceStatus::Trusted {
-                            ext_process_api: curr_ext_process_api,
-                            allowed_paths: curr_allowed_paths
-                        }), manifest::ResourceStatus::Trusted {
-                            ext_process_api,
-                            allowed_paths
-                        }) => {
-                            *curr_ext_process_api = (*curr_ext_process_api).max(ext_process_api);
+                            // Merge information about trusted resource status.
+                            (Some(manifest::ResourceStatus::Trusted {
+                                ext_process_api: curr_ext_process_api,
+                                allowed_paths: curr_allowed_paths,
+                                hashes: curr_hashes
+                            }), manifest::ResourceStatus::Trusted {
+                                ext_process_api,
+                                allowed_paths,
+                                hashes
+                            }) => {
+                                *curr_ext_process_api = (*curr_ext_process_api).max(ext_process_api);
 
-                            if let Some(allowed_paths) = allowed_paths {
-                                match curr_allowed_paths {
-                                    Some(curr_allowed_paths) => {
-                                        curr_allowed_paths.extend(allowed_paths);
+                                if let Some(allowed_paths) = allowed_paths {
+                                    match curr_allowed_paths {
+                                        Some(curr_allowed_paths) => {
+                                            curr_allowed_paths.extend(allowed_paths);
+                                        }
+
+                                        None => *curr_allowed_paths = Some(allowed_paths)
                                     }
-
-                                    None => *curr_allowed_paths = Some(allowed_paths)
                                 }
+
+                                curr_hashes.extend(hashes);
                             }
+
+                            // Set information if it's not set yet.
+                            (None, resource_status) => status = Some(resource_status),
+
+                            _ => unreachable!()
                         }
-
-                        // Set information if it's not set yet.
-                        (None, resource_status) => status = Some(resource_status),
-
-                        _ => unreachable!()
                     }
                 }
             }

@@ -2,10 +2,10 @@
 
 Packages authority is a trusted source of metadata about the packages.
 Authority provides list of packages hashes and their status.
-Some packages could be marked as broken, insecure or malicious,
-while others could be allowed to escape the luau engine sandbox
-to perform specific files manipulations. Thus, authority indexes allow
-launcher to dynamically load info about compromised or trusted modules.
+Some packages could be marked as broken, insecure or malicious, while others
+could be allowed to escape the luau engine sandbox to perform specific files
+manipulations. Thus, authority indexes allow launcher to dynamically load info
+about compromised or trusted modules.
 
 It's recommended to specify hashes of actual luau modules, but you can also
 specify hash of the whole package which will grant permissions to all the
@@ -36,16 +36,14 @@ type ResourceInfo = {
     description?: Localizable,
 
     // Variants of this resource.
-    // The same resource can update over time and change its hash.
-    // Here you specify all the hashes of this resource and their status.
-    variants: [hash: string]: ResourceStatus
+    variants: ResourceStatus[]
 };
 
 type ResourceStatus = ResourceTrusted | ResourceCompromised | ResourceMalicious;
 
-// Trusted resources are made by known people, proven to not contain
-// any malicious code.
-type ResourceTrusted = 'trusted' | {
+// Trusted resources are made by known people, proven to not contain any
+// malicious code.
+type ResourceTrusted = {
     status: 'trusted',
 
     // List of APIs which are allowed to be used by the resource.
@@ -57,32 +55,38 @@ type ResourceTrusted = 'trusted' | {
 
     // List of paths which are allowed to be accessed by the luau module
     // in addition to default ones.
-    allowed_paths?: string[]
+    allowed_paths?: string[],
+
+    // List of hashes of the resource.
+    hashes: string[]
 };
 
-// Compromised resources are general resources which were
-// designed with good intentions but were proven to contain
-// code exploitable by malicious actors. For example,
-// a compromised resource can be a luau module with extended
-// privileges which was using them for good purposes but
-// contained a bug which could be abused by other luau modules
-// without extended privileges to escape the sandbox themselves.
-// Compromised resources don't have any special treatment.
-// This category exists for statistical and UI purposes.
-type ResourceCompromised = 'compromised' | {
+// Compromised resources are general resources which were designed with good
+// intentions but were proven to contain code exploitable by malicious actors.
+// For example, a compromised resource can be a luau module with extended
+// privileges which was using them for good purposes but contained a bug which
+// could be abused by other luau modules without extended privileges to escape
+// the sandbox themselves.
+type ResourceCompromised = {
     status: 'compromised',
 
     // URL to the page with detailed explanation.
-    details_url: string
+    details_url?: string,
+
+    // List of hashes of the resource.
+    hashes: string[]
 };
 
-// Malicious resources are resources which were intentionally made
-// to perform bad behavior on user system. These could be viruses
-// or luau modules with hidden behavior.
-type ResourceMalicious = 'malicious' | {
+// Malicious resources are resources which were intentionally made to perform
+// bad behavior on user system. These could be viruses or luau modules with
+// hidden behavior.
+type ResourceMalicious = {
     status: 'malicious',
 
     // URL to the page with detailed explanation.
-    details_url: string
+    details_url?: string,
+
+    // List of hashes of the resource.
+    hashes: string[]
 };
 ```
