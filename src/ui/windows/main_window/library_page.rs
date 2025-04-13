@@ -11,7 +11,10 @@ use super::*;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum LibraryPageInput {
-    SetGeneration(GenerationManifest),
+    SpawnLuauEngine {
+        generation: GenerationManifest,
+        validator: AuthorityValidator
+    },
 
     AddGameFromGeneration {
         url: String,
@@ -125,14 +128,16 @@ impl SimpleAsyncComponent for LibraryPage {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            LibraryPageInput::SetGeneration(generation) => {
+            LibraryPageInput::SpawnLuauEngine { generation, validator } => {
                 self.games.clear();
                 self.cards_list.guard().clear();
 
                 let download_manager = self.download_manager.sender().to_owned();
 
+                // TODO: we don't do this now, but in future this event could be called
+                //       multiple times, so we would need to kill unused threads.
                 std::thread::spawn(move || {
-                    if let Err(err) = serve_generation(sender, download_manager, generation) {
+                    if let Err(err) = serve_generation(sender, download_manager, generation, validator) {
                         tracing::error!(?err, "Failed to serve generation");
                     }
                 });

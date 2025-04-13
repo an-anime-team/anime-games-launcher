@@ -34,9 +34,14 @@ pub struct PackagesEngine<'lua> {
 }
 
 impl<'lua> PackagesEngine<'lua> {
-    /// Create new packages engine and load all the resources
-    /// from the provided lock file.
-    pub fn create(lua: &'lua Lua, store: &PackagesStore, lock_file: LockFileManifest) -> Result<Self, PackagesEngineError> {
+    /// Create new packages engine and load all the resources from the provided
+    /// lock file with permissions granted in the provided authority indexes.
+    pub fn create(
+        lua: &'lua Lua,
+        store: &PackagesStore,
+        lock_file: LockFileManifest,
+        validator: AuthorityValidator
+    ) -> Result<Self, PackagesEngineError> {
         let engine_table = lua.create_table()?;
         let resources_table = lua.create_table()?;
 
@@ -137,6 +142,7 @@ impl<'lua> PackagesEngine<'lua> {
                     }
 
                     let mut input_resources = vec![path.clone()];
+                    let mut parent_hash = None;
 
                     if let Some(parent_context) = parent_context {
                         let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
@@ -145,12 +151,14 @@ impl<'lua> PackagesEngine<'lua> {
                         let resources_table = engine_table.get::<_, LuaTable>("resources")?;
                         let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
 
-                        // Try to parse its format.
+                        // Try to parse its format and hash.
                         let parent_format = parent_resource.get::<_, String>("format")?;
 
                         let Ok(parent_format) = PackageResourceFormat::from_str(&parent_format) else {
                             return Err(PackagesEngineError::InvalidResourceFormat(parent_format));
                         };
+
+                        parent_hash = Hash::from_base32(parent_resource.get::<_, String>("hash")?);
 
                         // Look into inputs of the parent resource if it's a package.
                         if parent_format == PackageResourceFormat::Package {
@@ -182,17 +190,31 @@ impl<'lua> PackagesEngine<'lua> {
                     }
 
                     // Prepare special environment for the module.
-                    let env = v1_standard.create_env(&v1_standard::Context {
+                    let mut context = v1_standard::Context {
                         temp_folder: config.packages.temp_store.path.clone(),
                         persistent_folder: config.packages.persist_store.path.clone(),
                         module_folder,
                         input_resources,
 
-                        // TODO: implement packages authorities system
                         ext_process_api: false,
-
                         ext_allowed_paths: vec![]
-                    })?;
+                    };
+
+                    // Update values specified in the authority index.
+                    for hash in [Some(resource.lock.hash), parent_hash].iter().flatten() {
+                        if let Some(ResourceStatus::Trusted { ext_process_api, allowed_paths, .. }) = validator.get_status(hash) {
+                            if ext_process_api == Some(true) {
+                                context.ext_process_api = true;
+                            }
+
+                            if let Some(allowed_paths) = allowed_paths {
+                                context.ext_allowed_paths.extend(allowed_paths);
+                            }
+                        }
+                    }
+
+                    // Build the luau environment.
+                    let env = v1_standard.create_env(&context)?;
 
                     // Clone the lua globals.
                     for pair in lua.globals().pairs::<LuaValue, LuaValue>() {
@@ -532,7 +554,9 @@ mod tests {
 
         let lua = Lua::new();
 
-        let engine = PackagesEngine::create(&lua, &store, lock_file)?;
+        let validator = AuthorityValidator::new([]);
+
+        let engine = PackagesEngine::create(&lua, &store, lock_file, validator)?;
 
         let resource = engine.load_resource("0peottaa6s1co")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;

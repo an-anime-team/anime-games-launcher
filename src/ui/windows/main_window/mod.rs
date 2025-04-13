@@ -22,7 +22,11 @@ use store_page::*;
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
     SetLoadingAction(String),
-    FinishLoading(GenerationManifest),
+
+    FinishLoading {
+        generation: GenerationManifest,
+        validator: AuthorityValidator
+    },
 
     AddGame {
         url: String,
@@ -398,7 +402,11 @@ impl SimpleAsyncComponent for MainWindow {
             tracing::debug!("Load main window");
 
             sender.input(MainWindowMsg::SetLoadingAction(String::from("Almost done")));
-            sender.input(MainWindowMsg::FinishLoading(valid_generation));
+
+            sender.input(MainWindowMsg::FinishLoading {
+                generation: valid_generation,
+                validator
+            });
 
             Ok::<_, anyhow::Error>(())
         });
@@ -429,9 +437,12 @@ impl SimpleAsyncComponent for MainWindow {
         match message {
             MainWindowMsg::SetLoadingAction(action) => self.loading_action = Some(action),
 
-            MainWindowMsg::FinishLoading(generation) => {
+            MainWindowMsg::FinishLoading { generation, validator } => {
                 if let Some(library_page) = self.library_page.as_ref() {
-                    library_page.emit(LibraryPageInput::SetGeneration(generation));
+                    library_page.emit(LibraryPageInput::SpawnLuauEngine {
+                        generation,
+                        validator
+                    });
                 }
 
                 self.is_loading = false;

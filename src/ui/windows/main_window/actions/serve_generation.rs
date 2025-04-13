@@ -55,7 +55,8 @@ pub enum SyncGameCommand {
 pub fn serve_generation(
     library_page_sender: AsyncComponentSender<LibraryPage>,
     download_manager_sender: Sender<DownloadManagerWindowMsg>,
-    generation: GenerationManifest
+    generation: GenerationManifest,
+    validator: AuthorityValidator
 ) -> anyhow::Result<()> {
     let config = config::get();
 
@@ -79,7 +80,7 @@ pub fn serve_generation(
     }
 
     // Load generation's lock file into the packages engine.
-    let engine = match PackagesEngine::create(&lua, &packages_store, generation.lock_file) {
+    let engine = match PackagesEngine::create(&lua, &packages_store, generation.lock_file, validator) {
         Ok(engine) => engine,
         Err(err) => {
             tracing::error!(?err, "Failed to load locked packages to the lua engine");

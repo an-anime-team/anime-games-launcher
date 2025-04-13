@@ -46,7 +46,7 @@ pub struct GameLibraryDetails {
     status: Option<InstallationStatus>,
     launch_info: Option<GameLaunchInfo>,
 
-    loading: bool
+    is_loading: bool
 }
 
 #[relm4::component(pub, async)]
@@ -75,7 +75,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 },
 
                 #[watch]
-                set_visible: model.loading
+                set_visible: model.is_loading
             },
 
             adw::Clamp {
@@ -83,7 +83,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 set_hexpand: true,
 
                 #[watch]
-                set_visible: !model.loading,
+                set_visible: !model.is_loading,
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
@@ -232,7 +232,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             status: None,
             launch_info: None,
 
-            loading: true
+            is_loading: true
         };
 
         let widgets = view_output!();
@@ -362,7 +362,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = Some(status),
             GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = Some(info),
 
-            GameLibraryDetailsMsg::SetLoading(loading) => self.loading = loading,
+            GameLibraryDetailsMsg::SetLoading(loading) => self.is_loading = loading,
 
             GameLibraryDetailsMsg::EmitInstallDiff => {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {

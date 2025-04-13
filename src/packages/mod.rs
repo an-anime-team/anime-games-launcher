@@ -26,7 +26,11 @@ pub mod prelude {
     };
 
     pub use super::authority::AuthorityValidator;
-    pub use super::authority::manifest::Manifest as AuthorityManifest;
+
+    pub use super::authority::manifest::{
+        Manifest as AuthorityManifest,
+        ResourceStatus
+    };
 
     pub use super::store::{
         Store as PackagesStore,
