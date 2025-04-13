@@ -10,7 +10,8 @@ enum StringEncoding {
     Base32(base32::Alphabet),
     Base64(base64::engine::GeneralPurpose),
     Json,
-    Toml
+    Toml,
+    Yaml
 }
 
 impl StringEncoding {
@@ -78,6 +79,7 @@ impl StringEncoding {
 
             b"json" => Some(Self::Json),
             b"toml" => Some(Self::Toml),
+            b"yaml" => Some(Self::Yaml),
 
             _ => None
         }
@@ -106,7 +108,7 @@ impl StringEncoding {
             }
 
             Self::Json => {
-                let value = serde_json::to_vec(&value)
+                let value = serde_json::to_vec_pretty(&value)
                     .map_err(LuaError::external)?;
 
                 lua.create_string(value)
@@ -114,6 +116,13 @@ impl StringEncoding {
 
             Self::Toml => {
                 let value = toml::to_string(&value)
+                    .map_err(LuaError::external)?;
+
+                lua.create_string(value)
+            }
+
+            Self::Yaml => {
+                let value = serde_yml::to_string(&value)
                     .map_err(LuaError::external)?;
 
                 lua.create_string(value)
@@ -164,6 +173,13 @@ impl StringEncoding {
                     .to_string();
 
                 let value = toml::from_str::<toml::Value>(&string)
+                    .map_err(LuaError::external)?;
+
+                lua.to_value(&value)
+            }
+
+            Self::Yaml => {
+                let value = serde_yml::from_slice::<serde_yml::Value>(string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 lua.to_value(&value)
@@ -306,15 +322,17 @@ mod tests {
 
         let encodings = [
             ("json", "{\"hello\":\"world\"}"),
-            ("toml", "hello = \"world\"\n")
+            ("toml", "hello = \"world\"\n"),
+            ("yaml", "hello: \"world\"")
         ];
 
         for (name, value) in encodings {
             let encoded = api.str_encode.call::<_, LuaString>((table.clone(), name))?;
-            let decoded = api.str_decode.call::<_, LuaTable>((value, name))?;
+            let decoded_1 = api.str_decode.call::<_, LuaTable>((value, name))?;
+            let decoded_2 = api.str_decode.call::<_, LuaTable>((encoded, name))?;
 
-            assert_eq!(encoded, value);
-            assert_eq!(decoded.get::<_, LuaString>("hello")?, "world");
+            assert_eq!(decoded_1.get::<_, LuaString>("hello")?, "world");
+            assert_eq!(decoded_2.get::<_, LuaString>("hello")?, "world");
         }
 
         Ok(())

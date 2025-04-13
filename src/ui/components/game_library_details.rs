@@ -368,6 +368,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
                     let variant = GameVariant::from_edition(&edition.name);
 
+                    // TODO: update game status after finishing diff pipeline.
                     let _ = listener.send(SyncGameCommand::StartDiffPipeline { variant });
                 }
             }
