@@ -213,6 +213,14 @@ impl<'lua> PackagesEngine<'lua> {
                         }
                     }
 
+                    tracing::debug!(
+                        resource_url = resource.url,
+                        resource_hash = ?resource.lock.hash.to_base32(),
+                        parent_hash = ?parent_hash.as_ref().map(Hash::to_base32),
+                        ?context,
+                        "Building v1 package module environment"
+                    );
+
                     // Build the luau environment.
                     let env = v1_standard.create_env(&context)?;
 
@@ -397,7 +405,7 @@ impl<'lua> PackagesEngine<'lua> {
 
         // Evaluate all the modules in dependency growth order.
         while let Some((resource_table, module, env)) = evaluation_queue.pop() {
-            tracing::trace!(resource_table = format!("{resource_table:#?}"), "Evaluating lua module");
+            tracing::debug!(resource_table = format!("{resource_table:#?}"), "Evaluating lua module");
 
             let value = module.set_environment(env)
                 .call::<_, LuaValue>(())?;
