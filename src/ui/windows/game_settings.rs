@@ -66,6 +66,8 @@ fn render_entry(
         GameSettingsEntryFormat::Text { value } => {
             let widget = adw::EntryRow::new();
 
+            widget.set_show_apply_button(true);
+
             let title = match lang {
                 Some(lang) => entry.title.translate(lang),
                 None => entry.title.default_translation()
@@ -85,7 +87,7 @@ fn render_entry(
             widget.set_text(&value);
 
             if let Some(name) = entry.name {
-                widget.connect_changed(move |widget| {
+                widget.connect_apply(move |widget| {
                     let reactivity = entry.reactivity.unwrap_or_default();
 
                     listener.emit(GameSettingsWindowInput::SetStringProperty {

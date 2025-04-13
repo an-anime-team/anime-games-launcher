@@ -1372,7 +1372,7 @@ fs.write_file(my_file, str.to_bytes("Hello, World!"))
 local output = process.exec("cat", { "my_file.txt" })
 
 -- "Hello, World!"
-print(string.from_bytes(output.stdout))
+print(str.from_bytes(output.stdout))
 ```
 
 ### `process.open(path: string, [args: [string]], [env: [key: string]: string]) -> number`
