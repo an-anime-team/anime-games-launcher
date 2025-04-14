@@ -444,6 +444,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                     // TODO: pipe stdout/stderr to a log file.
 
+                    tracing::info!(?command, "Launching game");
+
                     match command.spawn() {
                         Ok(child) => {
                             self.running_game = Some(child);
