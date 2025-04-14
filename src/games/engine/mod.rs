@@ -33,57 +33,57 @@ impl<'lua> GameEngine<'lua> {
         }
     }
 
-    #[inline]
     /// Get list of available game editions.
+    #[inline]
     pub fn editions(&self, platform: TargetPlatform) -> Result<Vec<GameEdition>, LuaError> {
         match self {
             Self::V1(engine) => engine.editions(platform)
         }
     }
 
-    #[inline]
     /// Get status of the game installation.
+    #[inline]
     pub fn game_status(&self, variant: &GameVariant) -> Result<InstallationStatus, LuaError> {
         match self {
             Self::V1(engine) => engine.game_status(variant)
         }
     }
 
-    #[inline]
     /// Get installation diff.
+    #[inline]
     pub fn game_diff(&self, variant: &GameVariant) -> Result<Option<InstallationDiff>, LuaError> {
         match self {
             Self::V1(engine) => engine.game_diff(variant)
         }
     }
 
-    #[inline]
     /// Get params used to launch the game.
+    #[inline]
     pub fn game_launch_info(&self, variant: &GameVariant) -> Result<GameLaunchInfo, AsLuaError> {
         match self {
             Self::V1(engine) => engine.game_launch_info(variant)
         }
     }
 
-    #[inline]
     /// Get settings param from the game integration module.
-    pub fn get_property(&self, name: impl AsRef<str>) -> Result<LuaValue, AsLuaError> {
+    #[inline]
+    pub fn get_property(&self, name: impl AsRef<str>) -> Result<Option<LuaValue>, AsLuaError> {
         match self {
             Self::V1(engine) => engine.get_property(name)
         }
     }
 
-    #[inline]
     /// Set settings param value.
+    #[inline]
     pub fn set_property(&self, name: impl AsRef<str>, value: LuaValue) -> Result<(), AsLuaError> {
         match self {
             Self::V1(engine) => engine.set_property(name, value)
         }
     }
 
-    #[inline]
     /// Get game settings UI layout.
-    pub fn get_settings_layout(&self, variant: impl AsRef<GameVariant>) -> Result<Vec<GameSettingsGroup>, AsLuaError> {
+    #[inline]
+    pub fn get_settings_layout(&self, variant: impl AsRef<GameVariant>) -> Result<Option<Vec<GameSettingsGroup>>, AsLuaError> {
         match self {
             Self::V1(engine) => engine.get_settings_layout(variant)
         }

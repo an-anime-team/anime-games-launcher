@@ -36,7 +36,7 @@ type GameIntegration = {
         get_launch_info: (variant: GameVariant): GameLaunchInfo
     },
 
-    settings: {
+    settings?: {
         // Get some property value.
         get_property: (name: string): any,
 

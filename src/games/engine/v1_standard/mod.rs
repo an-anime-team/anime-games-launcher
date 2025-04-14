@@ -34,9 +34,9 @@ pub struct GameIntegration<'lua> {
     game_get_diff: LuaFunction<'lua>,
     game_get_launch_info: LuaFunction<'lua>,
 
-    settings_get_property: LuaFunction<'lua>,
-    settings_set_property: LuaFunction<'lua>,
-    settings_get_layout: LuaFunction<'lua>
+    settings_get_property: Option<LuaFunction<'lua>>,
+    settings_set_property: Option<LuaFunction<'lua>>,
+    settings_get_layout: Option<LuaFunction<'lua>>
 }
 
 impl<'lua> GameIntegration<'lua> {
@@ -46,7 +46,7 @@ impl<'lua> GameIntegration<'lua> {
         }
 
         let game = table.get::<_, LuaTable>("game")?;
-        let settings = table.get::<_, LuaTable>("settings")?;
+        let settings = table.get::<_, LuaTable>("settings").ok();
 
         Ok(Self {
             lua,
@@ -57,9 +57,9 @@ impl<'lua> GameIntegration<'lua> {
             game_get_diff: game.get("get_diff")?,
             game_get_launch_info: game.get("get_launch_info")?,
 
-            settings_get_property: settings.get("get_property")?,
-            settings_set_property: settings.get("set_property")?,
-            settings_get_layout: settings.get("get_layout")?
+            settings_get_property: settings.as_ref().map(|settings| settings.get("get_property")).transpose()?,
+            settings_set_property: settings.as_ref().map(|settings| settings.get("set_property")).transpose()?,
+            settings_get_layout: settings.as_ref().map(|settings| settings.get("get_layout")).transpose()?
         })
     }
 
@@ -97,25 +97,45 @@ impl<'lua> GameIntegration<'lua> {
     }
 
     /// Get settings param from the game integration module.
-    pub fn get_property(&self, name: impl AsRef<str>) -> Result<LuaValue, AsLuaError> {
-        self.settings_get_property.call::<_, LuaValue>(name.as_ref())
-            .map_err(AsLuaError::LuaError)
+    ///
+    /// Return `Ok(None)` if settings are not specified.
+    pub fn get_property(&self, name: impl AsRef<str>) -> Result<Option<LuaValue>, AsLuaError> {
+        match &self.settings_get_property {
+            Some(get_property) => get_property.call::<_, LuaValue>(name.as_ref())
+                .map(Some)
+                .map_err(AsLuaError::LuaError),
+
+            None => Ok(None)
+        }
     }
 
     /// Set settings param value.
+    ///
+    /// Do nothing if settings are not specified.
     pub fn set_property(&self, name: impl AsRef<str>, value: LuaValue) -> Result<(), AsLuaError> {
-        self.settings_set_property.call::<_, ()>((name.as_ref(), value))
-            .map_err(AsLuaError::LuaError)
+        match &self.settings_set_property {
+            Some(set_property) => set_property.call::<_, ()>((name.as_ref(), value))
+                .map_err(AsLuaError::LuaError),
+
+            None => Ok(())
+        }
     }
 
     /// Get game settings UI layout.
-    pub fn get_settings_layout(&self, variant: impl AsRef<GameVariant>) -> Result<Vec<GameSettingsGroup>, AsLuaError> {
-        self.settings_get_layout.call::<_, Vec<LuaValue>>(variant.as_ref().to_lua(self.lua)?)
-            .map_err(AsLuaError::LuaError)
-            .and_then(|groups| {
-                groups.iter()
-                    .map(GameSettingsGroup::from_lua)
-                    .collect::<Result<Vec<_>, AsLuaError>>()
-            })
+    ///
+    /// Return `Ok(None)` if settings are not specified.
+    pub fn get_settings_layout(&self, variant: impl AsRef<GameVariant>) -> Result<Option<Vec<GameSettingsGroup>>, AsLuaError> {
+        match &self.settings_get_layout {
+            Some(get_layout) => get_layout.call::<_, Vec<LuaValue>>(variant.as_ref().to_lua(self.lua)?)
+                .map_err(AsLuaError::LuaError)
+                .and_then(|groups| {
+                    groups.iter()
+                        .map(GameSettingsGroup::from_lua)
+                        .collect::<Result<Vec<_>, AsLuaError>>()
+                })
+                .map(Some),
+
+            None => Ok(None)
+        }
     }
 }

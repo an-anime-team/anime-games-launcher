@@ -48,7 +48,7 @@ pub enum SyncGameCommand {
     /// Get game settings layout.
     GetSettingsLayout {
         variant: GameVariant,
-        listener: OneshotSender<Result<Vec<GameSettingsGroup>, AsLuaError>>
+        listener: OneshotSender<Result<Option<Vec<GameSettingsGroup>>, AsLuaError>>
     }
 }
 

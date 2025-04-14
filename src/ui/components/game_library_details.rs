@@ -22,8 +22,10 @@ pub enum GameLibraryDetailsMsg {
     SetGameInstallationStatus(InstallationStatus),
     SetGameLaunchInfo(GameLaunchInfo),
 
-    SetLoading(bool),
+    SetIsLoading(bool),
+    SetHasSettings(bool),
 
+    EmitPlay,
     EmitInstallDiff,
     EmitOpenSettingsWindow,
 
@@ -46,7 +48,8 @@ pub struct GameLibraryDetails {
     status: Option<InstallationStatus>,
     launch_info: Option<GameLaunchInfo>,
 
-    is_loading: bool
+    is_loading: bool,
+    has_settings: bool
 }
 
 #[relm4::component(pub, async)]
@@ -155,7 +158,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 set_icon_name: "media-playback-start-symbolic",
 
                                 set_label: "Play"
-                            }
+                            },
+
+                            connect_clicked => GameLibraryDetailsMsg::EmitPlay
                         },
 
                         // Update / Install (execute diff) button
@@ -189,6 +194,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                         gtk::Button {
                             add_css_class: "pill",
+
+                            #[watch]
+                            set_visible: model.has_settings,
 
                             adw::ButtonContent {
                                 set_icon_name: "settings-symbolic",
@@ -232,7 +240,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             status: None,
             launch_info: None,
 
-            is_loading: true
+            is_loading: true,
+            has_settings: false
         };
 
         let widgets = view_output!();
@@ -295,7 +304,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             GameLibraryDetailsMsg::ReloadGameStatus => {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
-                    sender.input(GameLibraryDetailsMsg::SetLoading(true));
+                    sender.input(GameLibraryDetailsMsg::SetIsLoading(true));
 
                     let variant = GameVariant::from_edition(&edition.name);
 
@@ -351,10 +360,37 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         })
                     };
 
-                    tokio::spawn(async move {
-                        let _ = tokio::join!(game_installation_status, game_launch_info);
+                    // Request game settings layout info update.
+                    let game_settings_layout = {
+                        let sender = sender.clone();
+                        let listener = listener.clone();
+                        let variant = variant.clone();
 
-                        sender.input(GameLibraryDetailsMsg::SetLoading(false));
+                        tokio::spawn(async move {
+                            let (send, recv) = tokio::sync::oneshot::channel();
+
+                            if let Err(err) = listener.send(SyncGameCommand::GetSettingsLayout { variant, listener: send }) {
+                                tracing::error!(?err, "Failed to request game settings layout");
+
+                                return;
+                            }
+
+                            match recv.await {
+                                Ok(Ok(layout)) => sender.input(GameLibraryDetailsMsg::SetHasSettings(layout.is_some())),
+                                Ok(Err(err)) => tracing::error!(?err, "Failed to request game settings layout"),
+                                Err(err) => tracing::error!(?err, "Failed to request game settings layout")
+                            }
+                        })
+                    };
+
+                    tokio::spawn(async move {
+                        let _ = tokio::join!(
+                            game_installation_status,
+                            game_launch_info,
+                            game_settings_layout
+                        );
+
+                        sender.input(GameLibraryDetailsMsg::SetIsLoading(false));
                     });
                 }
             }
@@ -362,7 +398,12 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = Some(status),
             GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = Some(info),
 
-            GameLibraryDetailsMsg::SetLoading(loading) => self.is_loading = loading,
+            GameLibraryDetailsMsg::SetIsLoading(is_loading) => self.is_loading = is_loading,
+            GameLibraryDetailsMsg::SetHasSettings(has_settings) => self.has_settings = has_settings,
+
+            GameLibraryDetailsMsg::EmitPlay => {
+                // todo
+            }
 
             GameLibraryDetailsMsg::EmitInstallDiff => {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
@@ -390,10 +431,16 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         }
 
                         match recv.await {
-                            Ok(Ok(layout)) => {
+                            Ok(Ok(None)) => {
+                                sender.input(GameLibraryDetailsMsg::SetHasSettings(false));
+                            }
+
+                            Ok(Ok(Some(layout))) => {
                                 let config = config::get();
 
                                 let language = config.general.language.parse::<LanguageIdentifier>().ok();
+
+                                sender.input(GameLibraryDetailsMsg::SetHasSettings(true));
 
                                 // Don't mind it.
                                 gtk::glib::spawn_future(async move {
