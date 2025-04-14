@@ -80,10 +80,10 @@ impl<'lua> FilesystemAPI<'lua> {
                             .duration_since(UNIX_EPOCH)
                             .as_ref()
                             .map(Duration::as_secs)
-                            .unwrap_or_default() as u32
+                            .unwrap_or_default()
                     })?;
 
-                    result.set("length", metadata.len() as u32)?;
+                    result.set("length", metadata.len())?;
                     result.set("is_accessible", context.is_accessible(path))?;
 
                     result.set("type", {
@@ -314,7 +314,7 @@ impl<'lua> FilesystemAPI<'lua> {
             fs_seek: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position): (u32, i32)| {
+                lua.create_function(move |_, (handle, position): (u32, i64)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -328,7 +328,7 @@ impl<'lua> FilesystemAPI<'lua> {
                     }
 
                     else {
-                        file.seek(SeekFrom::End(position as i64))?;
+                        file.seek(SeekFrom::End(position))?;
                     }
 
                     Ok(())
@@ -338,7 +338,7 @@ impl<'lua> FilesystemAPI<'lua> {
             fs_read: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position, length): (u32, Option<i32>, Option<u32>)| {
+                lua.create_function(move |_, (handle, position, length): (u32, Option<i64>, Option<u64>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -353,7 +353,7 @@ impl<'lua> FilesystemAPI<'lua> {
                         }
 
                         else {
-                            file.seek(SeekFrom::End(position as i64))?;
+                            file.seek(SeekFrom::End(position))?;
                         }
                     }
 
@@ -380,7 +380,7 @@ impl<'lua> FilesystemAPI<'lua> {
             fs_write: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, content, position): (u32, Vec<u8>, Option<i32>)| {
+                lua.create_function(move |_, (handle, content, position): (u32, Vec<u8>, Option<i64>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -395,7 +395,7 @@ impl<'lua> FilesystemAPI<'lua> {
                         }
 
                         else {
-                            file.seek(SeekFrom::End(position as i64))?;
+                            file.seek(SeekFrom::End(position))?;
                         }
                     }
 
