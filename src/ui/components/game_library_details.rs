@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::process::{Command, Child};
 
 use relm4::prelude::*;
 use adw::prelude::*;
@@ -25,9 +26,12 @@ pub enum GameLibraryDetailsMsg {
     SetIsLoading(bool),
     SetHasSettings(bool),
 
-    EmitPlay,
+    EmitLaunchGame,
+    EmitKillGame,
     EmitInstallDiff,
     EmitOpenSettingsWindow,
+
+    ScheduleRunningGameStatusCheck,
 
     SendSettingsWindowMsg(GameSettingsWindowInput)
 }
@@ -49,7 +53,8 @@ pub struct GameLibraryDetails {
     launch_info: Option<GameLaunchInfo>,
 
     is_loading: bool,
-    has_settings: bool
+    has_settings: bool,
+    running_game: Option<Child>
 }
 
 #[relm4::component(pub, async)]
@@ -112,7 +117,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                         set_spacing: 12,
 
-                        // Play button
+                        // Play button.
                         gtk::Button {
                             #[watch]
                             set_css_classes?: model.launch_info.as_ref()
@@ -126,7 +131,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 }),
 
                             #[watch]
-                            set_visible: model.status.as_ref()
+                            set_visible: model.running_game.is_none() && model.status.as_ref()
                                 .map(|status| {
                                     [InstallationStatus::Installed, InstallationStatus::UpdateAvailable].contains(status)
                                 })
@@ -160,10 +165,27 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 set_label: "Play"
                             },
 
-                            connect_clicked => GameLibraryDetailsMsg::EmitPlay
+                            connect_clicked => GameLibraryDetailsMsg::EmitLaunchGame
                         },
 
-                        // Update / Install (execute diff) button
+                        // Kill game button.
+                        gtk::Button {
+                            add_css_class: "pill",
+                            add_css_class: "destructive-action",
+
+                            #[watch]
+                            set_visible: model.running_game.is_some(),
+
+                            adw::ButtonContent {
+                                set_icon_name: "violence-symbolic",
+
+                                set_label: "Kill game"
+                            },
+
+                            connect_clicked => GameLibraryDetailsMsg::EmitKillGame
+                        },
+
+                        // Update / Install (execute diff) button.
                         gtk::Button {
                             #[watch]
                             set_css_classes?: model.status.as_ref()
@@ -241,7 +263,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             launch_info: None,
 
             is_loading: true,
-            has_settings: false
+            has_settings: false,
+            running_game: None
         };
 
         let widgets = view_output!();
@@ -401,8 +424,64 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsMsg::SetIsLoading(is_loading) => self.is_loading = is_loading,
             GameLibraryDetailsMsg::SetHasSettings(has_settings) => self.has_settings = has_settings,
 
-            GameLibraryDetailsMsg::EmitPlay => {
-                // todo
+            GameLibraryDetailsMsg::EmitLaunchGame => {
+                if self.running_game.is_some() {
+                    tracing::warn!("You're not allowed to launch multiple games currently");
+
+                    return;
+                }
+
+                if let Some(launch_info) = &self.launch_info {
+                    let mut command = &mut Command::new(&launch_info.binary);
+
+                    if let Some(args) = &launch_info.args {
+                        command = command.args(args);
+                    }
+
+                    if let Some(env) = &launch_info.env {
+                        command = command.envs(env);
+                    }
+
+                    // TODO: pipe stdout/stderr to a log file.
+
+                    match command.spawn() {
+                        Ok(child) => {
+                            self.running_game = Some(child);
+
+                            sender.input(GameLibraryDetailsMsg::ScheduleRunningGameStatusCheck);
+                        }
+
+                        Err(err) => tracing::error!(?err, "Failed to launch game")
+                    }
+                }
+            }
+
+            GameLibraryDetailsMsg::EmitKillGame => {
+                if let Some(child) = &mut self.running_game {
+                    match child.kill() {
+                        Ok(_) => self.running_game = None,
+
+                        Err(err) => tracing::error!(?err, "Failed to kill the game")
+                    }
+                }
+            }
+
+            GameLibraryDetailsMsg::ScheduleRunningGameStatusCheck => {
+                if let Some(child) = &mut self.running_game {
+                    match child.try_wait() {
+                        Ok(Some(_)) => self.running_game = None,
+
+                        Ok(None) => {
+                            tokio::spawn(async move {
+                                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+                                sender.input(GameLibraryDetailsMsg::ScheduleRunningGameStatusCheck)
+                            });
+                        }
+
+                        Err(err) => tracing::error!(?err, "Failed to check running game status")
+                    }
+                }
             }
 
             GameLibraryDetailsMsg::EmitInstallDiff => {
