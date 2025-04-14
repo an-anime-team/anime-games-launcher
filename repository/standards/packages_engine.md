@@ -1,18 +1,17 @@
 # v1 standard of the packages engine
 
-Packages define set of input and output resources and provide
-their names and formats. Same inputs and outputs could be used
-by different packages, being shared as singletons. Names are not
-unique and different packages can use the same ones.
+Packages define set of input and output resources and provide their names
+and formats. Same inputs and outputs can be used by different packages, being
+shared as singletons. Names are not unique and different packages can use
+the same ones.
 
-Each resource has its own "loaded format" - a lua representation
-of it. Modules, special luau scripts, can obtain loaded resources
-using special rust-lua bridge API.
+Each resource has its own "loaded format" - a lua representation of it.
+Modules, special luau scripts, can obtain loaded resources using special
+rust-lua bridge API.
 
-Modules can be listed in inputs and outputs of a package. Input
-module cannot obtain any loaded resource. Output modules, on the
-contrary, can obtain any input resource of their parent package.
-Output modules can't load themselves.
+Modules can be listed in inputs and outputs of a package. Input module cannot
+obtain any loaded resource. Output modules, on the contrary, can obtain any
+input resource of their parent package. Output modules can't load themselves.
 
 | Can load?     | Input | Output |
 | ------------- | ----- | ------ |
@@ -21,10 +20,9 @@ Output modules can't load themselves.
 
 ## Inputs loading
 
-As already said all the resources are loaded only once and are stored
-in global environment variable, in shared (singleton) state.
-When loaded by one module and changed the changes will be visible
-by other modules too.
+As already said all the resources are loaded only once and are stored in global
+environment variable, in shared (singleton) state. When loaded by one module and
+changed the changes will be visible to other modules.
 
 ```ts
 type LoadedResource = {
@@ -40,7 +38,7 @@ type LoadedResource = {
 };
 ```
 
-```lua
+```luau
 -- v1 module standard.
 local file = load("file-input")
 
@@ -58,7 +56,7 @@ using inputs for most cases.
 > From the technical aspect, `import` function uses `load` output and strips
 > all the metadata from it.
 
-```lua
+```luau
 local input_file   = import("file-input")
 local input_module = import("module-input")
 
@@ -72,7 +70,7 @@ Since tables in lua work similarly to arrays in JS (they're shared on cloning)
 it's convenient to have a function to create a full copy of some value which
 will not be shared with the rest of the script.
 
-```lua
+```luau
 local table_1 = {
     hello = "world"
 }
@@ -93,18 +91,18 @@ To perform well-known, time-proven debug technique called "printf each line"
 you can use `dbg` function. It will print all the input values into the
 application's debug logger.
 
-```lua
+```luau
 dbg("test", 123, { a = { hello = "world", 1 }, 2 })
 ```
 
 ## Extended privileges
 
-Every package can be digitally signed by the launcher developer. Modules in
-signed packages obtain additional privileges that allow them to escape the
-sandbox and perform arbitrary code execution on the host system. This is
-often necessary for advanced features like applying patches in special formats.
-
-Signed packages are always maintained directly by the launcher developer.
+Some APIs naturally allow modules to escape the sandbox and directly affect
+the user's system. By default such APIs are not available for all the packages.
+You can use authority index to specify which packages are allowed to use
+such APIs. It's generally recommended to create small "safe bindings" to
+extended privilege APIs with some safety checks to allow other packages to
+use them.
 
 ## Available APIs
 
@@ -120,6 +118,7 @@ List of all available APIs:
 | Archives   | `archive`    | No                  | Archives extraction.                       |
 | Hashes     | `hash`       | No                  | Hash values calculation.                   |
 | Sync       | `sync`       | No                  | Inter-packages data synchronization.       |
+| SQLite     | `sqlite`     | No                  | SQLite databases management.               |
 | Process    | `process`    | **Yes**             | Binaries execution.                        |
 
 ## Strings API
@@ -172,7 +171,7 @@ and this method will try to convert it into a given charset.
 > E.g. when hashing a value it firstly will be converted into
 > bytes using this method.
 
-```lua
+```luau
 print(str.to_bytes("abc")) -- [97, 98, 99]
 print(str.to_bytes(0.5)) -- [63, 224, 0, 0, 0, 0, 0, 0]
 print(str.to_bytes({ 1, 2, 3 })) -- [1, 2, 3]
@@ -190,7 +189,7 @@ print(b)
 Convert bytes slice into a lua string. If charset is specified, then
 this method will try to decode bytes from this charset into UTF-8.
 
-```lua
+```luau
 local a = str.from_bytes({ 224, 225, 238, 225, 224 }, "cp1251")
 local b = str.to_bytes(a)
 
@@ -203,7 +202,7 @@ print(b)
 
 Encode given value to a string.
 
-```lua
+```luau
 print(str.encode(123, "base16"))               -- 7b
 print(str.encode("Hello, World!", "base64"))   -- "SGVsbG8sIFdvcmxkIQ=="
 print(str.encode({ hello = "world" }, "json")) -- "{\"hello\":\"world\"}"
@@ -213,7 +212,7 @@ print(str.encode({ hello = "world" }, "json")) -- "{\"hello\":\"world\"}"
 
 Decode given string to a bytes slice.
 
-```lua
+```luau
 print(str.decode("7b", "base16"))                                   -- [0, 0, 0, 123]
 print(str.from_bytes(str.decode("SGVsbG8sIFdvcmxkIQ==", "base64"))) -- "Hello, World!"
 print(str.decode("{\"hello\":\"world\"}", "json"))                  -- { hello = "world" }
@@ -248,7 +247,7 @@ temp directory to store temporary data, e.g. downloaded archives.
 Temp directory's content is shared between all the packages.
 This can be used to create custom synchronization mechanisms.
 
-```lua
+```luau
 local temp = path.temp_dir()
 
 if fs.exists(temp .. "/.first-run") do
@@ -266,7 +265,7 @@ a new folder and it couldn't access the previous one.
 Module directory can be deleted by the packages garbage collector
 when the module is not used.
 
-```lua
+```luau
 local store = path.module_dir()
 
 fs.write_file(store .. "/secret_file", { 1, 2, 3 })
@@ -278,14 +277,14 @@ Modules can get paths to the persistent data storage using special
 keyword. Every module using the same keyword will get the same path.
 This can be used to transfer state files from one module to another.
 
-```lua
+```luau
 -- first module
 local test_dir = path.persist_dir("test")
 
 fs.create_file(test_dir .. "/example")
 ```
 
-```lua
+```luau
 -- second module
 local test_dir = path.persist_dir("test")
 
@@ -297,7 +296,7 @@ print(fs.exists(test_dir .. "/example")) -- true
 Path normalization will remove all the special path components.
 If path is meaningless, then nil is returned.
 
-```lua
+```luau
 print(path.normalize("./test"))   -- "test"
 print(path.normalize("a/b/../c")) -- "a/c"
 print(path.normalize("a/b/./c"))  -- "a/b/c"
@@ -314,7 +313,7 @@ Create new path by combining given entries names. This function
 will normalize the result path as well. If no parts were given
 or they're meaningless - nil is returned.
 
-```lua
+```luau
 local dir = path.join(path.module_dir(), "download")
 
 print(path.join())     -- nil
@@ -328,7 +327,7 @@ Split given filesystem entry path to the components (entries names).
 This function will normalize the path before splitting it. If input
 string is empty or meaningless - nil is returned.
 
-```lua
+```luau
 -- ["a", "c"]
 print(path.parts("a/b\\../c/./"))
 
@@ -342,7 +341,7 @@ print(path.parts("..")) -- nil
 Return parent folder path or nil if it doesn't exist. Return path
 will be normalized.
 
-```lua
+```luau
 print(path.parent("a/./b")) -- "a"
 print(path.parent("a"))     -- nil
 ```
@@ -352,7 +351,7 @@ print(path.parent("a"))     -- nil
 Return the last entry name of the given path. Return nil if the input
 string is meaningless.
 
-```lua
+```luau
 print(path.file_name("a/b/c"))          -- "c"
 print(path.file_name("a/./b/../../c/")) -- "c"
 
@@ -368,7 +367,7 @@ accessible for the current module, so you can use it
 to verify if some system libraries or binaries are
 presented on the user's system.
 
-```lua
+```luau
 print(path.exists(path.module_dir())) -- true
 print(path.exists("/home"))           -- true
 ```
@@ -377,7 +376,7 @@ print(path.exists("/home"))           -- true
 
 Check if given path is accessible for the current module.
 
-```lua
+```luau
 print(path.accessible(path.module_dir())) -- true
 print(path.accessible("/home"))           -- false
 ```
@@ -396,6 +395,7 @@ and rust-lua bridge API. From rust side we provide the following functions:
 | `fs.remove`      | Remove a file or a folder.               |
 | `fs.open`        | Try to open a file handle.               |
 | `fs.seek`        | Set pointer in a file handle.            |
+| `fs.seek_rel`    | Set relative pointer in a file handle.   |
 | `fs.read`        | Read bytes from a file handle.           |
 | `fs.write`       | Write bytes to the file handle.          |
 | `fs.flush`       | Flush file handle buffer.                |
@@ -412,7 +412,7 @@ and rust-lua bridge API. From rust side we provide the following functions:
 
 Check if given filesystem path exists and accessible.
 
-```lua
+```luau
 if fs.exists("/tmp") then
     print("Temp folder exists and can be accessed")
 else
@@ -447,7 +447,7 @@ type Metadata = {
 };
 ```
 
-```lua
+```luau
 local metadata = fs.metadata("my_file.txt")
 
 print("Size: " .. metadata.length)
@@ -460,7 +460,7 @@ Copy file or folder to another location. This function will
 throw an error if the target location already exists or is not
 accessible.
 
-```lua
+```luau
 fs.copy("my_folder", "new_location/my_folder")
 ```
 
@@ -470,7 +470,7 @@ Move a file or a folder to another location. This function will
 throw an error if the target location already exists or is not
 accessible.
 
-```lua
+```luau
 fs.move("my_folder", "new_location/my_folder")
 ```
 
@@ -479,7 +479,7 @@ fs.move("my_folder", "new_location/my_folder")
 Remove a file, folder or a symlink. Removing a folder will remove
 all its content as well.
 
-```lua
+```luau
 fs.remove("my_file.txt")
 fs.remove("my_folder")
 fs.remove("my_symlink")
@@ -516,7 +516,7 @@ type Options = {
 };
 ```
 
-```lua
+```luau
 -- Create a new file or clear already existing.
 local handle = fs.open("my_file.txt", {
     create    = true,
@@ -532,7 +532,7 @@ Seek position in the given file handle.
 Position can be negative to set offset from the end of the file.
 Otherwise it's always set from the beginning of the file.
 
-```lua
+```luau
 local handle = fs.open("my_file.txt")
 
 fs.seek(10)
@@ -548,21 +548,41 @@ local tail = fs.read()
 fs.close(handle)
 ```
 
+### `fs.seek_rel(handle: number, offset: number)`
+
+Seek position relative to the current: `new_pos = curr_pos + offset`.
+For negative numbers you seek backwards, positive - forward the current position.
+
+```luau
+local handle = fs.open("my_file.txt")
+
+fs.seek(3)      -- seek to position 3
+fs.seek_rel(-2) -- seek 2 bytes before the current position of 3 (position 1)
+
+fs.write(handle, { 123 }) -- write byte 123 to this position
+
+local byte = fs.read(handle, 1, 1)[1] -- read byte from position 1
+
+print(byte) -- verify that it's equal to 123
+
+fs.close(handle)
+```
+
 ### `fs.read(handle: number, [position: number, [length: number]]) -> [number]`
 
-Read chunk of binary data from the open file handle.
-Size of chunk is determined by the rust API. If 0 length
-chunk is returned, then there's no more data to read.
+Read chunk of binary data from the open file handle. Size of chunk is determined
+by the rust API. If zero length chunk is returned, then there's no more data
+to read.
 
-If `position` is specified, then `fs.seek` will be used before
-reading the chunk. This will affect future operations as well.
-Position can be negative to set offset from the end of the file.
-Otherwise it's always set from the beginning of the file.
+If `position` is specified, then `fs.seek` will be used before reading the
+chunk. This will affect future operations as well. Position can be negative to
+set offset from the end of the file. Otherwise it's always set from the
+beginning of the file.
 
-If `length` is specified, then the chunk length will not be larger
-than the given number.
+If `length` is specified, then the chunk length will not be larger than the
+given number.
 
-```lua
+```luau
 local handle = fs.open("large_file.txt")
 local chunk  = fs.read(handle)
 
@@ -575,7 +595,7 @@ end
 fs.close(handle)
 ```
 
-```lua
+```luau
 local handle = fs.open("game_file")
 
 -- read game version from the file (3 bytes)
@@ -588,12 +608,12 @@ fs.close(handle)
 
 Write given data to the open file at its current position.
 
-If `position` is specified, then `fs.seek` will be used before
-reading the chunk. This will affect future operations as well.
-Position can be negative to set offset from the end of the file.
-Otherwise it's always set from the beginning of the file.
+If `position` is specified, then `fs.seek` will be used before reading the
+chunk. This will affect future operations as well. Position can be negative to
+set offset from the end of the file. Otherwise it's always set from the
+beginning of the file.
 
-```lua
+```luau
 -- file    : [ ]
 -- pointer :  ^
 local handle = fs.open("new_file.txt", {
@@ -625,7 +645,7 @@ fs.write({ 7, 8, 9 })
 fs.close(handle)
 ```
 
-```lua
+```luau
 -- []
 local handle = fs.open("new_file.txt", {
     create    = true,
@@ -652,13 +672,12 @@ fs.close(handle)
 
 Flush file content on disk.
 
-Write operations are performed on a small buffer in the RAM
-and are flushed on disk only when the buffer is full. This
-greatly improves performance of operations, but changes will
-not be available for other file readers until the buffer
-is flushed. This function forcely flushes the buffer on disk.
+Write operations are performed on a small buffer in the RAM and are flushed on
+disk only when the buffer is full. This greatly improves performance of
+operations, but changes will not be available for other file readers until the
+buffer is flushed. This function forcely flushes the buffer on disk.
 
-```lua
+```luau
 local reader = fs.open("file.txt", {
     create = true,
     read   = true
@@ -705,10 +724,10 @@ fs.close(reader)
 
 ### `fs.close(handle: number)`
 
-Close the file handle. This will flush the inner buffer
-of the file and prevent future use of this handle.
+Close the file handle. This will flush the inner buffer of the file and prevent
+future use of this handle.
 
-```lua
+```luau
 local handle = fs.write("my_file.txt", { write = true })
 
 fs.write({ 1, 2, 3 })
@@ -719,7 +738,7 @@ fs.close(handle)
 
 Create an empty file.
 
-```lua
+```luau
 -- these two lines will do the same
 fs.create_file("file_1")
 fs.write_file("file_2", {})
@@ -731,7 +750,7 @@ Read the whole content of a file in a given path.
 
 > Note: do not try to read large files using this function.
 
-```lua
+```luau
 local content = fs.read_file("my_file.txt")
 
 print("Read " .. #content .. " bytes")
@@ -741,7 +760,7 @@ print("Read " .. #content .. " bytes")
 
 Overwrite existing file with given content, or create a new one.
 
-```lua
+```luau
 fs.write_file("my_file.txt", { 1, 2, 3 }) -- bytes 1, 2 and 3
 fs.write_file("my_file.txt", "123") -- ASCII characters for 1, 2 and 3
 ```
@@ -750,7 +769,7 @@ fs.write_file("my_file.txt", "123") -- ASCII characters for 1, 2 and 3
 
 Remove file in a given path.
 
-```lua
+```luau
 fs.remove_file("my_file.txt")
 ```
 
@@ -758,7 +777,7 @@ fs.remove_file("my_file.txt")
 
 Create directory if it doesn't exist.
 
-```lua
+```luau
 -- this will create all the parent directories too
 fs.create_dir("a/b/c/d")
 ```
@@ -775,7 +794,7 @@ type Entry = {
 };
 ```
 
-```lua
+```luau
 function print_dir(path, prefix)
     for _, entry in pairs(fs.read_dir(path)) do
         print(prefix .. entry.name)
@@ -793,7 +812,7 @@ print_dir("my_dir", "")
 
 Remove given folder and all its content.
 
-```lua
+```luau
 fs.create_dir("my_dir")
 
 print(fs.exists("my_dir")) -- true
@@ -805,8 +824,7 @@ print(fs.exists("my_dir")) -- false
 
 ## Network API
 
-Launcher provides set of functions to perform HTTP request
-and download files.
+Launcher provides set of functions to perform HTTP request and download files.
 
 | Function    | Description                         |
 | ----------- | ----------------------------------- |
@@ -844,7 +862,7 @@ type Response = {
 };
 ```
 
-```lua
+```luau
 local response = net.fetch("https://example.com")
 
 if response.is_ok then
@@ -854,8 +872,8 @@ end
 
 ### `net.open(url: string, [options: Options]) -> LazyResponse`
 
-Open new HTTP request in background and return a handle
-to lazily read the body, similar to the IO API.
+Open new HTTP request in background and return a handle to lazily read the body,
+similar to the IO API.
 
 ```ts
 type LazyResponse = {
@@ -873,7 +891,7 @@ type LazyResponse = {
 };
 ```
 
-```lua
+```luau
 local head = net.open("https://example.com/large_file.zip")
 
 if head.is_ok then
@@ -888,7 +906,7 @@ net.close(head.handle)
 Read chunk of response body, or return nil if there's nothing
 else to read.
 
-```lua
+```luau
 local head = net.open("https://example.com/large_file.zip")
 
 if head.is_ok do
@@ -908,7 +926,7 @@ net.close(head.handle)
 
 Close the open HTTP request.
 
-```lua
+```luau
 local head = net.open("https://example.com/large_file.zip")
 
 -- fetch head only and do not download the body.
@@ -946,7 +964,7 @@ type Options = {
 };
 ```
 
-```lua
+```luau
 -- when no output path given - downloader will automatically
 -- resolve the file name (large_file.zip) and download it
 -- in the module's folder (used as a relative folder for all the operations).
@@ -986,7 +1004,7 @@ If format is not specified, then it's automatically assumed from the extension.
 type ArchiveFormat = 'tar' | 'zip' | '7z';
 ```
 
-```lua
+```luau
 local handle = archive.open("large_archive.zip")
 ```
 
@@ -1008,7 +1026,7 @@ type Entry = {
 };
 ```
 
-```lua
+```luau
 local handle = archive.open("archive", "tar")
 
 for _, entry in ipairs(archive.entries(handle)) do
@@ -1021,14 +1039,14 @@ archive.close(handle)
 ### `archive.extract(handle: number, target: string, [progress: (current: number, total: number, diff: number) -> ()]) -> boolean`
 
 Extract an open archive to the terget directory.
-You can specify a callback which will be used to update the progress
-of the archive extraction. Progress is measured in bytes.
+You can specify a callback which will be used to update the progress of the
+archive extraction. Progress is measured in bytes.
 
 Returns extraction status. If failed, `false` is returned.
 
 This is a blocking method.
 
-```lua
+```luau
 local handle = archive.open("small_archive.zip")
 
 -- don't request progress updates for small archive
@@ -1036,7 +1054,7 @@ archive.extract(handle, "my_folder")
 archive.close(handle)
 ```
 
-```lua
+```luau
 local handle = archive.open("large_archive.zip")
 
 -- display extraction progress for a large archive
@@ -1051,7 +1069,7 @@ archive.close(handle)
 
 Close an open archive.
 
-```lua
+```luau
 local handle = archive.open("archive.zip")
 
 -- do some operations
@@ -1096,20 +1114,19 @@ Following table contains list of `HashAlgorithm` enum values.
 Calculate hash for a given bytes slice using specified algorithm.
 By default `seahash` is used as a launcher's internal algorithm.
 
-```lua
+```luau
 -- [236, 74, 195, 208]
 dbg(hash.calc("Hello, World!", "crc32"))
 ```
 
 ### `hash.builder([algorithm: HashAlgorithm]) -> number`
 
-Create new incremental data hasher. This should be used to hash
-large amounts of data. Unlike `hash.calc` method where you had to
-hold the whole data slice in RAM before making a hash, the hasher
-struct allows you to write small chunks of data iteratively, not
-keeping all of them in RAM at once.
+Create new incremental data hasher. This should be used to hash large amounts of
+data. Unlike `hash.calc` method where you had to hold the whole data slice in
+RAM before making a hash, the hasher struct allows you to write small chunks of
+data iteratively, not keeping all of them in RAM at once.
 
-```lua
+```luau
 local hasher = hash.builder("md5")
 
 -- do some actions
@@ -1119,7 +1136,7 @@ local hasher = hash.builder("md5")
 
 Write a chunk of data to the open hasher.
 
-```lua
+```luau
 local hasher = hash.builder("xxh3-128")
 local head = net.open("https://example.com/large_file.zip")
 
@@ -1144,10 +1161,10 @@ net.close(head.handle)
 
 ### `hash.finalize(handle: number) -> [number]`
 
-Finalize hash calculation in the open hasher struct.
-This will close the hasher and prevent future writes.
+Finalize hash calculation in the open hasher struct. This will close the hasher
+and prevent future writes.
 
-```lua
+```luau
 local hasher = hash.builder("sha1")
 
 hash.write(hasher, "Hello")
@@ -1160,9 +1177,9 @@ print(str.encode(hash.calc("HelloWorld"), "hex"))
 
 ## Sync API
 
-Some packages would like to communicate with each other, e.g.
-different version of the same package. Sync API provides a set
-of data synchronization primitives for this.
+Some packages would like to communicate with each other, e.g. different version
+of the same package. Sync API provides a set of data synchronization primitives
+for this.
 
 ### Channels
 
@@ -1175,25 +1192,23 @@ of data synchronization primitives for this.
 
 #### `sync.channel.open(key: string) -> number`
 
-Subscribe to a channel with a given key (name). After subscription
-you receive a special identifier which will be used to hold your
-read messages history. You can't read messages which were sent
-before you obtained this identifier.
+Subscribe to a channel with a given key (name). After subscription you receive a
+special identifier which will be used to hold your read messages history.
+You can't read messages which were sent before you obtained this identifier.
 
-```lua
+```luau
 local channel = sync.channel.open("my_package_channel")
 ```
 
 #### `sync.channel.send(handle: number, message: any)`
 
-Send some value to the open channel. Message will be sent to all the
-packages which have this channel open except you.
+Send some value to the open channel. Message will be sent to all the packages
+which have this channel open except you.
 
-> NOTE: currently not *any* value is supported due to technical
-> difficulties. Sent values are also not shared, meaning they all
-> are cloned.
+> NOTE: currently not *any* value is supported due to technical difficulties.
+> Sent values are also not shared, meaning they all are cloned.
 
-```lua
+```luau
 local channel = sync.channel.open("my_package_channel")
 
 sync.channel.send(channel, "Hello, World!")
@@ -1207,14 +1222,13 @@ print(sync.channel.recv(channel)) -- nil
 
 #### `sync.channel.recv(handle: number) -> any | nil, bool`
 
-Try to receive a message from the open channel. This is a non-blocking
-method which will return `nil` if there's no messages to read. Second
-returned value means status of the returned value. Since `nil` could
-be sent in the channel as a message, second value indicates its status.
-For every valid message it's `true` while for channel end message
-it's `false`.
+Try to receive a message from the open channel. This is a non-blocking method
+which will return `nil` if there's no messages to read. Second returned value
+means status of the returned value. Since `nil` could be sent in the channel as
+a message, second value indicates its status. For every valid message it's
+`true` while for channel end message it's `false`.
 
-```lua
+```luau
 local sender   = sync.channel.open("my_package_channel")
 local receiver = sync.channel.open("my_package_channel")
 
@@ -1236,10 +1250,10 @@ sync.channel.close(receiver)
 
 #### `sync.channel.close(handle: number)`
 
-Close the open channel. This will clear all the remaining messages and
-prevent future writes to your identifier.
+Close the open channel. This will clear all the remaining messages and prevent
+future writes to your identifier.
 
-```lua
+```luau
 local channel = sync.channel.open("my_package_channel")
 
 -- do some operations
@@ -1264,7 +1278,7 @@ code execution while another thread (module, package) is using the mutex.
 Get handle to the mutex with given key identifier. This handle is used to
 lock and unlock the same mutex from different packages and modules.
 
-```lua
+```luau
 local mutex = sync.mutex.open("my_module_mutex")
 ```
 
@@ -1277,7 +1291,7 @@ continue execution. This can be used if your module downloads resources
 from the internet and you have different versions of the same module. Using
 mutex you can block other modules from downloading the resources.
 
-```lua
+```luau
 -- first module
 local mutex = sync.mutex.open("my_module_mutex")
 
@@ -1288,7 +1302,7 @@ sync.mutex.lock(mutex)
 sync.mutex.close(mutex)
 ```
 
-```lua
+```luau
 -- second module
 local mutex = sync.mutex.open("my_module_mutex")
 
@@ -1303,7 +1317,7 @@ sync.mutex.unlock(mutex)
 
 Unlock the mutex, allowing other modules to lock it and continue execution.
 
-```lua
+```luau
 local mutex = sync.mutex.open("my_module_mutex")
 
 sync.mutex.lock(mutex)
@@ -1317,7 +1331,7 @@ sync.mutex.unlock(mutex)
 
 Close the mutex handle. Closing locked mutex will automatically unlock it.
 
-```lua
+```luau
 local mutex = sync.mutex.open("my_module_mutex")
 
 sync.mutex.lock(mutex)
@@ -1327,13 +1341,111 @@ sync.mutex.lock(mutex)
 sync.mutex.close(mutex)
 ```
 
+## SQLite API
+
+SQLite is the most used relative database format. This API allows you to
+interact with sqlite databases by querying data from them or executing
+SQL commands.
+
+| Function         | Description                            |
+| ---------------- | -------------------------------------- |
+| `sqlite.open`    | Open SQLite database from given file.  |
+| `sqlite.execute` | Execute single SQL command.            |
+| `sqlite.batch`   | Execute multiple SQL commands at once. |
+| `sqlite.query`   | Query data from the database.          |
+| `sqlite.close`   | Close SQLite database.                 |
+
+### `sqlite.open(path: string) -> number`
+
+Open SQLite database in given file path or create a new one, returning handle
+of the database connection which can be used in other methods.
+
+```luau
+local handle = sqlite.open("settings.db")
+```
+
+### `sqlite.execute(handle: number, command: string, [params: [any]]) -> number`
+
+Execute single SQL command, returning latest affected row id.
+
+```luau
+local handle = sqlite.open("example.db")
+
+-- You can specify params which will be properly fed to the command.
+local row_id = sqlite.execute(handle, "INSERT INTO your_table (column1, column2) VALUES (?1, ?2)", {
+    "Example value 1",
+    "Example value 2"
+})
+
+-- Delete just inserted row using its id.
+sqlite.execute(handle, "DELETE FROM your_table WHERE rowid = ?1", { row_id })
+
+-- Always close your database connections.
+sqlite.close(handle)
+```
+
+### `sqlite.batch(handle: humber, command: string) -> number`
+
+Execute multiple SQL commands, returning amount of affected rows.
+Unlike `sqlite.execute` here you can't provide params to the command.
+Instead you have to modify the command itself and ensure data escaping manually.
+
+```luau
+local handle = sqlite.open("example.db")
+
+local rows = sqlite.execute(handle, [[
+    BEGIN TRANSACTION;
+        INSERT INTO your_table (column1, column2) VALUES ('value1', 'value2');
+        INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
+        INSERT INTO your_table (column1, column2) VALUES ('value5', 'value6');
+    COMMIT;
+]])
+
+print(`Query affected {rows} rows`)
+
+-- Always close your database connections.
+sqlite.close(handle)
+```
+
+### `sqlite.query(handle: number, query: string) -> {table}`
+
+Query data from the database. This method will return a list of rows stored
+as lua tables where keys will be the requested columns. Note that this is a
+blocking method which will return the whole response at once. If you need
+to process large amounts of data - consider adding limits and offsets to
+your query.
+
+```luau
+local handle = sqlite.open("example.db")
+
+local rows = sqlite.query(handle, "SELECT rowid, column1, column2 FROM your_table")
+
+for _, row in ipairs(rows) do
+    print(`rowid = {row.rowid}, column1 = {row.column1}, column2 = {row.column2}`)
+end
+
+-- Always close your database connections.
+sqlite.close(handle)
+```
+
+### `sqlite.close(handle: number)`
+
+Close database connection. This method will also run `PRAGMA optimize` task
+on the database file before closing it and prevent future uses of given handle.
+
+```luau
+local handle = sqlite.open("example.db")
+
+-- Do something
+
+sqlite.close(handle)
+```
+
 ## Process API (extended privileges)
 
-Some games may need external software to be installed or
-updated, e.g. their updates are encoded in some special
-format and special binary should be used to apply these
-updates. Process API allows signed packages to execute
-binaries.
+Some games may need external software to be installed or updated, e.g. their
+updates are encoded in some special format and special binary should be used
+to apply these updates. Process API allows trusted packages to execute binaries.
 
 | Function           | Description                             |
 | ------------------ | --------------------------------------- |
@@ -1365,7 +1477,7 @@ type Output = {
 };
 ```
 
-```lua
+```luau
 local my_file = path.join(path.module_dir(), "my_file.txt")
 
 fs.write_file(my_file, str.to_bytes("Hello, World!"))
@@ -1381,7 +1493,7 @@ print(str.from_bytes(output.stdout))
 Start a new process with given parameters. Module dir is used
 as the binary's current directory.
 
-```lua
+```luau
 local handle = process.open("curl", { "api.ipify.org" })
 ```
 
@@ -1389,7 +1501,7 @@ local handle = process.open("curl", { "api.ipify.org" })
 
 Write a bytes slice to the process's stdin.
 
-```lua
+```luau
 local handle = process.open("my_app")
 
 process.stdin(handle, "some input")
@@ -1400,7 +1512,7 @@ process.stdin(handle, "some input")
 Read the process's stdout chunk. If process is closed,
 then `nil` is returned.
 
-```lua
+```luau
 local handle = process.open("cat", { "large_file.txt" })
 
 while not process.finished(handle) do
@@ -1419,7 +1531,7 @@ process.wait(handle)
 Read the process's stderr chunk. If process is closed,
 then `nil` is returned.
 
-```lua
+```luau
 local handle = process.open("my_app")
 
 while not process.finished(handle) do
@@ -1441,7 +1553,7 @@ all the output and error bytes that weren't read using the
 
 This is a blocking method. This will remove the process handle.
 
-```lua
+```luau
 -- equal to print(process.exec("my_app").stdout)
 local handle = process.open("my_app")
 local output = process.wait()
@@ -1453,7 +1565,7 @@ print(output.stdout)
 
 Kill an open process. This will remove the process handle.
 
-```lua
+```luau
 local handle = process.open("my_app")
 
 -- immediately kill the process
@@ -1464,7 +1576,7 @@ process.kill(handle)
 
 Check if running process has finished.
 
-```lua
+```luau
 local handle = process.open("my_app")
 
 while not process.finished(handle) do
