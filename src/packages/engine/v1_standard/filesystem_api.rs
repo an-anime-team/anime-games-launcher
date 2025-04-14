@@ -22,6 +22,7 @@ pub struct FilesystemAPI<'lua> {
     fs_remove: LuaFunctionBuilder<'lua>,
     fs_open: LuaFunctionBuilder<'lua>,
     fs_seek: LuaFunction<'lua>,
+    fs_seek_rel: LuaFunction<'lua>,
     fs_read: LuaFunction<'lua>,
     fs_write: LuaFunction<'lua>,
     fs_flush: LuaFunction<'lua>,
@@ -330,6 +331,23 @@ impl<'lua> FilesystemAPI<'lua> {
                     else {
                         file.seek(SeekFrom::End(position))?;
                     }
+
+                    Ok(())
+                })?
+            },
+
+            fs_seek_rel: {
+                let file_handles = file_handles.clone();
+
+                lua.create_function(move |_, (handle, offset): (u32, i64)| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(file) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid file handle"));
+                    };
+
+                    file.seek(SeekFrom::Current(offset))?;
 
                     Ok(())
                 })?
@@ -673,7 +691,7 @@ mod tests {
         api.fs_write.call::<_, ()>((handle, b"World!".to_vec()))?;
         api.fs_flush.call::<_, ()>(handle)?;
 
-        api.fs_seek.call::<_, ()>((handle, 0))?;
+        api.fs_seek_rel.call::<_, ()>((handle, -13))?;
 
         assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b"Hello, World!");
 
