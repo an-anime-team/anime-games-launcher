@@ -27,10 +27,12 @@ pub enum SyncGameCommand {
         listener: OneshotSender<Result<GameLaunchInfo, AsLuaError>>
     },
 
-    /// Start game diff pipeline execution. This can be
-    /// update downloading or full game installation.
+    /// Start game diff pipeline execution. This can be update downloading
+    /// or full game installation. Call provided listener when pipeline
+    /// is finished.
     StartDiffPipeline {
-        variant: GameVariant
+        variant: GameVariant,
+        listener: OneshotSender<()>
     },
 
     /// Call `set_property` method with a boolean value.
@@ -204,7 +206,7 @@ pub fn serve_generation(
                             }
 
                             // TODO: handle errors
-                            SyncGameCommand::StartDiffPipeline { variant } => {
+                            SyncGameCommand::StartDiffPipeline { variant, listener } => {
                                 match game.game_diff(&variant) {
                                     Ok(Some(diff)) => {
                                         download_manager_sender.emit(DownloadManagerWindowMsg::Show);
@@ -350,6 +352,8 @@ pub fn serve_generation(
                                     Ok(None) => tracing::info!("Game diff is not available"),
                                     Err(err) => tracing::error!(?err, "Failed to get game diff")
                                 }
+
+                                let _ = listener.send(());
                             }
 
                             SyncGameCommand::SetBoolProperty { name, value } => {

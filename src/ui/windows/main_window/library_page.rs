@@ -152,7 +152,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 // TODO: better errors handling
                 if let Err(err) = listener.send(SyncGameCommand::GetEditions { listener: send }) {
-                    tracing::error!(?err, "Failed to request game's editions");
+                    tracing::error!(?err, "Failed to request game editions");
 
                     return;
                 }
@@ -162,13 +162,13 @@ impl SimpleAsyncComponent for LibraryPage {
                     Ok(Ok(editions)) => editions,
 
                     Ok(Err(err)) => {
-                        tracing::error!(?err, "Failed to request game's editions");
+                        tracing::error!(?err, "Failed to request game editions");
 
                         return;
                     }
 
                     Err(err) => {
-                        tracing::error!(?err, "Failed to request game's editions");
+                        tracing::error!(?err, "Failed to request game editions");
 
                         return;
                     }

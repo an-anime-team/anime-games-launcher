@@ -488,10 +488,25 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             GameLibraryDetailsMsg::EmitInstallDiff => {
                 if let (Some(listener), Some(edition)) = (self.listener.as_ref(), self.edition.as_ref()) {
-                    let variant = GameVariant::from_edition(&edition.name);
+                    let (send, recv) = tokio::sync::oneshot::channel();
 
-                    // TODO: update game status after finishing diff pipeline.
-                    let _ = listener.send(SyncGameCommand::StartDiffPipeline { variant });
+                    let result = listener.send(SyncGameCommand::StartDiffPipeline {
+                        variant: GameVariant::from_edition(&edition.name),
+                        listener: send
+                    });
+
+                    if let Err(err) = result {
+                        tracing::error!(?err, "Failed to request diff pipeline execution");
+
+                        return;
+                    }
+
+                    // Await pipeline execution finish and reload the game's status.
+                    tokio::spawn(async move {
+                        let _ = recv.await;
+
+                        sender.input(GameLibraryDetailsMsg::ReloadGameStatus);
+                    });
                 }
             }
 
