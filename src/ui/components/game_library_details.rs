@@ -347,10 +347,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             }
 
                             match recv.await {
-                                Ok(Ok(status)) => {
-                                    sender.input(GameLibraryDetailsMsg::SetGameInstallationStatus(status));
-                                }
-
+                                Ok(Ok(status)) => sender.input(GameLibraryDetailsMsg::SetGameInstallationStatus(status)),
                                 Ok(Err(err)) => tracing::error!(?err, "Failed to request game installation status"),
                                 Err(err) => tracing::error!(?err, "Failed to request game installation status")
                             }

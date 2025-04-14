@@ -79,7 +79,9 @@ impl SimpleAsyncComponent for GameStoreDetails {
                             model.carousel.widget(),
 
                             gtk::Box {
+                                set_halign: gtk::Align::Start,
                                 set_orientation: gtk::Orientation::Vertical,
+
                                 set_spacing: 8,
 
                                 gtk::Label {
@@ -92,6 +94,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
+
+                                    set_wrap: true,
 
                                     #[watch]
                                     set_text: &model.description
