@@ -4,6 +4,28 @@ use encoding_rs::Encoding;
 
 use super::*;
 
+#[allow(clippy::only_used_in_recursion)]
+fn fix_lua_type(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
+    match value {
+        LuaValue::Integer(integer) => Ok(LuaValue::Integer(integer)),
+        LuaValue::Number(double)   => Ok(LuaValue::Number(double)),
+        LuaValue::Boolean(boolean) => Ok(LuaValue::Boolean(boolean)),
+        LuaValue::String(string)   => Ok(LuaValue::String(string)),
+
+        LuaValue::Table(table) => {
+            table.for_each::<LuaValue, LuaValue>(|key, value| {
+                table.raw_set(key, fix_lua_type(lua, value)?)?;
+
+                Ok(())
+            })?;
+
+            Ok(LuaValue::Table(table))
+        }
+
+        _ => Ok(LuaValue::Nil)
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 enum StringEncoding {
     Base16,
@@ -165,7 +187,7 @@ impl StringEncoding {
                 let value = serde_json::from_slice::<serde_json::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
-                lua.to_value(&value)
+                Ok(fix_lua_type(lua, lua.to_value(&value)?)?)
             }
 
             Self::Toml => {
@@ -175,14 +197,14 @@ impl StringEncoding {
                 let value = toml::from_str::<toml::Value>(&string)
                     .map_err(LuaError::external)?;
 
-                lua.to_value(&value)
+                Ok(fix_lua_type(lua, lua.to_value(&value)?)?)
             }
 
             Self::Yaml => {
                 let value = serde_yml::from_slice::<serde_yml::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
-                lua.to_value(&value)
+                Ok(fix_lua_type(lua, lua.to_value(&value)?)?)
             }
         }
     }
@@ -320,14 +342,16 @@ mod tests {
             assert_eq!(decoded, b"Hello, World!");
         }
 
-        let table = lua.create_table()?;
+        let table = lua.create_table_with_capacity(0, 3)?;
 
-        table.set("hello", "world")?;
+        table.set("test_string", "str")?;
+        table.set("test_null", LuaValue::Nil)?;
+        table.set("test_bool", true)?;
 
         let encodings = [
-            ("json", "{\"hello\":\"world\"}"),
-            ("toml", "hello = \"world\"\n"),
-            ("yaml", "hello: \"world\"")
+            ("json", "{ \"test_string\": \"str\", \"test_bool\": true, \"test_null\": null }"),
+            ("toml", "test_string = \"str\"\ntest_bool = true"),
+            ("yaml", "test_string: \"str\"\ntest_bool: true\ntest_null: null")
         ];
 
         for (name, value) in encodings {
@@ -335,8 +359,16 @@ mod tests {
             let decoded_1 = api.str_decode.call::<LuaTable>((value, name))?;
             let decoded_2 = api.str_decode.call::<LuaTable>((encoded, name))?;
 
-            assert_eq!(decoded_1.get::<LuaString>("hello")?, "world");
-            assert_eq!(decoded_2.get::<LuaString>("hello")?, "world");
+            assert_eq!(decoded_1.get::<LuaString>("test_string")?, "str");
+            assert_eq!(decoded_1.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));
+
+            assert_eq!(decoded_2.get::<LuaString>("test_string")?, "str");
+            assert_eq!(decoded_2.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));
+
+            if name != "toml" {
+                assert_eq!(decoded_1.get::<LuaValue>("test_null")?, LuaValue::Nil);
+                assert_eq!(decoded_2.get::<LuaValue>("test_null")?, LuaValue::Nil);
+            }
         }
 
         Ok(())
