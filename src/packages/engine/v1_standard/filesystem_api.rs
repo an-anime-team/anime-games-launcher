@@ -690,7 +690,7 @@ mod tests {
         options.set("write", true)?;
         options.set("create", true)?;
 
-        let handle = env.call_function::<u64>("open", (path.clone(), options))?;
+        let handle = env.call_function::<i32>("open", (path.clone(), options))?;
 
         assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?.len(), 0);
 
