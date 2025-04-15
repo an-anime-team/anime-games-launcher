@@ -180,7 +180,7 @@ impl PathAPI {
                 let result = lua.create_table_with_capacity(parts.len(), 0)?;
 
                 for part in parts {
-                    result.push(part)?;
+                    result.raw_push(part)?;
                 }
 
                 Ok(LuaValue::Table(result))

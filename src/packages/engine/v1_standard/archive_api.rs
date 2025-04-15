@@ -115,12 +115,12 @@ impl ArchiveAPI {
                     let entries_table = lua.create_table_with_capacity(entries.len(), 0)?;
 
                     for entry in entries.drain(..) {
-                        let entry_table = lua.create_table()?;
+                        let entry_table = lua.create_table_with_capacity(0, 2)?;
 
                         entry_table.set("path", entry.path.to_string_lossy())?;
                         entry_table.set("size", entry.size)?;
 
-                        entries_table.push(entry_table)?;
+                        entries_table.raw_push(entry_table)?;
                     }
 
                     Ok(entries_table)

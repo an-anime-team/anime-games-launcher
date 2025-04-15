@@ -64,7 +64,7 @@ impl ProcessAPI {
                     let output = command.output()?;
 
                     // Prepare the output.
-                    let result = lua.create_table()?;
+                    let result = lua.create_table_with_capacity(0, 4)?;
 
                     result.set("status", output.status.code())?;
                     result.set("is_ok", output.status.success())?;
@@ -233,7 +233,7 @@ impl ProcessAPI {
                     let output = process.wait_with_output()?;
 
                     // Prepare lua result.
-                    let result = lua.create_table()?;
+                    let result = lua.create_table_with_capacity(0, 4)?;
 
                     result.set("status", output.status.code())?;
                     result.set("is_ok", output.status.success())?;

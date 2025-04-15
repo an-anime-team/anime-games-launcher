@@ -93,7 +93,7 @@ impl NetworkAPI {
 
                     // Perform the request.
                     let response = RUNTIME.block_on(async move {
-                        let result = lua.create_table()?;
+                        let result = lua.create_table_with_capacity(0, 4)?;
                         let headers = lua.create_table()?;
 
                         let response = request.send().await
@@ -128,7 +128,7 @@ impl NetworkAPI {
                     let request = create_request(&net_client, url, options)?;
 
                     let (response, header) = RUNTIME.block_on(async move {
-                        let result = lua.create_table()?;
+                        let result = lua.create_table_with_capacity(0, 3)?;
                         let headers = lua.create_table()?;
 
                         let response = request.send().await

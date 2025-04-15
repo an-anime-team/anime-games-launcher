@@ -64,7 +64,7 @@ impl FilesystemAPI {
 
                     let metadata = path.metadata()?;
 
-                    let result = lua.create_table()?;
+                    let result = lua.create_table_with_capacity(0, 5)?;
 
                     result.set("created_at", {
                         metadata.created()?
@@ -578,7 +578,8 @@ impl FilesystemAPI {
 
                     for entry in path.read_dir()? {
                         let entry = entry?;
-                        let entry_table = lua.create_table()?;
+
+                        let entry_table = lua.create_table_with_capacity(0, 3)?;
 
                         entry_table.set("name", entry.file_name().to_string_lossy().to_string())?;
                         entry_table.set("path", entry.path().to_string_lossy().to_string())?;
@@ -593,7 +594,7 @@ impl FilesystemAPI {
                             }
                         })?;
 
-                        entries.push(entry_table)?;
+                        entries.raw_push(entry_table)?;
                     }
 
                     Ok(entries)
