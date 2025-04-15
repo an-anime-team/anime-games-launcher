@@ -84,7 +84,13 @@ async fn main() -> anyhow::Result<()> {
     let trace_log = tracing_subscriber::fmt::layer()
         .with_writer(File::create(consts::TRACE_FILE.as_path())?)
         .pretty()
-        .with_ansi(false);
+        .with_ansi(false)
+        .with_filter({
+            filter_fn(|metadata| {
+                !metadata.target().starts_with("h2") &&
+                !metadata.target().starts_with("hyper_util")
+            })
+        });
 
     // Setup loggers.
     tracing_subscriber::registry()
