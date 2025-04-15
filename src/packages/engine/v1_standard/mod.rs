@@ -21,6 +21,7 @@ mod downloader_api;
 mod archive_api;
 mod hash_api;
 mod sync_api;
+mod sqlite_api;
 mod process_api;
 
 pub use string_api::StringAPI;
@@ -31,6 +32,7 @@ pub use downloader_api::DownloaderAPI;
 pub use archive_api::ArchiveAPI;
 pub use hash_api::HashAPI;
 pub use sync_api::SyncAPI;
+pub use sqlite_api::SQLiteAPI;
 pub use process_api::ProcessAPI;
 
 lazy_static::lazy_static! {
@@ -77,7 +79,7 @@ fn slice_to_table(lua: &Lua, slice: impl AsRef<[u8]>) -> Result<LuaTable<'_>, Lu
     let table = lua.create_table_with_capacity(slice.len(), 0)?;
 
     for byte in slice {
-        table.push(*byte)?;
+        table.raw_push(*byte)?;
     }
 
     Ok(table)
@@ -139,6 +141,7 @@ pub struct Standard<'lua> {
     archive_api: ArchiveAPI<'lua>,
     hash_api: HashAPI<'lua>,
     sync_api: SyncAPI<'lua>,
+    sqlite_api: SQLiteAPI<'lua>,
     process_api: ProcessAPI<'lua>
 }
 
@@ -196,6 +199,7 @@ impl<'lua> Standard<'lua> {
             archive_api: ArchiveAPI::new(lua)?,
             hash_api: HashAPI::new(lua)?,
             sync_api: SyncAPI::new(lua)?,
+            sqlite_api: SQLiteAPI::new(lua)?,
             process_api: ProcessAPI::new(lua)?
         })
     }
@@ -203,7 +207,7 @@ impl<'lua> Standard<'lua> {
     /// Create new environment for the v1 modules standard
     /// using provided module context.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 11)?;
+        let env = self.lua.create_table_with_capacity(0, 12)?;
 
         env.set("clone", self.clone.clone())?;
         env.set("dbg", self.dbg.clone())?;
@@ -216,6 +220,7 @@ impl<'lua> Standard<'lua> {
         env.set("archive", self.archive_api.create_env(context)?)?;
         env.set("hash", self.hash_api.create_env()?)?;
         env.set("sync", self.sync_api.create_env()?)?;
+        env.set("sqlite", self.sqlite_api.create_env(context)?)?;
 
         // Extended privileges
 

@@ -19,38 +19,12 @@ enum ChannelMessage {
     Nil
 }
 
-impl ChannelMessage {
-    pub fn from_lua(value: LuaValue) -> Result<Self, LuaError> {
-        match value {
-            LuaValue::String(value) => Ok(Self::String(value.to_string_lossy().to_string())),
-            LuaValue::Number(value) => Ok(Self::Double(value)),
-            LuaValue::Integer(value) => Ok(Self::Integer(value)),
-            LuaValue::Boolean(value) => Ok(Self::Boolean(value)),
-            LuaValue::Nil => Ok(Self::Nil),
-
-            LuaValue::Table(table) => {
-                let mut result = Vec::with_capacity(table.raw_len());
-
-                for pair in table.pairs::<LuaValue, LuaValue>() {
-                    let (key, value) = pair?;
-
-                    result.push((
-                        Self::from_lua(key)?,
-                        Self::from_lua(value)?
-                    ));
-                }
-
-                Ok(Self::Table(result))
-            }
-
-            _ => Err(LuaError::external("can't coerce given value type"))
-        }
-    }
-
-    pub fn to_lua<'lua>(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, LuaError> {
+impl<'lua> AsLua<'lua> for ChannelMessage {
+    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
         match self {
             Self::String(value) => lua.create_string(value)
-                .map(LuaValue::String),
+                .map(LuaValue::String)
+                .map_err(AsLuaError::LuaError),
 
             Self::Double(value) => Ok(LuaValue::Number(*value)),
             Self::Integer(value) => Ok(LuaValue::Integer(*value)),
@@ -69,6 +43,33 @@ impl ChannelMessage {
 
                 Ok(LuaValue::Table(result))
             }
+        }
+    }
+
+    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+        match value {
+            LuaValue::String(value)  => Ok(Self::String(value.to_string_lossy().to_string())),
+            LuaValue::Number(value)  => Ok(Self::Double(*value)),
+            LuaValue::Integer(value) => Ok(Self::Integer(*value)),
+            LuaValue::Boolean(value) => Ok(Self::Boolean(*value)),
+            LuaValue::Nil            => Ok(Self::Nil),
+
+            LuaValue::Table(table) => {
+                let mut result = Vec::with_capacity(table.raw_len());
+
+                for pair in table.clone().pairs::<LuaValue, LuaValue>() {
+                    let (key, value) = pair?;
+
+                    result.push((
+                        Self::from_lua(&key)?,
+                        Self::from_lua(&value)?
+                    ));
+                }
+
+                Ok(Self::Table(result))
+            }
+
+            _ => Err(AsLuaError::LuaError(LuaError::external("can't coerce given value type")))
         }
     }
 }
@@ -133,7 +134,7 @@ impl<'lua> SyncAPI<'lua> {
                 let sync_channels_data = sync_channels_data.clone();
 
                 lua.create_function(move |_, (handle, message): (u32, LuaValue<'lua>)| {
-                    let message = ChannelMessage::from_lua(message)?;
+                    let message = ChannelMessage::from_lua(&message)?;
 
                     let mut listeners = sync_channels_data.lock()
                         .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
