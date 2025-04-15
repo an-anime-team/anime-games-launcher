@@ -26,10 +26,10 @@ impl AsLua for SqliteParam {
                 .map(LuaValue::String)
                 .map_err(AsLuaError::LuaError),
 
-            Self::Double(value) => Ok(LuaValue::Number(*value)),
+            Self::Double(value)  => Ok(LuaValue::Number(*value)),
             Self::Integer(value) => Ok(LuaValue::Integer(*value)),
             Self::Boolean(value) => Ok(LuaValue::Boolean(*value)),
-            Self::Nil => Ok(LuaNil),
+            Self::Nil            => Ok(LuaNil),
 
             Self::Blob(blob) => {
                 let result = lua.create_table_with_capacity(blob.len(), 0)?;
@@ -135,10 +135,10 @@ impl SQLiteAPI {
                         let mut handles = connection_handles.lock()
                             .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                        let mut handle = rand::random::<u32>();
+                        let mut handle = rand::random::<i32>();
 
                         while handles.contains_key(&handle) {
-                            handle = rand::random::<u32>();
+                            handle = rand::random::<i32>();
                         }
 
                         handles.insert(handle, connection);
@@ -151,7 +151,7 @@ impl SQLiteAPI {
             sqlite_execute: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |_, (handle, command, params): (u32, LuaString, Option<LuaTable>)| {
+                lua.create_function(move |_, (handle, command, params): (i32, LuaString, Option<LuaTable>)| {
                     let mut handles = connection_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -185,7 +185,7 @@ impl SQLiteAPI {
             sqlite_batch: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |_, (handle, command): (u32, LuaString)| {
+                lua.create_function(move |_, (handle, command): (i32, LuaString)| {
                     let mut handles = connection_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -203,7 +203,7 @@ impl SQLiteAPI {
             sqlite_query: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |lua, (handle, query, params): (u32, LuaString, Option<LuaTable>)| -> Result<LuaTable, LuaError> {
+                lua.create_function(move |lua, (handle, query, params): (i32, LuaString, Option<LuaTable>)| -> Result<LuaTable, LuaError> {
                     let mut handles = connection_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -262,7 +262,7 @@ impl SQLiteAPI {
             sqlite_query_row: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |lua, (handle, query, params): (u32, LuaString, Option<LuaTable>)| -> Result<LuaValue, LuaError> {
+                lua.create_function(move |lua, (handle, query, params): (i32, LuaString, Option<LuaTable>)| -> Result<LuaValue, LuaError> {
                     let mut handles = connection_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -317,7 +317,7 @@ impl SQLiteAPI {
             sqlite_close: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut handles = connection_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -384,7 +384,7 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        let handle = env.call_function::<u32>("open", path)?;
+        let handle = env.call_function::<i32>("open", path)?;
 
         env.call_function::<()>("execute", (handle, "
             CREATE TABLE test (
@@ -407,7 +407,7 @@ mod tests {
 
         let rows_count = env.call_function::<LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
 
-        assert_eq!(rows_count.pop::<u32>()?, 4);
+        assert_eq!(rows_count.pop::<i32>()?, 4);
 
         let rows = env.call_function::<Vec<LuaTable>>("query", (handle, "SELECT value FROM test WHERE id > ?1", [0]))?;
 
@@ -426,7 +426,7 @@ mod tests {
 
         let rows_count = env.call_function::<LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
 
-        assert_eq!(rows_count.pop::<u32>()?, 0);
+        assert_eq!(rows_count.pop::<i32>()?, 0);
 
         env.call_function::<()>("close", handle)?;
 

@@ -7,7 +7,7 @@ use mlua::prelude::*;
 
 use super::*;
 
-const PROCESS_READ_CHUNK_LEN: usize = 1024;
+const PROCESS_READ_CHUNK_LEN: usize = 4096;
 
 pub struct ProcessAPI {
     lua: Lua,
@@ -44,7 +44,7 @@ impl ProcessAPI {
                     // Apply command arguments.
                     if let Some(args) = args {
                         for arg in args.sequence_values::<LuaString>() {
-                            command = command.arg(arg?.to_string_lossy().to_string());
+                            command = command.arg(arg?.to_string_lossy());
                         }
                     }
 
@@ -54,8 +54,8 @@ impl ProcessAPI {
                             let (key, value) = pair?;
 
                             command = command.env(
-                                key.to_string_lossy().to_string(),
-                                value.to_string_lossy().to_string()
+                                key.to_string_lossy(),
+                                value.to_string_lossy()
                             );
                         }
                     }
@@ -96,7 +96,7 @@ impl ProcessAPI {
                         // Apply command arguments.
                         if let Some(args) = args {
                             for arg in args.sequence_values::<LuaString>() {
-                                command = command.arg(arg?.to_string_lossy().to_string());
+                                command = command.arg(arg?.to_string_lossy());
                             }
                         }
 
@@ -106,8 +106,8 @@ impl ProcessAPI {
                                 let (key, value) = pair?;
 
                                 command = command.env(
-                                    key.to_string_lossy().to_string(),
-                                    value.to_string_lossy().to_string()
+                                    key.to_string_lossy(),
+                                    value.to_string_lossy()
                                 );
                             }
                         }
@@ -116,10 +116,10 @@ impl ProcessAPI {
                         let mut handles = process_handles.lock()
                             .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                        let mut handle = rand::random::<u32>();
+                        let mut handle = rand::random::<i32>();
 
                         while handles.contains_key(&handle) {
-                            handle = rand::random::<u32>();
+                            handle = rand::random::<i32>();
                         }
 
                         handles.insert(handle, command.spawn()?);
@@ -132,7 +132,7 @@ impl ProcessAPI {
             process_stdin: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, (handle, data): (u32, LuaValue)| {
+                lua.create_function(move |_, (handle, data): (i32, LuaValue)| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -152,7 +152,7 @@ impl ProcessAPI {
             process_stdout: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |lua, handle: u32| {
+                lua.create_function(move |lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -177,7 +177,7 @@ impl ProcessAPI {
             process_stderr: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |lua, handle: u32| {
+                lua.create_function(move |lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -202,7 +202,7 @@ impl ProcessAPI {
             process_kill: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -221,7 +221,7 @@ impl ProcessAPI {
             process_wait: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |lua, handle: u32| {
+                lua.create_function(move |lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -247,7 +247,7 @@ impl ProcessAPI {
             process_finished: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -329,7 +329,7 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        let handle = env.call_function::<u32>("open", (
+        let handle = env.call_function::<i32>("open", (
             "bash", ["-c", "echo $TEST"],
             HashMap::from([
                 ("TEST", "Hello, World!")

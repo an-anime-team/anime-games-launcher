@@ -34,7 +34,7 @@ pub struct PackagesEngine {
     engine_registry: Arc<RwLock<LuaRegistryKey>>,
     lock_file: LockFileManifest,
 
-    v1_standard: v1_standard::Standard
+    _v1_standard: v1_standard::Standard
 }
 
 impl PackagesEngine {
@@ -437,7 +437,7 @@ impl PackagesEngine {
             engine_registry,
             lock_file,
 
-            v1_standard
+            _v1_standard: v1_standard
         })
     }
 

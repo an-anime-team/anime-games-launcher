@@ -297,10 +297,10 @@ impl FilesystemAPI {
                         let mut handles = file_handles.lock()
                             .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                        let mut handle = rand::random::<u32>();
+                        let mut handle = rand::random::<i32>();
 
                         while handles.contains_key(&handle) {
-                            handle = rand::random::<u32>();
+                            handle = rand::random::<i32>();
                         }
 
                         handles.insert(handle, BufReaderWriterRand::new_reader(file));
@@ -313,7 +313,7 @@ impl FilesystemAPI {
             fs_seek: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position): (u32, i64)| {
+                lua.create_function(move |_, (handle, position): (i32, i64)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -337,7 +337,7 @@ impl FilesystemAPI {
             fs_seek_rel: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, offset): (u32, i64)| {
+                lua.create_function(move |_, (handle, offset): (i32, i64)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -354,7 +354,7 @@ impl FilesystemAPI {
             fs_read: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position, length): (u32, Option<i64>, Option<u64>)| {
+                lua.create_function(move |_, (handle, position, length): (i32, Option<i64>, Option<u64>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -396,7 +396,7 @@ impl FilesystemAPI {
             fs_write: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, content, position): (u32, Vec<u8>, Option<i64>)| {
+                lua.create_function(move |_, (handle, content, position): (i32, Vec<u8>, Option<i64>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -425,7 +425,7 @@ impl FilesystemAPI {
             fs_flush: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -441,7 +441,7 @@ impl FilesystemAPI {
             fs_close: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -627,7 +627,7 @@ impl FilesystemAPI {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 18)?;
+        let env = self.lua.create_table_with_capacity(0, 19)?;
 
         env.set("exists", (self.fs_exists)(&self.lua, context)?)?;
         env.set("metadata", (self.fs_metadata)(&self.lua, context)?)?;
@@ -636,6 +636,7 @@ impl FilesystemAPI {
         env.set("remove", (self.fs_remove)(&self.lua, context)?)?;
         env.set("open", (self.fs_open)(&self.lua, context)?)?;
         env.set("seek", self.fs_seek.clone())?;
+        env.set("seek_rel", self.fs_seek_rel.clone())?;
         env.set("read", self.fs_read.clone())?;
         env.set("write", self.fs_write.clone())?;
         env.set("flush", self.fs_flush.clone())?;
@@ -680,7 +681,7 @@ mod tests {
         })?;
 
         assert!(!env.call_function::<bool>("exists", path.clone())?);
-        assert!(env.call_function::<u32>("open", path.clone()).is_err());
+        assert!(env.call_function::<i32>("open", path.clone()).is_err());
 
         let options = lua.create_table()?;
 
@@ -949,7 +950,7 @@ mod tests {
         assert!(!env.call_function::<bool>("exists", path_a.clone())?);
         assert!(env.call_function::<bool>("exists", path_c.clone())?);
 
-        let handle = env.call_function::<u32>("open", path_c.clone())?;
+        let handle = env.call_function::<i32>("open", path_c.clone())?;
 
         assert_eq!(env.call_function::<Vec<u8>>("read", handle)?, &[1, 2, 3]);
 
@@ -988,7 +989,7 @@ mod tests {
         assert!(env.call_function::<Vec<u8>>("read_file", inaccessible_path.clone()).is_err());
         assert!(env.call_function::<LuaTable>("read_dir", inaccessible_path.clone()).is_err());
         assert!(env.call_function::<()>("write_file", (inaccessible_path.clone(), vec![1, 2, 3])).is_err());
-        assert!(env.call_function::<u32>("open", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<i32>("open", inaccessible_path.clone()).is_err());
 
         Ok(())
     }

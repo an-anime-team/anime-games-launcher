@@ -26,10 +26,10 @@ impl AsLua for ChannelMessage {
                 .map(LuaValue::String)
                 .map_err(AsLuaError::LuaError),
 
-            Self::Double(value) => Ok(LuaValue::Number(*value)),
+            Self::Double(value)  => Ok(LuaValue::Number(*value)),
             Self::Integer(value) => Ok(LuaValue::Integer(*value)),
             Self::Boolean(value) => Ok(LuaValue::Boolean(*value)),
-            Self::Nil => Ok(LuaNil),
+            Self::Nil            => Ok(LuaNil),
 
             Self::Table(table) => {
                 let result = lua.create_table_with_capacity(0, table.len())?;
@@ -93,8 +93,8 @@ impl SyncAPI {
         let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new())); // key => handle
         let sync_channels_data = Arc::new(Mutex::new(HashMap::new())); // handle => (key, data)
 
-        let sync_mutex_consumers = Arc::new(Mutex::new(HashMap::<u32, Hash>::new())); // handle => key
-        let sync_mutex_locks = Arc::new(Mutex::new(HashMap::<Hash, Option<u32>>::new())); // key => curr_lock_handle
+        let sync_mutex_consumers = Arc::new(Mutex::new(HashMap::<i32, Hash>::new())); // handle => key
+        let sync_mutex_locks = Arc::new(Mutex::new(HashMap::<Hash, Option<i32>>::new())); // key => curr_lock_handle
 
         Ok(Self {
             sync_channel_open: {
@@ -106,10 +106,10 @@ impl SyncAPI {
                         .map_err(|err| LuaError::external(format!("failed to register channel listeners: {err}")))?;
 
                     let key = Hash::for_slice(key.as_bytes());
-                    let mut handle = rand::random::<u32>();
+                    let mut handle = rand::random::<i32>();
 
                     while listeners.contains_key(&handle) {
-                        handle = rand::random::<u32>();
+                        handle = rand::random::<i32>();
                     }
 
                     let mut consumers = sync_channels_consumers.lock()
@@ -131,7 +131,7 @@ impl SyncAPI {
                 let sync_channels_consumers = sync_channels_consumers.clone();
                 let sync_channels_data = sync_channels_data.clone();
 
-                lua.create_function(move |_, (handle, message): (u32, LuaValue)| {
+                lua.create_function(move |_, (handle, message): (i32, LuaValue)| {
                     let message = ChannelMessage::from_lua(&message)?;
 
                     let mut listeners = sync_channels_data.lock()
@@ -163,7 +163,7 @@ impl SyncAPI {
             sync_channel_recv: {
                 let sync_channels_data = sync_channels_data.clone();
 
-                lua.create_function(move |lua, handle: u32| {
+                lua.create_function(move |lua, handle: i32| {
                     let mut listeners = sync_channels_data.lock()
                         .map_err(|err| LuaError::external(format!("failed to read channel listeners: {err}")))?;
 
@@ -182,7 +182,7 @@ impl SyncAPI {
                 let sync_channels_consumers = sync_channels_consumers.clone();
                 let sync_channels_data = sync_channels_data.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut consumers = sync_channels_consumers.lock()
                         .map_err(|err| LuaError::external(format!("failed to read channel consumers: {err}")))?;
 
@@ -216,10 +216,10 @@ impl SyncAPI {
                     let mut consumers = sync_mutex_consumers.lock()
                         .map_err(|err| LuaError::external(format!("failed to register mutex consumers: {err}")))?;
 
-                    let mut handle = rand::random::<u32>();
+                    let mut handle = rand::random::<i32>();
 
                     while consumers.contains_key(&handle) {
-                        handle = rand::random::<u32>();
+                        handle = rand::random::<i32>();
                     }
 
                     consumers.insert(handle, key);
@@ -232,7 +232,7 @@ impl SyncAPI {
                 let sync_mutex_consumers = sync_mutex_consumers.clone();
                 let sync_mutex_locks = sync_mutex_locks.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let key = sync_mutex_consumers.lock()
                         .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?
                         .get(&handle)
@@ -270,7 +270,7 @@ impl SyncAPI {
                 let sync_mutex_consumers = sync_mutex_consumers.clone();
                 let sync_mutex_locks = sync_mutex_locks.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let key = sync_mutex_consumers.lock()
                         .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?
                         .get(&handle)
@@ -298,7 +298,7 @@ impl SyncAPI {
                 let sync_mutex_consumers = sync_mutex_consumers.clone();
                 let sync_mutex_locks = sync_mutex_locks.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let key = sync_mutex_consumers.lock()
                         .map_err(|err| LuaError::external(format!("failed to read mutex consumers: {err}")))?
                         .remove(&handle);
@@ -368,8 +368,8 @@ mod tests {
         assert!(api.sync_channel_send.call::<()>((0, String::new())).is_err());
         assert!(api.sync_channel_recv.call::<Option<String>>(0).is_err());
 
-        let a = api.sync_channel_open.call::<u32>("test")?;
-        let b = api.sync_channel_open.call::<u32>("test")?;
+        let a = api.sync_channel_open.call::<i32>("test")?;
+        let b = api.sync_channel_open.call::<i32>("test")?;
 
         assert_eq!(api.sync_channel_recv.call::<Option<String>>(a)?, None);
         assert_eq!(api.sync_channel_recv.call::<Option<String>>(b)?, None);
@@ -377,7 +377,7 @@ mod tests {
         api.sync_channel_send.call::<()>((a, String::from("Message 1")))?;
         api.sync_channel_send.call::<()>((a, String::from("Message 2")))?;
 
-        let c = api.sync_channel_open.call::<u32>("test")?;
+        let c = api.sync_channel_open.call::<i32>("test")?;
 
         assert_eq!(api.sync_channel_recv.call::<Option<String>>(a)?, None);
         assert_eq!(api.sync_channel_recv.call::<Option<String>>(c)?, None);

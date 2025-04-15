@@ -74,10 +74,10 @@ impl ArchiveAPI {
                         let mut handles = archive_handles.lock()
                             .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                        let mut handle = rand::random::<u32>();
+                        let mut handle = rand::random::<i32>();
 
                         while handles.contains_key(&handle) {
-                            handle = rand::random::<u32>();
+                            handle = rand::random::<i32>();
                         }
 
                         handles.insert(handle, archive);
@@ -90,7 +90,7 @@ impl ArchiveAPI {
             archive_entries: {
                 let archive_handles = archive_handles.clone();
 
-                lua.create_function(move |lua, handle: u32| {
+                lua.create_function(move |lua, handle: i32| {
                     let handles = archive_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -134,7 +134,7 @@ impl ArchiveAPI {
                     let context = context.to_owned();
                     let archive_handles = archive_handles.clone();
 
-                    lua.create_function(move |_, (handle, target, progress): (u32, LuaString, Option<LuaFunction>)| {
+                    lua.create_function(move |_, (handle, target, progress): (i32, LuaString, Option<LuaFunction>)| {
                         let target = resolve_path(target.to_string_lossy())?;
 
                         if !context.is_accessible(&target) {
@@ -206,7 +206,7 @@ impl ArchiveAPI {
             archive_close: {
                 let archive_handles = archive_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     archive_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?
                         .remove(&handle);
@@ -267,7 +267,7 @@ mod tests {
         assert!(api.archive_entries.call::<LuaTable>(0).is_err());
         assert!(env.call_function::<LuaTable>("extract", 0).is_err());
 
-        let handle = env.call_function::<u32>("open", path.to_string_lossy())?;
+        let handle = env.call_function::<i32>("open", path.to_string_lossy())?;
         let entries = api.archive_entries.call::<LuaTable>(handle)?;
 
         assert_eq!(entries.len()?, 13);
@@ -326,7 +326,7 @@ mod tests {
         assert!(api.archive_entries.call::<LuaTable>(0).is_err());
         assert!(env.call_function::<LuaTable>("extract", 0).is_err());
 
-        let handle = env.call_function::<u32>("open", dxvk_path.to_string_lossy())?;
+        let handle = env.call_function::<i32>("open", dxvk_path.to_string_lossy())?;
         let result = env.call_function::<bool>("extract", (handle, path.to_string_lossy()))?;
 
         assert!(result);

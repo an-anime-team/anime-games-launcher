@@ -162,10 +162,10 @@ impl HashAPI {
                     let mut hashers = hasher_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                    let mut handle = rand::random::<u32>();
+                    let mut handle = rand::random::<i32>();
 
                     while hashers.contains_key(&handle) {
-                        handle = rand::random::<u32>();
+                        handle = rand::random::<i32>();
                     }
 
                     hashers.insert(handle, hasher);
@@ -177,7 +177,7 @@ impl HashAPI {
             hash_write: {
                 let hasher_handles = hasher_handles.clone();
 
-                lua.create_function(move |_, (handle, value): (u32, LuaValue)| {
+                lua.create_function(move |_, (handle, value): (i32, LuaValue)| {
                     let mut hashers = hasher_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -194,7 +194,7 @@ impl HashAPI {
             hash_finalize: {
                 let hasher_handles = hasher_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     let mut hashers = hasher_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -279,7 +279,7 @@ mod tests {
         ];
 
         for (name, hash) in hashers {
-            let hasher = api.hash_builder.call::<u32>(name)?;
+            let hasher = api.hash_builder.call::<i32>(name)?;
 
             api.hash_write.call::<()>((hasher, "Hello"))?;
             api.hash_write.call::<()>((hasher, ", "))?;

@@ -148,10 +148,10 @@ impl NetworkAPI {
                     let mut handles = net_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                    let mut handle = rand::random::<u32>();
+                    let mut handle = rand::random::<i32>();
 
                     while handles.contains_key(&handle) {
-                        handle = rand::random::<u32>();
+                        handle = rand::random::<i32>();
                     }
 
                     handles.insert(handle, response);
@@ -165,7 +165,7 @@ impl NetworkAPI {
             net_read: {
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |lua, handle: u32| {
+                lua.create_function(move |lua, handle: i32| {
                     let mut handles = net_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -192,7 +192,7 @@ impl NetworkAPI {
             net_close: {
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |_, handle: u32| {
+                lua.create_function(move |_, handle: i32| {
                     net_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?
                         .remove(&handle);
@@ -253,7 +253,7 @@ mod tests {
         assert_eq!(header.get::<u16>("status")?, 200);
         assert!(header.get::<bool>("is_ok")?);
 
-        let handle = header.get::<u32>("handle")?;
+        let handle = header.get::<i32>("handle")?;
 
         let mut body_len = 0;
 

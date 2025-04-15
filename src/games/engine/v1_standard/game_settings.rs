@@ -107,7 +107,7 @@ impl AsLua for GameSettingsEntry {
                     if name.is_nil() || name.is_null() {
                         Ok(None)
                     } else {
-                        Ok(name.as_string_lossy().map(String::from))
+                        Ok(name.as_string_lossy())
                     }
                 })
                 .unwrap_or(Ok(None))?,
