@@ -11,26 +11,24 @@ enum Archive {
     Sevenz(SevenzArchive)
 }
 
-pub struct ArchiveAPI<'lua> {
-    lua: &'lua Lua,
+pub struct ArchiveAPI {
+    lua: Lua,
 
-    archive_open: LuaFunctionBuilder<'lua>,
-    archive_entries: LuaFunction<'lua>,
-    archive_extract: LuaFunctionBuilder<'lua>,
-    archive_close: LuaFunction<'lua>
+    archive_open: LuaFunctionBuilder,
+    archive_entries: LuaFunction,
+    archive_extract: LuaFunctionBuilder,
+    archive_close: LuaFunction
 }
 
-impl<'lua> ArchiveAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl ArchiveAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let archive_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            lua,
-
             archive_open: {
                 let archive_handles = archive_handles.clone();
 
-                Box::new(move |lua: &'lua Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &Context| {
                     let context = context.to_owned();
                     let archive_handles = archive_handles.clone();
 
@@ -44,7 +42,7 @@ impl<'lua> ArchiveAPI<'lua> {
                         // Parse the archive format.
                         let format = match format {
                             Some(format) => {
-                                match format.as_bytes() {
+                                match format.as_bytes().as_ref() {
                                     b"tar" => ArchiveFormat::Tar,
                                     b"zip" => ArchiveFormat::Zip,
                                     b"7z"  => ArchiveFormat::Sevenz,
@@ -132,7 +130,7 @@ impl<'lua> ArchiveAPI<'lua> {
             archive_extract: {
                 let archive_handles = archive_handles.clone();
 
-                Box::new(move |lua: &'lua Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &Context| {
                     let context = context.to_owned();
                     let archive_handles = archive_handles.clone();
 
@@ -191,7 +189,7 @@ impl<'lua> ArchiveAPI<'lua> {
                                 finished = curr == total;
 
                                 if let Some(callback) = &progress {
-                                    callback.call::<_, ()>((curr, total, diff))?;
+                                    callback.call::<()>((curr, total, diff))?;
                                 }
                             }
                         }
@@ -215,17 +213,24 @@ impl<'lua> ArchiveAPI<'lua> {
 
                     Ok(())
                 })?
-            }
+            },
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("open", (self.archive_open)(self.lua, context)?)?;
+        env.set("open", (self.archive_open)(&self.lua, context)?)?;
         env.set("entries", self.archive_entries.clone())?;
-        env.set("extract", (self.archive_extract)(self.lua, context)?)?;
+        env.set("extract", (self.archive_extract)(&self.lua, context)?)?;
         env.set("close", self.archive_close.clone())?;
 
         Ok(env)
@@ -248,8 +253,7 @@ mod tests {
                 .wait().unwrap();
         }
 
-        let lua = Lua::new();
-        let api = ArchiveAPI::new(&lua)?;
+        let api = ArchiveAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -260,11 +264,11 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        assert!(api.archive_entries.call::<_, LuaTable>(0).is_err());
-        assert!(env.call_function::<_, LuaTable>("extract", 0).is_err());
+        assert!(api.archive_entries.call::<LuaTable>(0).is_err());
+        assert!(env.call_function::<LuaTable>("extract", 0).is_err());
 
-        let handle = env.call_function::<_, u32>("open", path.to_string_lossy())?;
-        let entries = api.archive_entries.call::<_, LuaTable>(handle)?;
+        let handle = env.call_function::<u32>("open", path.to_string_lossy())?;
+        let entries = api.archive_entries.call::<LuaTable>(handle)?;
 
         assert_eq!(entries.len()?, 13);
 
@@ -274,8 +278,8 @@ mod tests {
         for entry in entries.sequence_values::<LuaTable>() {
             let entry = entry?;
 
-            let path = entry.get::<_, String>("path")?;
-            let size = entry.get::<_, u64>("size")?;
+            let path = entry.get::<String>("path")?;
+            let size = entry.get::<u64>("size")?;
 
             total_size += size;
 
@@ -287,10 +291,10 @@ mod tests {
         assert_eq!(total_size, 25579660);
         assert!(has_path);
 
-        api.archive_close.call::<_, ()>(handle)?;
+        api.archive_close.call::<()>(handle)?;
 
-        assert!(api.archive_entries.call::<_, LuaTable>(handle).is_err());
-        assert!(env.call_function::<_, LuaTable>("extract", handle).is_err());
+        assert!(api.archive_entries.call::<LuaTable>(handle).is_err());
+        assert!(env.call_function::<LuaTable>("extract", handle).is_err());
 
         Ok(())
     }
@@ -308,8 +312,7 @@ mod tests {
                 .wait().unwrap();
         }
 
-        let lua = Lua::new();
-        let api = ArchiveAPI::new(&lua)?;
+        let api = ArchiveAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -320,19 +323,19 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        assert!(api.archive_entries.call::<_, LuaTable>(0).is_err());
-        assert!(env.call_function::<_, LuaTable>("extract", 0).is_err());
+        assert!(api.archive_entries.call::<LuaTable>(0).is_err());
+        assert!(env.call_function::<LuaTable>("extract", 0).is_err());
 
-        let handle = env.call_function::<_, u32>("open", dxvk_path.to_string_lossy())?;
-        let result = env.call_function::<_, bool>("extract", (handle, path.to_string_lossy()))?;
+        let handle = env.call_function::<u32>("open", dxvk_path.to_string_lossy())?;
+        let result = env.call_function::<bool>("extract", (handle, path.to_string_lossy()))?;
 
         assert!(result);
         assert_eq!(Hash::for_entry(path)?, Hash(17827013605004440863));
 
-        api.archive_close.call::<_, ()>(handle)?;
+        api.archive_close.call::<()>(handle)?;
 
-        assert!(api.archive_entries.call::<_, LuaTable>(handle).is_err());
-        assert!(env.call_function::<_, LuaTable>("extract", handle).is_err());
+        assert!(api.archive_entries.call::<LuaTable>(handle).is_err());
+        assert!(env.call_function::<LuaTable>("extract", handle).is_err());
 
         Ok(())
     }

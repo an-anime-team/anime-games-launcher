@@ -19,8 +19,8 @@ enum ChannelMessage {
     Nil
 }
 
-impl<'lua> AsLua<'lua> for ChannelMessage {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for ChannelMessage {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         match self {
             Self::String(value) => lua.create_string(value)
                 .map(LuaValue::String)
@@ -46,7 +46,7 @@ impl<'lua> AsLua<'lua> for ChannelMessage {
         }
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         match value {
             LuaValue::String(value)  => Ok(Self::String(value.to_string_lossy().to_string())),
             LuaValue::Number(value)  => Ok(Self::Double(*value)),
@@ -74,22 +74,22 @@ impl<'lua> AsLua<'lua> for ChannelMessage {
     }
 }
 
-pub struct SyncAPI<'lua> {
-    lua: &'lua Lua,
+pub struct SyncAPI {
+    lua: Lua,
 
-    sync_channel_open: LuaFunction<'lua>,
-    sync_channel_send: LuaFunction<'lua>,
-    sync_channel_recv: LuaFunction<'lua>,
-    sync_channel_close: LuaFunction<'lua>,
+    sync_channel_open: LuaFunction,
+    sync_channel_send: LuaFunction,
+    sync_channel_recv: LuaFunction,
+    sync_channel_close: LuaFunction,
 
-    sync_mutex_open: LuaFunction<'lua>,
-    sync_mutex_lock: LuaFunction<'lua>,
-    sync_mutex_unlock: LuaFunction<'lua>,
-    sync_mutex_close: LuaFunction<'lua>
+    sync_mutex_open: LuaFunction,
+    sync_mutex_lock: LuaFunction,
+    sync_mutex_unlock: LuaFunction,
+    sync_mutex_close: LuaFunction
 }
 
-impl<'lua> SyncAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl SyncAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new())); // key => handle
         let sync_channels_data = Arc::new(Mutex::new(HashMap::new())); // handle => (key, data)
 
@@ -97,8 +97,6 @@ impl<'lua> SyncAPI<'lua> {
         let sync_mutex_locks = Arc::new(Mutex::new(HashMap::<Hash, Option<u32>>::new())); // key => curr_lock_handle
 
         Ok(Self {
-            lua,
-
             sync_channel_open: {
                 let sync_channels_consumers = sync_channels_consumers.clone();
                 let sync_channels_data = sync_channels_data.clone();
@@ -133,7 +131,7 @@ impl<'lua> SyncAPI<'lua> {
                 let sync_channels_consumers = sync_channels_consumers.clone();
                 let sync_channels_data = sync_channels_data.clone();
 
-                lua.create_function(move |_, (handle, message): (u32, LuaValue<'lua>)| {
+                lua.create_function(move |_, (handle, message): (u32, LuaValue)| {
                     let message = ChannelMessage::from_lua(&message)?;
 
                     let mut listeners = sync_channels_data.lock()
@@ -320,12 +318,19 @@ impl<'lua> SyncAPI<'lua> {
 
                     Ok(())
                 })?
-            }
+            },
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 2)?;
 
         let sync_channel = self.lua.create_table_with_capacity(0, 4)?;
@@ -358,64 +363,63 @@ mod tests {
 
     #[test]
     fn sync_channels() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let api = SyncAPI::new(&lua)?;
+        let api = SyncAPI::new(Lua::new())?;
 
-        assert!(api.sync_channel_send.call::<_, ()>((0, String::new())).is_err());
-        assert!(api.sync_channel_recv.call::<_, Option<String>>(0).is_err());
+        assert!(api.sync_channel_send.call::<()>((0, String::new())).is_err());
+        assert!(api.sync_channel_recv.call::<Option<String>>(0).is_err());
 
-        let a = api.sync_channel_open.call::<_, u32>("test")?;
-        let b = api.sync_channel_open.call::<_, u32>("test")?;
+        let a = api.sync_channel_open.call::<u32>("test")?;
+        let b = api.sync_channel_open.call::<u32>("test")?;
 
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(a)?, None);
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(a)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(b)?, None);
 
-        api.sync_channel_send.call::<_, ()>((a, String::from("Message 1")))?;
-        api.sync_channel_send.call::<_, ()>((a, String::from("Message 2")))?;
+        api.sync_channel_send.call::<()>((a, String::from("Message 1")))?;
+        api.sync_channel_send.call::<()>((a, String::from("Message 2")))?;
 
-        let c = api.sync_channel_open.call::<_, u32>("test")?;
+        let c = api.sync_channel_open.call::<u32>("test")?;
 
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(a)?, None);
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(c)?, None);
-        assert_eq!(api.sync_channel_recv.call::<_, String>(b)?, "Message 1");
-        assert_eq!(api.sync_channel_recv.call::<_, String>(b)?, "Message 2");
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(a)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(c)?, None);
+        assert_eq!(api.sync_channel_recv.call::<String>(b)?, "Message 1");
+        assert_eq!(api.sync_channel_recv.call::<String>(b)?, "Message 2");
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(b)?, None);
 
-        api.sync_channel_send.call::<_, ()>((a, String::from("Message 3")))?;
+        api.sync_channel_send.call::<()>((a, String::from("Message 3")))?;
 
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(a)?, None);
-        assert_eq!(api.sync_channel_recv.call::<_, String>(b)?, "Message 3");
-        assert_eq!(api.sync_channel_recv.call::<_, String>(c)?, "Message 3");
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(b)?, None);
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(c)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(a)?, None);
+        assert_eq!(api.sync_channel_recv.call::<String>(b)?, "Message 3");
+        assert_eq!(api.sync_channel_recv.call::<String>(c)?, "Message 3");
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(b)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(c)?, None);
 
-        api.sync_channel_send.call::<_, ()>((a, true))?;
-        api.sync_channel_send.call::<_, ()>((a, 0.5))?;
-        api.sync_channel_send.call::<_, ()>((a, -17))?;
-        api.sync_channel_send.call::<_, ()>((a, vec![1, 2, 3]))?;
-        api.sync_channel_send.call::<_, ()>((a, vec!["Hello", "World"]))?;
-        api.sync_channel_send.call::<_, ()>((a, vec![vec![1, 2], vec![3, 4]]))?;
+        api.sync_channel_send.call::<()>((a, true))?;
+        api.sync_channel_send.call::<()>((a, 0.5))?;
+        api.sync_channel_send.call::<()>((a, -17))?;
+        api.sync_channel_send.call::<()>((a, vec![1, 2, 3]))?;
+        api.sync_channel_send.call::<()>((a, vec!["Hello", "World"]))?;
+        api.sync_channel_send.call::<()>((a, vec![vec![1, 2], vec![3, 4]]))?;
 
-        assert_eq!(api.sync_channel_recv.call::<_, Option<_>>(b)?, Some(true));
-        assert_eq!(api.sync_channel_recv.call::<_, Option<_>>(b)?, Some(0.5));
-        assert_eq!(api.sync_channel_recv.call::<_, Option<_>>(b)?, Some(-17));
-        assert_eq!(api.sync_channel_recv.call::<_, Option<_>>(b)?, Some(vec![1, 2, 3]));
-        assert_eq!(api.sync_channel_recv.call::<_, Option<_>>(b)?, Some(vec![String::from("Hello"), String::from("World")]));
-        assert_eq!(api.sync_channel_recv.call::<_, Option<_>>(b)?, Some(vec![vec![1, 2], vec![3, 4]]));
-        assert_eq!(api.sync_channel_recv.call::<_, Option<String>>(b)?, None);
+        assert_eq!(api.sync_channel_recv.call::<Option<_>>(b)?, Some(true));
+        assert_eq!(api.sync_channel_recv.call::<Option<_>>(b)?, Some(0.5));
+        assert_eq!(api.sync_channel_recv.call::<Option<_>>(b)?, Some(-17));
+        assert_eq!(api.sync_channel_recv.call::<Option<_>>(b)?, Some(vec![1, 2, 3]));
+        assert_eq!(api.sync_channel_recv.call::<Option<_>>(b)?, Some(vec![String::from("Hello"), String::from("World")]));
+        assert_eq!(api.sync_channel_recv.call::<Option<_>>(b)?, Some(vec![vec![1, 2], vec![3, 4]]));
+        assert_eq!(api.sync_channel_recv.call::<Option<String>>(b)?, None);
 
-        api.sync_channel_close.call::<_, ()>(a)?;
-        api.sync_channel_close.call::<_, ()>(b)?;
-        api.sync_channel_close.call::<_, ()>(c)?;
+        api.sync_channel_close.call::<()>(a)?;
+        api.sync_channel_close.call::<()>(b)?;
+        api.sync_channel_close.call::<()>(c)?;
 
-        assert!(api.sync_channel_send.call::<_, ()>((a, String::new())).is_err());
-        assert!(api.sync_channel_recv.call::<_, Option<String>>(a).is_err());
+        assert!(api.sync_channel_send.call::<()>((a, String::new())).is_err());
+        assert!(api.sync_channel_recv.call::<Option<String>>(a).is_err());
 
-        assert!(api.sync_channel_send.call::<_, ()>((b, String::new())).is_err());
-        assert!(api.sync_channel_recv.call::<_, Option<String>>(b).is_err());
+        assert!(api.sync_channel_send.call::<()>((b, String::new())).is_err());
+        assert!(api.sync_channel_recv.call::<Option<String>>(b).is_err());
 
-        assert!(api.sync_channel_send.call::<_, ()>((c, String::new())).is_err());
-        assert!(api.sync_channel_recv.call::<_, Option<String>>(c).is_err());
+        assert!(api.sync_channel_send.call::<()>((c, String::new())).is_err());
+        assert!(api.sync_channel_recv.call::<Option<String>>(c).is_err());
 
         Ok(())
     }

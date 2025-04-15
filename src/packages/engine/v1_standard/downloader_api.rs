@@ -4,18 +4,16 @@ use mlua::prelude::*;
 
 use super::*;
 
-pub struct DownloaderAPI<'lua> {
-    lua: &'lua Lua,
+pub struct DownloaderAPI {
+    lua: Lua,
 
-    downloader_download: LuaFunctionBuilder<'lua>
+    downloader_download: LuaFunctionBuilder
 }
 
-impl<'lua> DownloaderAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl DownloaderAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
-            lua,
-
-            downloader_download: Box::new(|lua: &'lua Lua, context: &Context| {
+            downloader_download: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (url, options): (LuaString, Option<LuaTable>)| {
@@ -25,7 +23,7 @@ impl<'lua> DownloaderAPI<'lua> {
 
                     // Set downloading options if they're given.
                     if let Some(options) = options {
-                        if let Ok(value) = options.get::<_, LuaString>("output_file") {
+                        if let Ok(value) = options.get::<LuaString>("output_file") {
                             let value = resolve_path(value.to_string_lossy())?;
 
                             if !context.is_accessible(&value) {
@@ -35,10 +33,10 @@ impl<'lua> DownloaderAPI<'lua> {
                             output_file = Some(value);
                         }
 
-                        continue_downloading = options.get::<_, bool>("continue_downloading")
+                        continue_downloading = options.get::<bool>("continue_downloading")
                             .unwrap_or(true);
 
-                        if let Ok(value) = options.get::<_, LuaFunction>("progress") {
+                        if let Ok(value) = options.get::<LuaFunction>("progress") {
                             progress = Some(value);
                         }
                     }
@@ -89,7 +87,7 @@ impl<'lua> DownloaderAPI<'lua> {
                             finished = curr == total;
 
                             if let Some(callback) = &progress {
-                                callback.call::<_, ()>((curr, total, diff))?;
+                                callback.call::<()>((curr, total, diff))?;
                             }
                         }
                     }
@@ -100,15 +98,22 @@ impl<'lua> DownloaderAPI<'lua> {
 
                     Ok(finished)
                 })
-            })
+            }),
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 1)?;
 
-        env.set("download", (self.downloader_download)(self.lua, context)?)?;
+        env.set("download", (self.downloader_download)(&self.lua, context)?)?;
 
         Ok(env)
     }
@@ -121,7 +126,7 @@ mod tests {
     #[test]
     fn downloader_download() -> anyhow::Result<()> {
         let lua = Lua::new();
-        let api = DownloaderAPI::new(&lua)?;
+        let api = DownloaderAPI::new(lua.clone())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -139,7 +144,7 @@ mod tests {
         options.set("output_file", path.to_string_lossy().to_string())?;
         options.set("continue_downloading", false)?;
 
-        let result = env.call_function::<_, bool>("download", (
+        let result = env.call_function::<bool>("download", (
             "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz",
             options
         ))?;

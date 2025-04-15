@@ -3,20 +3,20 @@ use mlua::prelude::*;
 use super::*;
 
 #[derive(Debug, Clone)]
-pub struct InstallationDiff<'lua> {
+pub struct InstallationDiff {
     title: LocalizableString,
     description: Option<LocalizableString>,
-    pipeline: Vec<PipelineAction<'lua>>
+    pipeline: Vec<PipelineAction>
 }
 
-impl<'lua> InstallationDiff<'lua> {
-    pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
+impl InstallationDiff {
+    pub fn from_lua(lua: Lua, table: &LuaTable) -> Result<Self, LuaError> {
         Ok(Self {
-            title: table.get::<_, LuaValue>("title")
+            title: table.get::<LuaValue>("title")
                 .map_err(AsLuaError::LuaError)
                 .and_then(|title| LocalizableString::from_lua(&title))?,
 
-            description: table.get::<_, LuaValue>("description")
+            description: table.get::<LuaValue>("description")
                 .map(|desc| -> Result<Option<LocalizableString>, LuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
@@ -26,30 +26,30 @@ impl<'lua> InstallationDiff<'lua> {
                 })
                 .unwrap_or(Ok(None))?,
 
-            pipeline: table.get::<_, Vec<LuaTable>>("pipeline")
+            pipeline: table.get::<Vec<LuaTable>>("pipeline")
                 .and_then(|pipeline| {
                     pipeline.iter()
-                        .map(|action| PipelineAction::from_lua(lua, action))
+                        .map(|action| PipelineAction::from_lua(lua.clone(), action))
                         .collect::<Result<Vec<_>, _>>()
                 })?
         })
     }
 
-    #[inline]
     /// Title of the diff.
+    #[inline]
     pub fn title(&self) -> &LocalizableString {
         &self.title
     }
 
-    #[inline]
     /// Optional description of the diff.
+    #[inline]
     pub fn description(&self) -> Option<&LocalizableString> {
         self.description.as_ref()
     }
 
-    #[inline]
     /// List of actions which will be executed to apply the diff.
-    pub fn pipeline(&self) -> &[PipelineAction<'lua>] {
+    #[inline]
+    pub fn pipeline(&self) -> &[PipelineAction] {
         &self.pipeline
     }
 }

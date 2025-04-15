@@ -12,39 +12,37 @@ use super::*;
 
 const IO_READ_CHUNK_LEN: usize = 8192;
 
-pub struct FilesystemAPI<'lua> {
-    lua: &'lua Lua,
+pub struct FilesystemAPI {
+    lua: Lua,
 
-    fs_exists: LuaFunctionBuilder<'lua>,
-    fs_metadata: LuaFunctionBuilder<'lua>,
-    fs_copy: LuaFunctionBuilder<'lua>,
-    fs_move: LuaFunctionBuilder<'lua>,
-    fs_remove: LuaFunctionBuilder<'lua>,
-    fs_open: LuaFunctionBuilder<'lua>,
-    fs_seek: LuaFunction<'lua>,
-    fs_seek_rel: LuaFunction<'lua>,
-    fs_read: LuaFunction<'lua>,
-    fs_write: LuaFunction<'lua>,
-    fs_flush: LuaFunction<'lua>,
-    fs_close: LuaFunction<'lua>,
+    fs_exists: LuaFunctionBuilder,
+    fs_metadata: LuaFunctionBuilder,
+    fs_copy: LuaFunctionBuilder,
+    fs_move: LuaFunctionBuilder,
+    fs_remove: LuaFunctionBuilder,
+    fs_open: LuaFunctionBuilder,
+    fs_seek: LuaFunction,
+    fs_seek_rel: LuaFunction,
+    fs_read: LuaFunction,
+    fs_write: LuaFunction,
+    fs_flush: LuaFunction,
+    fs_close: LuaFunction,
 
-    fs_create_file: LuaFunctionBuilder<'lua>,
-    fs_read_file: LuaFunctionBuilder<'lua>,
-    fs_write_file: LuaFunctionBuilder<'lua>,
-    fs_remove_file: LuaFunctionBuilder<'lua>,
-    fs_create_dir: LuaFunctionBuilder<'lua>,
-    fs_read_dir: LuaFunctionBuilder<'lua>,
-    fs_remove_dir: LuaFunctionBuilder<'lua>
+    fs_create_file: LuaFunctionBuilder,
+    fs_read_file: LuaFunctionBuilder,
+    fs_write_file: LuaFunctionBuilder,
+    fs_remove_file: LuaFunctionBuilder,
+    fs_create_dir: LuaFunctionBuilder,
+    fs_read_dir: LuaFunctionBuilder,
+    fs_remove_dir: LuaFunctionBuilder
 }
 
-impl<'lua> FilesystemAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl FilesystemAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            lua,
-
-            fs_exists: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_exists: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -58,7 +56,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_metadata: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_metadata: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |lua, path: LuaString| {
@@ -101,7 +99,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_copy: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_copy: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
@@ -159,7 +157,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_move: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_move: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
@@ -231,7 +229,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_remove: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_remove: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -257,7 +255,7 @@ impl<'lua> FilesystemAPI<'lua> {
             fs_open: {
                 let file_handles = file_handles.clone();
 
-                Box::new(move |lua: &'lua Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &Context| {
                     let context = context.to_owned();
                     let file_handles = file_handles.clone();
 
@@ -281,11 +279,11 @@ impl<'lua> FilesystemAPI<'lua> {
                         let mut append = false;
 
                         if let Some(options) = options {
-                            read      = options.get::<_, bool>("read").unwrap_or(true);
-                            write     = options.get::<_, bool>("write").unwrap_or_default();
-                            create    = options.get::<_, bool>("create").unwrap_or_default();
-                            overwrite = options.get::<_, bool>("overwrite").unwrap_or_default();
-                            append    = options.get::<_, bool>("append").unwrap_or_default();
+                            read      = options.get::<bool>("read").unwrap_or(true);
+                            write     = options.get::<bool>("write").unwrap_or_default();
+                            create    = options.get::<bool>("create").unwrap_or_default();
+                            overwrite = options.get::<bool>("overwrite").unwrap_or_default();
+                            append    = options.get::<bool>("append").unwrap_or_default();
                         }
 
                         let file = File::options()
@@ -459,7 +457,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })?
             },
 
-            fs_create_file: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_create_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -481,7 +479,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_read_file: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_read_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -495,7 +493,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_write_file: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_write_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (path, content): (LuaString, LuaValue)| {
@@ -525,7 +523,7 @@ impl<'lua> FilesystemAPI<'lua> {
 
                         _ => return Err(LuaError::FromLuaConversionError {
                             from: "table | string",
-                            to: "[u8]",
+                            to: String::from("[u8]"),
                             message: Some(String::from("bytes table or string expected"))
                         })
                     }
@@ -534,7 +532,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_remove_file: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_remove_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -550,7 +548,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_create_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_create_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -566,7 +564,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_read_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_read_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |lua, path: LuaString| {
@@ -602,7 +600,7 @@ impl<'lua> FilesystemAPI<'lua> {
                 })
             }),
 
-            fs_remove_dir: Box::new(|lua: &'lua Lua, context: &Context| {
+            fs_remove_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
@@ -616,33 +614,40 @@ impl<'lua> FilesystemAPI<'lua> {
 
                     Ok(())
                 })
-            })
+            }),
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 18)?;
 
-        env.set("exists", (self.fs_exists)(self.lua, context)?)?;
-        env.set("metadata", (self.fs_metadata)(self.lua, context)?)?;
-        env.set("copy", (self.fs_copy)(self.lua, context)?)?;
-        env.set("move", (self.fs_move)(self.lua, context)?)?;
-        env.set("remove", (self.fs_remove)(self.lua, context)?)?;
-        env.set("open", (self.fs_open)(self.lua, context)?)?;
+        env.set("exists", (self.fs_exists)(&self.lua, context)?)?;
+        env.set("metadata", (self.fs_metadata)(&self.lua, context)?)?;
+        env.set("copy", (self.fs_copy)(&self.lua, context)?)?;
+        env.set("move", (self.fs_move)(&self.lua, context)?)?;
+        env.set("remove", (self.fs_remove)(&self.lua, context)?)?;
+        env.set("open", (self.fs_open)(&self.lua, context)?)?;
         env.set("seek", self.fs_seek.clone())?;
         env.set("read", self.fs_read.clone())?;
         env.set("write", self.fs_write.clone())?;
         env.set("flush", self.fs_flush.clone())?;
         env.set("close", self.fs_close.clone())?;
 
-        env.set("create_file", (self.fs_create_file)(self.lua, context)?)?;
-        env.set("read_file", (self.fs_read_file)(self.lua, context)?)?;
-        env.set("write_file", (self.fs_write_file)(self.lua, context)?)?;
-        env.set("remove_file", (self.fs_remove_file)(self.lua, context)?)?;
-        env.set("create_dir", (self.fs_create_dir)(self.lua, context)?)?;
-        env.set("read_dir", (self.fs_read_dir)(self.lua, context)?)?;
-        env.set("remove_dir", (self.fs_remove_dir)(self.lua, context)?)?;
+        env.set("create_file", (self.fs_create_file)(&self.lua, context)?)?;
+        env.set("read_file", (self.fs_read_file)(&self.lua, context)?)?;
+        env.set("write_file", (self.fs_write_file)(&self.lua, context)?)?;
+        env.set("remove_file", (self.fs_remove_file)(&self.lua, context)?)?;
+        env.set("create_dir", (self.fs_create_dir)(&self.lua, context)?)?;
+        env.set("read_dir", (self.fs_read_dir)(&self.lua, context)?)?;
+        env.set("remove_dir", (self.fs_remove_dir)(&self.lua, context)?)?;
 
         Ok(env)
     }
@@ -663,7 +668,7 @@ mod tests {
         let path = path.to_string_lossy().to_string();
 
         let lua = Lua::new();
-        let api = FilesystemAPI::new(&lua)?;
+        let api = FilesystemAPI::new(lua.clone())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -674,8 +679,8 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
-        assert!(env.call_function::<_, u64>("open", path.clone()).is_err());
+        assert!(!env.call_function::<bool>("exists", path.clone())?);
+        assert!(env.call_function::<u32>("open", path.clone()).is_err());
 
         let options = lua.create_table()?;
 
@@ -683,55 +688,55 @@ mod tests {
         options.set("write", true)?;
         options.set("create", true)?;
 
-        let handle = env.call_function::<_, u64>("open", (path.clone(), options))?;
+        let handle = env.call_function::<u64>("open", (path.clone(), options))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?.len(), 0);
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?.len(), 0);
 
-        api.fs_write.call::<_, ()>((handle, b"Hello, ".to_vec()))?;
-        api.fs_write.call::<_, ()>((handle, b"World!".to_vec()))?;
-        api.fs_flush.call::<_, ()>(handle)?;
+        api.fs_write.call::<()>((handle, b"Hello, ".to_vec()))?;
+        api.fs_write.call::<()>((handle, b"World!".to_vec()))?;
+        api.fs_flush.call::<()>(handle)?;
 
-        api.fs_seek_rel.call::<_, ()>((handle, -13))?;
+        api.fs_seek_rel.call::<()>((handle, -13))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b"Hello, World!");
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?, b"Hello, World!");
 
-        api.fs_seek.call::<_, ()>((handle, 0))?;
-        api.fs_write.call::<_, ()>((handle, b"Amogus".to_vec()))?;
-        api.fs_flush.call::<_, ()>(handle)?;
+        api.fs_seek.call::<()>((handle, 0))?;
+        api.fs_write.call::<()>((handle, b"Amogus".to_vec()))?;
+        api.fs_flush.call::<()>(handle)?;
 
-        api.fs_seek.call::<_, ()>((handle, 0))?;
+        api.fs_seek.call::<()>((handle, 0))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b"Amogus World!");
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?, b"Amogus World!");
 
-        api.fs_seek.call::<_, ()>((handle, -6))?;
-        api.fs_write.call::<_, ()>((handle, b"Amogus".to_vec()))?;
-        api.fs_flush.call::<_, ()>(handle)?;
+        api.fs_seek.call::<()>((handle, -6))?;
+        api.fs_write.call::<()>((handle, b"Amogus".to_vec()))?;
+        api.fs_flush.call::<()>(handle)?;
 
-        api.fs_seek.call::<_, ()>((handle, 0))?;
+        api.fs_seek.call::<()>((handle, 0))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b"Amogus Amogus");
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?, b"Amogus Amogus");
 
-        api.fs_seek.call::<_, ()>((handle, 0))?;
-        api.fs_write.call::<_, ()>((handle, b"Sugoma".to_vec()))?;
+        api.fs_seek.call::<()>((handle, 0))?;
+        api.fs_write.call::<()>((handle, b"Sugoma".to_vec()))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b" Amogus");
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?, b" Amogus");
 
-        api.fs_flush.call::<_, ()>(handle)?;
-        api.fs_seek.call::<_, ()>((handle, 0))?;
+        api.fs_flush.call::<()>(handle)?;
+        api.fs_seek.call::<()>((handle, 0))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b"Sugoma Amogus");
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>((handle, 3, 7))?, b"oma Amo");
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>(handle)?, b"gus");
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>((handle, -6))?, b"Amogus");
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?, b"Sugoma Amogus");
+        assert_eq!(api.fs_read.call::<Vec<u8>>((handle, 3, 7))?, b"oma Amo");
+        assert_eq!(api.fs_read.call::<Vec<u8>>(handle)?, b"gus");
+        assert_eq!(api.fs_read.call::<Vec<u8>>((handle, -6))?, b"Amogus");
 
-        api.fs_write.call::<_, ()>((handle, b"Mogusa".to_vec(), 0))?;
-        api.fs_write.call::<_, ()>((handle, b"Susoma".to_vec(), 7))?;
+        api.fs_write.call::<()>((handle, b"Mogusa".to_vec(), 0))?;
+        api.fs_write.call::<()>((handle, b"Susoma".to_vec(), 7))?;
 
-        assert_eq!(api.fs_read.call::<_, Vec<u8>>((handle, 0))?, b"Mogusa Susoma");
+        assert_eq!(api.fs_read.call::<Vec<u8>>((handle, 0))?, b"Mogusa Susoma");
 
-        api.fs_close.call::<_, ()>(handle)?;
+        api.fs_close.call::<()>(handle)?;
 
-        assert!(api.fs_read.call::<_, Vec<u8>>(handle).is_err());
+        assert!(api.fs_read.call::<Vec<u8>>(handle).is_err());
 
         Ok(())
     }
@@ -746,8 +751,7 @@ mod tests {
 
         let path = path.to_string_lossy().to_string();
 
-        let lua = Lua::new();
-        let api = FilesystemAPI::new(&lua)?;
+        let api = FilesystemAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -758,39 +762,39 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", path.clone())?);
 
-        env.call_function::<_, ()>("write_file", (path.clone(), vec![1, 2, 3]))?;
+        env.call_function::<()>("write_file", (path.clone(), vec![1, 2, 3]))?;
 
-        assert!(env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(env.call_function::<bool>("exists", path.clone())?);
 
-        let metadata = env.call_function::<_, LuaTable>("metadata", path.clone())?;
+        let metadata = env.call_function::<LuaTable>("metadata", path.clone())?;
 
-        assert_eq!(metadata.get::<_, u32>("length")?, 3);
-        assert_eq!(metadata.get::<_, String>("type")?, "file");
-        assert!(metadata.get::<_, bool>("is_accessible")?);
+        assert_eq!(metadata.get::<u64>("length")?, 3);
+        assert_eq!(metadata.get::<String>("type")?, "file");
+        assert!(metadata.get::<bool>("is_accessible")?);
 
-        assert_eq!(env.call_function::<_, Vec<u8>>("read_file", path.clone())?, &[1, 2, 3]);
+        assert_eq!(env.call_function::<Vec<u8>>("read_file", path.clone())?, &[1, 2, 3]);
 
-        assert!(env.call_function::<_, ()>("copy", (format!("{path}123"), format!("{path}456"))).is_err());
-        assert!(env.call_function::<_, ()>("copy", (path.clone(), path.clone())).is_err());
+        assert!(env.call_function::<()>("copy", (format!("{path}123"), format!("{path}456"))).is_err());
+        assert!(env.call_function::<()>("copy", (path.clone(), path.clone())).is_err());
 
-        env.call_function::<_, ()>("copy", (path.clone(), format!("{path}_copy")))?;
+        env.call_function::<()>("copy", (path.clone(), format!("{path}_copy")))?;
 
-        assert!(env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
+        assert!(env.call_function::<bool>("exists", format!("{path}_copy"))?);
 
-        env.call_function::<_, ()>("remove_file", path.clone())?;
+        env.call_function::<()>("remove_file", path.clone())?;
 
-        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", path.clone())?);
 
-        env.call_function::<_, ()>("move", (format!("{path}_copy"), path.clone()))?;
+        env.call_function::<()>("move", (format!("{path}_copy"), path.clone()))?;
 
-        assert!(!env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
-        assert!(env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", format!("{path}_copy"))?);
+        assert!(env.call_function::<bool>("exists", path.clone())?);
 
-        env.call_function::<_, ()>("remove", path.clone())?;
+        env.call_function::<()>("remove", path.clone())?;
 
-        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", path.clone())?);
 
         Ok(())
     }
@@ -806,8 +810,7 @@ mod tests {
 
         let path = path.to_string_lossy().to_string();
 
-        let lua = Lua::new();
-        let api = FilesystemAPI::new(&lua)?;
+        let api = FilesystemAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -818,16 +821,16 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", path.clone())?);
 
-        env.call_function::<_, ()>("create_dir", path.clone())?;
+        env.call_function::<()>("create_dir", path.clone())?;
 
-        assert!(env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(env.call_function::<bool>("exists", path.clone())?);
 
-        let metadata = env.call_function::<_, LuaTable>("metadata", path.clone())?;
+        let metadata = env.call_function::<LuaTable>("metadata", path.clone())?;
 
-        assert_eq!(metadata.get::<_, String>("type")?, "folder");
-        assert!(metadata.get::<_, bool>("is_accessible")?);
+        assert_eq!(metadata.get::<String>("type")?, "folder");
+        assert!(metadata.get::<bool>("is_accessible")?);
 
         if !dxvk_path.exists() {
             Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")
@@ -846,34 +849,34 @@ mod tests {
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
 
-        let entries = env.call_function::<_, LuaTable>("read_dir", path.clone())?;
+        let entries = env.call_function::<LuaTable>("read_dir", path.clone())?;
 
         assert_eq!(entries.len()?, 2);
 
         for _ in 0..2 {
             let entry = entries.pop::<LuaTable>()?;
 
-            assert!(["x32", "x64"].contains(&entry.get::<_, String>("name")?.as_str()));
-            assert!(std::fs::exists(&entry.get::<_, String>("path")?)?);
-            assert_eq!(entry.get::<_, String>("type")?, "folder");
+            assert!(["x32", "x64"].contains(&entry.get::<String>("name")?.as_str()));
+            assert!(std::fs::exists(&entry.get::<String>("path")?)?);
+            assert_eq!(entry.get::<String>("type")?, "folder");
         }
 
-        assert!(!env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
+        assert!(!env.call_function::<bool>("exists", format!("{path}_copy"))?);
 
-        env.call_function::<_, ()>("copy", (path.clone(), format!("{path}_copy")))?;
+        env.call_function::<()>("copy", (path.clone(), format!("{path}_copy")))?;
 
-        assert!(env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
+        assert!(env.call_function::<bool>("exists", format!("{path}_copy"))?);
 
-        assert!(env.call_function::<_, ()>("remove_file", path.clone()).is_err());
+        assert!(env.call_function::<()>("remove_file", path.clone()).is_err());
 
-        env.call_function::<_, ()>("remove_dir", path.clone())?;
+        env.call_function::<()>("remove_dir", path.clone())?;
 
-        assert!(!env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", path.clone())?);
 
-        env.call_function::<_, ()>("move", (format!("{path}_copy"), path.clone()))?;
+        env.call_function::<()>("move", (format!("{path}_copy"), path.clone()))?;
 
-        assert!(!env.call_function::<_, bool>("exists", format!("{path}_copy"))?);
-        assert!(env.call_function::<_, bool>("exists", path.clone())?);
+        assert!(!env.call_function::<bool>("exists", format!("{path}_copy"))?);
+        assert!(env.call_function::<bool>("exists", path.clone())?);
 
         assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
 
@@ -899,8 +902,7 @@ mod tests {
                 .or_else(|_| std::fs::remove_dir_all(&path_c));
         }
 
-        let lua = Lua::new();
-        let api = FilesystemAPI::new(&lua)?;
+        let api = FilesystemAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: path_a.clone(),
@@ -920,73 +922,73 @@ mod tests {
             .to_string_lossy()
             .to_string();
 
-        assert!(!env.call_function::<_, bool>("exists", path_a.clone())?);
-        assert!(!env.call_function::<_, bool>("exists", path_b.clone())?);
-        assert!(!env.call_function::<_, bool>("exists", path_c.clone())?);
-        assert!(!env.call_function::<_, bool>("exists", inaccessible_path.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_a.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_b.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_c.clone())?);
+        assert!(!env.call_function::<bool>("exists", inaccessible_path.clone())?);
 
-        env.call_function::<_, ()>("create_file", path_a.clone())?;
+        env.call_function::<()>("create_file", path_a.clone())?;
 
-        assert!(env.call_function::<_, bool>("exists", path_a.clone())?);
+        assert!(env.call_function::<bool>("exists", path_a.clone())?);
 
-        let metadata = env.call_function::<_, LuaTable>("metadata", path_a.clone())?;
+        let metadata = env.call_function::<LuaTable>("metadata", path_a.clone())?;
 
-        assert_eq!(metadata.get::<_, u32>("length")?, 0);
-        assert_eq!(metadata.get::<_, String>("type")?, "file");
-        assert!(metadata.get::<_, bool>("is_accessible")?);
+        assert_eq!(metadata.get::<u64>("length")?, 0);
+        assert_eq!(metadata.get::<String>("type")?, "file");
+        assert!(metadata.get::<bool>("is_accessible")?);
 
-        env.call_function::<_, ()>("write_file", (path_a.clone(), vec![1, 2, 3]))?;
+        env.call_function::<()>("write_file", (path_a.clone(), vec![1, 2, 3]))?;
 
-        assert_eq!(env.call_function::<_, Vec<u8>>("read_file", path_a.clone())?, &[1, 2, 3]);
+        assert_eq!(env.call_function::<Vec<u8>>("read_file", path_a.clone())?, &[1, 2, 3]);
 
-        assert!(env.call_function::<_, ()>("copy", (path_a.clone(), inaccessible_path.clone())).is_err());
-        assert!(env.call_function::<_, ()>("move", (path_a.clone(), inaccessible_path.clone())).is_err());
+        assert!(env.call_function::<()>("copy", (path_a.clone(), inaccessible_path.clone())).is_err());
+        assert!(env.call_function::<()>("move", (path_a.clone(), inaccessible_path.clone())).is_err());
 
-        env.call_function::<_, ()>("move", (path_a.clone(), path_c.clone()))?;
+        env.call_function::<()>("move", (path_a.clone(), path_c.clone()))?;
 
-        assert!(!env.call_function::<_, bool>("exists", path_a.clone())?);
-        assert!(env.call_function::<_, bool>("exists", path_c.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_a.clone())?);
+        assert!(env.call_function::<bool>("exists", path_c.clone())?);
 
-        let handle = env.call_function::<_, u32>("open", path_c.clone())?;
+        let handle = env.call_function::<u32>("open", path_c.clone())?;
 
-        assert_eq!(env.call_function::<_, Vec<u8>>("read", handle)?, &[1, 2, 3]);
+        assert_eq!(env.call_function::<Vec<u8>>("read", handle)?, &[1, 2, 3]);
 
-        env.call_function::<_, ()>("close", handle)?;
-        env.call_function::<_, ()>("remove", path_c.clone())?;
+        env.call_function::<()>("close", handle)?;
+        env.call_function::<()>("remove", path_c.clone())?;
 
-        assert!(!env.call_function::<_, bool>("exists", path_c.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_c.clone())?);
 
-        env.call_function::<_, ()>("create_dir", path_b.clone())?;
+        env.call_function::<()>("create_dir", path_b.clone())?;
 
-        assert!(env.call_function::<_, bool>("exists", path_b.clone())?);
+        assert!(env.call_function::<bool>("exists", path_b.clone())?);
 
-        let metadata = env.call_function::<_, LuaTable>("metadata", path_b.clone())?;
+        let metadata = env.call_function::<LuaTable>("metadata", path_b.clone())?;
 
-        assert_eq!(metadata.get::<_, String>("type")?, "folder");
-        assert!(metadata.get::<_, bool>("is_accessible")?);
+        assert_eq!(metadata.get::<String>("type")?, "folder");
+        assert!(metadata.get::<bool>("is_accessible")?);
 
-        assert!(env.call_function::<_, ()>("copy", (path_b.clone(), inaccessible_path.clone())).is_err());
-        assert!(env.call_function::<_, ()>("move", (path_b.clone(), inaccessible_path.clone())).is_err());
+        assert!(env.call_function::<()>("copy", (path_b.clone(), inaccessible_path.clone())).is_err());
+        assert!(env.call_function::<()>("move", (path_b.clone(), inaccessible_path.clone())).is_err());
 
-        env.call_function::<_, ()>("move", (path_b.clone(), path_c.clone()))?;
+        env.call_function::<()>("move", (path_b.clone(), path_c.clone()))?;
 
-        assert!(!env.call_function::<_, bool>("exists", path_b.clone())?);
-        assert!(env.call_function::<_, bool>("exists", path_c.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_b.clone())?);
+        assert!(env.call_function::<bool>("exists", path_c.clone())?);
 
-        env.call_function::<_, ()>("create_file", format!("{path_c}/test"))?;
+        env.call_function::<()>("create_file", format!("{path_c}/test"))?;
 
-        assert_eq!(env.call_function::<_, LuaTable>("read_dir", path_c.clone())?.raw_len(), 1);
+        assert_eq!(env.call_function::<LuaTable>("read_dir", path_c.clone())?.raw_len(), 1);
 
-        env.call_function::<_, ()>("remove", path_c.clone())?;
+        env.call_function::<()>("remove", path_c.clone())?;
 
-        assert!(!env.call_function::<_, bool>("exists", path_c.clone())?);
+        assert!(!env.call_function::<bool>("exists", path_c.clone())?);
 
-        assert!(env.call_function::<_, ()>("create_file", inaccessible_path.clone()).is_err());
-        assert!(env.call_function::<_, ()>("create_dir", inaccessible_path.clone()).is_err());
-        assert!(env.call_function::<_, Vec<u8>>("read_file", inaccessible_path.clone()).is_err());
-        assert!(env.call_function::<_, LuaTable>("read_dir", inaccessible_path.clone()).is_err());
-        assert!(env.call_function::<_, ()>("write_file", (inaccessible_path.clone(), vec![1, 2, 3])).is_err());
-        assert!(env.call_function::<_, u32>("open", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<()>("create_file", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<()>("create_dir", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<Vec<u8>>("read_file", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<LuaTable>("read_dir", inaccessible_path.clone()).is_err());
+        assert!(env.call_function::<()>("write_file", (inaccessible_path.clone(), vec![1, 2, 3])).is_err());
+        assert!(env.call_function::<u32>("open", inaccessible_path.clone()).is_err());
 
         Ok(())
     }

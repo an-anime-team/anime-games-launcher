@@ -82,7 +82,7 @@ pub fn serve_generation(
     }
 
     // Load generation's lock file into the packages engine.
-    let engine = match PackagesEngine::create(&lua, &packages_store, generation.lock_file, validator) {
+    let engine = match PackagesEngine::create(lua.clone(), &packages_store, generation.lock_file, validator) {
         Ok(engine) => engine,
         Err(err) => {
             tracing::error!(?err, "Failed to load locked packages to the lua engine");
@@ -115,7 +115,7 @@ pub fn serve_generation(
         };
 
         let module = match engine.load_resource(integration_resource) {
-            Ok(Some(module)) => match module.get::<_, LuaTable>("value") {
+            Ok(Some(module)) => match module.get::<LuaTable>("value") {
                 Ok(module) => module,
                 Err(err) => {
                     tracing::error!(
@@ -157,7 +157,7 @@ pub fn serve_generation(
             }
         };
 
-        let engine = match GameEngine::from_lua(&lua, &module) {
+        let engine = match GameEngine::from_lua(lua.clone(), &module) {
             Ok(engine) => engine,
             Err(err) => {
                 tracing::error!(?err, "Failed to create game integration engine from the loaded package");

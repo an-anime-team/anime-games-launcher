@@ -20,13 +20,13 @@ pub use v1_standard::{
 
 #[derive(Debug, Clone)]
 /// Unified wrapper around game integration standards.
-pub enum GameEngine<'lua> {
-    V1(v1_standard::GameIntegration<'lua>)
+pub enum GameEngine {
+    V1(v1_standard::GameIntegration)
 }
 
-impl<'lua> GameEngine<'lua> {
-    pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
-        match table.get::<_, u32>("standard")? {
+impl GameEngine {
+    pub fn from_lua(lua: Lua, table: &LuaTable) -> Result<Self, LuaError> {
+        match table.get::<u32>("standard")? {
             1 => Ok(Self::V1(v1_standard::GameIntegration::from_lua(lua, table)?)),
 
             _ => Err(LuaError::external("unsupported game integration standard"))

@@ -68,7 +68,7 @@ flume = "0.11"
 
 clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1.40", features = ["rt-multi-thread", "macros", "fs", "io-std"] }
-mlua = { version = "0.9", features = ["luau-jit", "serialize"] }
+mlua = { version = "0.10", features = ["luau-jit", "serialize", "error-send"] }
 
 bufreaderwriter = "0.2.4"
 rusqlite = { version = "0.34", features = ["bundled"] }

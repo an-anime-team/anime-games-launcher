@@ -9,27 +9,25 @@ use super::*;
 
 const PROCESS_READ_CHUNK_LEN: usize = 1024;
 
-pub struct ProcessAPI<'lua> {
-    lua: &'lua Lua,
+pub struct ProcessAPI {
+    lua: Lua,
 
-    process_exec: LuaFunctionBuilder<'lua>,
-    process_open: LuaFunctionBuilder<'lua>,
-    process_stdin: LuaFunction<'lua>,
-    process_stdout: LuaFunction<'lua>,
-    process_stderr: LuaFunction<'lua>,
-    process_kill: LuaFunction<'lua>,
-    process_wait: LuaFunction<'lua>,
-    process_finished: LuaFunction<'lua>
+    process_exec: LuaFunctionBuilder,
+    process_open: LuaFunctionBuilder,
+    process_stdin: LuaFunction,
+    process_stdout: LuaFunction,
+    process_stderr: LuaFunction,
+    process_kill: LuaFunction,
+    process_wait: LuaFunction,
+    process_finished: LuaFunction
 }
 
-impl<'lua> ProcessAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl ProcessAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let process_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            lua,
-
-            process_exec: Box::new(|lua: &'lua Lua, context: &Context| {
+            process_exec: Box::new(|lua: &Lua, context: &Context| {
                 let module_folder = context.module_folder.clone();
 
                 lua.create_function(move |lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
@@ -80,7 +78,7 @@ impl<'lua> ProcessAPI<'lua> {
             process_open: {
                 let process_handles = process_handles.clone();
 
-                Box::new(move |lua: &'lua Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &Context| {
                     let module_folder = context.module_folder.clone();
                     let process_handles = process_handles.clone();
 
@@ -259,16 +257,23 @@ impl<'lua> ProcessAPI<'lua> {
 
                     Ok(process.try_wait()?.is_some())
                 })?
-            }
+            },
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
-        env.set("exec", (self.process_exec)(self.lua, context)?)?;
-        env.set("open", (self.process_open)(self.lua, context)?)?;
+        env.set("exec", (self.process_exec)(&self.lua, context)?)?;
+        env.set("open", (self.process_open)(&self.lua, context)?)?;
         env.set("stdin", self.process_stdin.clone())?;
         env.set("stdout", self.process_stdout.clone())?;
         env.set("stderr", self.process_stderr.clone())?;
@@ -286,8 +291,7 @@ mod tests {
 
     #[test]
     fn process_exec() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let api = ProcessAPI::new(&lua)?;
+        let api = ProcessAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -298,24 +302,23 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        let output = env.call_function::<_, LuaTable>("exec", (
+        let output = env.call_function::<LuaTable>("exec", (
             "bash", ["-c", "echo $TEST"],
             HashMap::from([
                 ("TEST", "Hello, World!")
             ])
         ))?;
 
-        assert_eq!(output.get::<_, i32>("status")?, 0);
-        assert!(output.get::<_, bool>("is_ok")?);
-        assert_eq!(output.get::<_, Vec<u8>>("stdout")?, b"Hello, World!\n");
+        assert_eq!(output.get::<i32>("status")?, 0);
+        assert!(output.get::<bool>("is_ok")?);
+        assert_eq!(output.get::<Vec<u8>>("stdout")?, b"Hello, World!\n");
 
         Ok(())
     }
 
     #[test]
     fn process_open() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let api = ProcessAPI::new(&lua)?;
+        let api = ProcessAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -326,24 +329,24 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        let handle = env.call_function::<_, u32>("open", (
+        let handle = env.call_function::<u32>("open", (
             "bash", ["-c", "echo $TEST"],
             HashMap::from([
                 ("TEST", "Hello, World!")
             ])
         ))?;
 
-        while !api.process_finished.call::<_, bool>(handle)? {
+        while !api.process_finished.call::<bool>(handle)? {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
 
-        assert_eq!(api.process_stdout.call::<_, Vec<u8>>(handle)?, b"Hello, World!\n");
+        assert_eq!(api.process_stdout.call::<Vec<u8>>(handle)?, b"Hello, World!\n");
 
-        let output = api.process_wait.call::<_, LuaTable>(handle)?;
+        let output = api.process_wait.call::<LuaTable>(handle)?;
 
-        assert_eq!(output.get::<_, i32>("status")?, 0);
-        assert!(output.get::<_, bool>("is_ok")?);
-        assert!(output.get::<_, Vec<u8>>("stdout")?.is_empty());
+        assert_eq!(output.get::<i32>("status")?, 0);
+        assert!(output.get::<bool>("is_ok")?);
+        assert!(output.get::<Vec<u8>>("stdout")?.is_empty());
 
         Ok(())
     }

@@ -9,8 +9,8 @@ pub struct GameSettingsGroup {
     pub entries: Vec<GameSettingsEntry>
 }
 
-impl<'lua> AsLua<'lua> for GameSettingsGroup {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for GameSettingsGroup {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 3)?;
 
         if let Some(title) = &self.title {
@@ -32,12 +32,12 @@ impl<'lua> AsLua<'lua> for GameSettingsGroup {
         Ok(LuaValue::Table(table))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         let value = value.as_table()
             .ok_or_else(|| AsLuaError::InvalidFieldValue("settings[]"))?;
 
         Ok(Self {
-            title: value.get::<_, LuaValue>("title")
+            title: value.get::<LuaValue>("title")
                 .map(|title| -> Result<Option<LocalizableString>, AsLuaError> {
                     if title.is_nil() || title.is_null() {
                         Ok(None)
@@ -47,7 +47,7 @@ impl<'lua> AsLua<'lua> for GameSettingsGroup {
                 })
                 .unwrap_or(Ok(None))?,
 
-            description: value.get::<_, LuaValue>("description")
+            description: value.get::<LuaValue>("description")
                 .map(|desc| -> Result<Option<LocalizableString>, AsLuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
@@ -57,7 +57,7 @@ impl<'lua> AsLua<'lua> for GameSettingsGroup {
                 })
                 .unwrap_or(Ok(None))?,
 
-            entries: value.get::<_, Vec<LuaValue>>("entries")
+            entries: value.get::<Vec<LuaValue>>("entries")
                 .map_err(|_| AsLuaError::InvalidFieldValue("settings[].entries"))?
                 .iter()
                 .map(GameSettingsEntry::from_lua)
@@ -75,8 +75,8 @@ pub struct GameSettingsEntry {
     pub entry: GameSettingsEntryFormat
 }
 
-impl<'lua> AsLua<'lua> for GameSettingsEntry {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for GameSettingsEntry {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 5)?;
 
         table.set("title", self.title.to_lua(lua)?)?;
@@ -97,12 +97,12 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
         Ok(LuaValue::Table(table))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         let value = value.as_table()
             .ok_or_else(|| AsLuaError::InvalidFieldValue("settings.entries[]"))?;
 
         Ok(Self {
-            name: value.get::<_, LuaValue>("name")
+            name: value.get::<LuaValue>("name")
                 .map(|name| -> Result<Option<String>, AsLuaError> {
                     if name.is_nil() || name.is_null() {
                         Ok(None)
@@ -112,11 +112,11 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
                 })
                 .unwrap_or(Ok(None))?,
 
-            title: value.get::<_, LuaValue>("title")
+            title: value.get::<LuaValue>("title")
                 .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].title"))
                 .and_then(|title| LocalizableString::from_lua(&title))?,
 
-            description: value.get::<_, LuaValue>("description")
+            description: value.get::<LuaValue>("description")
                 .map(|desc| -> Result<Option<LocalizableString>, AsLuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
@@ -126,7 +126,7 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
                 })
                 .unwrap_or(Ok(None))?,
 
-            reactivity: value.get::<_, LuaValue>("reactivity")
+            reactivity: value.get::<LuaValue>("reactivity")
                 .map(|reactivity| -> Result<Option<GameSettingsEntryReactivity>, AsLuaError> {
                     if reactivity.is_nil() || reactivity.is_null() {
                         Ok(None)
@@ -136,7 +136,7 @@ impl<'lua> AsLua<'lua> for GameSettingsEntry {
                 })
                 .unwrap_or(Ok(None))?,
 
-            entry: value.get::<_, LuaValue>("entry")
+            entry: value.get::<LuaValue>("entry")
                 .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry"))
                 .and_then(|title| GameSettingsEntryFormat::from_lua(&title))?
         })
@@ -157,8 +157,8 @@ pub enum GameSettingsEntryReactivity {
     Release
 }
 
-impl<'lua> AsLua<'lua> for GameSettingsEntryReactivity {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for GameSettingsEntryReactivity {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let value = match self {
             Self::None    => "none",
             Self::Relaxed => "relaxed",
@@ -168,7 +168,7 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryReactivity {
         Ok(LuaValue::String(lua.create_string(value)?))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         match value.to_string()?.as_str() {
             "none"    => Ok(Self::None),
             "relaxed" => Ok(Self::Relaxed),
@@ -201,8 +201,8 @@ pub enum GameSettingsEntryFormat {
     }
 }
 
-impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for GameSettingsEntryFormat {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 3)?;
 
         match self {
@@ -243,14 +243,14 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
         Ok(LuaValue::Table(table))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         let value = value.as_table()
             .ok_or_else(|| AsLuaError::InvalidFieldValue("settings.entries[].entry"))?;
 
-        let format = value.get::<_, LuaString>("format")
+        let format = value.get::<LuaString>("format")
             .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.format"))?;
 
-        match format.as_bytes() {
+        match format.as_bytes().as_ref() {
             b"switch" => Ok(Self::Switch {
                 value: value.get("value")
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.value"))?
@@ -262,7 +262,7 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
             }),
 
             b"enum" => Ok(Self::Enum {
-                values: value.get::<_, LuaTable>("values")
+                values: value.get::<LuaTable>("values")
                     .and_then(|values| {
                         let mut table = Vec::with_capacity(values.len()? as usize);
 
@@ -279,13 +279,13 @@ impl<'lua> AsLua<'lua> for GameSettingsEntryFormat {
                     })
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.values"))?,
 
-                selected: value.get::<_, LuaString>("selected")
+                selected: value.get::<LuaString>("selected")
                     .map(|selected| selected.to_string_lossy().to_string())
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.selected"))?
             }),
 
             b"expandable" => Ok(Self::Expandable {
-                entries: value.get::<_, Vec<LuaValue>>("entries")
+                entries: value.get::<Vec<LuaValue>>("entries")
                     .map_err(|_| AsLuaError::InvalidFieldValue("settings.entries[].entry.entries"))
                     .and_then(|entries| {
                         entries.iter()

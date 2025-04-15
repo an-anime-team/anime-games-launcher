@@ -3,27 +3,27 @@ use mlua::prelude::*;
 use super::*;
 
 #[derive(Debug, Clone)]
-pub struct PipelineAction<'lua> {
-    lua: &'lua Lua,
+pub struct PipelineAction {
+    lua: Lua,
 
     title: LocalizableString,
     description: Option<LocalizableString>,
 
-    before: Option<LuaFunction<'lua>>,
-    perform: LuaFunction<'lua>,
-    after: Option<LuaFunction<'lua>>
+    before: Option<LuaFunction>,
+    perform: LuaFunction,
+    after: Option<LuaFunction>
 }
 
-impl<'lua> PipelineAction<'lua> {
-    pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
+impl PipelineAction {
+    pub fn from_lua(lua: Lua, table: &LuaTable) -> Result<Self, LuaError> {
         Ok(Self {
             lua,
 
-            title: table.get::<_, LuaValue>("title")
+            title: table.get::<LuaValue>("title")
                 .map_err(AsLuaError::LuaError)
                 .and_then(|title| LocalizableString::from_lua(&title))?,
 
-            description: table.get::<_, LuaValue>("description")
+            description: table.get::<LuaValue>("description")
                 .map(|desc| -> Result<Option<LocalizableString>, LuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
@@ -33,9 +33,9 @@ impl<'lua> PipelineAction<'lua> {
                 })
                 .unwrap_or(Ok(None))?,
 
-            before: table.get::<_, LuaFunction>("before").ok(),
+            before: table.get::<LuaFunction>("before").ok(),
             perform: table.get("perform")?,
-            after: table.get::<_, LuaFunction>("after").ok()
+            after: table.get::<LuaFunction>("after").ok()
         })
     }
 
@@ -64,7 +64,7 @@ impl<'lua> PipelineAction<'lua> {
             Ok(progress(ProgressReport::from_lua(&report)?))
         })?;
 
-        before.call::<_, bool>(progress).map(Some)
+        before.call::<bool>(progress).map(Some)
     }
 
     /// Perform the action.
@@ -75,7 +75,7 @@ impl<'lua> PipelineAction<'lua> {
             Ok(())
         })?;
 
-        self.perform.call::<_, ()>(progress)
+        self.perform.call::<()>(progress)
     }
 
     /// Call `after` hook if it's specified.
@@ -91,6 +91,6 @@ impl<'lua> PipelineAction<'lua> {
             Ok(progress(ProgressReport::from_lua(&report)?))
         })?;
 
-        after.call::<_, bool>(progress).map(Some)
+        after.call::<bool>(progress).map(Some)
     }
 }

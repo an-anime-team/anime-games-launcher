@@ -14,7 +14,7 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
 
     // Change the request method if provided.
     if let Some(options) = &options {
-        method = options.get::<_, String>("method")
+        method = options.get::<String>("method")
             .unwrap_or(String::from("get"));
     }
 
@@ -34,7 +34,7 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
 
     // Set request header and body if provided.
     if let Some(options) = &options {
-        if let Ok(headers) = options.get::<_, LuaTable>("headers") {
+        if let Ok(headers) = options.get::<LuaTable>("headers") {
             for pair in headers.pairs::<LuaString, LuaString>() {
                 let (key, value) = pair?;
 
@@ -45,7 +45,7 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
             }
         }
 
-        if let Ok(body) = options.get::<_, LuaValue>("body") {
+        if let Ok(body) = options.get::<LuaValue>("body") {
             request = match body {
                 LuaValue::String(str) => request.body(str.as_bytes().to_vec()),
 
@@ -67,25 +67,23 @@ fn create_request(client: &Arc<Client>, url: impl AsRef<str>, options: Option<Lu
     Ok(request)
 }
 
-pub struct NetworkAPI<'lua> {
-    lua: &'lua Lua,
+pub struct NetworkAPI {
+    lua: Lua,
 
-    net_fetch: LuaFunction<'lua>,
-    net_open: LuaFunction<'lua>,
-    net_read: LuaFunction<'lua>,
-    net_close: LuaFunction<'lua>
+    net_fetch: LuaFunction,
+    net_open: LuaFunction,
+    net_read: LuaFunction,
+    net_close: LuaFunction
 }
 
-impl<'lua> NetworkAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl NetworkAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let builder = STARTUP_CONFIG.general.network.builder()?;
 
         let net_client = Arc::new(builder.build()?);
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            lua,
-
             net_fetch: {
                 let net_client = net_client.clone();
 
@@ -201,12 +199,19 @@ impl<'lua> NetworkAPI<'lua> {
 
                     Ok(())
                 })?
-            }
+            },
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.set("fetch", self.net_fetch.clone())?;
@@ -224,37 +229,35 @@ mod tests {
 
     #[test]
     fn net_fetch() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let api = NetworkAPI::new(&lua)?;
+        let api = NetworkAPI::new(Lua::new())?;
 
-        let response = api.net_fetch.call::<_, LuaTable>(
+        let response = api.net_fetch.call::<LuaTable>(
             "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/tests/packages/1/package.json"
         )?;
 
-        assert_eq!(response.get::<_, u16>("status")?, 200);
-        assert!(response.get::<_, bool>("is_ok")?);
-        assert_eq!(Hash::for_slice(&response.get::<_, Vec<u8>>("body")?), Hash(9442626994218140953));
+        assert_eq!(response.get::<u16>("status")?, 200);
+        assert!(response.get::<bool>("is_ok")?);
+        assert_eq!(Hash::for_slice(&response.get::<Vec<u8>>("body")?), Hash(9442626994218140953));
 
         Ok(())
     }
 
     #[test]
     fn net_read() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let api = NetworkAPI::new(&lua)?;
+        let api = NetworkAPI::new(Lua::new())?;
 
-        let header = api.net_open.call::<_, LuaTable>(
+        let header = api.net_open.call::<LuaTable>(
             "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz"
         )?;
 
-        assert_eq!(header.get::<_, u16>("status")?, 200);
-        assert!(header.get::<_, bool>("is_ok")?);
+        assert_eq!(header.get::<u16>("status")?, 200);
+        assert!(header.get::<bool>("is_ok")?);
 
-        let handle = header.get::<_, u32>("handle")?;
+        let handle = header.get::<u32>("handle")?;
 
         let mut body_len = 0;
 
-        while let Some(chunk) = api.net_read.call::<_, Option<Vec<u8>>>(handle)? {
+        while let Some(chunk) = api.net_read.call::<Option<Vec<u8>>>(handle)? {
             body_len += chunk.len();
         }
 

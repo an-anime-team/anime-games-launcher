@@ -137,8 +137,8 @@ impl AsJson for LocalizableString {
     }
 }
 
-impl<'lua> AsLua<'lua> for LocalizableString {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for LocalizableString {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         match self {
             Self::Raw(string) => Ok(LuaValue::String(lua.create_string(string)?)),
 
@@ -154,7 +154,7 @@ impl<'lua> AsLua<'lua> for LocalizableString {
         }
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         if let Some(translations) = value.as_table().cloned() {
             let mut table = HashMap::new();
 

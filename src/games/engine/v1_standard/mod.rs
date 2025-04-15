@@ -25,28 +25,28 @@ pub use progress_report::*;
 pub use game_settings::*;
 
 #[derive(Debug, Clone)]
-pub struct GameIntegration<'lua> {
-    lua: &'lua Lua,
+pub struct GameIntegration {
+    lua: Lua,
 
-    editions: LuaFunction<'lua>,
+    editions: LuaFunction,
 
-    game_get_status: LuaFunction<'lua>,
-    game_get_diff: LuaFunction<'lua>,
-    game_get_launch_info: LuaFunction<'lua>,
+    game_get_status: LuaFunction,
+    game_get_diff: LuaFunction,
+    game_get_launch_info: LuaFunction,
 
-    settings_get_property: Option<LuaFunction<'lua>>,
-    settings_set_property: Option<LuaFunction<'lua>>,
-    settings_get_layout: Option<LuaFunction<'lua>>
+    settings_get_property: Option<LuaFunction>,
+    settings_set_property: Option<LuaFunction>,
+    settings_get_layout: Option<LuaFunction>
 }
 
-impl<'lua> GameIntegration<'lua> {
-    pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
-        if table.get::<_, u32>("standard")? != 1 {
+impl GameIntegration {
+    pub fn from_lua(lua: Lua, table: &LuaTable) -> Result<Self, LuaError> {
+        if table.get::<u32>("standard")? != 1 {
             return Err(LuaError::external("invalid game integration standard, v1 expected"));
         }
 
-        let game = table.get::<_, LuaTable>("game")?;
-        let settings = table.get::<_, LuaTable>("settings").ok();
+        let game = table.get::<LuaTable>("game")?;
+        let settings = table.get::<LuaTable>("settings").ok();
 
         Ok(Self {
             lua,
@@ -63,10 +63,9 @@ impl<'lua> GameIntegration<'lua> {
         })
     }
 
-    #[inline]
     /// Get list of available game editions.
     pub fn editions(&self, platform: TargetPlatform) -> Result<Vec<GameEdition>, LuaError> {
-        self.editions.call::<_, Vec<LuaTable>>(platform.to_string())
+        self.editions.call::<Vec<LuaTable>>(platform.to_string())
             .and_then(|editions| {
                 editions.iter()
                     .map(GameEdition::try_from)
@@ -76,22 +75,22 @@ impl<'lua> GameIntegration<'lua> {
 
     /// Get status of the game installation.
     pub fn game_status(&self, variant: impl AsRef<GameVariant>) -> Result<InstallationStatus, LuaError> {
-        self.game_get_status.call::<_, LuaString>(variant.as_ref().to_lua(self.lua)?)
+        self.game_get_status.call::<LuaString>(variant.as_ref().to_lua(&self.lua)?)
             .and_then(|status| InstallationStatus::from_str(&status.to_string_lossy()))
     }
 
     /// Get installation diff.
     pub fn game_diff(&self, variant: impl AsRef<GameVariant>) -> Result<Option<InstallationDiff>, LuaError> {
-        self.game_get_diff.call::<_, Option<LuaTable>>(variant.as_ref().to_lua(self.lua)?)
+        self.game_get_diff.call::<Option<LuaTable>>(variant.as_ref().to_lua(&self.lua)?)
             .and_then(|diff| {
-                diff.map(|diff| InstallationDiff::from_lua(self.lua, &diff))
+                diff.map(|diff| InstallationDiff::from_lua(self.lua.clone(), &diff))
                     .transpose()
             })
     }
 
     /// Get params used to launch the game.
     pub fn game_launch_info(&self, variant: impl AsRef<GameVariant>) -> Result<GameLaunchInfo, AsLuaError> {
-        self.game_get_launch_info.call::<_, LuaValue>(variant.as_ref().to_lua(self.lua)?)
+        self.game_get_launch_info.call::<LuaValue>(variant.as_ref().to_lua(&self.lua)?)
             .map_err(AsLuaError::LuaError)
             .and_then(|info| GameLaunchInfo::from_lua(&info))
     }
@@ -101,7 +100,7 @@ impl<'lua> GameIntegration<'lua> {
     /// Return `Ok(None)` if settings are not specified.
     pub fn get_property(&self, name: impl AsRef<str>) -> Result<Option<LuaValue>, AsLuaError> {
         match &self.settings_get_property {
-            Some(get_property) => get_property.call::<_, LuaValue>(name.as_ref())
+            Some(get_property) => get_property.call::<LuaValue>(name.as_ref())
                 .map(Some)
                 .map_err(AsLuaError::LuaError),
 
@@ -114,7 +113,7 @@ impl<'lua> GameIntegration<'lua> {
     /// Do nothing if settings are not specified.
     pub fn set_property(&self, name: impl AsRef<str>, value: LuaValue) -> Result<(), AsLuaError> {
         match &self.settings_set_property {
-            Some(set_property) => set_property.call::<_, ()>((name.as_ref(), value))
+            Some(set_property) => set_property.call::<()>((name.as_ref(), value))
                 .map_err(AsLuaError::LuaError),
 
             None => Ok(())
@@ -126,7 +125,7 @@ impl<'lua> GameIntegration<'lua> {
     /// Return `Ok(None)` if settings are not specified.
     pub fn get_settings_layout(&self, variant: impl AsRef<GameVariant>) -> Result<Option<Vec<GameSettingsGroup>>, AsLuaError> {
         match &self.settings_get_layout {
-            Some(get_layout) => get_layout.call::<_, Vec<LuaValue>>(variant.as_ref().to_lua(self.lua)?)
+            Some(get_layout) => get_layout.call::<Vec<LuaValue>>(variant.as_ref().to_lua(&self.lua)?)
                 .map_err(AsLuaError::LuaError)
                 .and_then(|groups| {
                     groups.iter()

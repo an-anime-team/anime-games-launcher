@@ -11,16 +11,16 @@ pub struct GameEdition {
     pub title: LocalizableString
 }
 
-impl TryFrom<&LuaTable<'_>> for GameEdition {
+impl TryFrom<&LuaTable> for GameEdition {
     type Error = LuaError;
 
-    fn try_from(value: &LuaTable<'_>) -> Result<Self, Self::Error> {
+    fn try_from(value: &LuaTable) -> Result<Self, Self::Error> {
         Ok(Self {
-            name: value.get::<_, LuaString>("name")?
+            name: value.get::<LuaString>("name")?
                 .to_string_lossy()
                 .to_string(),
 
-            title: value.get::<_, LuaValue>("title")
+            title: value.get::<LuaValue>("title")
                 .map_err(AsLuaError::LuaError)
                 .and_then(|title| LocalizableString::from_lua(&title))?
         })

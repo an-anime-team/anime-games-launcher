@@ -36,8 +36,8 @@ impl Default for GameLaunchInfo {
     }
 }
 
-impl<'lua> AsLua<'lua> for GameLaunchInfo {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for GameLaunchInfo {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 5)?;
 
         table.set("status", lua.create_string(self.status.to_string())?)?;
@@ -70,23 +70,23 @@ impl<'lua> AsLua<'lua> for GameLaunchInfo {
         Ok(LuaValue::Table(table))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         let value = value.as_table()
             .ok_or_else(|| AsLuaError::InvalidFieldValue("<game launch info>"))?;
 
         Ok(Self {
-            status: value.get::<_, LuaString>("status")
+            status: value.get::<LuaString>("status")
                 .map(|status| GameLaunchStatus::from_str(&status.to_string_lossy()))
                 .unwrap_or_else(|_| Ok(GameLaunchStatus::default()))?,
 
-            hint: value.get::<_, LuaValue>("hint")
+            hint: value.get::<LuaValue>("hint")
                 .map(|hint| LocalizableString::from_lua(&hint).map(Some))
                 .unwrap_or(Ok(None))?,
 
-            binary: value.get::<_, LuaString>("binary")
+            binary: value.get::<LuaString>("binary")
                 .map(|binary| PathBuf::from(binary.to_string_lossy().to_string()))?,
 
-            args: value.get::<_, Vec<LuaString>>("args")
+            args: value.get::<Vec<LuaString>>("args")
                 .map(|args| {
                     args.into_iter()
                         .map(|arg| arg.to_string_lossy().to_string())
@@ -95,7 +95,7 @@ impl<'lua> AsLua<'lua> for GameLaunchInfo {
                 .map(Some)
                 .unwrap_or_default(),
 
-            env: value.get::<_, LuaTable>("env")
+            env: value.get::<LuaTable>("env")
                 .map(|env| {
                     env.pairs::<LuaString, LuaString>()
                         .map(|pair| {

@@ -1,5 +1,6 @@
 use std::collections::{HashSet, VecDeque};
-use std::sync::Arc;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, RwLock};
 use std::str::FromStr;
 use std::path::PathBuf;
 
@@ -18,6 +19,9 @@ pub enum PackagesEngineError {
     #[error("Lua engine error: {0}")]
     Lua(#[from] LuaError),
 
+    #[error("Failed to lock lua registry key")]
+    LuaRegistryKeyLock,
+
     #[error("Network error: {0}")]
     Reqwest(#[from] reqwest::Error),
 
@@ -25,19 +29,19 @@ pub enum PackagesEngineError {
     InvalidResourceFormat(String)
 }
 
-pub struct PackagesEngine<'lua> {
-    lua: &'lua Lua,
-    engine_registry: Arc<LuaRegistryKey>,
+pub struct PackagesEngine {
+    lua: Lua,
+    engine_registry: Arc<RwLock<LuaRegistryKey>>,
     lock_file: LockFileManifest,
 
-    _v1_standard: v1_standard::Standard<'lua>
+    v1_standard: v1_standard::Standard
 }
 
-impl<'lua> PackagesEngine<'lua> {
+impl PackagesEngine {
     /// Create new packages engine and load all the resources from the provided
     /// lock file with permissions granted in the provided authority indexes.
     pub fn create(
-        lua: &'lua Lua,
+        lua: Lua,
         store: &PackagesStore,
         lock_file: LockFileManifest,
         validator: AuthorityValidator
@@ -48,7 +52,7 @@ impl<'lua> PackagesEngine<'lua> {
         // Lua tables are shared (like in JS) so I can store them right there.
         engine_table.set("resources", resources_table.clone())?;
 
-        let engine_registry = Arc::new(lua.create_registry_value(engine_table)?);
+        let engine_registry = Arc::new(RwLock::new(lua.create_registry_value(engine_table)?));
 
         let mut resources = VecDeque::with_capacity(lock_file.resources.len());
         let mut visited_resources = HashSet::new();
@@ -66,7 +70,7 @@ impl<'lua> PackagesEngine<'lua> {
         }
 
         // Prepare modules standard implementations.
-        let v1_standard = v1_standard::Standard::new(lua)?;
+        let v1_standard = v1_standard::Standard::new(lua.clone())?;
 
         // Push root resources to the processing queue.
         for root in &lock_file.root {
@@ -145,43 +149,48 @@ impl<'lua> PackagesEngine<'lua> {
                     let mut parent_hash = None;
 
                     if let Some(parent_context) = parent_context {
-                        let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
+                        let engine_registry = engine_registry.read()
+                            .map_err(|_| PackagesEngineError::LuaRegistryKeyLock)?;
+
+                        let engine_table: LuaTable = lua.registry_value(engine_registry.deref())?;
+
+                        drop(engine_registry);
 
                         // Load the parent resource table from the engine.
-                        let resources_table = engine_table.get::<_, LuaTable>("resources")?;
-                        let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
+                        let resources_table = engine_table.get::<LuaTable>("resources")?;
+                        let parent_resource = resources_table.get::<LuaTable>(parent_context)?;
 
                         // Try to parse its format and hash.
-                        let parent_format = parent_resource.get::<_, String>("format")?;
+                        let parent_format = parent_resource.get::<String>("format")?;
 
                         let Ok(parent_format) = PackageResourceFormat::from_str(&parent_format) else {
                             return Err(PackagesEngineError::InvalidResourceFormat(parent_format));
                         };
 
-                        parent_hash = Hash::from_base32(parent_resource.get::<_, String>("hash")?);
+                        parent_hash = Hash::from_base32(parent_resource.get::<String>("hash")?);
 
                         // Look into inputs of the parent resource if it's a package.
                         if parent_format == PackageResourceFormat::Package {
                             // Read the inputs of the parent package.
-                            let parent_value = parent_resource.get::<_, LuaTable>("value")?;
-                            let parent_inputs_table = parent_value.get::<_, LuaTable>("inputs")?;
+                            let parent_value = parent_resource.get::<LuaTable>("value")?;
+                            let parent_inputs_table = parent_value.get::<LuaTable>("inputs")?;
 
                             // Iterate over input resources.
                             for resource_key in parent_inputs_table.pairs::<LuaValue, u32>() {
                                 let (_, resource_key) = resource_key?;
 
                                 // Load the requested input resource.
-                                let resource = resources_table.get::<_, LuaTable>(resource_key)?;
+                                let resource = resources_table.get::<LuaTable>(resource_key)?;
 
                                 // Try to parse its format.
-                                let resource_format = resource.get::<_, String>("format")?;
+                                let resource_format = resource.get::<String>("format")?;
 
                                 let Ok(resource_format) = PackageResourceFormat::from_str(&resource_format) else {
                                     return Err(PackagesEngineError::InvalidResourceFormat(resource_format));
                                 };
 
                                 if matches!(resource_format, PackageResourceFormat::File | PackageResourceFormat::Archive(_)) {
-                                    let path = resource.get::<_, String>("value")?;
+                                    let path = resource.get::<String>("value")?;
 
                                     input_resources.push(PathBuf::from(path));
                                 }
@@ -247,14 +256,19 @@ impl<'lua> PackagesEngine<'lua> {
 
                                     // Read the parent package if it exists (must be at this point).
                                     if let Some(parent_context) = parent_context {
-                                        let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
+                                        let engine_registry = engine_registry.read()
+                                            .map_err(|err| LuaError::external(format!("failed to lock registry key: {err}")))?;
+
+                                        let engine_table: LuaTable = lua.registry_value(engine_registry.deref())?;
+
+                                        drop(engine_registry);
 
                                         // Load the parent resource table from the engine.
-                                        let resources_table = engine_table.get::<_, LuaTable>("resources")?;
-                                        let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
+                                        let resources_table = engine_table.get::<LuaTable>("resources")?;
+                                        let parent_resource = resources_table.get::<LuaTable>(parent_context)?;
 
                                         // Try to parse its format.
-                                        let Ok(parent_format) = PackageResourceFormat::from_str(&parent_resource.get::<_, String>("format")?) else {
+                                        let Ok(parent_format) = PackageResourceFormat::from_str(&parent_resource.get::<String>("format")?) else {
                                             return Err(LuaError::external("unknown parent resource format"));
                                         };
 
@@ -264,16 +278,16 @@ impl<'lua> PackagesEngine<'lua> {
                                         }
 
                                         // Read the inputs of the parent package.
-                                        let parent_value = parent_resource.get::<_, LuaTable>("value")?;
-                                        let parent_inputs_table = parent_value.get::<_, LuaTable>("inputs")?;
+                                        let parent_value = parent_resource.get::<LuaTable>("value")?;
+                                        let parent_inputs_table = parent_value.get::<LuaTable>("inputs")?;
 
                                         // Try to read the requested input.
-                                        if let Ok(resource_key) = parent_inputs_table.get::<_, u32>(name) {
+                                        if let Ok(resource_key) = parent_inputs_table.get::<u32>(name) {
                                             // Load the requested input resource.
-                                            let resource = resources_table.get::<_, LuaTable>(resource_key)?;
+                                            let resource = resources_table.get::<LuaTable>(resource_key)?;
 
                                             // Try to get its format.
-                                            let Ok(format) = PackageResourceFormat::from_str(&resource.get::<_, String>("format")?) else {
+                                            let Ok(format) = PackageResourceFormat::from_str(&resource.get::<String>("format")?) else {
                                                 return Err(LuaError::external("unknown resource format"));
                                             };
 
@@ -283,22 +297,22 @@ impl<'lua> PackagesEngine<'lua> {
                                             }
 
                                             // Read outputs of the package.
-                                            let value = resource.get::<_, LuaTable>("value")?;
-                                            let outputs = value.get::<_, LuaTable>("outputs")?;
+                                            let value = resource.get::<LuaTable>("value")?;
+                                            let outputs = value.get::<LuaTable>("outputs")?;
 
                                             // Prepare table of filtered outputs.
                                             let filtered_resource = lua.create_table_with_capacity(0, 3)?;
                                             let filtered_outputs = lua.create_table_with_capacity(0, outputs.raw_len())?;
 
-                                            filtered_resource.set("format", resource.get::<_, LuaValue>("format")?)?;
-                                            filtered_resource.set("hash", resource.get::<_, LuaValue>("hash")?)?;
+                                            filtered_resource.set("format", resource.get::<LuaValue>("format")?)?;
+                                            filtered_resource.set("hash", resource.get::<LuaValue>("hash")?)?;
                                             filtered_resource.set("value", filtered_outputs.clone())?;
 
                                             // Iterate through outputs of the package.
                                             for pair in outputs.pairs::<LuaValue, u32>() {
                                                 let (name, key) = pair?;
 
-                                                filtered_outputs.set(name, resources_table.get::<_, LuaTable>(key)?)?;
+                                                filtered_outputs.set(name, resources_table.get::<LuaTable>(key)?)?;
                                             }
 
                                             // Return filtered package table.
@@ -318,14 +332,19 @@ impl<'lua> PackagesEngine<'lua> {
 
                                     // Read the parent package if it exists (must be at this point).
                                     if let Some(parent_context) = parent_context {
-                                        let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
+                                        let engine_registry = engine_registry.read()
+                                            .map_err(|err| LuaError::external(format!("failed to lock registry key: {err}")))?;
+
+                                        let engine_table: LuaTable = lua.registry_value(engine_registry.deref())?;
+
+                                        drop(engine_registry);
 
                                         // Load the parent resource table from the engine.
-                                        let resources_table = engine_table.get::<_, LuaTable>("resources")?;
-                                        let parent_resource = resources_table.get::<_, LuaTable>(parent_context)?;
+                                        let resources_table = engine_table.get::<LuaTable>("resources")?;
+                                        let parent_resource = resources_table.get::<LuaTable>(parent_context)?;
 
                                         // Try to parse its format.
-                                        let Ok(parent_format) = PackageResourceFormat::from_str(&parent_resource.get::<_, String>("format")?) else {
+                                        let Ok(parent_format) = PackageResourceFormat::from_str(&parent_resource.get::<String>("format")?) else {
                                             return Err(LuaError::external("unknown parent resource format"));
                                         };
 
@@ -335,21 +354,21 @@ impl<'lua> PackagesEngine<'lua> {
                                         }
 
                                         // Read the inputs of the parent package.
-                                        let parent_value = parent_resource.get::<_, LuaTable>("value")?;
-                                        let parent_inputs_table = parent_value.get::<_, LuaTable>("inputs")?;
+                                        let parent_value = parent_resource.get::<LuaTable>("value")?;
+                                        let parent_inputs_table = parent_value.get::<LuaTable>("inputs")?;
 
                                         // Try to read the requested input.
-                                        if let Ok(resource_key) = parent_inputs_table.get::<_, u32>(name) {
+                                        if let Ok(resource_key) = parent_inputs_table.get::<u32>(name) {
                                             // Load the requested input resource.
-                                            let resource = resources_table.get::<_, LuaTable>(resource_key)?;
+                                            let resource = resources_table.get::<LuaTable>(resource_key)?;
 
                                             // Try to get its format.
-                                            let Ok(format) = PackageResourceFormat::from_str(&resource.get::<_, String>("format")?) else {
+                                            let Ok(format) = PackageResourceFormat::from_str(&resource.get::<String>("format")?) else {
                                                 return Err(LuaError::external("unknown resource format"));
                                             };
 
                                             // Read value of the resource.
-                                            let value = resource.get::<_, LuaValue>("value")?;
+                                            let value = resource.get::<LuaValue>("value")?;
 
                                             // If it's a package - then we have to pre-process its value.
                                             if format != PackageResourceFormat::Package {
@@ -357,8 +376,8 @@ impl<'lua> PackagesEngine<'lua> {
                                             }
 
                                             // Read outputs of the package.
-                                            let value = resource.get::<_, LuaTable>("value")?;
-                                            let outputs = value.get::<_, LuaTable>("outputs")?;
+                                            let value = resource.get::<LuaTable>("value")?;
+                                            let outputs = value.get::<LuaTable>("outputs")?;
 
                                             // Prepare table of filtered outputs.
                                             let filtered_outputs = lua.create_table_with_capacity(0, outputs.raw_len())?;
@@ -368,10 +387,10 @@ impl<'lua> PackagesEngine<'lua> {
                                                 let (name, key) = pair?;
 
                                                 // Read the output resource.
-                                                let resource = resources_table.get::<_, LuaTable>(key)?;
+                                                let resource = resources_table.get::<LuaTable>(key)?;
 
                                                 // Read value of the resource.
-                                                let value = resource.get::<_, LuaValue>("value")?;
+                                                let value = resource.get::<LuaValue>("value")?;
 
                                                 // Insert raw value of the output resource.
                                                 filtered_outputs.set(name, value)?;
@@ -408,7 +427,7 @@ impl<'lua> PackagesEngine<'lua> {
             tracing::debug!(resource_table = format!("{resource_table:#?}"), "Evaluating lua module");
 
             let value = module.set_environment(env)
-                .call::<_, LuaValue>(())?;
+                .call::<LuaValue>(())?;
 
             resource_table.set("value", value)?;
         }
@@ -418,21 +437,27 @@ impl<'lua> PackagesEngine<'lua> {
             engine_registry,
             lock_file,
 
-            _v1_standard: v1_standard
+            v1_standard
         })
     }
 
     /// Try to load root resources from the engine.
     ///
     /// Resource keys are taken from the lock file.
-    pub fn load_root_resources(&self) -> Result<Vec<LuaTable<'lua>>, PackagesEngineError> {
-        let engine_table: LuaTable = self.lua.registry_value(&self.engine_registry)?;
-        let resources = engine_table.get::<_, LuaTable>("resources")?;
+    pub fn load_root_resources(&self) -> Result<Vec<LuaTable>, PackagesEngineError> {
+        let engine_registry = self.engine_registry.read()
+            .map_err(|_| PackagesEngineError::LuaRegistryKeyLock)?;
+
+        let engine_table: LuaTable = self.lua.registry_value(engine_registry.deref())?;
+
+        drop(engine_registry);
+
+        let resources = engine_table.get::<LuaTable>("resources")?;
 
         let mut root = Vec::with_capacity(self.lock_file.root.len());
 
         for key in &self.lock_file.root {
-            root.push(resources.get::<_, LuaTable>(*key)?);
+            root.push(resources.get::<LuaTable>(*key)?);
         }
 
         Ok(root)
@@ -442,30 +467,36 @@ impl<'lua> PackagesEngine<'lua> {
     /// from the engine.
     ///
     /// Resource keys are taken from the lock file.
-    pub fn load_root_modules(&self) -> Result<Vec<LuaTable<'lua>>, PackagesEngineError> {
-        let engine_table: LuaTable = self.lua.registry_value(&self.engine_registry)?;
-        let resources = engine_table.get::<_, LuaTable>("resources")?;
+    pub fn load_root_modules(&self) -> Result<Vec<LuaTable>, PackagesEngineError> {
+        let engine_registry = self.engine_registry.read()
+            .map_err(|_| PackagesEngineError::LuaRegistryKeyLock)?;
+
+        let engine_table: LuaTable = self.lua.registry_value(engine_registry.deref())?;
+
+        drop(engine_registry);
+
+        let resources = engine_table.get::<LuaTable>("resources")?;
 
         let mut modules = Vec::with_capacity(self.lock_file.root.len());
 
         // Iterate through the root resources.
         for key in &self.lock_file.root {
-            let resource = resources.get::<_, LuaTable>(*key)?;
+            let resource = resources.get::<LuaTable>(*key)?;
 
             // If the resource is a package.
-            if resource.get::<_, LuaString>("format")?.as_bytes() == b"package" {
-                let package = resource.get::<_, LuaTable>("value")?;
-                let outputs = package.get::<_, LuaTable>("outputs")?;
+            if resource.get::<LuaString>("format")?.as_bytes() == b"package" {
+                let package = resource.get::<LuaTable>("value")?;
+                let outputs = package.get::<LuaTable>("outputs")?;
 
                 // Iterate through the outputs of this package.
                 for pair in outputs.pairs::<LuaValue, u32>() {
                     let (_, key) = pair?;
 
                     // Load the output of this package.
-                    let resource = resources.get::<_, LuaTable>(key)?;
+                    let resource = resources.get::<LuaTable>(key)?;
 
                     // If this output is a module - store it.
-                    if resource.get::<_, LuaString>("format")?.as_bytes().starts_with(b"module") {
+                    if resource.get::<LuaString>("format")?.as_bytes().starts_with(b"module") {
                         modules.push(resource);
                     }
                 }
@@ -480,9 +511,15 @@ impl<'lua> PackagesEngine<'lua> {
     /// This function will try to find the resource
     /// by given identifier. It can be a direct index
     /// to the resource, or a hash (or a part of hash).
-    pub fn load_resource(&self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable<'lua>>, PackagesEngineError> {
-        let engine_table: LuaTable = self.lua.registry_value(&self.engine_registry)?;
-        let resources = engine_table.get::<_, LuaTable>("resources")?;
+    pub fn load_resource(&self, identrifier: impl std::fmt::Display) -> Result<Option<LuaTable>, PackagesEngineError> {
+        let engine_registry = self.engine_registry.read()
+            .map_err(|_| PackagesEngineError::LuaRegistryKeyLock)?;
+
+        let engine_table: LuaTable = self.lua.registry_value(engine_registry.deref())?;
+
+        drop(engine_registry);
+
+        let resources = engine_table.get::<LuaTable>("resources")?;
 
         let identifier = identrifier.to_string();
         let numeric_identifier = identifier.parse::<u64>().ok();
@@ -499,7 +536,7 @@ impl<'lua> PackagesEngine<'lua> {
             let resource = resource?;
 
             // Check the base32 encoded hash.
-            let hash = resource.get::<_, String>("hash")?;
+            let hash = resource.get::<String>("hash")?;
 
             if hash.contains(&identifier) {
                 return Ok(Some(resource));
@@ -523,9 +560,11 @@ impl<'lua> PackagesEngine<'lua> {
     }
 }
 
-impl Drop for PackagesEngine<'_> {
+impl Drop for PackagesEngine {
     fn drop(&mut self) {
-        let _ = self.lua.replace_registry_value(&self.engine_registry, LuaNil);
+        if let Ok(mut engine_registry) = self.engine_registry.write() {
+            let _ = self.lua.replace_registry_value(engine_registry.deref_mut(), LuaValue::Nil);
+        }
 
         self.lua.expire_registry_values();
 
@@ -560,24 +599,22 @@ mod tests {
 
         assert!(valid);
 
-        let lua = Lua::new();
-
         let validator = AuthorityValidator::new([]);
 
-        let engine = PackagesEngine::create(&lua, &store, lock_file, validator)?;
+        let engine = PackagesEngine::create(Lua::new(), &store, lock_file, validator)?;
 
         let resource = engine.load_resource("0peottaa6s1co")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;
 
-        let value = resource.get::<_, LuaTable>("value")?;
+        let value = resource.get::<LuaTable>("value")?;
 
-        assert!(value.get::<_, bool>("test_load_valid_input")?);
-        assert!(!value.get::<_, bool>("test_load_valid_output")?);
-        assert!(!value.get::<_, bool>("test_load_invalid_input")?);
-        assert!(!value.get::<_, bool>("test_load_invalid_output")?);
-        assert!(!value.get::<_, bool>("test_load_unexisting_input")?);
+        assert!(value.get::<bool>("test_load_valid_input")?);
+        assert!(!value.get::<bool>("test_load_valid_output")?);
+        assert!(!value.get::<bool>("test_load_invalid_input")?);
+        assert!(!value.get::<bool>("test_load_invalid_output")?);
+        assert!(!value.get::<bool>("test_load_unexisting_input")?);
 
-        assert_eq!(value.call_function::<_, String>("greeting", ())?, "Hello, World!");
+        assert_eq!(value.call_function::<String>("greeting", ())?, "Hello, World!");
 
         Ok(())
     }

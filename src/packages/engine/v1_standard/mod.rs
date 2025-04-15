@@ -74,7 +74,7 @@ fn get_value_bytes(value: LuaValue) -> Result<Vec<u8>, LuaError> {
     }
 }
 
-fn slice_to_table(lua: &Lua, slice: impl AsRef<[u8]>) -> Result<LuaTable<'_>, LuaError> {
+fn slice_to_table(lua: &Lua, slice: impl AsRef<[u8]>) -> Result<LuaTable, LuaError> {
     let slice = slice.as_ref();
     let table = lua.create_table_with_capacity(slice.len(), 0)?;
 
@@ -85,7 +85,7 @@ fn slice_to_table(lua: &Lua, slice: impl AsRef<[u8]>) -> Result<LuaTable<'_>, Lu
     Ok(table)
 }
 
-type LuaFunctionBuilder<'lua> = Box<dyn Fn(&'lua Lua, &Context) -> Result<LuaFunction<'lua>, LuaError>>;
+type LuaFunctionBuilder = Box<dyn Fn(&Lua, &Context) -> Result<LuaFunction, LuaError>>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Context {
@@ -127,31 +127,29 @@ impl Context {
     }
 }
 
-pub struct Standard<'lua> {
-    lua: &'lua Lua,
+pub struct Standard {
+    lua: Lua,
 
-    clone: LuaFunction<'lua>,
-    dbg: LuaFunction<'lua>,
+    clone: LuaFunction,
+    dbg: LuaFunction,
 
-    string_api: StringAPI<'lua>,
-    path_api: PathAPI<'lua>,
-    filesystem_api: FilesystemAPI<'lua>,
-    network_api: NetworkAPI<'lua>,
-    downloader_api: DownloaderAPI<'lua>,
-    archive_api: ArchiveAPI<'lua>,
-    hash_api: HashAPI<'lua>,
-    sync_api: SyncAPI<'lua>,
-    sqlite_api: SQLiteAPI<'lua>,
-    process_api: ProcessAPI<'lua>
+    string_api: StringAPI,
+    path_api: PathAPI,
+    filesystem_api: FilesystemAPI,
+    network_api: NetworkAPI,
+    downloader_api: DownloaderAPI,
+    archive_api: ArchiveAPI,
+    hash_api: HashAPI,
+    sync_api: SyncAPI,
+    sqlite_api: SQLiteAPI,
+    process_api: ProcessAPI
 }
 
-impl<'lua> Standard<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl Standard {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
-            lua,
-
             clone: lua.create_function(|lua, value: LuaValue| {
-                fn clone_value<'lua>(lua: &'lua Lua, value: LuaValue<'lua>) -> Result<LuaValue<'lua>, LuaError> {
+                fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
                     match value {
                         LuaValue::String(string) => {
                             Ok(LuaValue::String(lua.create_string(string.as_bytes())?))
@@ -191,22 +189,29 @@ impl<'lua> Standard<'lua> {
                 Ok(())
             })?,
 
-            string_api: StringAPI::new(lua)?,
-            path_api: PathAPI::new(lua)?,
-            filesystem_api: FilesystemAPI::new(lua)?,
-            network_api: NetworkAPI::new(lua)?,
-            downloader_api: DownloaderAPI::new(lua)?,
-            archive_api: ArchiveAPI::new(lua)?,
-            hash_api: HashAPI::new(lua)?,
-            sync_api: SyncAPI::new(lua)?,
-            sqlite_api: SQLiteAPI::new(lua)?,
-            process_api: ProcessAPI::new(lua)?
+            string_api: StringAPI::new(lua.clone())?,
+            path_api: PathAPI::new(lua.clone())?,
+            filesystem_api: FilesystemAPI::new(lua.clone())?,
+            network_api: NetworkAPI::new(lua.clone())?,
+            downloader_api: DownloaderAPI::new(lua.clone())?,
+            archive_api: ArchiveAPI::new(lua.clone())?,
+            hash_api: HashAPI::new(lua.clone())?,
+            sync_api: SyncAPI::new(lua.clone())?,
+            sqlite_api: SQLiteAPI::new(lua.clone())?,
+            process_api: ProcessAPI::new(lua.clone())?,
+
+            lua
         })
+    }
+
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
     }
 
     /// Create new environment for the v1 modules standard
     /// using provided module context.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 12)?;
 
         env.set("clone", self.clone.clone())?;

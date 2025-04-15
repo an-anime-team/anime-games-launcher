@@ -25,7 +25,7 @@ impl From<AsLuaError> for LuaError {
     }
 }
 
-pub trait AsLua<'lua> {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError>;
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized;
+pub trait AsLua {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError>;
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized;
 }

@@ -3,7 +3,7 @@ use mlua::prelude::*;
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct ProgressReport<'lua> {
+pub struct ProgressReport {
     /// Optional title of the current action.
     pub title: Option<LocalizableString>,
 
@@ -13,10 +13,10 @@ pub struct ProgressReport<'lua> {
     pub progress_current: u64,
     pub progress_total: u64,
 
-    progress_format: Option<LuaFunction<'lua>>
+    progress_format: Option<LuaFunction>
 }
 
-impl ProgressReport<'_> {
+impl ProgressReport {
     #[inline]
     /// Return `current / total` fraction.
     pub fn fraction(&self) -> f64 {
@@ -29,14 +29,14 @@ impl ProgressReport<'_> {
             return Ok(None);
         };
 
-        let str = format.call::<_, LuaValue>(())?;
+        let str = format.call::<LuaValue>(())?;
 
         Ok(Some(LocalizableString::from_lua(&str)?))
     }
 }
 
-impl<'lua> AsLua<'lua> for ProgressReport<'lua> {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for ProgressReport {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let progress = lua.create_table()?;
 
         if let Some(title) = &self.title {
@@ -59,14 +59,14 @@ impl<'lua> AsLua<'lua> for ProgressReport<'lua> {
         Ok(LuaValue::Table(progress))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         let value = value.as_table()
             .ok_or_else(|| AsLuaError::InvalidFieldValue("<progress report>"))?;
 
-        let progress = value.get::<_, LuaTable>("progress")?;
+        let progress = value.get::<LuaTable>("progress")?;
 
         Ok(Self {
-            title: value.get::<_, LuaValue>("title")
+            title: value.get::<LuaValue>("title")
                 .map(|title| -> Result<Option<LocalizableString>, AsLuaError> {
                     if title.is_nil() || title.is_null() {
                         Ok(None)
@@ -76,7 +76,7 @@ impl<'lua> AsLua<'lua> for ProgressReport<'lua> {
                 })
                 .unwrap_or(Ok(None))?,
 
-            description: value.get::<_, LuaValue>("description")
+            description: value.get::<LuaValue>("description")
                 .map(|title| -> Result<Option<LocalizableString>, AsLuaError> {
                     if title.is_nil() || title.is_null() {
                         Ok(None)
@@ -89,7 +89,7 @@ impl<'lua> AsLua<'lua> for ProgressReport<'lua> {
             progress_current: progress.get("current")?,
             progress_total: progress.get("total")?,
 
-            progress_format: progress.get::<_, LuaFunction>("format").ok()
+            progress_format: progress.get::<LuaFunction>("format").ok()
         })
     }
 }

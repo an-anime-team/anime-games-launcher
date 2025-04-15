@@ -85,7 +85,7 @@ impl StringEncoding {
         }
     }
 
-    pub fn encode<'lua>(&self, lua: &'lua Lua, value: LuaValue) -> Result<LuaString<'lua>, LuaError> {
+    pub fn encode(&self, lua: &Lua, value: LuaValue) -> Result<LuaString, LuaError> {
         use base64::Engine;
 
         match self {
@@ -130,7 +130,7 @@ impl StringEncoding {
         }
     }
 
-    pub fn decode<'lua>(&self, lua: &'lua Lua, string: LuaString) -> Result<LuaValue<'lua>, LuaError> {
+    pub fn decode(&self, lua: &Lua, string: LuaString) -> Result<LuaValue, LuaError> {
         use base64::Engine;
 
         match self {
@@ -162,7 +162,7 @@ impl StringEncoding {
             }
 
             Self::Json => {
-                let value = serde_json::from_slice::<serde_json::Value>(string.as_bytes())
+                let value = serde_json::from_slice::<serde_json::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 lua.to_value(&value)
@@ -179,7 +179,7 @@ impl StringEncoding {
             }
 
             Self::Yaml => {
-                let value = serde_yml::from_slice::<serde_yml::Value>(string.as_bytes())
+                let value = serde_yml::from_slice::<serde_yml::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 lua.to_value(&value)
@@ -188,20 +188,18 @@ impl StringEncoding {
     }
 }
 
-pub struct StringAPI<'lua> {
-    lua: &'lua Lua,
+pub struct StringAPI {
+    lua: Lua,
 
-    str_to_bytes: LuaFunction<'lua>,
-    str_from_bytes: LuaFunction<'lua>,
-    str_encode: LuaFunction<'lua>,
-    str_decode: LuaFunction<'lua>
+    str_to_bytes: LuaFunction,
+    str_from_bytes: LuaFunction,
+    str_encode: LuaFunction,
+    str_decode: LuaFunction
 }
 
-impl<'lua> StringAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl StringAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
-            lua,
-
             str_to_bytes: lua.create_function(|_, (value, charset): (LuaValue, Option<LuaString>)| {
                 let value = get_value_bytes(value)?;
 
@@ -209,7 +207,7 @@ impl<'lua> StringAPI<'lua> {
                     return Ok(value);
                 };
 
-                let Some(charset) = Encoding::for_label(charset.as_bytes()) else {
+                let Some(charset) = Encoding::for_label(&charset.as_bytes()) else {
                     return Err(LuaError::external("invalid charset"));
                 };
 
@@ -224,7 +222,7 @@ impl<'lua> StringAPI<'lua> {
                     return lua.create_string(value);
                 };
 
-                let Some(charset) = Encoding::for_label(charset.as_bytes()) else {
+                let Some(charset) = Encoding::for_label(&charset.as_bytes()) else {
                     return Err(LuaError::external("invalid charset"));
                 };
 
@@ -247,12 +245,19 @@ impl<'lua> StringAPI<'lua> {
                 };
 
                 encoding.decode(lua, value)
-            })?
+            })?,
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.set("to_bytes", self.str_to_bytes.clone())?;
@@ -270,20 +275,19 @@ mod tests {
 
     #[test]
     fn str_bytes() -> anyhow::Result<()> {
-        let lua = Lua::new();
-        let api = StringAPI::new(&lua)?;
+        let api = StringAPI::new(Lua::new())?;
 
-        assert_eq!(api.str_to_bytes.call::<_, Vec<u8>>("abc")?, &[97, 98, 99]);
-        assert_eq!(api.str_to_bytes.call::<_, Vec<u8>>(0.5)?, &[63, 224, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(api.str_to_bytes.call::<_, Vec<u8>>(vec![1, 2, 3])?, &[1, 2, 3]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>("abc")?, &[97, 98, 99]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(0.5)?, &[63, 224, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(vec![1, 2, 3])?, &[1, 2, 3]);
 
-        assert_eq!(api.str_to_bytes.call::<_, Vec<u8>>("абоба")?, &[208, 176, 208, 177, 208, 190, 208, 177, 208, 176]);
-        assert_eq!(api.str_to_bytes.call::<_, Vec<u8>>(("абоба", "cp1251"))?, &[224, 225, 238, 225, 224]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>("абоба")?, &[208, 176, 208, 177, 208, 190, 208, 177, 208, 176]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(("абоба", "cp1251"))?, &[224, 225, 238, 225, 224]);
 
-        assert_eq!(api.str_from_bytes.call::<_, LuaString>(vec![97, 98, 99])?, b"abc");
+        assert_eq!(api.str_from_bytes.call::<LuaString>(vec![97, 98, 99])?, b"abc");
 
-        assert_eq!(api.str_from_bytes.call::<_, LuaString>(vec![208, 176, 208, 177, 208, 190, 208, 177, 208, 176])?, "абоба");
-        assert_eq!(api.str_from_bytes.call::<_, LuaString>((vec![224, 225, 238, 225, 224], "cp1251"))?, "абоба");
+        assert_eq!(api.str_from_bytes.call::<LuaString>(vec![208, 176, 208, 177, 208, 190, 208, 177, 208, 176])?, "абоба");
+        assert_eq!(api.str_from_bytes.call::<LuaString>((vec![224, 225, 238, 225, 224], "cp1251"))?, "абоба");
 
         Ok(())
     }
@@ -291,7 +295,7 @@ mod tests {
     #[test]
     fn str_encodings() -> anyhow::Result<()> {
         let lua = Lua::new();
-        let api = StringAPI::new(&lua)?;
+        let api = StringAPI::new(lua.clone())?;
 
         let encodings = [
             ("hex",                  "48656c6c6f2c20576f726c6421"),
@@ -309,8 +313,8 @@ mod tests {
         ];
 
         for (name, value) in encodings {
-            let encoded = api.str_encode.call::<_, LuaString>(("Hello, World!", name))?;
-            let decoded = api.str_decode.call::<_, Vec<u8>>((value, name))?;
+            let encoded = api.str_encode.call::<LuaString>(("Hello, World!", name))?;
+            let decoded = api.str_decode.call::<Vec<u8>>((value, name))?;
 
             assert_eq!(encoded, value);
             assert_eq!(decoded, b"Hello, World!");
@@ -327,12 +331,12 @@ mod tests {
         ];
 
         for (name, value) in encodings {
-            let encoded = api.str_encode.call::<_, LuaString>((table.clone(), name))?;
-            let decoded_1 = api.str_decode.call::<_, LuaTable>((value, name))?;
-            let decoded_2 = api.str_decode.call::<_, LuaTable>((encoded, name))?;
+            let encoded = api.str_encode.call::<LuaString>((table.clone(), name))?;
+            let decoded_1 = api.str_decode.call::<LuaTable>((value, name))?;
+            let decoded_2 = api.str_decode.call::<LuaTable>((encoded, name))?;
 
-            assert_eq!(decoded_1.get::<_, LuaString>("hello")?, "world");
-            assert_eq!(decoded_2.get::<_, LuaString>("hello")?, "world");
+            assert_eq!(decoded_1.get::<LuaString>("hello")?, "world");
+            assert_eq!(decoded_2.get::<LuaString>("hello")?, "world");
         }
 
         Ok(())

@@ -19,8 +19,8 @@ enum SqliteParam {
     Nil
 }
 
-impl<'lua> AsLua<'lua> for SqliteParam {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for SqliteParam {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         match self {
             Self::String(value) => lua.create_string(value)
                 .map(LuaValue::String)
@@ -43,7 +43,7 @@ impl<'lua> AsLua<'lua> for SqliteParam {
         }
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         match value {
             LuaValue::String(value)  => Ok(Self::String(value.to_string_lossy().to_string())),
             LuaValue::Number(value)  => Ok(Self::Double(*value)),
@@ -93,28 +93,26 @@ impl FromSql for SqliteParam {
     }
 }
 
-pub struct SQLiteAPI<'lua> {
-    lua: &'lua Lua,
+pub struct SQLiteAPI {
+    lua: Lua,
 
-    sqlite_open: LuaFunctionBuilder<'lua>,
-    sqlite_execute: LuaFunction<'lua>,
-    sqlite_batch: LuaFunction<'lua>,
-    sqlite_query: LuaFunction<'lua>,
-    sqlite_query_row: LuaFunction<'lua>,
-    sqlite_close: LuaFunction<'lua>
+    sqlite_open: LuaFunctionBuilder,
+    sqlite_execute: LuaFunction,
+    sqlite_batch: LuaFunction,
+    sqlite_query: LuaFunction,
+    sqlite_query_row: LuaFunction,
+    sqlite_close: LuaFunction
 }
 
-impl<'lua> SQLiteAPI<'lua> {
-    pub fn new(lua: &'lua Lua) -> Result<Self, PackagesEngineError> {
+impl SQLiteAPI {
+    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let connection_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            lua,
-
             sqlite_open: {
                 let connection_handles = connection_handles.clone();
 
-                Box::new(move |lua: &'lua Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &Context| {
                     let context = context.to_owned();
                     let connection_handles = connection_handles.clone();
 
@@ -334,15 +332,22 @@ impl<'lua> SQLiteAPI<'lua> {
 
                     Ok(())
                 })?
-            }
+            },
+
+            lua
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable<'lua>, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
-        env.set("open", (self.sqlite_open)(self.lua, context)?)?;
+        env.set("open", (self.sqlite_open)(&self.lua, context)?)?;
         env.set("execute", self.sqlite_execute.clone())?;
         env.set("batch", self.sqlite_batch.clone())?;
         env.set("query", self.sqlite_query.clone())?;
@@ -368,7 +373,7 @@ mod tests {
         let path = path.to_string_lossy().to_string();
 
         let lua = Lua::new();
-        let api = SQLiteAPI::new(&lua)?;
+        let api = SQLiteAPI::new(lua.clone())?;
 
         let env = api.create_env(&Context {
             temp_folder: std::env::temp_dir(),
@@ -379,9 +384,9 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        let handle = env.call_function::<_, u32>("open", path)?;
+        let handle = env.call_function::<u32>("open", path)?;
 
-        env.call_function::<_, ()>("execute", (handle, "
+        env.call_function::<()>("execute", (handle, "
             CREATE TABLE test (
                 id    INTEGER UNIQUE NOT NULL,
                 value TEXT NOT NULL,
@@ -390,27 +395,27 @@ mod tests {
             );
         "))?;
 
-        let row_1 = env.call_function::<_, i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (5, 'test 1')"))?;
-        let row_2 = env.call_function::<_, i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (?1, 'test 2')", [10]))?;
-        let row_3 = env.call_function::<_, i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (15, ?1)", ["test 3"]))?;
-        let row_4 = env.call_function::<_, i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (?1, ?2)", [LuaValue::Integer(20), LuaValue::String(lua.create_string("test 4")?)]))?;
+        let row_1 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (5, 'test 1')"))?;
+        let row_2 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (?1, 'test 2')", [10]))?;
+        let row_3 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (15, ?1)", ["test 3"]))?;
+        let row_4 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (?1, ?2)", [LuaValue::Integer(20), LuaValue::String(lua.create_string("test 4")?)]))?;
 
         assert_eq!(row_1, 5);
         assert_eq!(row_2, 10);
         assert_eq!(row_3, 15);
         assert_eq!(row_4, 20);
 
-        let rows_count = env.call_function::<_, LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
+        let rows_count = env.call_function::<LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
 
         assert_eq!(rows_count.pop::<u32>()?, 4);
 
-        let rows = env.call_function::<_, Vec<LuaTable>>("query", (handle, "SELECT value FROM test WHERE id > ?1", [0]))?;
+        let rows = env.call_function::<Vec<LuaTable>>("query", (handle, "SELECT value FROM test WHERE id > ?1", [0]))?;
 
         for row in rows {
             assert!(row.pop::<String>()?.starts_with("test "));
         }
 
-        env.call_function::<_, ()>("batch", (handle, "
+        env.call_function::<()>("batch", (handle, "
             BEGIN TRANSACTION;
                 DELETE FROM test WHERE id = 5;
                 DELETE FROM test WHERE id = 10;
@@ -419,11 +424,11 @@ mod tests {
             COMMIT;
         "))?;
 
-        let rows_count = env.call_function::<_, LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
+        let rows_count = env.call_function::<LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
 
         assert_eq!(rows_count.pop::<u32>()?, 0);
 
-        env.call_function::<_, ()>("close", handle)?;
+        env.call_function::<()>("close", handle)?;
 
         Ok(())
     }

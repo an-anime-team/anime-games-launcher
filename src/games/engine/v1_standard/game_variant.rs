@@ -21,8 +21,8 @@ impl GameVariant {
     }
 }
 
-impl<'lua> AsLua<'lua> for GameVariant {
-    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+impl AsLua for GameVariant {
+    fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 2)?;
 
         table.set("platform", self.platform.to_string())?;
@@ -31,16 +31,16 @@ impl<'lua> AsLua<'lua> for GameVariant {
         Ok(LuaValue::Table(table))
     }
 
-    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+    fn from_lua(value: &LuaValue) -> Result<Self, AsLuaError> where Self: Sized {
         let value = value.as_table()
             .ok_or_else(|| AsLuaError::InvalidFieldValue("<game variant>"))?;
 
         Ok(Self {
-            platform: value.get::<_, LuaString>("platform")
+            platform: value.get::<LuaString>("platform")
                 .map(|platform| TargetPlatform::from_str(&platform.to_string_lossy()))?
                 .map_err(|_| AsLuaError::InvalidFieldValue("platform"))?,
 
-            edition: value.get::<_, LuaString>("edition")
+            edition: value.get::<LuaString>("edition")
                 .map(|edition| edition.to_string_lossy().to_string())
                 .map_err(|_| AsLuaError::InvalidFieldValue("edition"))?
         })
