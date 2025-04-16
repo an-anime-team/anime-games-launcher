@@ -33,10 +33,15 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
 
     steps:
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           apt update
           apt install -y git curl build-essential libgtk-4-dev libadwaita-1-dev
+
+      - name: Install runtime dependencies
+        run: |
+          apt update
+          apt install -y tar zip p7zip-full
 
       - name: Download rust toolchain
         uses: dtolnay/rust-toolchain@stable
