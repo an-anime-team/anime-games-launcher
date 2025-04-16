@@ -73,7 +73,11 @@ impl ArchiveExt for TarArchive {
         Ok(entries)
     }
 
-    fn extract(&self, folder: impl AsRef<Path>, mut progress: impl FnMut(u64, u64, u64) + Send + 'static) -> Result<Self::Extractor, Self::Error> {
+    fn extract(
+        &self,
+        folder: impl AsRef<Path>,
+        mut progress: impl FnMut(u64, u64, u64) + Send + 'static
+    ) -> Result<Self::Extractor, Self::Error> {
         let folder = folder.as_ref().to_path_buf();
 
         // Create output directory because tar doesn't do it automatically.
@@ -216,7 +220,7 @@ mod tests {
 
         assert!(path.join("dxvk-2.6.1")
             .join("x64")
-            .join("d3d10core.dll")
+            .join("d3d11.dll")
             .exists());
 
         Ok(())

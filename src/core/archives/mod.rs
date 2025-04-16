@@ -10,8 +10,9 @@ pub struct ArchiveEntry {
     pub path: PathBuf,
 
     /// Size of the archive entry.
-    /// Depending on implementation this could
-    /// either mean compressed or uncompressed size.
+    ///
+    /// Depending on implementation this could either mean compressed or
+    /// uncompressed size.
     pub size: u64
 }
 
@@ -24,27 +25,26 @@ pub trait ArchiveExtractionContext {
     /// Get total amount of bytes to extract.
     fn total(&self) -> u64;
 
-    #[inline]
     /// Get files extraction progress.
-    fn progress(&self) -> f32 {
+    fn fraction(&self) -> f64 {
         let current = self.current();
         let total = self.total();
 
         if current == 0 {
             return 0.0;
-        };
+        }
 
         if total == 0 {
             return 1.0;
         }
 
-        current as f32 / total as f32
+        current as f64 / total as f64
     }
 
     /// Check if extraction has finished.
     ///
-    /// Note that it could fail so this doesn't mean that
-    /// we've successfully extracted all the files.
+    /// Note that it could fail so this doesn't mean that we've successfully
+    /// extracted all the files.
     fn is_finished(&self) -> bool;
 
     /// Wait until the extraction is completed.
@@ -69,13 +69,16 @@ pub trait ArchiveExt {
             .sum())
     }
 
-    /// Extract archive's content to a folder, using
-    /// provided callback to handle the progress.
+    /// Extract archive's content to a folder, using provided callback to handle
+    /// the progress.
     ///
-    /// Callback accepts currently extracted amount of
-    /// bytes, total expected amount and a diff between
-    /// calls.
-    fn extract(&self, folder: impl AsRef<Path>, progress: impl FnMut(u64, u64, u64) + Send + 'static) -> Result<Self::Extractor, Self::Error>;
+    /// Callback accepts currently extracted amount of bytes, total expected
+    /// amount and a diff between calls.
+    fn extract(
+        &self,
+        folder: impl AsRef<Path>,
+        progress: impl FnMut(u64, u64, u64) + Send + 'static
+    ) -> Result<Self::Extractor, Self::Error>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -112,9 +115,8 @@ impl ArchiveFormat {
 
 /// Get list of entries of an archive.
 ///
-/// Utility function that automatically predicts
-/// the format of the archive and needed struct
-/// to process it.
+/// Utility function that automatically predicts the format of the archive and
+/// needed struct to process it.
 pub fn get_entries(path: impl AsRef<Path>) -> anyhow::Result<Vec<ArchiveEntry>> {
     let entries = match ArchiveFormat::from_path(path.as_ref()) {
         Some(ArchiveFormat::Tar) => tar::TarArchive::open(path)
@@ -134,9 +136,8 @@ pub fn get_entries(path: impl AsRef<Path>) -> anyhow::Result<Vec<ArchiveEntry>> 
 
 /// Get total size of files in the archive.
 ///
-/// Utility function that automatically predicts
-/// the format of the archive and needed struct
-/// to process it.
+/// Utility function that automatically predicts the format of the archive and
+/// needed struct to process it.
 pub fn get_total_size(path: impl AsRef<Path>) -> anyhow::Result<u64> {
     let total_size = match ArchiveFormat::from_path(path.as_ref()) {
         Some(ArchiveFormat::Tar) => tar::TarArchive::open(path)
@@ -156,12 +157,11 @@ pub fn get_total_size(path: impl AsRef<Path>) -> anyhow::Result<u64> {
 
 /// Extract files from the archive.
 ///
-/// Utility function that automatically predicts
-/// the format of the archive and needed struct
-/// to process it.
+/// Utility function that automatically predicts the format of the archive and
+/// needed struct to process it.
 ///
-/// This function will freeze the current thread
-/// until the archive is fully extracted.
+/// This function will freeze the current thread until the archive is fully
+/// extracted.
 pub fn extract(path: impl AsRef<Path>, folder: impl AsRef<Path>, progress: impl FnMut(u64, u64, u64) + Send + 'static) -> anyhow::Result<()> {
     match ArchiveFormat::from_path(path.as_ref()) {
         Some(ArchiveFormat::Tar) => {
