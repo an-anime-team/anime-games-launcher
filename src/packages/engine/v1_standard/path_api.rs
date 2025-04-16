@@ -67,17 +67,13 @@ impl PathAPI {
     pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             path_temp_dir: Box::new(|lua: &Lua, context: &Context| {
-                let path = context.temp_folder
-                    .to_string_lossy()
-                    .to_string();
+                let path = context.temp_folder.clone();
 
                 lua.create_function(move |_, ()| Ok(path.clone()))
             }),
 
             path_module_dir: Box::new(|lua: &Lua, context: &Context| {
-                let path = context.module_folder
-                    .to_string_lossy()
-                    .to_string();
+                let path = context.module_folder.clone();
 
                 lua.create_function(move |_, ()| Ok(path.clone()))
             }),
@@ -86,11 +82,31 @@ impl PathAPI {
                 let path = context.persistent_folder.clone();
 
                 lua.create_function(move |_, key: LuaString| {
-                    let path = path.join(Hash::for_slice(key.as_bytes()).to_base32())
-                        .to_string_lossy()
-                        .to_string();
+                    fn normalize_key(key: LuaString) -> String {
+                        let hash = Hash::for_slice(key.as_bytes()).to_base32();
 
-                    Ok(path)
+                        let key = key.to_string_lossy()
+                            .chars()
+                            .map(|char| {
+                                if char.is_ascii_alphanumeric() {
+                                    char
+                                } else {
+                                    '_'
+                                }
+                            })
+                            .collect::<String>();
+
+                        let key = key.trim_matches('_')
+                            .replace("__", "_");
+
+                        if key.is_empty() {
+                            hash
+                        } else {
+                            format!("{hash}-{key}")
+                        }
+                    }
+
+                    Ok(path.join(normalize_key(key)))
                 })
             }),
 

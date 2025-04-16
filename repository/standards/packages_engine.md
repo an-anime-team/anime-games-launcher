@@ -220,10 +220,9 @@ print(str.decode("{\"hello\":\"world\"}", "json"))                  -- { hello =
 
 ## Paths API
 
-Filesystem paths are sandboxed by design. Each module can access
-special sandboxed folders to store its state there. This module
-provides functions to obtain these paths, as well as some utility
-functions to work with them.
+Filesystem paths are sandboxed by design. Each module can access special
+sandboxed folders to store its state there. This module provides functions to
+obtain these paths, as well as some utility functions to work with them.
 
 | Function           | Description                           |
 | ------------------ | ------------------------------------- |
@@ -240,12 +239,12 @@ functions to work with them.
 
 ### `path.temp_dir() -> string`
 
-Temp directory is configured by the user in the launcher app and
-its content will eventually be automatically cleared. You can use
-temp directory to store temporary data, e.g. downloaded archives.
+Temp directory is configured by the user in the launcher app and its content
+will eventually be automatically cleared. You can use temp directory to store
+temporary data, e.g. downloaded archives.
 
-Temp directory's content is shared between all the packages.
-This can be used to create custom synchronization mechanisms.
+Temp directory's content is shared between all the packages. This can be used
+to create custom synchronization mechanisms.
 
 ```luau
 local temp = path.temp_dir()
@@ -257,13 +256,13 @@ end
 
 ### `path.module_dir() -> string`
 
-Each module has its own directory which cannot be accessed by any
-other module. It should be used to store all its data. If module
-is updated to a newer version (it hash was changed) - it will have
-a new folder and it couldn't access the previous one.
+Each module has its own directory which cannot be accessed by any other modules.
+It should be used to store all its private data. If module is updated to a newer
+version (its hash was changed) - it will have a new folder and it won't be able
+to access the previous one.
 
-Module directory can be deleted by the packages garbage collector
-when the module is not used.
+Module directory can be deleted by the packages garbage collector when the
+module is not used.
 
 ```luau
 local store = path.module_dir()
@@ -273,9 +272,9 @@ fs.write_file(store .. "/secret_file", { 1, 2, 3 })
 
 ### `path.persist_dir(key: string) -> string`
 
-Modules can get paths to the persistent data storage using special
-keyword. Every module using the same keyword will get the same path.
-This can be used to transfer state files from one module to another.
+Modules can get paths to the persistent data storage using special keyword.
+Every module using the same keyword will get the same path. This can be used to
+transfer state files from one module to another.
 
 ```luau
 -- first module
@@ -309,9 +308,9 @@ print(path.normalize("..")) -- nil
 
 ### `path.join(parts: ...string) -> string | nil`
 
-Create new path by combining given entries names. This function
-will normalize the result path as well. If no parts were given
-or they're meaningless - nil is returned.
+Create new path by combining given entries names. This function will normalize
+the result path as well. If no parts were given or they're meaningless - nil
+is returned.
 
 ```luau
 local dir = path.join(path.module_dir(), "download")
@@ -324,8 +323,8 @@ print(path.join("..")) -- nil
 ### `path.parts(path: string) -> [string] | nil`
 
 Split given filesystem entry path to the components (entries names).
-This function will normalize the path before splitting it. If input
-string is empty or meaningless - nil is returned.
+This function will normalize the path before splitting it. If input string is
+empty or meaningless - nil is returned.
 
 ```luau
 -- ["a", "c"]
@@ -338,8 +337,8 @@ print(path.parts("..")) -- nil
 
 ### `path.parent(path: string) -> string | nil`
 
-Return parent folder path or nil if it doesn't exist. Return path
-will be normalized.
+Return parent folder path or nil if it doesn't exist. Return path will be
+normalized.
 
 ```luau
 print(path.parent("a/./b")) -- "a"
@@ -348,8 +347,8 @@ print(path.parent("a"))     -- nil
 
 ### `path.file_name(path: string) -> string | nil`
 
-Return the last entry name of the given path. Return nil if the input
-string is meaningless.
+Return the last entry name of the given path. Return nil if the input string
+is meaningless.
 
 ```luau
 print(path.file_name("a/b/c"))          -- "c"
@@ -361,11 +360,10 @@ print(path.file_name("..")) -- nil
 
 ### `path.exists(path: string) -> bool`
 
-Check if given path exists on the disk. This function,
-unlike `fs.exists`, doesn't check if the given path is
-accessible for the current module, so you can use it
-to verify if some system libraries or binaries are
-presented on the user's system.
+Check if given path exists on the disk. This function, unlike `fs.exists`,
+doesn't check if the given path is accessible for the current module, so you
+can use it to verify if some system libraries or binaries are presented on the
+user's system.
 
 ```luau
 print(path.exists(path.module_dir())) -- true
@@ -458,9 +456,8 @@ print("Type: " .. metadata.type)
 
 ### `fs.copy(source: string, target: string)`
 
-Copy file or folder to another location. This function will
-throw an error if the target location already exists or is not
-accessible.
+Copy file or folder to another location. This function will throw an error if
+the target location already exists or is not accessible.
 
 ```luau
 fs.copy("my_folder", "new_location/my_folder")
@@ -468,9 +465,8 @@ fs.copy("my_folder", "new_location/my_folder")
 
 ### `fs.move(source: string, target: string)`
 
-Move a file or a folder to another location. This function will
-throw an error if the target location already exists or is not
-accessible.
+Move a file or a folder to another location. This function will throw an error
+if the target location already exists or is not accessible.
 
 ```luau
 fs.move("my_folder", "new_location/my_folder")
@@ -478,8 +474,8 @@ fs.move("my_folder", "new_location/my_folder")
 
 ### `fs.remove(path: string)`
 
-Remove a file, folder or a symlink. Removing a folder will remove
-all its content as well.
+Remove a file, folder or a symlink. Removing a folder will remove all its
+content as well.
 
 ```luau
 fs.remove("my_file.txt")
