@@ -219,10 +219,10 @@ impl HashAPI {
     pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("calc", self.hash_calc.clone())?;
-        env.set("builder", self.hash_builder.clone())?;
-        env.set("write", self.hash_write.clone())?;
-        env.set("finalize", self.hash_finalize.clone())?;
+        env.raw_set("calc", self.hash_calc.clone())?;
+        env.raw_set("builder", self.hash_builder.clone())?;
+        env.raw_set("write", self.hash_write.clone())?;
+        env.raw_set("finalize", self.hash_finalize.clone())?;
 
         Ok(env)
     }

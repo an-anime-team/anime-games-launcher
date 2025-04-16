@@ -75,11 +75,8 @@ impl FileCache {
                     }
                 }
 
-                let downloader = match Downloader::new(&url) {
-                    Ok(downloader) => downloader
-                        .with_continue_downloading(false)
-                        .with_output_file(&swap_path),
-
+                let downloader = match Downloader::new() {
+                    Ok(downloader) => downloader,
                     Err(err) => {
                         tracing::error!(?url, ?err, "Failed to open cache file downloader");
 
@@ -87,18 +84,13 @@ impl FileCache {
                     }
                 };
 
-                let context = match downloader.download(|_, _, _| {}).await {
-                    Ok(context) => context,
-                    Err(err) => {
-                        tracing::error!(?err, "Failed to start renewing cache file");
+                let task = downloader.download(&url, &swap_path, DownloadOptions {
+                    continue_download: false,
+                    on_update: None,
+                    on_finish: None
+                });
 
-                        let _ = tokio::fs::remove_file(&swap_path).await;
-
-                        return;
-                    }
-                };
-
-                if let Err(err) = context.wait() {
+                if let Err(err) = task.wait().await {
                     tracing::error!(?err, "Failed to renew cache file");
 
                     let _ = tokio::fs::remove_file(&swap_path).await;

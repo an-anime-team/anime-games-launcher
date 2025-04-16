@@ -336,22 +336,22 @@ impl SyncAPI {
         let sync_channel = self.lua.create_table_with_capacity(0, 4)?;
         let sync_mutex = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("channel", sync_channel.clone())?;
-        env.set("mutex", sync_mutex.clone())?;
+        env.raw_set("channel", sync_channel.clone())?;
+        env.raw_set("mutex", sync_mutex.clone())?;
 
         // Channel
 
-        sync_channel.set("open", self.sync_channel_open.clone())?;
-        sync_channel.set("send", self.sync_channel_send.clone())?;
-        sync_channel.set("recv", self.sync_channel_recv.clone())?;
-        sync_channel.set("close", self.sync_channel_close.clone())?;
+        sync_channel.raw_set("open", self.sync_channel_open.clone())?;
+        sync_channel.raw_set("send", self.sync_channel_send.clone())?;
+        sync_channel.raw_set("recv", self.sync_channel_recv.clone())?;
+        sync_channel.raw_set("close", self.sync_channel_close.clone())?;
 
         // Mutex
 
-        sync_mutex.set("open", self.sync_mutex_open.clone())?;
-        sync_mutex.set("lock", self.sync_mutex_lock.clone())?;
-        sync_mutex.set("unlock", self.sync_mutex_unlock.clone())?;
-        sync_mutex.set("close", self.sync_mutex_close.clone())?;
+        sync_mutex.raw_set("open", self.sync_mutex_open.clone())?;
+        sync_mutex.raw_set("lock", self.sync_mutex_lock.clone())?;
+        sync_mutex.raw_set("unlock", self.sync_mutex_unlock.clone())?;
+        sync_mutex.raw_set("close", self.sync_mutex_close.clone())?;
 
         Ok(env)
     }

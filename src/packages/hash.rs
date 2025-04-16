@@ -11,10 +11,9 @@ pub trait AsHash {
 
     /// Calculate partial hash of the object.
     ///
-    /// Partial hashes verify only most important
-    /// parts of the data. They ignore things like
-    /// metadata, creation timestamps and so on.
-    /// Actual value depends on implementation.
+    /// Partial hashes verify only most important arts of the data. They ignore
+    /// things like metadata, creation timestamps and so on. Actual value
+    /// depends on implementation.
     fn partial_hash(&self) -> Hash {
         self.hash()
     }
@@ -78,9 +77,9 @@ impl Hash {
             return hash_file(&path);
         }
 
-        // Otherwise expect it to be a folder and handle it
-        // by hashing each individual file and names of files
-        // and folders, and xoring all the values together.
+        // Otherwise expect it to be a folder and handle it by hashing each
+        // individual file and names of files and folders, and xoring all the
+        // values together.
         let root = path.clone();
 
         let mut folders = vec![path];
@@ -335,11 +334,15 @@ mod tests {
         let folder = std::env::temp_dir().join(".agl-hash-test-folder");
 
         if !path.exists() {
-            Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")?
-                .with_output_file(&path)
-                .download(|_, _, _| {})
-                .await?
-                .wait()?;
+            let downloader = Downloader::new()?;
+
+            let task = downloader.download(
+                "https://github.com/doitsujin/dxvk/releases/download/v2.6.1/dxvk-2.6.1.tar.gz",
+                &path,
+                DownloadOptions::default()
+            );
+
+            task.wait().await?;
         }
 
         if !folder.exists() {
@@ -348,8 +351,8 @@ mod tests {
                 .wait().unwrap();
         }
 
-        assert_eq!(Hash::for_entry(&path)?, Hash(13290421503141924848));
-        assert_eq!(Hash::for_entry(&folder)?, Hash(17827013605004440863));
+        assert_eq!(Hash::for_entry(&path)?, Hash(12012134683777074236));
+        assert_eq!(Hash::for_entry(&folder)?, Hash(1628850133365029209));
 
         Ok(())
     }

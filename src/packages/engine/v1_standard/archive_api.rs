@@ -121,8 +121,8 @@ impl ArchiveAPI {
                     for entry in entries.drain(..) {
                         let entry_table = lua.create_table_with_capacity(0, 2)?;
 
-                        entry_table.set("path", entry.path.to_string_lossy())?;
-                        entry_table.set("size", entry.size)?;
+                        entry_table.raw_set("path", entry.path.to_string_lossy())?;
+                        entry_table.raw_set("size", entry.size)?;
 
                         entries_table.raw_push(entry_table)?;
                     }
@@ -236,10 +236,10 @@ impl ArchiveAPI {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("open", (self.archive_open)(&self.lua, context)?)?;
-        env.set("entries", self.archive_entries.clone())?;
-        env.set("extract", (self.archive_extract)(&self.lua, context)?)?;
-        env.set("close", self.archive_close.clone())?;
+        env.raw_set("open", (self.archive_open)(&self.lua, context)?)?;
+        env.raw_set("entries", self.archive_entries.clone())?;
+        env.raw_set("extract", (self.archive_extract)(&self.lua, context)?)?;
+        env.raw_set("close", self.archive_close.clone())?;
 
         Ok(env)
     }

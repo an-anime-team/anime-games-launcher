@@ -132,9 +132,12 @@ impl LockFile {
             }
         }
 
+        // Prepare packages downloader.
+        let downloader = Downloader::new()?;
+
         // Keep downloading stuff while we have packages to process.
         while !packages.is_empty() {
-            let mut packages_contexts = Vec::with_capacity(packages.len());
+            let mut packages_download_tasks = Vec::with_capacity(packages.len());
 
             // Go through the list of packages to process.
             for (mut package_url, temp_hash, is_root) in packages.drain() {
@@ -168,23 +171,23 @@ impl LockFile {
                 // Prepare tmp path to the package.
                 let temp_path = store.get_temp_path(&temp_hash);
 
-                // Start downloader task.
-                let context = Downloader::new(&package_url)?
-                    .with_continue_downloading(false)
-                    .with_output_file(&temp_path)
-                    .download(|_, _, _| {})
-                    .await?;
+                // Start downloading the package.
+                let task = downloader.download(&package_url, &temp_path, DownloadOptions {
+                    continue_download: false,
+                    on_update: None,
+                    on_finish: None
+                });
 
                 requested_urls.insert(unique_key.clone());
-                packages_contexts.push((temp_path, package_url, root_url, unique_key, context, is_root));
+                packages_download_tasks.push((temp_path, package_url, root_url, unique_key, task, is_root));
             }
 
             let mut resources = Vec::new();
 
             // Go through the list of queued packages.
-            for (temp_path, package_url, root_url, unique_key, context, is_root) in packages_contexts.drain(..) {
+            for (temp_path, package_url, root_url, unique_key, context, is_root) in packages_download_tasks.drain(..) {
                 // Await package downloading.
-                context.wait()?;
+                context.wait().await?;
 
                 // Read the package's manifest and hash it.
                 let manifest_slice = std::fs::read(&temp_path)?;
@@ -243,7 +246,7 @@ impl LockFile {
                 std::fs::rename(temp_path, src_path)?;
             }
 
-            let mut resources_contexts = Vec::with_capacity(resources.len());
+            let mut resources_download_tasks = Vec::with_capacity(resources.len());
 
             // Go through the list of packages' resources to process.
             for (temp_hash, root_url, resource) in resources.drain(..) {
@@ -289,21 +292,21 @@ impl LockFile {
                 // Prepare temp path to the resource.
                 let temp_path = store.get_temp_path(&temp_hash);
 
-                // Start downloader task.
-                let context = Downloader::new(&resource_url)?
-                    .with_continue_downloading(false)
-                    .with_output_file(&temp_path)
-                    .download(|_, _, _| {})
-                    .await?;
+                // Start resource downloading.
+                let task = downloader.download(&resource_url, &temp_path, DownloadOptions {
+                    continue_download: false,
+                    on_update: None,
+                    on_finish: None
+                });
 
                 requested_urls.insert(unique_key.clone());
-                resources_contexts.push((temp_path, resource_url, unique_key, resource, context));
+                resources_download_tasks.push((temp_path, resource_url, unique_key, resource, task));
             }
 
             // Go through the list of queued resources.
-            for (temp_path, resource_url, unique_key, resource, context) in resources_contexts.drain(..) {
+            for (temp_path, resource_url, unique_key, resource, context) in resources_download_tasks.drain(..) {
                 // Await resource downloading.
-                context.wait()?;
+                context.wait().await?;
 
                 match resource.format {
                     PackageResourceFormat::Package => unreachable!("Package must have been queued to be processed in a different place"),

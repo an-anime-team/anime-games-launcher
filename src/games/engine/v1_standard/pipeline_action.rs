@@ -55,7 +55,7 @@ impl PipelineAction {
     ///
     /// If `true` is returned, then the action should be started.
     /// If `false`, then the action should be skipped.
-    pub fn before(&self, progress: impl Fn(ProgressReport) -> bool + 'static) -> Result<Option<bool>, LuaError> {
+    pub fn before(&self, progress: impl Fn(ProgressReport) -> bool + Send + 'static) -> Result<Option<bool>, LuaError> {
         let Some(before) = &self.before else {
             return Ok(None);
         };
@@ -68,7 +68,7 @@ impl PipelineAction {
     }
 
     /// Perform the action.
-    pub fn perform(&self, progress: impl Fn(ProgressReport) + 'static) -> Result<(), LuaError> {
+    pub fn perform(&self, progress: impl Fn(ProgressReport) + Send + 'static) -> Result<(), LuaError> {
         let progress = self.lua.create_function(move |_, report: LuaValue| {
             progress(ProgressReport::from_lua(&report)?);
 
@@ -82,7 +82,7 @@ impl PipelineAction {
     ///
     /// If `true` is returned, then the pipeline should continue execution.
     /// If `false`, then all the following actions should be skipped.
-    pub fn after(&self, progress: impl Fn(ProgressReport) -> bool + 'static) -> Result<Option<bool>, LuaError> {
+    pub fn after(&self, progress: impl Fn(ProgressReport) -> bool + Send + 'static) -> Result<Option<bool>, LuaError> {
         let Some(after) = &self.after else {
             return Ok(None);
         };

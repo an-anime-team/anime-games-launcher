@@ -347,12 +347,12 @@ impl SQLiteAPI {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
-        env.set("open", (self.sqlite_open)(&self.lua, context)?)?;
-        env.set("execute", self.sqlite_execute.clone())?;
-        env.set("batch", self.sqlite_batch.clone())?;
-        env.set("query", self.sqlite_query.clone())?;
-        env.set("query_row", self.sqlite_query_row.clone())?;
-        env.set("close", self.sqlite_close.clone())?;
+        env.raw_set("open", (self.sqlite_open)(&self.lua, context)?)?;
+        env.raw_set("execute", self.sqlite_execute.clone())?;
+        env.raw_set("batch", self.sqlite_batch.clone())?;
+        env.raw_set("query", self.sqlite_query.clone())?;
+        env.raw_set("query_row", self.sqlite_query_row.clone())?;
+        env.raw_set("close", self.sqlite_close.clone())?;
 
         Ok(env)
     }
@@ -384,7 +384,7 @@ mod tests {
             ext_allowed_paths: vec![]
         })?;
 
-        let handle = env.call_function::<i32>("open", path)?;
+        let handle = env.call_function::<i32>("open", path.to_string())?;
 
         env.call_function::<()>("execute", (handle, "
             CREATE TABLE test (
@@ -429,6 +429,8 @@ mod tests {
         assert_eq!(rows_count.pop::<i32>()?, 0);
 
         env.call_function::<()>("close", handle)?;
+
+        std::fs::remove_file(path)?;
 
         Ok(())
     }

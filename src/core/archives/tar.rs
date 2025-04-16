@@ -74,12 +74,12 @@ impl ArchiveExt for TarArchive {
     }
 
     fn extract(&self, folder: impl AsRef<Path>, mut progress: impl FnMut(u64, u64, u64) + Send + 'static) -> Result<Self::Extractor, Self::Error> {
-        let folder = folder.as_ref()
-            .to_path_buf();
+        let folder = folder.as_ref().to_path_buf();
 
-        // Create output directory because
-        // tar doesn't do it automatically.
-        std::fs::create_dir_all(&folder)?;
+        // Create output directory because tar doesn't do it automatically.
+        if !folder.is_dir() {
+            std::fs::create_dir_all(&folder)?;
+        }
 
         let files = HashMap::<String, u64>::from_iter({
             self.get_entries()?
@@ -176,11 +176,15 @@ mod tests {
         let path = std::env::temp_dir().join(".agl-tar-test");
 
         if !path.exists() {
-            Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")?
-                .with_output_file(&path)
-                .download(|_, _, _| {})
-                .await?
-                .wait()?;
+            let downloader = Downloader::new()?;
+
+            let task = downloader.download(
+                "https://github.com/doitsujin/dxvk/releases/download/v2.6.1/dxvk-2.6.1.tar.gz",
+                &path,
+                DownloadOptions::default()
+            );
+
+            task.wait().await?;
         }
 
         Ok(TarArchive::open(path)?)
@@ -192,8 +196,8 @@ mod tests {
             .get_entries()?;
 
         assert_eq!(entries.len(), 13);
-        assert_eq!(entries.iter().map(|entry| entry.size).sum::<u64>(), 25579660);
-        assert!(entries.iter().any(|entry| entry.path == PathBuf::from("dxvk-2.4/x64/d3d10core.dll")));
+        assert_eq!(entries.iter().map(|entry| entry.size).sum::<u64>(), 28119180);
+        assert!(entries.iter().any(|entry| entry.path == PathBuf::from("dxvk-2.6.1/x64/d3d11.dll")));
 
         Ok(())
     }
@@ -210,7 +214,7 @@ mod tests {
             .extract(&path, |_, _, _| {})?
             .wait().unwrap();
 
-        assert!(path.join("dxvk-2.4")
+        assert!(path.join("dxvk-2.6.1")
             .join("x64")
             .join("d3d10core.dll")
             .exists());

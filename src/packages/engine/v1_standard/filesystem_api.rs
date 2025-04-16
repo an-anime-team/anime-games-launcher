@@ -74,7 +74,7 @@ impl FilesystemAPI {
 
                     let result = lua.create_table_with_capacity(0, 5)?;
 
-                    result.set("created_at", {
+                    result.raw_set("created_at", {
                         metadata.created()?
                             .duration_since(UNIX_EPOCH)
                             .as_ref()
@@ -82,7 +82,7 @@ impl FilesystemAPI {
                             .unwrap_or_default()
                     })?;
 
-                    result.set("modified_at", {
+                    result.raw_set("modified_at", {
                         metadata.modified()?
                             .duration_since(UNIX_EPOCH)
                             .as_ref()
@@ -90,10 +90,10 @@ impl FilesystemAPI {
                             .unwrap_or_default()
                     })?;
 
-                    result.set("length", metadata.len())?;
-                    result.set("is_accessible", context.is_accessible(path))?;
+                    result.raw_set("length", metadata.len())?;
+                    result.raw_set("is_accessible", context.is_accessible(path))?;
 
-                    result.set("type", {
+                    result.raw_set("type", {
                         if metadata.is_symlink() {
                             "symlink"
                         } else if metadata.is_dir() {
@@ -637,10 +637,10 @@ impl FilesystemAPI {
 
                         let entry_table = lua.create_table_with_capacity(0, 3)?;
 
-                        entry_table.set("name", entry.file_name().to_string_lossy().to_string())?;
-                        entry_table.set("path", entry.path().to_string_lossy().to_string())?;
+                        entry_table.raw_set("name", entry.file_name().to_string_lossy().to_string())?;
+                        entry_table.raw_set("path", entry.path().to_string_lossy().to_string())?;
 
-                        entry_table.set("type", {
+                        entry_table.raw_set("type", {
                             if entry.path().is_symlink() {
                                 "symlink"
                             } else if entry.path().is_dir() {
@@ -690,26 +690,26 @@ impl FilesystemAPI {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 19)?;
 
-        env.set("exists", (self.fs_exists)(&self.lua, context)?)?;
-        env.set("metadata", (self.fs_metadata)(&self.lua, context)?)?;
-        env.set("copy", (self.fs_copy)(&self.lua, context)?)?;
-        env.set("move", (self.fs_move)(&self.lua, context)?)?;
-        env.set("remove", (self.fs_remove)(&self.lua, context)?)?;
-        env.set("open", (self.fs_open)(&self.lua, context)?)?;
-        env.set("seek", self.fs_seek.clone())?;
-        env.set("seek_rel", self.fs_seek_rel.clone())?;
-        env.set("read", self.fs_read.clone())?;
-        env.set("write", self.fs_write.clone())?;
-        env.set("flush", self.fs_flush.clone())?;
-        env.set("close", self.fs_close.clone())?;
+        env.raw_set("exists", (self.fs_exists)(&self.lua, context)?)?;
+        env.raw_set("metadata", (self.fs_metadata)(&self.lua, context)?)?;
+        env.raw_set("copy", (self.fs_copy)(&self.lua, context)?)?;
+        env.raw_set("move", (self.fs_move)(&self.lua, context)?)?;
+        env.raw_set("remove", (self.fs_remove)(&self.lua, context)?)?;
+        env.raw_set("open", (self.fs_open)(&self.lua, context)?)?;
+        env.raw_set("seek", self.fs_seek.clone())?;
+        env.raw_set("seek_rel", self.fs_seek_rel.clone())?;
+        env.raw_set("read", self.fs_read.clone())?;
+        env.raw_set("write", self.fs_write.clone())?;
+        env.raw_set("flush", self.fs_flush.clone())?;
+        env.raw_set("close", self.fs_close.clone())?;
 
-        env.set("create_file", (self.fs_create_file)(&self.lua, context)?)?;
-        env.set("read_file", (self.fs_read_file)(&self.lua, context)?)?;
-        env.set("write_file", (self.fs_write_file)(&self.lua, context)?)?;
-        env.set("remove_file", (self.fs_remove_file)(&self.lua, context)?)?;
-        env.set("create_dir", (self.fs_create_dir)(&self.lua, context)?)?;
-        env.set("read_dir", (self.fs_read_dir)(&self.lua, context)?)?;
-        env.set("remove_dir", (self.fs_remove_dir)(&self.lua, context)?)?;
+        env.raw_set("create_file", (self.fs_create_file)(&self.lua, context)?)?;
+        env.raw_set("read_file", (self.fs_read_file)(&self.lua, context)?)?;
+        env.raw_set("write_file", (self.fs_write_file)(&self.lua, context)?)?;
+        env.raw_set("remove_file", (self.fs_remove_file)(&self.lua, context)?)?;
+        env.raw_set("create_dir", (self.fs_create_dir)(&self.lua, context)?)?;
+        env.raw_set("read_dir", (self.fs_read_dir)(&self.lua, context)?)?;
+        env.raw_set("remove_dir", (self.fs_remove_dir)(&self.lua, context)?)?;
 
         Ok(env)
     }

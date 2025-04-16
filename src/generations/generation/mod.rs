@@ -56,9 +56,11 @@ impl Generation {
         let mut packages = HashSet::with_capacity(self.manifests.len());
 
         // Start downloading all added games' manifests.
-        let mut contexts = Vec::with_capacity(self.manifests.len());
+        let mut download_tasks = Vec::with_capacity(self.manifests.len());
 
         tracing::trace!("Fetching games manifests");
+
+        let downloader = Downloader::new()?;
 
         for url in &self.manifests {
             let temp_hash = Hash::rand();
@@ -66,21 +68,17 @@ impl Generation {
 
             tracing::trace!(?url, ?temp_path, "Fetching game manifest");
 
-            let context = Downloader::new(url)?
-                .with_continue_downloading(false)
-                .with_output_file(&temp_path)
-                .download(|_, _, _| {})
-                .await?;
+            let task = downloader.download(url, &temp_path, DownloadOptions::default());
 
-            contexts.push((url.clone(), temp_path, context));
+            download_tasks.push((url.clone(), temp_path, task));
         }
 
         // Await games' manifests and store game packages URLs.
-        let mut games = Vec::with_capacity(contexts.len());
+        let mut games = Vec::with_capacity(download_tasks.len());
 
-        for (url, temp_path, context) in contexts.drain(..) {
-            // Await manifest download finish.
-            context.wait()?;
+        for (url, temp_path, task) in download_tasks.drain(..) {
+            // Await manifest download task.
+            task.wait().await?;
 
             tracing::trace!(?url, ?temp_path, "Processing game manifest");
 

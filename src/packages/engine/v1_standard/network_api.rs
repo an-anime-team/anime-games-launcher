@@ -99,18 +99,18 @@ impl NetworkAPI {
                         let response = request.send().await
                             .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
 
-                        result.set("status", response.status().as_u16())?;
-                        result.set("is_ok", response.status().is_success())?;
-                        result.set("headers", headers.clone())?;
+                        result.raw_set("status", response.status().as_u16())?;
+                        result.raw_set("is_ok", response.status().is_success())?;
+                        result.raw_set("headers", headers.clone())?;
 
                         for (key, value) in response.headers() {
-                            headers.set(key.to_string(), lua.create_string(value.as_bytes())?)?;
+                            headers.raw_set(key.to_string(), lua.create_string(value.as_bytes())?)?;
                         }
 
                         let body = response.bytes().await
                             .map_err(|err| LuaError::external(format!("failed to fetch body: {err}")))?;
 
-                        result.set("body", body.to_vec())?;
+                        result.raw_set("body", body.to_vec())?;
 
                         Ok::<_, LuaError>(result)
                     })?;
@@ -134,12 +134,12 @@ impl NetworkAPI {
                         let response = request.send().await
                             .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
 
-                        result.set("status", response.status().as_u16())?;
-                        result.set("is_ok", response.status().is_success())?;
-                        result.set("headers", headers.clone())?;
+                        result.raw_set("status", response.status().as_u16())?;
+                        result.raw_set("is_ok", response.status().is_success())?;
+                        result.raw_set("headers", headers.clone())?;
 
                         for (key, value) in response.headers() {
-                            headers.set(key.to_string(), lua.create_string(value.as_bytes())?)?;
+                            headers.raw_set(key.to_string(), lua.create_string(value.as_bytes())?)?;
                         }
 
                         Ok::<_, LuaError>((response, result))
@@ -156,7 +156,7 @@ impl NetworkAPI {
 
                     handles.insert(handle, response);
 
-                    header.set("handle", handle)?;
+                    header.raw_set("handle", handle)?;
 
                     Ok(header)
                 })?
@@ -214,10 +214,10 @@ impl NetworkAPI {
     pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("fetch", self.net_fetch.clone())?;
-        env.set("open", self.net_open.clone())?;
-        env.set("read", self.net_read.clone())?;
-        env.set("close", self.net_close.clone())?;
+        env.raw_set("fetch", self.net_fetch.clone())?;
+        env.raw_set("open", self.net_open.clone())?;
+        env.raw_set("read", self.net_read.clone())?;
+        env.raw_set("close", self.net_close.clone())?;
 
         Ok(env)
     }

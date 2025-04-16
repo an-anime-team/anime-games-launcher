@@ -1,4 +1,5 @@
-use std::ffi::OsStr;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use mlua::prelude::*;
 
@@ -7,98 +8,189 @@ use super::*;
 pub struct DownloaderAPI {
     lua: Lua,
 
-    downloader_download: LuaFunctionBuilder
+    downloader_create: LuaFunction,
+    downloader_download: LuaFunctionBuilder,
+    downloader_progress: LuaFunction,
+    downloader_wait: LuaFunction,
+    downloader_abort: LuaFunction,
+    downloader_close: LuaFunction
 }
 
 impl DownloaderAPI {
     pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+        let downloader_handles = Arc::new(Mutex::new(HashMap::new()));
+        let tasks_handles = Arc::new(Mutex::new(HashMap::new()));
+
         Ok(Self {
-            downloader_download: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
+            downloader_create: {
+                let downloader_handles = downloader_handles.clone();
 
-                lua.create_function(move |_, (url, options): (LuaString, Option<LuaTable>)| {
-                    let mut output_file = None;
-                    let mut continue_downloading = true;
-                    let mut progress = None;
+                lua.create_function(move |_, _: ()| {
+                    let downloader = Downloader::new()
+                        .map_err(LuaError::external)?;
 
-                    // Set downloading options if they're given.
-                    if let Some(options) = options {
-                        if let Ok(value) = options.get::<LuaString>("output_file") {
-                            let value = resolve_path(value.to_string_lossy())?;
+                    let mut handles = downloader_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
 
-                            if !context.is_accessible(&value) {
-                                return Err(LuaError::external("output file is inaccessible"));
-                            }
+                    let mut handle = rand::random::<i32>();
 
-                            output_file = Some(value);
-                        }
-
-                        continue_downloading = options.get::<bool>("continue_downloading")
-                            .unwrap_or(true);
-
-                        if let Ok(value) = options.get::<LuaFunction>("progress") {
-                            progress = Some(value);
-                        }
+                    while handles.contains_key(&handle) {
+                        handle = rand::random::<i32>();
                     }
 
-                    // Prepare downloader.
-                    let mut downloader = Downloader::new(url.to_string_lossy())
-                        .map_err(|err| LuaError::external(format!("failed to open downloader: {err}")))?
-                        .with_continue_downloading(continue_downloading);
+                    handles.insert(handle, downloader);
 
-                    downloader = match output_file {
-                        Some(output_file) => downloader.with_output_file(output_file),
-                        None => {
-                            let output_file = downloader.output_file()
-                                .file_name()
-                                .unwrap_or(OsStr::new("index.html"));
+                    Ok(handle)
+                })?
+            },
 
-                            let output_file = context.module_folder.join(output_file);
+            downloader_download: {
+                let downloader_handles = downloader_handles.clone();
+                let tasks_handles = tasks_handles.clone();
 
-                            downloader.with_output_file(output_file)
+                Box::new(move |lua: &Lua, context: &Context| {
+                    let context = context.to_owned();
+                    let downloader_handles = downloader_handles.clone();
+                    let tasks_handles = tasks_handles.clone();
+
+                    lua.create_function(move |_, (handle, options): (i32, LuaTable)| {
+                        let url = options.get::<LuaString>("url")?;
+                        let output_file = options.get::<LuaString>("output_file")?;
+
+                        let mut output_file = resolve_path(output_file.to_string_lossy())?;
+
+                        if output_file.is_relative() {
+                            output_file = context.module_folder.join(output_file);
                         }
+
+                        if !context.is_accessible(&output_file) {
+                            return Err(LuaError::external("path is inaccessible"));
+                        }
+
+                        if let Some(parent) = output_file.parent() {
+                            if !parent.is_dir() {
+                                std::fs::create_dir_all(parent)?;
+                            }
+                        }
+
+                        let mut download_options = DownloadOptions {
+                            continue_download: true,
+                            on_update: None,
+                            on_finish: None
+                        };
+
+                        if let Ok(value) = options.get("continue_download") {
+                            download_options.continue_download = value;
+                        }
+
+                        if let Ok(callback) = options.get::<LuaFunction>("on_update") {
+                            download_options.on_update = Some(Box::new(move |curr, total, diff| {
+                                if let Err(err) = callback.call::<()>((curr, total, diff)) {
+                                    tracing::error!(?err, "Failed to execute lua on_update downloader callback");
+                                }
+                            }));
+                        }
+
+                        if let Ok(callback) = options.get::<LuaFunction>("on_finish") {
+                            download_options.on_finish = Some(Box::new(move |total| {
+                                if let Err(err) = callback.call::<()>(total) {
+                                    tracing::error!(?err, "Failed to execute lua on_finish downloader callback");
+                                }
+                            }));
+                        }
+
+                        let downloader_handles = downloader_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                        let Some(downloader) = downloader_handles.get(&handle) else {
+                            return Err(LuaError::external("invalid downloader handle"));
+                        };
+
+                        let mut tasks_handles = tasks_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                        let task = downloader.download(url.to_string_lossy(), output_file, download_options);
+
+                        let mut handle = rand::random::<i32>();
+
+                        while tasks_handles.contains_key(&handle) {
+                            handle = rand::random::<i32>();
+                        }
+
+                        tasks_handles.insert(handle, task);
+
+                        Ok(handle)
+                    })
+                })
+            },
+
+            downloader_progress: {
+                let tasks_handles = tasks_handles.clone();
+
+                lua.create_function(move |lua, handle: i32| {
+                    let handles = tasks_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(task) = handles.get(&handle) else {
+                        return Err(LuaError::external("invalid download task handle"));
                     };
 
-                    // Create folder where the output file should be downloaded.
-                    if let Some(parent) = downloader.output_file().parent() {
-                        if !parent.is_dir() {
-                            std::fs::create_dir_all(parent)?;
-                        }
+                    let progress = lua.create_table_with_capacity(0, 4)?;
+
+                    progress.raw_set("current", task.current())?;
+                    progress.raw_set("total", task.total())?;
+                    progress.raw_set("fraction", task.fraction())?;
+                    progress.raw_set("finished", task.is_finished())?;
+
+                    Ok(progress)
+                })?
+            },
+
+            downloader_wait: {
+                let tasks_handles = tasks_handles.clone();
+
+                lua.create_function(move |_, handle: i32| {
+                    let mut handles = tasks_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(task) = handles.remove(&handle) else {
+                        return Err(LuaError::external("invalid download task handle"));
+                    };
+
+                    let result = RUNTIME.block_on(task.wait())
+                        .map_err(LuaError::external)?;
+
+                    Ok(result)
+                })?
+            },
+
+            downloader_abort: {
+                let tasks_handles = tasks_handles.clone();
+
+                lua.create_function(move |_, handle: i32| {
+                    let mut handles = tasks_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    if let Some(task) = handles.remove(&handle) {
+                        task.abort();
                     }
 
-                    // Start downloading.
-                    let (send, recv) = std::sync::mpsc::channel();
+                    Ok(())
+                })?
+            },
 
-                    let context = RUNTIME.block_on(async move {
-                        let context = downloader.download(move |curr, total, diff| {
-                            let _ = send.send((curr, total, diff));
-                        }).await;
+            downloader_close: {
+                let downloader_handles = downloader_handles.clone();
 
-                        context.map_err(|err| {
-                            LuaError::external(format!("failed to start downloader: {err}"))
-                        })
-                    })?;
+                lua.create_function(move |_, handle: i32| {
+                    let mut handles = downloader_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                    // Handle downloading progress events.
-                    let mut finished = false;
+                    handles.remove(&handle);
 
-                    while !context.is_finished() {
-                        for (curr, total, diff) in recv.try_iter() {
-                            finished = curr == total;
-
-                            if let Some(callback) = &progress {
-                                callback.call::<()>((curr, total, diff))?;
-                            }
-                        }
-                    }
-
-                    context.wait().map_err(|err| {
-                        LuaError::external(format!("failed to download file: {err:?}"))
-                    })?;
-
-                    Ok(finished)
-                })
-            }),
+                    Ok(())
+                })?
+            },
 
             lua
         })
@@ -111,9 +203,14 @@ impl DownloaderAPI {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 1)?;
+        let env = self.lua.create_table_with_capacity(0, 6)?;
 
-        env.set("download", (self.downloader_download)(&self.lua, context)?)?;
+        env.raw_set("create", self.downloader_create.clone())?;
+        env.raw_set("download", (self.downloader_download)(&self.lua, context)?)?;
+        env.raw_set("progress", self.downloader_progress.clone())?;
+        env.raw_set("wait", self.downloader_wait.clone())?;
+        env.raw_set("abort", self.downloader_abort.clone())?;
+        env.raw_set("close", self.downloader_close.clone())?;
 
         Ok(env)
     }
@@ -139,18 +236,28 @@ mod tests {
 
         let path = std::env::temp_dir().join(".agl-v1-downloader-test-dxvk.tar.gz");
 
+        let downloader = env.call_function::<i64>("create", ())?;
+
         let options = lua.create_table()?;
 
+        options.set("url", "https://github.com/doitsujin/dxvk/releases/download/v2.6.1/dxvk-2.6.1.tar.gz")?;
         options.set("output_file", path.to_string_lossy().to_string())?;
         options.set("continue_downloading", false)?;
 
-        let result = env.call_function::<bool>("download", (
-            "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz",
-            options
-        ))?;
+        let task = env.call_function::<i64>("download", (downloader, options))?;
 
-        assert!(result);
-        assert_eq!(Hash::for_entry(path)?, Hash(13290421503141924848));
+        let mut progress = env.call_function::<LuaTable>("progress", task)?;
+
+        while progress.get::<u64>("total")? == 0 {
+            progress = env.call_function::<LuaTable>("progress", task)?;
+        }
+
+        assert!(!progress.get::<bool>("finished")?);
+
+        let total = env.call_function::<u64>("wait", task)?;
+
+        assert_eq!(total, progress.get::<u64>("total")?);
+        assert_eq!(Hash::for_entry(path)?, Hash(12012134683777074236));
 
         Ok(())
     }

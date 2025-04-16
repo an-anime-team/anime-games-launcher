@@ -276,16 +276,16 @@ impl PathAPI {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 10)?;
 
-        env.set("temp_dir", (self.path_temp_dir)(&self.lua, context)?)?;
-        env.set("module_dir", (self.path_module_dir)(&self.lua, context)?)?;
-        env.set("persist_dir", (self.path_persist_dir)(&self.lua, context)?)?;
-        env.set("normalize", self.path_normalize.clone())?;
-        env.set("join", self.path_join.clone())?;
-        env.set("parts", self.path_parts.clone())?;
-        env.set("parent", self.path_parent.clone())?;
-        env.set("file_name", self.path_file_name.clone())?;
-        env.set("exists", self.path_exists.clone())?;
-        env.set("accessible", (self.path_accessible)(&self.lua, context)?)?;
+        env.raw_set("temp_dir", (self.path_temp_dir)(&self.lua, context)?)?;
+        env.raw_set("module_dir", (self.path_module_dir)(&self.lua, context)?)?;
+        env.raw_set("persist_dir", (self.path_persist_dir)(&self.lua, context)?)?;
+        env.raw_set("normalize", self.path_normalize.clone())?;
+        env.raw_set("join", self.path_join.clone())?;
+        env.raw_set("parts", self.path_parts.clone())?;
+        env.raw_set("parent", self.path_parent.clone())?;
+        env.raw_set("file_name", self.path_file_name.clone())?;
+        env.raw_set("exists", self.path_exists.clone())?;
+        env.raw_set("accessible", (self.path_accessible)(&self.lua, context)?)?;
 
         Ok(env)
     }

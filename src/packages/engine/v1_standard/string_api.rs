@@ -282,10 +282,10 @@ impl StringAPI {
     pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.set("to_bytes", self.str_to_bytes.clone())?;
-        env.set("from_bytes", self.str_from_bytes.clone())?;
-        env.set("encode", self.str_encode.clone())?;
-        env.set("decode", self.str_decode.clone())?;
+        env.raw_set("to_bytes", self.str_to_bytes.clone())?;
+        env.raw_set("from_bytes", self.str_from_bytes.clone())?;
+        env.raw_set("encode", self.str_encode.clone())?;
+        env.raw_set("decode", self.str_decode.clone())?;
 
         Ok(env)
     }

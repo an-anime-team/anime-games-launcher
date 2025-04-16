@@ -14,11 +14,7 @@ pub mod prelude {
         AsLuaError
     };
 
-    pub use super::network::downloader::{
-        Downloader,
-        DownloaderContext,
-        DownloaderError
-    };
+    pub use super::network::prelude::*;
 
     pub use super::archives::{
         ArchiveExt,

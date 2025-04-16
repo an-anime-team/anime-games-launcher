@@ -32,11 +32,7 @@ impl ProcessAPI {
                 let module_folder = context.module_folder.clone();
 
                 lua.create_function(move |lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
-                    if path.is_relative() {
-                        path = context.module_folder.join(path);
-                    }
+                    let path = resolve_path(path.to_string_lossy())?;
 
                     let mut command = Command::new(path);
 
@@ -71,10 +67,10 @@ impl ProcessAPI {
                     // Prepare the output.
                     let result = lua.create_table_with_capacity(0, 4)?;
 
-                    result.set("status", output.status.code())?;
-                    result.set("is_ok", output.status.success())?;
-                    result.set("stdout", output.stdout)?;
-                    result.set("stderr", output.stderr)?;
+                    result.raw_set("status", output.status.code())?;
+                    result.raw_set("is_ok", output.status.success())?;
+                    result.raw_set("stdout", output.stdout)?;
+                    result.raw_set("stderr", output.stderr)?;
 
                     Ok(result)
                 })
@@ -89,11 +85,7 @@ impl ProcessAPI {
                     let process_handles = process_handles.clone();
 
                     lua.create_function(move |_, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                        let mut path = resolve_path(path.to_string_lossy())?;
-
-                        if path.is_relative() {
-                            path = context.module_folder.join(path);
-                        }
+                        let path = resolve_path(path.to_string_lossy())?;
 
                         let mut command = Command::new(path);
 
@@ -245,10 +237,10 @@ impl ProcessAPI {
                     // Prepare lua result.
                     let result = lua.create_table_with_capacity(0, 4)?;
 
-                    result.set("status", output.status.code())?;
-                    result.set("is_ok", output.status.success())?;
-                    result.set("stdout", output.stdout)?;
-                    result.set("stderr", output.stderr)?;
+                    result.raw_set("status", output.status.code())?;
+                    result.raw_set("is_ok", output.status.success())?;
+                    result.raw_set("stdout", output.stdout)?;
+                    result.raw_set("stderr", output.stderr)?;
 
                     Ok(result)
                 })?
@@ -282,14 +274,14 @@ impl ProcessAPI {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
-        env.set("exec", (self.process_exec)(&self.lua, context)?)?;
-        env.set("open", (self.process_open)(&self.lua, context)?)?;
-        env.set("stdin", self.process_stdin.clone())?;
-        env.set("stdout", self.process_stdout.clone())?;
-        env.set("stderr", self.process_stderr.clone())?;
-        env.set("wait", self.process_wait.clone())?;
-        env.set("kill", self.process_kill.clone())?;
-        env.set("finished", self.process_finished.clone())?;
+        env.raw_set("exec", (self.process_exec)(&self.lua, context)?)?;
+        env.raw_set("open", (self.process_open)(&self.lua, context)?)?;
+        env.raw_set("stdin", self.process_stdin.clone())?;
+        env.raw_set("stdout", self.process_stdout.clone())?;
+        env.raw_set("stderr", self.process_stderr.clone())?;
+        env.raw_set("wait", self.process_wait.clone())?;
+        env.raw_set("kill", self.process_kill.clone())?;
+        env.raw_set("finished", self.process_finished.clone())?;
 
         Ok(env)
     }
