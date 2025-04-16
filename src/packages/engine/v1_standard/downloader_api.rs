@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use mlua::prelude::*;
 
 use super::*;
+
+const DOWNLOADER_WAIT_UPDATE_INTERVAL: Duration = Duration::from_millis(50);
 
 pub struct DownloaderAPI {
     lua: Lua,
@@ -83,21 +86,10 @@ impl DownloaderAPI {
                             download_options.continue_download = value;
                         }
 
-                        if let Ok(callback) = options.get::<LuaFunction>("on_update") {
-                            download_options.on_update = Some(Box::new(move |curr, total, diff| {
-                                if let Err(err) = callback.call::<()>((curr, total, diff)) {
-                                    tracing::error!(?err, "Failed to execute lua on_update downloader callback");
-                                }
-                            }));
-                        }
-
-                        if let Ok(callback) = options.get::<LuaFunction>("on_finish") {
-                            download_options.on_finish = Some(Box::new(move |total| {
-                                if let Err(err) = callback.call::<()>(total) {
-                                    tracing::error!(?err, "Failed to execute lua on_finish downloader callback");
-                                }
-                            }));
-                        }
+                        // If we make a rust callback in downloader options - there will be a deadlock
+                        // because the lua engine is blocked by the `downloader.wait` function.
+                        let on_update = options.get::<LuaFunction>("on_update").ok();
+                        let on_finish = options.get::<LuaFunction>("on_finish").ok();
 
                         let downloader_handles = downloader_handles.lock()
                             .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
@@ -117,7 +109,7 @@ impl DownloaderAPI {
                             handle = rand::random::<i32>();
                         }
 
-                        tasks_handles.insert(handle, task);
+                        tasks_handles.insert(handle, (task, on_update, on_finish));
 
                         Ok(handle)
                     })
@@ -131,16 +123,23 @@ impl DownloaderAPI {
                     let handles = tasks_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                    let Some(task) = handles.get(&handle) else {
+                    let Some((task, on_update, _)) = handles.get(&handle) else {
                         return Err(LuaError::external("invalid download task handle"));
                     };
 
                     let progress = lua.create_table_with_capacity(0, 4)?;
 
-                    progress.raw_set("current", task.current())?;
-                    progress.raw_set("total", task.total())?;
+                    let current = task.current();
+                    let total = task.total();
+
+                    progress.raw_set("current", current)?;
+                    progress.raw_set("total", total)?;
                     progress.raw_set("fraction", task.fraction())?;
                     progress.raw_set("finished", task.is_finished())?;
+
+                    if let Some(on_update) = on_update {
+                        on_update.call::<()>((current, total))?;
+                    }
 
                     Ok(progress)
                 })?
@@ -153,12 +152,27 @@ impl DownloaderAPI {
                     let mut handles = tasks_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                    let Some(task) = handles.remove(&handle) else {
+                    let Some((task, on_update, on_finish)) = handles.remove(&handle) else {
                         return Err(LuaError::external("invalid download task handle"));
                     };
 
+                    while !task.is_finished() {
+                        if let Some(on_update) = &on_update {
+                            let current = task.current();
+                            let total = task.total();
+
+                            on_update.call::<()>((current, total))?;
+                        }
+
+                        std::thread::sleep(DOWNLOADER_WAIT_UPDATE_INTERVAL);
+                    }
+
                     let result = RUNTIME.block_on(task.wait())
                         .map_err(LuaError::external)?;
+
+                    if let Some(on_finish) = on_finish {
+                        on_finish.call::<()>(result)?;
+                    }
 
                     Ok(result)
                 })?
@@ -171,7 +185,7 @@ impl DownloaderAPI {
                     let mut handles = tasks_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                    if let Some(task) = handles.remove(&handle) {
+                    if let Some((task, _, _)) = handles.remove(&handle) {
                         task.abort();
                     }
 

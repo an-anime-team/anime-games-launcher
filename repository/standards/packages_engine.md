@@ -984,10 +984,7 @@ type Options = {
     continue_download?: boolean,
 
     // Callback executed every time downloader reads a chunk of data.
-    //
-    // Provides `(current, total, diff)` values where `diff` is the change
-    // in `current` value between this callback calls.
-    on_update?: (current: number, total: number, diff: number): void,
+    on_update?: (current: number, total: number): void,
 
     // Callback executed when downloading is successfully finished.
     on_finish?: (total: number): void
