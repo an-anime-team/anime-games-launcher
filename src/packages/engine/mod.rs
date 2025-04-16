@@ -420,7 +420,7 @@ impl PackagesEngine {
         lua.sandbox(true)?;
 
         // Evaluate all the modules in dependency growth order.
-        while let Some((resource_table, module, env)) = evaluation_queue.pop() {
+        for (resource_table, module, env) in evaluation_queue {
             tracing::debug!(resource_table = format!("{resource_table:#?}"), "Evaluating lua module");
 
             let value = module.set_environment(env)
