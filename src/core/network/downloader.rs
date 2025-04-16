@@ -141,23 +141,6 @@ impl Downloader {
 
                 let mut response = client.execute(request).await?;
 
-                // Request content range (downloaded + remained content size).
-                //
-                // If finished or overcame: `bytes */10611646760`.
-                // If not finished: `bytes 10611646759-10611646759/10611646760`.
-                //
-                // Source: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Range
-                if let Some(range) = response.headers().get("content-range") {
-                    let range = String::from_utf8_lossy(range.as_bytes());
-
-                    // Finish downloading if header says that we've already downloaded all the data.
-                    if range.contains("*/") {
-                        total.store(downloaded, Ordering::Release);
-
-                        return Ok(downloaded);
-                    }
-                }
-
                 // HTTP 416 = provided range is greater than the actual
                 // content length (means the file is downloaded).
                 //
@@ -168,13 +151,45 @@ impl Downloader {
                     return Ok(downloaded);
                 }
 
-                // Try to read the `content-length` HTTP header and if successful,
-                // store its value as the total length of the downloadable content.
-                if let Some(content_length) = response.headers().get("content-length") {
+                // Try to read the `Content-Length` HTTP header and if successful,
+                // store its value as the partial length of downloadable content.
+                if let Some(content_length) = response.headers().get("Content-Length") {
                     let content_length = String::from_utf8_lossy(content_length.as_bytes());
 
                     if let Ok(content_length) = content_length.parse::<u64>() {
-                        total.store(content_length, Ordering::Release);
+                        // If we already downloaded part of the content -
+                        // `Content-Length` will contain a length of the
+                        // remaining content.
+                        total.store(downloaded + content_length, Ordering::Release);
+                    }
+                }
+
+                // Request content range (downloaded + remained content size).
+                //
+                // If finished or overcame: `bytes */10611646760`.
+                // If not finished: `bytes 10611646759-10611646759/10611646760`.
+                //
+                // Content-Range: <unit> <range>/<size>
+                // Content-Range: <unit> <range>/*
+                // Content-Range: <unit> */<size>
+                //
+                // Source: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Range
+                if let Some(range) = response.headers().get("Content-Range") {
+                    let range = String::from_utf8_lossy(range.as_bytes());
+
+                    if let Some(range) = range.strip_prefix("bytes ") {
+                        if let Some((range, size)) = range.split_once('/') {
+                            // Downloading finished.
+                            if range == "*" {
+                                total.store(downloaded, Ordering::Release);
+
+                                return Ok(downloaded);
+                            }
+
+                            if let Ok(size) = size.parse::<u64>() {
+                                total.store(size, Ordering::Release);
+                            }
+                        }
                     }
                 }
 

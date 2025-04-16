@@ -17,9 +17,16 @@ pub struct ProgressReport {
 }
 
 impl ProgressReport {
-    #[inline]
-    /// Return `current / total` fraction.
+    /// Return `current / total` fraction with some safety guarantees.
     pub fn fraction(&self) -> f64 {
+        if self.progress_current == 0 {
+            return 0.0;
+        }
+
+        if self.progress_total == 0 {
+            return 1.0;
+        }
+
         self.progress_current as f64 / self.progress_total as f64
     }
 
