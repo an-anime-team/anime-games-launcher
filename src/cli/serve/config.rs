@@ -3,19 +3,12 @@ use serde::{Deserialize, Serialize};
 pub static CONFIG_FILE_NAME: &str = "serve.toml";
 
 #[derive(Deserialize, Serialize)]
+#[derive(Default)]
 pub struct Config {
     pub serve_at: ServeAt,
     pub mislead: Mislead,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            serve_at: ServeAt::default(),
-            mislead: Mislead::default(),
-        }
-    }
-}
 
 #[derive(Deserialize, Serialize)]
 pub struct ServeAt {
