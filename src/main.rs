@@ -105,12 +105,12 @@ async fn main() -> anyhow::Result<()> {
     let args = cli::argument::Args::parse();
 
     if args.command.is_some() {
-        match args.command.unwrap() {
+        return match args.command.unwrap() {
             cli::argument::Commands::Serve { dir_to_serve } => {
                 tracing::info!("Start serving!");
+                cli::serve::run(dir_to_serve).await
             },
-        }
-        return Ok(());
+        };
     }
 
     tracing::info!("Starting application ({APP_VERSION})");
