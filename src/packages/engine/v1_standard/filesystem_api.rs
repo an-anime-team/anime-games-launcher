@@ -46,7 +46,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !path.exists() {
                         return Ok(false);
@@ -60,7 +64,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |lua, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     let metadata = path.metadata()?;
 
@@ -103,8 +111,16 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
-                    let source = resolve_path(source.to_string_lossy())?;
-                    let target = resolve_path(target.to_string_lossy())?;
+                    let mut source = resolve_path(source.to_string_lossy())?;
+                    let mut target = resolve_path(target.to_string_lossy())?;
+
+                    if source.is_relative() {
+                        source = context.module_folder.join(source);
+                    }
+
+                    if target.is_relative() {
+                        target = context.module_folder.join(target);
+                    }
 
                     // Throw an error if source path doesn't exists or inaccessible.
                     if !source.exists() {
@@ -161,8 +177,16 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
-                    let source = resolve_path(source.to_string_lossy())?;
-                    let target = resolve_path(target.to_string_lossy())?;
+                    let mut source = resolve_path(source.to_string_lossy())?;
+                    let mut target = resolve_path(target.to_string_lossy())?;
+
+                    if source.is_relative() {
+                        source = context.module_folder.join(source);
+                    }
+
+                    if target.is_relative() {
+                        target = context.module_folder.join(target);
+                    }
 
                     // Throw an error if source path doesn't exists or inaccessible.
                     if !source.exists() {
@@ -233,7 +257,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -260,7 +288,11 @@ impl FilesystemAPI {
                     let file_handles = file_handles.clone();
 
                     lua.create_function(move |_, (path, options): (LuaString, Option<LuaTable>)| {
-                        let path = resolve_path(path.to_string_lossy())?;
+                        let mut path = resolve_path(path.to_string_lossy())?;
+
+                        if path.is_relative() {
+                            path = context.module_folder.join(path);
+                        }
 
                         if !context.is_accessible(&path) {
                             return Err(LuaError::external("path is inaccessible"));
@@ -461,7 +493,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -483,7 +519,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -497,7 +537,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, (path, content): (LuaString, LuaValue)| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -536,7 +580,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -552,7 +600,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -568,7 +620,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |lua, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -605,7 +661,11 @@ impl FilesystemAPI {
                 let context = context.to_owned();
 
                 lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     if !context.is_accessible(&path) {
                         return Err(LuaError::external("path is inaccessible"));
@@ -835,21 +895,22 @@ mod tests {
         assert!(metadata.get::<bool>("is_accessible")?);
 
         if !dxvk_path.exists() {
-            Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz")
-                .map_err(|err| anyhow::anyhow!(err.to_string()))?
-                .with_output_file(&dxvk_path)
-                .download(|_, _, _| {})
-                .await
-                .map_err(|err| anyhow::anyhow!(err.to_string()))?
-                .wait()
-                .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+            let downloader = Downloader::new()?;
+
+            let task = downloader.download(
+                "https://github.com/doitsujin/dxvk/releases/download/v2.6.1/dxvk-2.6.1.tar.gz",
+                &dxvk_path,
+                DownloadOptions::default()
+            );
+
+            task.wait().await?;
         }
 
         filesystem_api::archive_extract(dxvk_path, &path, |_, _, _| {})?;
 
-        let path = format!("{path}/dxvk-2.4");
+        let path = format!("{path}/dxvk-2.6.1");
 
-        assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
+        assert_eq!(Hash::for_entry(&path)?, Hash(10603016547360459180));
 
         let entries = env.call_function::<LuaTable>("read_dir", path.clone())?;
 
@@ -880,7 +941,7 @@ mod tests {
         assert!(!env.call_function::<bool>("exists", format!("{path}_copy"))?);
         assert!(env.call_function::<bool>("exists", path.clone())?);
 
-        assert_eq!(Hash::for_entry(&path)?, Hash(15040088835594252178));
+        assert_eq!(Hash::for_entry(&path)?, Hash(10603016547360459180));
 
         Ok(())
     }
