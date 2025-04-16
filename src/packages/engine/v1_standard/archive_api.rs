@@ -194,7 +194,7 @@ impl ArchiveAPI {
 
                         while !handle.is_finished() {
                             for (curr, total, diff) in recv.try_iter() {
-                                finished = curr == total;
+                                finished = curr >= total;
 
                                 if let Some(callback) = &progress {
                                     callback.call::<()>((curr, total, diff))?;
