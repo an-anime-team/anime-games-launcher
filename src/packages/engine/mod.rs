@@ -1,4 +1,4 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 use std::str::FromStr;
@@ -54,7 +54,7 @@ impl PackagesEngine {
 
         let engine_registry = Arc::new(RwLock::new(lua.create_registry_value(engine_table)?));
 
-        let mut resources = VecDeque::with_capacity(lock_file.resources.len());
+        let mut resources = Vec::with_capacity(lock_file.resources.len());
         let mut visited_resources = HashSet::new();
         let mut evaluation_queue = Vec::with_capacity(lock_file.resources.len());
 
@@ -74,12 +74,16 @@ impl PackagesEngine {
 
         // Push root resources to the processing queue.
         for root in &lock_file.root {
-            resources.push_back((*root, None));
-            visited_resources.insert(*root);
+            resources.push((*root, None));
         }
 
         // Iterate over all the locked resources.
-        while let Some((key, parent_context)) = resources.pop_front() {
+        while let Some((key, parent_context)) = resources.pop() {
+            // Skip if the resource was already processed.
+            if !visited_resources.insert(key) {
+                continue;
+            }
+
             // Resolve base resource info.
             let resource = &lock_file.resources[key as usize];
 
@@ -106,29 +110,27 @@ impl PackagesEngine {
 
                     resource_table.set("value", package.clone())?;
 
-                    // Load inputs and outputs of the package,
-                    // push to the queue which weren't processed yet.
-                    if let Some(inputs) = &resource.inputs {
-                        for (name, input_key) in inputs.clone() {
-                            inputs_table.set(name, input_key)?;
-
-                            if visited_resources.insert(input_key) {
-                                // Do not reference this package for inputs
-                                // because inputs can't load other inputs.
-                                resources.push_back((input_key, None));
-                            }
-                        }
-                    }
-
+                    // Load inputs and outputs of the package.
+                    // Push everything, regardless of whether
+                    // the resource was already processed,
+                    // to ensure correct loading order.
                     if let Some(outputs) = &resource.outputs {
                         for (name, output_key) in outputs.clone() {
                             outputs_table.set(name, output_key)?;
 
-                            if visited_resources.insert(output_key) {
-                                // Reference this package so the output module
-                                // can load inputs of this package.
-                                resources.push_back((output_key, Some(key)));
-                            }
+                            // Reference this package so the output module
+                            // can load inputs of this package.
+                            resources.push((output_key, Some(key)));
+                        }
+                    }
+                    
+                    if let Some(inputs) = &resource.inputs {
+                        for (name, input_key) in inputs.clone() {
+                            inputs_table.set(name, input_key)?;
+
+                            // Do not reference this package for inputs
+                            // because inputs can't load other inputs.
+                            resources.push((input_key, None));
                         }
                     }
                 }
