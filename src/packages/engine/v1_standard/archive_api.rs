@@ -33,7 +33,11 @@ impl ArchiveAPI {
                     let archive_handles = archive_handles.clone();
 
                     lua.create_function(move |_, (path, format): (LuaString, Option<LuaString>)| {
-                        let path = resolve_path(path.to_string_lossy())?;
+                        let mut path = resolve_path(path.to_string_lossy())?;
+
+                        if path.is_relative() {
+                            path = context.module_folder.join(path);
+                        }
 
                         if !context.is_accessible(&path) {
                             return Err(LuaError::external("path is inaccessible"));
@@ -135,7 +139,11 @@ impl ArchiveAPI {
                     let archive_handles = archive_handles.clone();
 
                     lua.create_function(move |_, (handle, target, progress): (i32, LuaString, Option<LuaFunction>)| {
-                        let target = resolve_path(target.to_string_lossy())?;
+                        let mut target = resolve_path(target.to_string_lossy())?;
+
+                        if target.is_relative() {
+                            target = context.module_folder.join(target);
+                        }
 
                         if !context.is_accessible(&target) {
                             return Err(LuaError::external("target path is inaccessible"));
@@ -241,17 +249,27 @@ impl ArchiveAPI {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn archive_entries() -> anyhow::Result<()> {
+    async fn get_archive() -> Result<PathBuf, DownloaderError> {
         let path = std::env::temp_dir().join(".agl-v1-archive-test-dxvk.tar.gz");
 
         if !path.exists() {
-            Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz").unwrap()
-                .with_output_file(&path)
-                .download(|_, _, _| {})
-                .await.unwrap()
-                .wait().unwrap();
+            let downloader = Downloader::new()?;
+
+            let task = downloader.download(
+                "https://github.com/doitsujin/dxvk/releases/download/v2.6.1/dxvk-2.6.1.tar.gz",
+                &path,
+                DownloadOptions::default()
+            );
+
+            task.wait().await?;
         }
+
+        Ok(path)
+    }
+
+    #[tokio::test]
+    async fn archive_entries() -> anyhow::Result<()> {
+        let path = get_archive().await?;
 
         let api = ArchiveAPI::new(Lua::new())?;
 
@@ -283,12 +301,12 @@ mod tests {
 
             total_size += size;
 
-            if path == "dxvk-2.4/x64/d3d10core.dll" {
+            if path == "dxvk-2.6.1/x64/d3d11.dll" {
                 has_path = true;
             }
         }
 
-        assert_eq!(total_size, 25579660);
+        assert_eq!(total_size, 28119180);
         assert!(has_path);
 
         api.archive_close.call::<()>(handle)?;
@@ -301,15 +319,11 @@ mod tests {
 
     #[tokio::test]
     async fn archive_extract() -> anyhow::Result<()> {
-        let path = std::env::temp_dir().join(".agl-v1-archive-test");
-        let dxvk_path = std::env::temp_dir().join(".agl-v1-archive-test-dxvk.tar.gz");
+        let dxvk_file_path = get_archive().await?;
+        let dxvk_folder_path = std::env::temp_dir().join(".agl-v1-archive-test");
 
-        if !dxvk_path.exists() {
-            Downloader::new("https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz").unwrap()
-                .with_output_file(&dxvk_path)
-                .download(|_, _, _| {})
-                .await.unwrap()
-                .wait().unwrap();
+        if dxvk_folder_path.exists() {
+            std::fs::remove_dir_all(&dxvk_folder_path)?;
         }
 
         let api = ArchiveAPI::new(Lua::new())?;
@@ -326,16 +340,18 @@ mod tests {
         assert!(api.archive_entries.call::<LuaTable>(0).is_err());
         assert!(env.call_function::<LuaTable>("extract", 0).is_err());
 
-        let handle = env.call_function::<i32>("open", dxvk_path.to_string_lossy())?;
-        let result = env.call_function::<bool>("extract", (handle, path.to_string_lossy()))?;
+        let handle = env.call_function::<i32>("open", dxvk_file_path.to_string_lossy())?;
+        let result = env.call_function::<bool>("extract", (handle, dxvk_folder_path.to_string_lossy()))?;
 
         assert!(result);
-        assert_eq!(Hash::for_entry(path)?, Hash(17827013605004440863));
+        assert_eq!(Hash::for_entry(&dxvk_folder_path)?, Hash(1628850133365029209));
 
         api.archive_close.call::<()>(handle)?;
 
         assert!(api.archive_entries.call::<LuaTable>(handle).is_err());
         assert!(env.call_function::<LuaTable>("extract", handle).is_err());
+
+        std::fs::remove_dir_all(dxvk_folder_path)?;
 
         Ok(())
     }

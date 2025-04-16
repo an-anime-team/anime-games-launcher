@@ -28,10 +28,15 @@ impl ProcessAPI {
 
         Ok(Self {
             process_exec: Box::new(|lua: &Lua, context: &Context| {
+                let context = context.to_owned();
                 let module_folder = context.module_folder.clone();
 
                 lua.create_function(move |lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                    let mut path = resolve_path(path.to_string_lossy())?;
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
                     let mut command = Command::new(path);
 
@@ -79,11 +84,16 @@ impl ProcessAPI {
                 let process_handles = process_handles.clone();
 
                 Box::new(move |lua: &Lua, context: &Context| {
+                    let context = context.to_owned();
                     let module_folder = context.module_folder.clone();
                     let process_handles = process_handles.clone();
 
                     lua.create_function(move |_, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                        let path = resolve_path(path.to_string_lossy())?;
+                        let mut path = resolve_path(path.to_string_lossy())?;
+
+                        if path.is_relative() {
+                            path = context.module_folder.join(path);
+                        }
 
                         let mut command = Command::new(path);
 
