@@ -137,14 +137,6 @@ impl PackagesEngine {
                     let module = std::fs::read(&path)?;
                     let module = lua.load(module);
 
-                    // Prepare the module's context.
-                    let module_folder = config.packages.modules_store.path
-                        .join(resource.lock.hash.to_base32());
-
-                    if !module_folder.exists() {
-                        std::fs::create_dir_all(&module_folder)?;
-                    }
-
                     let mut input_resources = vec![path.clone()];
                     let mut parent_hash = None;
 
@@ -202,7 +194,10 @@ impl PackagesEngine {
                     let mut context = v1_standard::Context {
                         temp_folder: config.packages.temp_store.path.clone(),
                         persistent_folder: config.packages.persist_store.path.clone(),
-                        module_folder,
+
+                        module_folder: config.packages.modules_store.path
+                            .join(resource.lock.hash.to_base32()),
+
                         input_resources,
 
                         ext_process_api: false,
