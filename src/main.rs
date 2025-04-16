@@ -1,5 +1,6 @@
 use std::fs::File;
 
+use clap::Parser;
 use relm4::prelude::*;
 
 use tracing_subscriber::prelude::*;
@@ -9,6 +10,7 @@ pub mod consts;
 pub mod core;
 pub mod config;
 pub mod cache;
+pub mod cli;
 pub mod packages;
 pub mod generations;
 pub mod games;
@@ -98,6 +100,18 @@ async fn main() -> anyhow::Result<()> {
         .with(debug_log)
         .with(trace_log)
         .init();
+
+    // Parse arguments
+    let args = cli::argument::Args::parse();
+
+    if args.command.is_some() {
+        match args.command.unwrap() {
+            cli::argument::Commands::Serve { dir_to_serve } => {
+                tracing::info!("Start serving!");
+            },
+        }
+        return Ok(());
+    }
 
     tracing::info!("Starting application ({APP_VERSION})");
 
