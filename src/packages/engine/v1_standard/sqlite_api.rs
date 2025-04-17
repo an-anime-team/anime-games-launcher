@@ -298,7 +298,14 @@ impl SQLiteAPI {
                         }
 
                         Ok(columns)
-                    }).map_err(LuaError::external)?;
+                    });
+
+                    let row = match row {
+                        Ok(row) => row,
+
+                        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(LuaValue::Nil),
+                        Err(err) => return Err(LuaError::external(err))
+                    };
 
                     if row.is_empty() {
                         return Ok(LuaValue::Nil);
