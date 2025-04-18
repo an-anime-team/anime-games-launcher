@@ -395,6 +395,7 @@ and rust-lua bridge API. From rust side we provide the following functions:
 | `fs.open`        | Try to open a file handle.               |
 | `fs.seek`        | Set pointer in a file handle.            |
 | `fs.seek_rel`    | Set relative pointer in a file handle.   |
+| `fs.truncate`    | Truncate file to specified length.       |
 | `fs.read`        | Read bytes from a file handle.           |
 | `fs.write`       | Write bytes to the file handle.          |
 | `fs.flush`       | Flush file handle buffer.                |
@@ -565,6 +566,27 @@ local byte = fs.read(handle, 1, 1)[1] -- read byte from position 1
 print(byte) -- verify that it's equal to 123
 
 fs.close(handle)
+```
+
+### `fs.truncate(handle: number, length: number)`
+
+If specified length is greater than the length of the file, then it will be
+extended with zeros. Otherwise excess bytes will be deleted from the end of the
+file.
+
+```luau
+local handle = fs.open("my_file.txt")
+
+-- Write 11 bytes to the file
+fs.write(handle, str.to_bytes("Hello World"))
+
+-- Truncate file to contain only first 5 bytes
+fs.truncate(handle, 5)
+
+-- Read file's content from its beginning
+local content = str.from_bytes(fs.read(handle, 0))
+
+print(content) -- "Hello"
 ```
 
 ### `fs.read(handle: number, [position: number, [length: number]]) -> [number]`

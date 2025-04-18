@@ -23,6 +23,7 @@ pub struct FilesystemAPI {
     fs_open: LuaFunctionBuilder,
     fs_seek: LuaFunction,
     fs_seek_rel: LuaFunction,
+    fs_truncate: LuaFunction,
     fs_read: LuaFunction,
     fs_write: LuaFunction,
     fs_flush: LuaFunction,
@@ -383,6 +384,23 @@ impl FilesystemAPI {
                 })?
             },
 
+            fs_truncate: {
+                let file_handles = file_handles.clone();
+
+                lua.create_function(move |_, (handle, length): (i32, u64)| {
+                    let mut handles = file_handles.lock()
+                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+
+                    let Some(file) = handles.get_mut(&handle) else {
+                        return Err(LuaError::external("invalid file handle"));
+                    };
+
+                    file.get_mut().set_len(length)?;
+
+                    Ok(())
+                })?
+            },
+
             fs_read: {
                 let file_handles = file_handles.clone();
 
@@ -688,7 +706,7 @@ impl FilesystemAPI {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 19)?;
+        let env = self.lua.create_table_with_capacity(0, 20)?;
 
         env.raw_set("exists", (self.fs_exists)(&self.lua, context)?)?;
         env.raw_set("metadata", (self.fs_metadata)(&self.lua, context)?)?;
@@ -698,6 +716,7 @@ impl FilesystemAPI {
         env.raw_set("open", (self.fs_open)(&self.lua, context)?)?;
         env.raw_set("seek", self.fs_seek.clone())?;
         env.raw_set("seek_rel", self.fs_seek_rel.clone())?;
+        env.raw_set("truncate", self.fs_truncate.clone())?;
         env.raw_set("read", self.fs_read.clone())?;
         env.raw_set("write", self.fs_write.clone())?;
         env.raw_set("flush", self.fs_flush.clone())?;
@@ -795,6 +814,14 @@ mod tests {
         api.fs_write.call::<()>((handle, b"Susoma".to_vec(), 7))?;
 
         assert_eq!(api.fs_read.call::<Vec<u8>>((handle, 0))?, b"Mogusa Susoma");
+
+        api.fs_truncate.call::<()>((handle, 6))?;
+
+        assert_eq!(api.fs_read.call::<Vec<u8>>((handle, 0))?, b"Mogusa");
+
+        api.fs_truncate.call::<()>((handle, 10))?;
+
+        assert_eq!(api.fs_read.call::<Vec<u8>>((handle, 0))?, b"Mogusa\0\0\0\0");
 
         api.fs_close.call::<()>(handle)?;
 
