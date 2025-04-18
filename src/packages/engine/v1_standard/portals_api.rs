@@ -67,10 +67,10 @@ impl PortalsAPI {
                             .map_err(AsLuaError::from)
                             .and_then(|title| LocalizableString::from_lua(&title))?,
 
-                        message: toast_options.get::<LuaValue>("message")
-                            .map_err(AsLuaError::from)
-                            .and_then(|message| LocalizableString::from_lua(&message))
-                            .ok(),
+                        message: toast_options.get::<Option<LuaValue>>("message").ok()
+                            .and_then(|message| {
+                                message.and_then(|message| LocalizableString::from_lua(&message).ok())
+                            }),
 
                         icon: toast_options.get::<LuaString>("icon").ok()
                             .map(|icon| icon.to_string_lossy().to_string())
