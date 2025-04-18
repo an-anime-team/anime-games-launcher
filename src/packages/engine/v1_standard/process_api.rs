@@ -42,6 +42,11 @@ impl ProcessAPI {
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped());
 
+                    // Create module folder if it doesn't exist.
+                    if !module_folder.is_dir() {
+                        std::fs::create_dir_all(&module_folder)?;
+                    }
+
                     // Apply command arguments.
                     if let Some(args) = args {
                         for arg in args.sequence_values::<LuaString>() {
@@ -60,6 +65,8 @@ impl ProcessAPI {
                             );
                         }
                     }
+
+                    tracing::debug!(?command, "Running command");
 
                     // Execute the command.
                     let output = command.output()?;
@@ -95,6 +102,11 @@ impl ProcessAPI {
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped());
 
+                        // Create module folder if it doesn't exist.
+                        if !module_folder.is_dir() {
+                            std::fs::create_dir_all(&module_folder)?;
+                        }
+
                         // Apply command arguments.
                         if let Some(args) = args {
                             for arg in args.sequence_values::<LuaString>() {
@@ -123,6 +135,8 @@ impl ProcessAPI {
                         while handles.contains_key(&handle) {
                             handle = rand::random::<i32>();
                         }
+
+                        tracing::debug!(?command, "Spawned process");
 
                         handles.insert(handle, command.spawn()?);
 
