@@ -10,7 +10,8 @@ use bufreaderwriter::rand::BufReaderWriterRand;
 
 use super::*;
 
-const IO_READ_CHUNK_LEN: usize = 8192;
+const IO_READ_CHUNK_LEN: usize = 8192; // 8 KiB reads
+const IO_BUF_SIZE: usize = 16384; // 16 KiB read/write in-RAM cache
 
 pub struct FilesystemAPI {
     lua: Lua,
@@ -336,7 +337,7 @@ impl FilesystemAPI {
                             handle = rand::random::<i32>();
                         }
 
-                        handles.insert(handle, BufReaderWriterRand::new_reader(file));
+                        handles.insert(handle, BufReaderWriterRand::reader_with_capacity(IO_BUF_SIZE, file));
 
                         Ok(handle)
                     })
