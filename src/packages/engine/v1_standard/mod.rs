@@ -169,14 +169,14 @@ impl Standard {
                         LuaValue::Table(table) => {
                             let cloned = lua.create_table_with_capacity(0, table.raw_len())?;
 
-                            for pair in table.pairs::<LuaValue, LuaValue>() {
-                                let (key, value) = pair?;
-
-                                cloned.set(
+                            table.for_each(|key, value| {
+                                cloned.raw_set(
                                     clone_value(lua, key)?,
                                     clone_value(lua, value)?
-                                )?;
-                            }
+                                )
+                            })?;
+
+                            cloned.set_metatable(table.metatable());
 
                             Ok(LuaValue::Table(cloned))
                         }
