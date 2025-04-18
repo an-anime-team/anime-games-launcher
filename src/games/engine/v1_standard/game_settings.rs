@@ -266,14 +266,17 @@ impl AsLua for GameSettingsEntryFormat {
                     .and_then(|values| {
                         let mut table = Vec::with_capacity(values.len()? as usize);
 
-                        for pair in values.pairs::<LuaString, LuaValue>() {
-                            let (key, value) = pair?;
-
+                        values.for_each::<LuaString, LuaValue>(|key, value| {
                             table.push((
                                 key.to_string_lossy().to_string(),
                                 LocalizableString::from_lua(&value)?
                             ));
-                        }
+
+                            Ok(())
+                        })?;
+
+                        // Returned lua table is not sorted properly so we're kinda solving it here.
+                        table.sort_by(|a, b| b.1.default_translation().cmp(a.1.default_translation()));
 
                         Ok(table)
                     })
