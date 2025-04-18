@@ -28,7 +28,7 @@ pub use game_settings::*;
 pub struct GameIntegration {
     lua: Lua,
 
-    editions: LuaFunction,
+    editions: Option<LuaFunction>,
 
     game_get_status: LuaFunction,
     game_get_diff: LuaFunction,
@@ -51,7 +51,7 @@ impl GameIntegration {
         Ok(Self {
             lua,
 
-            editions: table.get("editions")?,
+            editions: table.get("editions").ok(),
 
             game_get_status: game.get("get_status")?,
             game_get_diff: game.get("get_diff")?,
@@ -64,13 +64,21 @@ impl GameIntegration {
     }
 
     /// Get list of available game editions.
-    pub fn editions(&self, platform: TargetPlatform) -> Result<Vec<GameEdition>, LuaError> {
-        self.editions.call::<Vec<LuaTable>>(platform.to_string())
-            .and_then(|editions| {
-                editions.iter()
-                    .map(GameEdition::try_from)
-                    .collect::<Result<Vec<_>, _>>()
-            })
+    ///
+    /// Return `None` if integration module doesn't provide any editions.
+    pub fn editions(&self, platform: TargetPlatform) -> Result<Option<Vec<GameEdition>>, LuaError> {
+        match &self.editions {
+            Some(editions) => editions.call::<Option<Vec<LuaTable>>>(platform.to_string())
+                .and_then(|editions| {
+                    editions.map(|editions| {
+                        editions.iter()
+                            .map(GameEdition::try_from)
+                            .collect::<Result<Vec<_>, _>>()
+                    }).transpose()
+                }),
+
+            None => Ok(None)
+        }
     }
 
     /// Get status of the game installation.

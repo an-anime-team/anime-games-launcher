@@ -7,7 +7,16 @@ use crate::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameVariant {
     pub platform: TargetPlatform,
-    pub edition: String
+    pub edition: Option<String>
+}
+
+impl Default for GameVariant {
+    fn default() -> Self {
+        Self {
+            platform: *CURRENT_PLATFORM,
+            edition: None
+        }
+    }
 }
 
 impl GameVariant {
@@ -16,7 +25,7 @@ impl GameVariant {
     pub fn from_edition(edition: impl ToString) -> Self {
         Self {
             platform: *CURRENT_PLATFORM,
-            edition: edition.to_string()
+            edition: Some(edition.to_string())
         }
     }
 }
@@ -25,8 +34,11 @@ impl AsLua for GameVariant {
     fn to_lua(&self, lua: &Lua) -> Result<LuaValue, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 2)?;
 
-        table.set("platform", self.platform.to_string())?;
-        table.set("edition", self.edition.as_str())?;
+        table.raw_set("platform", self.platform.to_string())?;
+
+        if let Some(edition) = self.edition.as_deref() {
+            table.raw_set("edition", edition)?;
+        }
 
         Ok(LuaValue::Table(table))
     }
@@ -40,9 +52,12 @@ impl AsLua for GameVariant {
                 .map(|platform| TargetPlatform::from_str(&platform.to_string_lossy()))?
                 .map_err(|_| AsLuaError::InvalidFieldValue("platform"))?,
 
-            edition: value.get::<LuaString>("edition")
-                .map(|edition| edition.to_string_lossy().to_string())
-                .map_err(|_| AsLuaError::InvalidFieldValue("edition"))?
+            edition: value.get::<Option<LuaString>>("edition").ok()
+                .and_then(|edition| {
+                    edition.map(|edition| {
+                        edition.to_string_lossy().to_string()
+                    })
+                })
         })
     }
 }

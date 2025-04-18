@@ -12,7 +12,7 @@ use crate::prelude::*;
 pub enum SyncGameCommand {
     /// Get list of available game editions.
     GetEditions {
-        listener: OneshotSender<Result<Vec<GameEdition>, LuaError>>
+        listener: OneshotSender<Result<Option<Vec<GameEdition>>, LuaError>>
     },
 
     /// Get status of the game installation.

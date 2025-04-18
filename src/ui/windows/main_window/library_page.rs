@@ -8,6 +8,13 @@ use unic_langid::LanguageIdentifier;
 
 use super::*;
 
+#[derive(Debug, Clone)]
+struct GameInfo {
+    pub manifest: Arc<GameManifest>,
+    pub editions: Option<Vec<GameEdition>>,
+    pub listener: UnboundedSender<SyncGameCommand>
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum LibraryPageInput {
@@ -44,8 +51,7 @@ pub struct LibraryPage {
 
     download_manager: AsyncController<DownloadManagerWindow>,
 
-    #[allow(clippy::type_complexity)]
-    games: Vec<(String, Arc<GameManifest>, Vec<GameEdition>, UnboundedSender<SyncGameCommand>)>
+    games: Vec<GameInfo>
 }
 
 #[relm4::component(pub, async)]
@@ -143,7 +149,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 });
             }
 
-            LibraryPageInput::AddGameFromGeneration { url, manifest, listener } => {
+            LibraryPageInput::AddGameFromGeneration { url: _, manifest, listener } => {
                 let config = config::get();
 
                 let lang = config.general.language.parse::<LanguageIdentifier>();
@@ -182,17 +188,23 @@ impl SimpleAsyncComponent for LibraryPage {
                         Err(_) => manifest.game.title.default_translation().to_string()
                     },
 
-                    variants: Some(editions.iter()
-                        .map(|edition| {
-                            match &lang {
-                                Ok(lang) => edition.title.translate(lang).to_string(),
-                                Err(_) => edition.title.default_translation().to_string()
-                            }
-                        })
-                        .collect::<Vec<_>>())
+                    variants: editions.as_ref().map(|editions| {
+                        editions.iter()
+                            .map(|edition| {
+                                match &lang {
+                                    Ok(lang) => edition.title.translate(lang).to_string(),
+                                    Err(_) => edition.title.default_translation().to_string()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    })
                 });
 
-                self.games.push((url, Arc::new(manifest), editions, listener));
+                self.games.push(GameInfo {
+                    manifest: Arc::new(manifest),
+                    editions,
+                    listener
+                });
             }
 
             LibraryPageInput::GameRowSelected(index) => {
@@ -209,7 +221,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
 
                 // TODO: proper errors handling
-                let Some((_, manifest, editions, listener)) = self.games.get(game.current_index()) else {
+                let Some(game) = self.games.get(game.current_index()) else {
                     tracing::error!(
                         game = game.current_index(),
                         variant = variant.map(|variant| variant.current_index()),
@@ -219,25 +231,16 @@ impl SimpleAsyncComponent for LibraryPage {
                     return;
                 };
 
-                let edition = match &variant {
-                    Some(variant) => editions.get(variant.current_index()),
-                    None => editions.first()
+                let edition = match (&variant, &game.editions) {
+                    (_, None) => None,
+                    (Some(variant), Some(editions)) => editions.get(variant.current_index()),
+                    (None, Some(editions)) => editions.first()
                 };
 
-                let Some(edition) = edition.cloned() else {
-                    tracing::error!(
-                        game = game.current_index(),
-                        variant = variant.map(|variant| variant.current_index()),
-                        "Failed to get game edition"
-                    );
-
-                    return;
-                };
-
-                self.game_details.emit(GameLibraryDetailsMsg::SetGameInfo {
-                    manifest: manifest.to_owned(),
-                    edition,
-                    listener: listener.clone()
+                self.game_details.emit(GameLibraryDetailsMsg::UpdateGameMetadata {
+                    manifest: game.manifest.clone(),
+                    listener: game.listener.clone(),
+                    edition: edition.cloned()
                 });
             }
 

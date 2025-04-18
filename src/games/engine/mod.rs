@@ -34,8 +34,10 @@ impl GameEngine {
     }
 
     /// Get list of available game editions.
+    ///
+    /// Return `None` if integration module doesn't provide any editions.
     #[inline]
-    pub fn editions(&self, platform: TargetPlatform) -> Result<Vec<GameEdition>, LuaError> {
+    pub fn editions(&self, platform: TargetPlatform) -> Result<Option<Vec<GameEdition>>, LuaError> {
         match self {
             Self::V1(engine) => engine.editions(platform)
         }

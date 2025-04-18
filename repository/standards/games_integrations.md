@@ -1,12 +1,12 @@
 # v1 standard of the games integrations
 
-Game integration is a specially encoded lua table containing
-set of pre-defined functions which could be used by the launcher
-to display information about the game and perform actions with it.
+Game integration is a specially encoded lua table containing set of pre-defined
+functions which could be used by the launcher to display information about
+the game and perform actions with it.
 
 Game integrations are provided by the top-level packages (modules).
-If a package depends on another game integration - it will not be
-used in the launcher.
+If a package depends on another game integration - it will not be used in
+the launcher.
 
 ## Game integration format
 
@@ -15,15 +15,21 @@ Top-level modules are expected to return the game integration object:
 ```ts
 type GameVariant = {
     platform: TargetPlatform,
-    edition: string
+
+    // Edition is not set if your game doesn't provide any editions.
+    edition?: string
 };
 
 type GameIntegration = {
     standard: 1,
 
     // List of available game editions.
-    editions: (platform: TargetPlatform): Edition[],
+    // Return nil or don't specify this function if your game doesn't have
+    // different editions.
+    editions?: (platform: TargetPlatform): Edition[] | nil,
 
+    // Game-related functions which launcher uses to display information and
+    // perform game-related actions.
     game: {
         // Get status of the game installation.
         get_status: (variant: GameVariant): InstallationStatus,
@@ -36,6 +42,7 @@ type GameIntegration = {
         get_launch_info: (variant: GameVariant): GameLaunchInfo
     },
 
+    // Game settings object. Don't specify it if your game has no settings.
     settings?: {
         // Get some property value.
         get_property: (name: string): any,
@@ -51,14 +58,14 @@ type GameIntegration = {
 
 ## Game editions
 
-Many games have different regional variants: a global version,
-Chinese version, version for South-East Asia and so on. Editions
-system allow you to define different logic for different game
-variants instead of making several packages for the same game.
+Many games have different regional variants: a global version, Chinese version,
+version for South-East Asia and so on. Editions system allow you to define
+different logic for different game variants instead of making several packages
+for the same game.
 
-Game editions are displayed in the library on the game's details
-page. Users can freely select any available one. When only one
-game edition is available - it will be used by default.
+Game editions are displayed in the library on the game's details page. Users can
+freely select any available one. When only one game edition is available - it
+will be used by default.
 
 > `Localizable` type is defined in the games manifests standard.
 
@@ -74,16 +81,14 @@ type Edition = {
 
 ## Game launching
 
-Game starts in a special sandboxed environment with parameters
-defined in the launcher (used profile). Integration scripts
-can't directly modify the used environment or command used to
-start the game. Instead they're only allowed to return the information
-that could be used by the launcher to start the game.
+Game starts in a special sandboxed environment with parameters defined in
+the launcher (used profile). Integration scripts can't directly modify the used
+environment or command used to start the game. Instead they're only allowed to
+return the information that could be used by the launcher to start the game.
 
-Sometimes you want to warn users about the game's status,
-e.g. if there's a chance that the user's account can be damaged
-due to some reasons. For this purpose you could use optional
-`status` and `hint` fields.
+Sometimes you want to warn users about the game's status, e.g. if there's
+a chance that the user's account can be damaged due to some reasons. For this
+purpose you could use optional `status` and `hint` fields.
 
 | Status      | Color  | Description                |
 | ----------- | ------ | -------------------------- |
@@ -114,26 +119,24 @@ type GameLaunchInfo = {
 
 ## Installation diffs
 
-Integration script must return information about the game's
-installation and all the available components. Launcher
-calls script-defined functions to obtain this information
-and perform needed actions.
+Integration script must return information about the game's installation and all
+the available components. Launcher calls script-defined functions to obtain this
+information and perform needed actions.
 
 ```ts
 type InstallationStatus =
     // Latest component version is installed.
     | 'installed'
 
-    // Component is installed but there's an
-    // optional update available.
+    // Component is installed but there's an optional update available.
     | 'update-available'
 
-    // Component is installed but there's an update
-    // available that must be installed.
+    // Component is installed but there's an update available that must be
+    // installed.
     | 'update-required'
 
-    // Component is installed but there's an update
-    // which cannot be installed automatically.
+    // Component is installed but there's an update which cannot be installed
+    // automatically.
     | 'update-unavailable'
 
     // Component is not installed.
@@ -153,15 +156,14 @@ type InstallationDiff = {
 
 ## Actions pipeline
 
-Actions pipelines are used as a general way of applying
-updates or installing the games or components. Pipeline
-is a list of actions, where actions are lua functions.
-Launcher execute these functions in provided order.
+Actions pipelines are used as a general way of applying updates or installing
+the games or components. Pipeline is a list of actions, where actions are lua
+functions. Launcher execute these functions in provided order.
 
 Example pipeline: `download -> extract -> apply_patches -> verify`.
 
-Pipeline actions can return their execution progress back
-to the launcher using provided status updating callback.
+Pipeline actions can return their execution progress back to the launcher using
+provided status updating callback.
 
 ```ts
 type PipelineAction = {

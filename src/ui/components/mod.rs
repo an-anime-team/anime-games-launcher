@@ -57,6 +57,11 @@ pub mod prelude {
         GameStoreDetailsMsg
     };
 
+    pub use super::game_library_details::{
+        GameLibraryDetails,
+        GameLibraryDetailsMsg
+    };
+
     pub use super::hardware_requirements::{
         HardwareRequirementsComponent,
         HardwareRequirementsComponentMsg,
@@ -76,11 +81,6 @@ pub mod prelude {
         DownloadsRowFactory,
         DownloadsRowFactoryOutput,
         DownloadsRowFactoryMsg
-    };
-
-    pub use super::game_library_details::{
-        GameLibraryDetails,
-        GameLibraryDetailsMsg
     };
 
     pub use super::maintainers_row::{
