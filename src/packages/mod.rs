@@ -32,10 +32,11 @@ pub mod prelude {
         ResourceStatus
     };
 
-    pub use super::store::{
-        Store as PackagesStore,
-        StoreError as PackagesStoreError
-    };
+    pub use super::store::Store as PackagesStore;
 
-    pub use super::engine::PackagesEngine;
+    pub use super::engine::{
+        PackagesEngine,
+        PackagesEngineOptions,
+        v1_standard as packages_v1
+    };
 }

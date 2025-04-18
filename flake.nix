@@ -78,6 +78,8 @@
                         gtk4
                         gobject-introspection
                         wrapGAppsHook4
+                        libnotify
+                        dbus
                     ];
 
                     buildInputs = with pkgs; [
@@ -106,11 +108,12 @@
                         gtk4
                         gobject-introspection
                         wrapGAppsHook4
+                        libnotify
+                        dbus
 
                         git
                         unzip
                         p7zip
-                        libwebp
 
                         # adwaita-1-demo
                         libadwaita.devdoc

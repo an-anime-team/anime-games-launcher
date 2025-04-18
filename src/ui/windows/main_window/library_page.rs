@@ -15,7 +15,6 @@ struct GameInfo {
     pub listener: UnboundedSender<SyncGameCommand>
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum LibraryPageInput {
     SpawnLuauEngine {
@@ -37,6 +36,11 @@ pub enum LibraryPageInput {
     ShowGameDetails {
         game: DynamicIndex,
         variant: Option<DynamicIndex>
+    },
+
+    ShowToast {
+        message: LocalizableString,
+        action: Option<(LocalizableString, mlua::Function)>
     }
 }
 
@@ -48,8 +52,10 @@ pub enum LibraryPageOutput {
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameLibraryDetails>,
-
     download_manager: AsyncController<DownloadManagerWindow>,
+
+    main_window: Option<adw::ApplicationWindow>,
+    toast_overlay: Option<adw::ToastOverlay>,
 
     games: Vec<GameInfo>
 }
@@ -62,9 +68,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
     view! {
         #[root]
-        gtk::Box {
-            set_orientation: gtk::Orientation::Vertical,
-
+        toast_overlay = adw::ToastOverlay {
             adw::NavigationSplitView {
                 set_vexpand: true,
                 set_hexpand: true,
@@ -99,7 +103,7 @@ impl SimpleAsyncComponent for LibraryPage {
     }
 
     async fn init(parent: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .forward(sender.input_sender(), |msg| match msg {
@@ -111,12 +115,15 @@ impl SimpleAsyncComponent for LibraryPage {
                 }),
 
             game_details: GameLibraryDetails::builder()
-                .launch(parent)
+                .launch(parent.clone())
                 .detach(),
 
             download_manager: DownloadManagerWindow::builder()
                 .launch(())
                 .detach(),
+
+            main_window: None,
+            toast_overlay: None,
 
             games: Vec::new()
         };
@@ -128,6 +135,9 @@ impl SimpleAsyncComponent for LibraryPage {
         });
 
         let widgets = view_output!();
+
+        model.main_window = Some(parent);
+        model.toast_overlay = Some(widgets.toast_overlay.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -246,6 +256,38 @@ impl SimpleAsyncComponent for LibraryPage {
 
             LibraryPageInput::Activate => {
                 // Update back button visibility when switching pages
+            }
+
+            LibraryPageInput::ShowToast { message, action } => {
+                if let Some(toast_overlay) = self.toast_overlay.as_ref() {
+                    let config = config::get();
+
+                    let language = config.general.language.parse::<LanguageIdentifier>();
+
+                    let message = match &language {
+                        Ok(language) => message.translate(language),
+                        Err(_) => message.default_translation()
+                    };
+
+                    let toast = adw::Toast::new(message);
+
+                    if let Some((label, callback)) = action {
+                        let label = match &language {
+                            Ok(language) => label.translate(language),
+                            Err(_) => label.default_translation()
+                        };
+
+                        toast.set_button_label(Some(label));
+
+                        toast.connect_button_clicked(move |_| {
+                            if let Err(err) = callback.call::<()>(()) {
+                                tracing::error!(?err, "Failed to execute lua engine callback to the toast button");
+                            }
+                        });
+                    }
+
+                    toast_overlay.add_toast(toast);
+                }
             }
         }
     }

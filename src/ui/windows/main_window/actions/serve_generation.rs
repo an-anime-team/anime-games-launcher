@@ -6,6 +6,8 @@ use relm4::Sender;
 use tokio::sync::oneshot::Sender as OneshotSender;
 use tokio::sync::mpsc::error::TryRecvError;
 
+use unic_langid::LanguageIdentifier;
+
 use crate::prelude::*;
 
 #[derive(Debug)]
@@ -82,7 +84,65 @@ pub fn serve_generation(
     }
 
     // Load generation's lock file into the packages engine.
-    let engine = match PackagesEngine::create(lua.clone(), &packages_store, generation.lock_file, validator) {
+    let options = PackagesEngineOptions {
+        show_toast: {
+            let library_page_sender = library_page_sender.clone();
+
+            Box::new(move |toast| {
+                match toast {
+                    packages_v1::ToastOptions::Simple(message) => {
+                        library_page_sender.input(LibraryPageInput::ShowToast {
+                            message,
+                            action: None
+                        });
+                    }
+
+                    packages_v1::ToastOptions::Activatable { message, label, callback } => {
+                        library_page_sender.input(LibraryPageInput::ShowToast {
+                            message,
+                            action: Some((label, callback))
+                        });
+                    }
+                }
+            })
+        },
+
+        show_notification: Box::new(|options| {
+            let config = config::get();
+
+            let language = config.general.language.parse::<LanguageIdentifier>();
+
+            let title = match &language {
+                Ok(language) => options.title.translate(language),
+                Err(_) => options.title.default_translation()
+            };
+
+            let mut notification = notify_rust::Notification::new();
+
+            let mut notification = notification.summary(title)
+                .icon(APP_ID)
+                .appname(APP_ID);
+
+            if let Some(message) = &options.message {
+                let message = match &language {
+                    Ok(language) => message.translate(language),
+                    Err(_) => message.default_translation()
+                };
+
+                notification = notification.body(message);
+            }
+
+            if let Some(icon) = &options.icon {
+                notification = notification.icon(icon);
+            }
+
+            if let Err(err) = notification.show() {
+                tracing::error!(?err, "Failed to show system notification");
+            }
+        })
+    };
+
+    let engine = match PackagesEngine::create(lua.clone(), &packages_store, generation.lock_file, validator, options) {
         Ok(engine) => engine,
         Err(err) => {
             tracing::error!(?err, "Failed to load locked packages to the lua engine");

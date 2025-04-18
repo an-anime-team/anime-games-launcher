@@ -8,8 +8,6 @@ use tokio::runtime::{
     Builder as RuntimeBuilder
 };
 
-use flume::Receiver;
-
 use crate::core::prelude::*;
 use crate::packages::prelude::*;
 
@@ -36,7 +34,12 @@ pub use archive_api::ArchiveAPI;
 pub use hash_api::HashAPI;
 pub use sync_api::SyncAPI;
 pub use sqlite_api::SQLiteAPI;
-pub use portals_api::{PortalsAPI, PortalMsg};
+pub use portals_api::{
+    PortalsAPI,
+    PortalsAPIOptions,
+    ToastOptions,
+    NotificationOptions
+};
 pub use process_api::ProcessAPI;
 
 lazy_static::lazy_static! {
@@ -106,8 +109,7 @@ pub struct Context {
 }
 
 impl Context {
-    /// Check if given path is accessible
-    /// from the current context.
+    /// Check if given path is accessible from the current context.
     pub fn is_accessible(&self, path: impl AsRef<Path>) -> bool {
         let allowed_paths = [
             &self.module_folder,
@@ -151,9 +153,8 @@ pub struct Standard {
 }
 
 impl Standard {
-    pub fn new(lua: Lua) -> Result<(Self, Receiver<PortalMsg>), PackagesEngineError> {
-        let (portal_sender, portal_receiver) = flume::unbounded();
-
+    /// Create new v1 standard using provided lua engine.
+    pub fn new(lua: Lua, options: portals_api::PortalsAPIOptions) -> Result<Self, PackagesEngineError> {
         let standard = Self {
             clone: lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
@@ -205,13 +206,13 @@ impl Standard {
             hash_api: HashAPI::new(lua.clone())?,
             sync_api: SyncAPI::new(lua.clone())?,
             sqlite_api: SQLiteAPI::new(lua.clone())?,
-            portals_api: PortalsAPI::new(lua.clone(), portal_sender)?,
+            portals_api: PortalsAPI::new(lua.clone(), options)?,
             process_api: ProcessAPI::new(lua.clone())?,
 
             lua
         };
 
-        Ok((standard, portal_receiver))
+        Ok(standard)
     }
 
     #[inline(always)]

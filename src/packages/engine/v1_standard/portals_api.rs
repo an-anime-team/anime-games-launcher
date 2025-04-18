@@ -1,19 +1,26 @@
 use mlua::prelude::*;
 
-use flume::Sender;
-
 use crate::prelude::*;
 use super::*;
 
-#[derive(Debug, Clone)]
-pub enum PortalMsg {
-    Toast(LocalizableString),
-
-    ActionToast {
+pub enum ToastOptions {
+    Simple(LocalizableString),
+    Activatable {
         message: LocalizableString,
-        action_label: LocalizableString,
-        action_callback: LuaFunction
+        label: LocalizableString,
+        callback: LuaFunction
     }
+}
+
+pub struct NotificationOptions {
+    pub title: LocalizableString,
+    pub message: Option<LocalizableString>,
+    pub icon: Option<String>
+}
+
+pub struct PortalsAPIOptions {
+    pub show_toast: Box<dyn Fn(ToastOptions) + Send>,
+    pub show_notification: Box<dyn Fn(NotificationOptions) + Send>
 }
 
 pub struct PortalsAPI {
@@ -25,30 +32,28 @@ pub struct PortalsAPI {
 }
 
 impl PortalsAPI {
-    pub fn new(lua: Lua, sender: Sender<PortalMsg>) -> Result<Self, PackagesEngineError> {
+    pub fn new(lua: Lua, options: PortalsAPIOptions) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             portals_toast: {
-                let sender = sender.clone();
-
-                lua.create_function(move |_, options: LuaTable| {
-                    let message = options.get::<LuaValue>("message")
+                lua.create_function(move |_, toast_options: LuaTable| {
+                    let message = toast_options.get::<LuaValue>("message")
                         .map_err(AsLuaError::from)
                         .and_then(|message| LocalizableString::from_lua(&message))?;
 
-                    if let Ok(action) = options.get::<LuaTable>("action") {
-                        let action_label = action.get::<LuaValue>("label")
+                    if let Ok(action) = toast_options.get::<LuaTable>("action") {
+                        let label = action.get::<LuaValue>("label")
                             .map_err(AsLuaError::from)
                             .and_then(|label| LocalizableString::from_lua(&label))?;
 
-                        let _ = sender.send(PortalMsg::ActionToast {
+                        (options.show_toast)(ToastOptions::Activatable {
                             message,
-                            action_label,
-                            action_callback: action.get("callback")?
+                            label,
+                            callback: action.get("callback")?
                         });
                     }
 
                     else {
-                        let _ = sender.send(PortalMsg::Toast(message));
+                        (options.show_toast)(ToastOptions::Simple(message));
                     }
 
                     Ok(())
@@ -56,13 +61,27 @@ impl PortalsAPI {
             },
 
             portals_notify: {
-                lua.create_function(move |_, options: LuaTable| {
+                lua.create_function(move |_, toast_options: LuaTable| {
+                    (options.show_notification)(NotificationOptions {
+                        title: toast_options.get::<LuaValue>("title")
+                            .map_err(AsLuaError::from)
+                            .and_then(|title| LocalizableString::from_lua(&title))?,
+
+                        message: toast_options.get::<LuaValue>("message")
+                            .map_err(AsLuaError::from)
+                            .and_then(|message| LocalizableString::from_lua(&message))
+                            .ok(),
+
+                        icon: toast_options.get::<LuaString>("icon").ok()
+                            .map(|icon| icon.to_string_lossy().to_string())
+                    });
+
                     Ok(())
                 })?
             },
 
             portals_dialog: {
-                lua.create_function(move |_, options: LuaTable| {
+                lua.create_function(move |_, toast_options: LuaTable| {
                     Ok(())
                 })?
             },

@@ -29,6 +29,20 @@ pub enum PackagesEngineError {
     InvalidResourceFormat(String)
 }
 
+pub struct PackagesEngineOptions {
+    pub show_toast: Box<dyn Fn(v1_standard::ToastOptions) + Send>,
+    pub show_notification: Box<dyn Fn(v1_standard::NotificationOptions) + Send>
+}
+
+impl Default for PackagesEngineOptions {
+    fn default() -> Self {
+        Self {
+            show_toast: Box::new(|_| {}),
+            show_notification: Box::new(|_| {})
+        }
+    }
+}
+
 pub struct PackagesEngine {
     lua: Lua,
     engine_registry: Arc<RwLock<LuaRegistryKey>>,
@@ -44,7 +58,8 @@ impl PackagesEngine {
         lua: Lua,
         store: &PackagesStore,
         lock_file: LockFileManifest,
-        validator: AuthorityValidator
+        validator: AuthorityValidator,
+        options: PackagesEngineOptions
     ) -> Result<Self, PackagesEngineError> {
         let engine_table = lua.create_table()?;
         let resources_table = lua.create_table()?;
@@ -70,7 +85,10 @@ impl PackagesEngine {
         }
 
         // Prepare modules standard implementations.
-        let (v1_standard, _) = v1_standard::Standard::new(lua.clone())?;
+        let v1_standard = v1_standard::Standard::new(lua.clone(), v1_standard::PortalsAPIOptions {
+            show_toast: options.show_toast,
+            show_notification: options.show_notification
+        })?;
 
         // Push root resources to the processing queue.
         for root in &lock_file.root {
@@ -598,7 +616,7 @@ mod tests {
 
         let validator = AuthorityValidator::new([]);
 
-        let engine = PackagesEngine::create(Lua::new(), &store, lock_file, validator)?;
+        let engine = PackagesEngine::create(Lua::new(), &store, lock_file, validator, PackagesEngineOptions::default())?;
 
         let resource = engine.load_resource("0peottaa6s1co")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;
