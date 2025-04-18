@@ -8,6 +8,8 @@ use tokio::runtime::{
     Builder as RuntimeBuilder
 };
 
+use flume::Receiver;
+
 use crate::core::prelude::*;
 use crate::packages::prelude::*;
 
@@ -22,6 +24,7 @@ mod archive_api;
 mod hash_api;
 mod sync_api;
 mod sqlite_api;
+mod portals_api;
 mod process_api;
 
 pub use string_api::StringAPI;
@@ -33,6 +36,7 @@ pub use archive_api::ArchiveAPI;
 pub use hash_api::HashAPI;
 pub use sync_api::SyncAPI;
 pub use sqlite_api::SQLiteAPI;
+pub use portals_api::{PortalsAPI, PortalMsg};
 pub use process_api::ProcessAPI;
 
 lazy_static::lazy_static! {
@@ -142,12 +146,15 @@ pub struct Standard {
     hash_api: HashAPI,
     sync_api: SyncAPI,
     sqlite_api: SQLiteAPI,
+    portals_api: PortalsAPI,
     process_api: ProcessAPI
 }
 
 impl Standard {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
-        Ok(Self {
+    pub fn new(lua: Lua) -> Result<(Self, Receiver<PortalMsg>), PackagesEngineError> {
+        let (portal_sender, portal_receiver) = flume::unbounded();
+
+        let standard = Self {
             clone: lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
                     match value {
@@ -198,10 +205,13 @@ impl Standard {
             hash_api: HashAPI::new(lua.clone())?,
             sync_api: SyncAPI::new(lua.clone())?,
             sqlite_api: SQLiteAPI::new(lua.clone())?,
+            portals_api: PortalsAPI::new(lua.clone(), portal_sender)?,
             process_api: ProcessAPI::new(lua.clone())?,
 
             lua
-        })
+        };
+
+        Ok((standard, portal_receiver))
     }
 
     #[inline(always)]
@@ -209,10 +219,10 @@ impl Standard {
         &self.lua
     }
 
-    /// Create new environment for the v1 modules standard
-    /// using provided module context.
+    /// Create new environment for the v1 modules standard using provided
+    /// module context.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 12)?;
+        let env = self.lua.create_table_with_capacity(0, 13)?;
 
         env.set("clone", self.clone.clone())?;
         env.set("dbg", self.dbg.clone())?;
@@ -226,6 +236,7 @@ impl Standard {
         env.set("hash", self.hash_api.create_env()?)?;
         env.set("sync", self.sync_api.create_env()?)?;
         env.set("sqlite", self.sqlite_api.create_env(context)?)?;
+        env.set("portals", self.portals_api.create_env(context)?)?;
 
         // Extended privileges
 

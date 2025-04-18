@@ -70,7 +70,7 @@ impl PackagesEngine {
         }
 
         // Prepare modules standard implementations.
-        let v1_standard = v1_standard::Standard::new(lua.clone())?;
+        let (v1_standard, _) = v1_standard::Standard::new(lua.clone())?;
 
         // Push root resources to the processing queue.
         for root in &lock_file.root {
@@ -123,7 +123,7 @@ impl PackagesEngine {
                             resources.push((output_key, Some(key)));
                         }
                     }
-                    
+
                     if let Some(inputs) = &resource.inputs {
                         for (name, input_key) in inputs.clone() {
                             inputs_table.set(name, input_key)?;

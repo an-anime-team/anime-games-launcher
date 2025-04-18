@@ -125,21 +125,16 @@ information and perform needed actions.
 
 ```ts
 type InstallationStatus =
-    // Latest component version is installed.
+    // Game component version is installed.
     | 'installed'
 
-    // Component is installed but there's an optional update available.
+    // Game is installed but there's an optional update available.
     | 'update-available'
 
-    // Component is installed but there's an update available that must be
-    // installed.
+    // Game is installed but there's an update available that must be installed.
     | 'update-required'
 
-    // Component is installed but there's an update which cannot be installed
-    // automatically.
-    | 'update-unavailable'
-
-    // Component is not installed.
+    // Game is not installed.
     | 'not-installed';
 
 type InstallationDiff = {
