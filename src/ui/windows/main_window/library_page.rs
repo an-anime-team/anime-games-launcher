@@ -15,7 +15,7 @@ struct GameInfo {
     pub listener: UnboundedSender<SyncGameCommand>
 }
 
-#[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum LibraryPageInput {
     SpawnLuauEngine {
         generation: GenerationManifest,
@@ -38,9 +38,36 @@ pub enum LibraryPageInput {
         variant: Option<DynamicIndex>
     },
 
-    ShowToast {
-        message: LocalizableString,
-        action: Option<(LocalizableString, mlua::Function)>
+    Call(Box<dyn FnOnce(&mut LibraryPage) + Send>)
+}
+
+impl std::fmt::Debug for LibraryPageInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LibraryPageInput::SpawnLuauEngine { .. } => f.debug_struct("SpawnLuauEngine")
+                .finish(),
+
+            LibraryPageInput::AddGameFromGeneration { url, .. } => f.debug_struct("AddGameFromGeneration")
+                .field("url", url)
+                .finish(),
+
+            LibraryPageInput::Activate => f.write_str("Activate"),
+
+            LibraryPageInput::GameRowSelected(idx) => f.debug_tuple("GameRowSelected")
+                .field(idx)
+                .finish(),
+
+            LibraryPageInput::HideOtherGamesEditions(idx) => f.debug_tuple("HideOtherGamesEditions")
+                .field(idx)
+                .finish(),
+
+            LibraryPageInput::ShowGameDetails { game, variant } => f.debug_struct("ShowGameDetails")
+                .field("game", game)
+                .field("variant", variant)
+                .finish(),
+
+            LibraryPageInput::Call(_) => f.write_str("Call(..)")
+        }
     }
 }
 
@@ -50,14 +77,14 @@ pub enum LibraryPageOutput {
 }
 
 pub struct LibraryPage {
-    cards_list: AsyncFactoryVecDeque<CardsList>,
-    game_details: AsyncController<GameLibraryDetails>,
-    download_manager: AsyncController<DownloadManagerWindow>,
+    pub cards_list: AsyncFactoryVecDeque<CardsList>,
+    pub game_details: AsyncController<GameLibraryDetails>,
+    pub download_manager: AsyncController<DownloadManagerWindow>,
 
-    main_window: Option<adw::ApplicationWindow>,
-    toast_overlay: Option<adw::ToastOverlay>,
+    pub main_window: Option<adw::ApplicationWindow>,
+    pub toast_overlay: Option<adw::ToastOverlay>,
 
-    games: Vec<GameInfo>
+    pub games: Vec<GameInfo>
 }
 
 #[relm4::component(pub, async)]
@@ -258,37 +285,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 // Update back button visibility when switching pages
             }
 
-            LibraryPageInput::ShowToast { message, action } => {
-                if let Some(toast_overlay) = self.toast_overlay.as_ref() {
-                    let config = config::get();
-
-                    let language = config.general.language.parse::<LanguageIdentifier>();
-
-                    let message = match &language {
-                        Ok(language) => message.translate(language),
-                        Err(_) => message.default_translation()
-                    };
-
-                    let toast = adw::Toast::new(message);
-
-                    if let Some((label, callback)) = action {
-                        let label = match &language {
-                            Ok(language) => label.translate(language),
-                            Err(_) => label.default_translation()
-                        };
-
-                        toast.set_button_label(Some(label));
-
-                        toast.connect_button_clicked(move |_| {
-                            if let Err(err) = callback.call::<()>(()) {
-                                tracing::error!(?err, "Failed to execute lua engine callback to the toast button");
-                            }
-                        });
-                    }
-
-                    toast_overlay.add_toast(toast);
-                }
-            }
+            LibraryPageInput::Call(callback) => callback(self)
         }
     }
 }

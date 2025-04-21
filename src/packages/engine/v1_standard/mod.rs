@@ -38,7 +38,10 @@ pub use portals_api::{
     PortalsAPI,
     PortalsAPIOptions,
     ToastOptions,
-    NotificationOptions
+    NotificationOptions,
+    DialogOptions,
+    DialogButton,
+    DialogButtonStatus
 };
 pub use process_api::ProcessAPI;
 

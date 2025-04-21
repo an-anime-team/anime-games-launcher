@@ -31,14 +31,16 @@ pub enum PackagesEngineError {
 
 pub struct PackagesEngineOptions {
     pub show_toast: Box<dyn Fn(v1_standard::ToastOptions) + Send>,
-    pub show_notification: Box<dyn Fn(v1_standard::NotificationOptions) + Send>
+    pub show_notification: Box<dyn Fn(v1_standard::NotificationOptions) + Send>,
+    pub show_dialog: Box<dyn Fn(v1_standard::DialogOptions) -> Option<String> + Send>
 }
 
 impl Default for PackagesEngineOptions {
     fn default() -> Self {
         Self {
             show_toast: Box::new(|_| {}),
-            show_notification: Box::new(|_| {})
+            show_notification: Box::new(|_| {}),
+            show_dialog: Box::new(|_| None)
         }
     }
 }
@@ -87,7 +89,8 @@ impl PackagesEngine {
         // Prepare modules standard implementations.
         let v1_standard = v1_standard::Standard::new(lua.clone(), v1_standard::PortalsAPIOptions {
             show_toast: options.show_toast,
-            show_notification: options.show_notification
+            show_notification: options.show_notification,
+            show_dialog: options.show_dialog
         })?;
 
         // Push root resources to the processing queue.

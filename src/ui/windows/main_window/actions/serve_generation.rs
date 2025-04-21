@@ -1,3 +1,5 @@
+use adw::prelude::MessageDialogExt;
+use gtk::prelude::GtkWindowExt;
 use relm4::prelude::*;
 use mlua::prelude::*;
 
@@ -89,19 +91,50 @@ pub fn serve_generation(
             let library_page_sender = library_page_sender.clone();
 
             Box::new(move |toast| {
+                let config = config::get();
+
+                let language = config.general.language.parse::<LanguageIdentifier>();
+
                 match toast {
                     packages_v1::ToastOptions::Simple(message) => {
-                        library_page_sender.input(LibraryPageInput::ShowToast {
-                            message,
-                            action: None
-                        });
+                        let message = match &language {
+                            Ok(language) => message.translate(language),
+                            Err(_) => message.default_translation()
+                        }.to_string();
+
+                        library_page_sender.input(LibraryPageInput::Call(Box::new(move |model| {
+                            if let Some(toast_overlay) = model.toast_overlay.as_ref() {
+                                toast_overlay.add_toast(adw::Toast::new(&message));
+                            }
+                        })));
                     }
 
                     packages_v1::ToastOptions::Activatable { message, label, callback } => {
-                        library_page_sender.input(LibraryPageInput::ShowToast {
-                            message,
-                            action: Some((label, callback))
-                        });
+                        let message = match &language {
+                            Ok(language) => message.translate(language),
+                            Err(_) => message.default_translation()
+                        }.to_string();
+
+                        let label = match &language {
+                            Ok(language) => label.translate(language),
+                            Err(_) => label.default_translation()
+                        }.to_string();
+
+                        library_page_sender.input(LibraryPageInput::Call(Box::new(move |model| {
+                            if let Some(toast_overlay) = model.toast_overlay.as_ref() {
+                                let toast = adw::Toast::new(&message);
+
+                                toast.set_button_label(Some(&label));
+
+                                toast.connect_button_clicked(move |_| {
+                                    if let Err(err) = callback.call::<()>(()) {
+                                        tracing::error!(?err, "Failed to execute lua engine callback to the toast button");
+                                    }
+                                });
+
+                                toast_overlay.add_toast(toast);
+                            }
+                        })));
                     }
                 }
             })
@@ -139,7 +172,60 @@ pub fn serve_generation(
             if let Err(err) = notification.show() {
                 tracing::error!(?err, "Failed to show system notification");
             }
-        })
+        }),
+
+        show_dialog: {
+            let library_page_sender = library_page_sender.clone();
+
+            Box::new(move |options| {
+                let config = config::get();
+
+                let language = config.general.language.parse::<LanguageIdentifier>();
+
+                let title = match &language {
+                    Ok(language) => options.title.translate(language),
+                    Err(_) => options.title.default_translation()
+                }.to_string();
+
+                let message = match &language {
+                    Ok(language) => options.message.translate(language),
+                    Err(_) => options.message.default_translation()
+                }.to_string();
+
+                let (send, recv) = flume::bounded(1);
+
+                library_page_sender.input(LibraryPageInput::Call(Box::new(move |model| {
+                    if let Some(window) = model.main_window.as_ref() {
+                        let dialog = adw::MessageDialog::new(Some(window), Some(&title), Some(&message));
+
+                        for button in options.buttons {
+                            let label = match &language {
+                                Ok(language) => button.label.translate(language),
+                                Err(_) => button.label.default_translation()
+                            };
+
+                            dialog.add_response(&button.name, label);
+
+                            let appearance = match button.status {
+                                packages_v1::DialogButtonStatus::Normal    => adw::ResponseAppearance::Default,
+                                packages_v1::DialogButtonStatus::Suggested => adw::ResponseAppearance::Suggested,
+                                packages_v1::DialogButtonStatus::Dangerous => adw::ResponseAppearance::Destructive
+                            };
+
+                            dialog.set_response_appearance(&button.name, appearance);
+                        }
+
+                        dialog.connect_response(None, move |_, response| {
+                            let _ = send.send(response.to_string());
+                        });
+
+                        dialog.present();
+                    }
+                })));
+
+                recv.recv().ok()
+            })
+        }
     };
 
     let engine = match PackagesEngine::create(lua.clone(), &packages_store, generation.lock_file, validator, options) {
