@@ -108,16 +108,16 @@ use them.
 
 List of all available APIs:
 
-| Name       | Prefix       | Extended privileges | Description                                 |
-| ---------- | ------------ | ------------------- | ------------------------------------------- |
-| Strings    | `str`        | No                  | String conversions and data serialization.  |
-| Paths      | `path`       | No                  | Paths construction and resolution.          |
-| Filesystem | `fs`         | No                  | Sandboxed filesystem manipulations.         |
-| Network    | `net`        | No                  | Perform HTTP requests.                      |
-| Downloader | `downloader` | No                  | HTTP files downloader.                      |
-| Archives   | `archive`    | No                  | Archives extraction.                        |
-| Hashes     | `hash`       | No                  | Hash values calculation.                    |
-| Sync       | `sync`       | No                  | Inter-packages data synchronization.        |
-| SQLite     | `sqlite`     | No                  | SQLite databases management.                |
-| Portals    | `portals`    | No                  | Show notifications and ask for permissions. |
-| Process    | `process`    | **Yes**             | Binaries execution.                         |
+| Name       | Prefix       | Extended privileges | Description                                    |
+| ---------- | ------------ | ------------------- | ---------------------------------------------- |
+| Strings    | `str`        | No                  | String conversions and data serialization.     |
+| Paths      | `path`       | No                  | Paths construction and resolution.             |
+| Filesystem | `fs`         | No                  | Sandboxed filesystem manipulations.            |
+| Network    | `net`        | No                  | Perform HTTP requests.                         |
+| Downloader | `downloader` | No                  | HTTP files downloader.                         |
+| Archives   | `archive`    | No                  | Archives extraction.                           |
+| Hashes     | `hash`       | No                  | Hash values calculation.                       |
+| Sync       | `sync`       | No                  | Inter-packages data synchronization.           |
+| SQLite     | `sqlite`     | No                  | SQLite databases management.                   |
+| Portals    | `portals`    | No                  | Show notifications and ask for sandbox escape. |
+| Process    | `process`    | **Yes**             | Binaries execution.                            |

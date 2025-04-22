@@ -61,6 +61,7 @@ impl PackagesEngine {
         store: &PackagesStore,
         lock_file: LockFileManifest,
         validator: AuthorityValidator,
+        local_validator: LocalValidator,
         options: PackagesEngineOptions
     ) -> Result<Self, PackagesEngineError> {
         let engine_table = lua.create_table()?;
@@ -87,7 +88,7 @@ impl PackagesEngine {
         }
 
         // Prepare modules standard implementations.
-        let v1_standard = v1_standard::Standard::new(lua.clone(), v1_standard::PortalsAPIOptions {
+        let v1_standard = v1_standard::Standard::new(lua.clone(), v1_standard::Options {
             show_toast: options.show_toast,
             show_notification: options.show_notification,
             show_dialog: options.show_dialog
@@ -215,6 +216,8 @@ impl PackagesEngine {
 
                     // Prepare special environment for the module.
                     let mut context = v1_standard::Context {
+                        resource_hash: resource.lock.hash,
+
                         temp_folder: config.packages.temp_store.path.clone(),
                         persistent_folder: config.packages.persist_store.path.clone(),
 
@@ -224,7 +227,9 @@ impl PackagesEngine {
                         input_resources,
 
                         ext_process_api: false,
-                        ext_allowed_paths: vec![]
+                        ext_allowed_paths: vec![],
+
+                        local_validator: local_validator.clone()
                     };
 
                     // Update values specified in the authority index.
@@ -618,8 +623,16 @@ mod tests {
         assert!(valid);
 
         let validator = AuthorityValidator::new([]);
+        let local_validator = LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?;
 
-        let engine = PackagesEngine::create(Lua::new(), &store, lock_file, validator, PackagesEngineOptions::default())?;
+        let engine = PackagesEngine::create(
+            Lua::new(),
+            &store,
+            lock_file,
+            validator,
+            local_validator,
+            PackagesEngineOptions::default()
+        )?;
 
         let resource = engine.load_resource("0peottaa6s1co")?
             .ok_or_else(|| anyhow::anyhow!("Module expected, got none"))?;

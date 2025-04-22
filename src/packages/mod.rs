@@ -25,7 +25,10 @@ pub mod prelude {
         ResourceLockData as LockFileResourceLockData
     };
 
-    pub use super::authority::AuthorityValidator;
+    pub use super::authority::{
+        LocalValidator,
+        AuthorityValidator
+    };
 
     pub use super::authority::manifest::{
         Manifest as AuthorityManifest,

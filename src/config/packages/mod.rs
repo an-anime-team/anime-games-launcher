@@ -10,6 +10,9 @@ pub struct Packages {
     /// List of authority index URLs.
     pub authorities: Vec<String>,
 
+    /// Path to the local resources validator state file.
+    pub local_validator: PathBuf,
+
     /// Information about the resources store.
     ///
     /// It is used to download all the packages' resources,
@@ -46,6 +49,10 @@ impl Default for Packages {
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/packages/authority.json")
             ],
 
+            local_validator: DATA_FOLDER
+                .join("packages")
+                .join("local_validator.json"),
+
             resources_store: ResourcesStore::default(),
             modules_store: ModulesStore::default(),
             persist_store: PersistStore::default(),
@@ -58,6 +65,7 @@ impl AsJson for Packages {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
             "authorities": self.authorities,
+            "local_validator": self.local_validator,
             "resources_store": self.resources_store.to_json()?,
             "modules_store": self.modules_store.to_json()?,
             "persist_store": self.persist_store.to_json()?,
@@ -77,6 +85,11 @@ impl AsJson for Packages {
                         .collect::<Option<Vec<_>>>()
                 })
                 .unwrap_or(default.authorities),
+
+            local_validator: json.get("local_validator")
+                .and_then(Json::as_str)
+                .map(PathBuf::from)
+                .unwrap_or(default.local_validator),
 
             resources_store: json.get("resources_store")
                 .ok_or_else(|| AsJsonError::FieldNotFound("packages.resources_store"))

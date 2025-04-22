@@ -25,7 +25,8 @@ pub enum MainWindowMsg {
 
     FinishLoading {
         generation: GenerationManifest,
-        validator: AuthorityValidator
+        validator: AuthorityValidator,
+        local_validator: LocalValidator
     },
 
     AddGame {
@@ -262,6 +263,7 @@ impl SimpleAsyncComponent for MainWindow {
             sender.input(MainWindowMsg::SetLoadingAction(String::from("Fetching authority indexes")));
 
             let validator = AuthorityValidator::build(&STARTUP_CONFIG.packages.authorities).await?;
+            let local_validator = LocalValidator::open(&STARTUP_CONFIG.packages.local_validator)?;
 
             // Open generations and packages stores.
             tracing::debug!(
@@ -405,7 +407,8 @@ impl SimpleAsyncComponent for MainWindow {
 
             sender.input(MainWindowMsg::FinishLoading {
                 generation: valid_generation,
-                validator
+                validator,
+                local_validator
             });
 
             Ok::<_, anyhow::Error>(())
@@ -437,11 +440,12 @@ impl SimpleAsyncComponent for MainWindow {
         match message {
             MainWindowMsg::SetLoadingAction(action) => self.loading_action = Some(action),
 
-            MainWindowMsg::FinishLoading { generation, validator } => {
+            MainWindowMsg::FinishLoading { generation, validator, local_validator } => {
                 if let Some(library_page) = self.library_page.as_ref() {
                     library_page.emit(LibraryPageInput::SpawnLuauEngine {
                         generation,
-                        validator
+                        validator,
+                        local_validator
                     });
                 }
 

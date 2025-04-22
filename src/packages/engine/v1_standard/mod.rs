@@ -36,7 +36,7 @@ pub use sync_api::SyncAPI;
 pub use sqlite_api::SQLiteAPI;
 pub use portals_api::{
     PortalsAPI,
-    PortalsAPIOptions,
+    Options as PortalsAPIOptions,
     ToastOptions,
     NotificationOptions,
     DialogOptions,
@@ -97,8 +97,10 @@ fn slice_to_table(lua: &Lua, slice: impl AsRef<[u8]>) -> Result<LuaTable, LuaErr
 
 type LuaFunctionBuilder = Box<dyn Fn(&Lua, &Context) -> Result<LuaFunction, LuaError>>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct Context {
+    pub resource_hash: Hash,
+
     pub temp_folder: PathBuf,
     pub module_folder: PathBuf,
     pub persistent_folder: PathBuf,
@@ -108,7 +110,9 @@ pub struct Context {
     pub ext_process_api: bool,
 
     /// Allow to access extra paths.
-    pub ext_allowed_paths: Vec<PathBuf>
+    pub ext_allowed_paths: Vec<PathBuf>,
+
+    pub local_validator: LocalValidator
 }
 
 impl Context {
@@ -132,8 +136,26 @@ impl Context {
             }
         }
 
+        dbg!(&self);
+
+        if let Some(allowed_paths) = self.local_validator.get_allowed_paths(&self.resource_hash) {
+            dbg!(&allowed_paths);
+
+            for allowed_path in allowed_paths {
+                if path.starts_with(allowed_path) {
+                    return true;
+                }
+            }
+        }
+
         false
     }
+}
+
+pub struct Options {
+    pub show_toast: Box<dyn Fn(ToastOptions) + Send>,
+    pub show_notification: Box<dyn Fn(NotificationOptions) + Send>,
+    pub show_dialog: Box<dyn Fn(DialogOptions) -> Option<String> + Send>
 }
 
 pub struct Standard {
@@ -156,9 +178,11 @@ pub struct Standard {
 }
 
 impl Standard {
-    /// Create new v1 standard using provided lua engine.
-    pub fn new(lua: Lua, options: portals_api::PortalsAPIOptions) -> Result<Self, PackagesEngineError> {
-        let standard = Self {
+    /// Create new v1 standard using provided lua engine and options.
+    pub fn new(lua: Lua, options: Options) -> Result<Self, PackagesEngineError> {
+        let filesystem_api = FilesystemAPI::new(lua.clone())?;
+
+        Ok(Self {
             clone: lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
                     match value {
@@ -202,20 +226,23 @@ impl Standard {
 
             string_api: StringAPI::new(lua.clone())?,
             path_api: PathAPI::new(lua.clone())?,
-            filesystem_api: FilesystemAPI::new(lua.clone())?,
             network_api: NetworkAPI::new(lua.clone())?,
             downloader_api: DownloaderAPI::new(lua.clone())?,
             archive_api: ArchiveAPI::new(lua.clone())?,
             hash_api: HashAPI::new(lua.clone())?,
             sync_api: SyncAPI::new(lua.clone())?,
             sqlite_api: SQLiteAPI::new(lua.clone())?,
-            portals_api: PortalsAPI::new(lua.clone(), options)?,
+            portals_api: PortalsAPI::new(lua.clone(), PortalsAPIOptions {
+                show_toast: options.show_toast,
+                show_notification: options.show_notification,
+                show_dialog: options.show_dialog,
+                file_handles: filesystem_api.file_handles()
+            })?,
             process_api: ProcessAPI::new(lua.clone())?,
 
+            filesystem_api,
             lua
-        };
-
-        Ok(standard)
+        })
     }
 
     #[inline(always)]

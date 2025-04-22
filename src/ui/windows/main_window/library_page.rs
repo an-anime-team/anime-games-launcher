@@ -9,7 +9,7 @@ use unic_langid::LanguageIdentifier;
 use super::*;
 
 #[derive(Debug, Clone)]
-struct GameInfo {
+pub struct GameInfo {
     pub manifest: Arc<GameManifest>,
     pub editions: Option<Vec<GameEdition>>,
     pub listener: UnboundedSender<SyncGameCommand>
@@ -19,7 +19,8 @@ struct GameInfo {
 pub enum LibraryPageInput {
     SpawnLuauEngine {
         generation: GenerationManifest,
-        validator: AuthorityValidator
+        validator: AuthorityValidator,
+        local_validator: LocalValidator
     },
 
     AddGameFromGeneration {
@@ -171,7 +172,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
     async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
-            LibraryPageInput::SpawnLuauEngine { generation, validator } => {
+            LibraryPageInput::SpawnLuauEngine { generation, validator, local_validator } => {
                 self.games.clear();
                 self.cards_list.guard().clear();
 
@@ -180,7 +181,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 // TODO: we don't do this now, but in future this event could be called
                 //       multiple times, so we would need to kill unused threads.
                 std::thread::spawn(move || {
-                    if let Err(err) = serve_generation(sender, download_manager, generation, validator) {
+                    if let Err(err) = serve_generation(sender, download_manager, generation, validator, local_validator) {
                         tracing::error!(?err, "Failed to serve generation");
                     }
                 });

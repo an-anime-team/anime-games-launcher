@@ -62,7 +62,8 @@ pub fn serve_generation(
     library_page_sender: AsyncComponentSender<LibraryPage>,
     download_manager_sender: Sender<DownloadManagerWindowMsg>,
     generation: GenerationManifest,
-    validator: AuthorityValidator
+    validator: AuthorityValidator,
+    local_validator: LocalValidator
 ) -> anyhow::Result<()> {
     let config = config::get();
 
@@ -228,7 +229,7 @@ pub fn serve_generation(
         }
     };
 
-    let engine = match PackagesEngine::create(lua.clone(), &packages_store, generation.lock_file, validator, options) {
+    let engine = match PackagesEngine::create(lua.clone(), &packages_store, generation.lock_file, validator, local_validator, options) {
         Ok(engine) => engine,
         Err(err) => {
             tracing::error!(?err, "Failed to load locked packages to the lua engine");

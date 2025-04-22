@@ -274,12 +274,14 @@ mod tests {
         let api = ArchiveAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         assert!(api.archive_entries.call::<LuaTable>(0).is_err());
@@ -329,12 +331,14 @@ mod tests {
         let api = ArchiveAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         assert!(api.archive_entries.call::<LuaTable>(0).is_err());

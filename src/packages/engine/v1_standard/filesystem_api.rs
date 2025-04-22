@@ -10,11 +10,12 @@ use bufreaderwriter::rand::BufReaderWriterRand;
 
 use super::*;
 
-const IO_READ_CHUNK_LEN: usize = 8192; // 8 KiB reads
-const IO_BUF_SIZE: usize = 16384; // 16 KiB read/write in-RAM cache
+pub const IO_READ_CHUNK_LEN: usize = 8192; // 8 KiB reads
+pub const IO_BUF_SIZE: usize = 16384; // 16 KiB read/write in-RAM cache
 
 pub struct FilesystemAPI {
     lua: Lua,
+    file_handles: Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>>,
 
     fs_exists: LuaFunctionBuilder,
     fs_metadata: LuaFunctionBuilder,
@@ -696,13 +697,19 @@ impl FilesystemAPI {
                 })
             }),
 
-            lua
+            lua,
+            file_handles
         })
     }
 
     #[inline(always)]
     pub const fn lua(&self) -> &Lua {
         &self.lua
+    }
+
+    #[inline]
+    pub fn file_handles(&self) -> Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>> {
+        self.file_handles.clone()
     }
 
     /// Create new lua table with API functions.
@@ -753,12 +760,14 @@ mod tests {
         let api = FilesystemAPI::new(lua.clone())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         assert!(!env.call_function::<bool>("exists", path.clone())?);
@@ -844,12 +853,14 @@ mod tests {
         let api = FilesystemAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         assert!(!env.call_function::<bool>("exists", path.clone())?);
@@ -903,12 +914,14 @@ mod tests {
         let api = FilesystemAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         assert!(!env.call_function::<bool>("exists", path.clone())?);
@@ -996,12 +1009,14 @@ mod tests {
         let api = FilesystemAPI::new(Lua::new())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: path_a.clone(),
             module_folder: path_b.clone(),
             persistent_folder: path_c.clone(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         let path_a = path_a.to_string_lossy().to_string();

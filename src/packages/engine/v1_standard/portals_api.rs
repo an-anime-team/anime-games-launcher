@@ -1,7 +1,17 @@
+use std::collections::HashMap;
+use std::os::unix::ffi::OsStrExt;
+use std::sync::{Arc, Mutex};
+use std::fs::File;
+
 use mlua::prelude::*;
+
+use bufreaderwriter::rand::BufReaderWriterRand;
+use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 use super::*;
+
+use super::filesystem_api::IO_BUF_SIZE;
 
 pub enum ToastOptions {
     Simple(LocalizableString),
@@ -151,10 +161,12 @@ impl TryFrom<&LuaString> for DialogButtonStatus {
     }
 }
 
-pub struct PortalsAPIOptions {
+pub struct Options {
     pub show_toast: Box<dyn Fn(ToastOptions) + Send>,
     pub show_notification: Box<dyn Fn(NotificationOptions) + Send>,
-    pub show_dialog: Box<dyn Fn(DialogOptions) -> Option<String> + Send>
+    pub show_dialog: Box<dyn Fn(DialogOptions) -> Option<String> + Send>,
+
+    pub file_handles: Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>>
 }
 
 pub struct PortalsAPI {
@@ -162,11 +174,14 @@ pub struct PortalsAPI {
 
     portals_toast: LuaFunction,
     portals_notify: LuaFunction,
-    portals_dialog: LuaFunction
+    portals_dialog: LuaFunction,
+    portals_open_file: LuaFunction,
+    portals_open_folder: LuaFunctionBuilder,
+    portals_save_file: LuaFunction
 }
 
 impl PortalsAPI {
-    pub fn new(lua: Lua, options: PortalsAPIOptions) -> Result<Self, PackagesEngineError> {
+    pub fn new(lua: Lua, options: Options) -> Result<Self, PackagesEngineError> {
         Ok(Self {
             portals_toast: {
                 lua.create_function(move |_, toast_options: LuaTable| {
@@ -190,6 +205,226 @@ impl PortalsAPI {
                 })?
             },
 
+            portals_open_file: {
+                let file_handles = options.file_handles.clone();
+
+                lua.create_function(move |lua, options: Option<LuaTable>| {
+                    let mut dialog = rfd::FileDialog::new();
+
+                    let mut multiple = false;
+
+                    if let Some(options) = options {
+                        if let Some(title) = options.get::<Option<LuaValue>>("title")? {
+                            let title = LocalizableString::from_lua(&title)?;
+
+                            let config = config::get();
+
+                            let language = config.general.language.parse::<LanguageIdentifier>();
+
+                            let title = match &language {
+                                Ok(language) => title.translate(language),
+                                Err(_) => title.default_translation()
+                            };
+
+                            dialog = dialog.set_title(title);
+                        }
+
+                        if let Some(directory) = options.get::<Option<LuaString>>("directory")? {
+                            dialog = dialog.set_directory(PathBuf::from(directory.to_string_lossy()));
+                        }
+
+                        multiple = options.get::<bool>("multiple").unwrap_or(false);
+                    }
+
+                    fn open_file(path: impl AsRef<Path>) -> Result<BufReaderWriterRand<File>, LuaError> {
+                        let file = File::options()
+                            .read(true)
+                            .write(true)
+                            .open(path)
+                            .map_err(LuaError::external)?;
+
+                        Ok(BufReaderWriterRand::reader_with_capacity(IO_BUF_SIZE, file))
+                    }
+
+                    #[allow(clippy::collapsible_else_if)]
+                    if multiple {
+                        if let Some(files) = dialog.pick_files() {
+                            let mut handles = file_handles.lock()
+                                .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                            let response = lua.create_table_with_capacity(files.len(), 0)?;
+
+                            for file in files {
+                                let mut handle = rand::random::<i32>();
+
+                                while handles.contains_key(&handle) {
+                                    handle = rand::random::<i32>();
+                                }
+
+                                handles.insert(handle, open_file(&file)?);
+
+                                let file_details = lua.create_table_with_capacity(0, 2)?;
+
+                                file_details.raw_set("path", file)?;
+                                file_details.raw_set("handle", handle)?;
+
+                                response.raw_push(file_details)?;
+                            }
+
+                            return Ok(LuaValue::Table(response));
+                        }
+                    }
+
+                    else {
+                        if let Some(file) = dialog.pick_file() {
+                            let mut handles = file_handles.lock()
+                                .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                            let mut handle = rand::random::<i32>();
+
+                            while handles.contains_key(&handle) {
+                                handle = rand::random::<i32>();
+                            }
+
+                            handles.insert(handle, open_file(&file)?);
+
+                            let response = lua.create_table_with_capacity(0, 2)?;
+
+                            response.raw_set("path", file)?;
+                            response.raw_set("handle", handle)?;
+
+                            return Ok(LuaValue::Table(response));
+                        }
+                    }
+
+                    Ok(LuaValue::Nil)
+                })?
+            },
+
+            portals_open_folder: Box::new(move |lua, context| {
+                let (resource_hash, local_validator) = (context.resource_hash, context.local_validator.clone());
+
+                lua.create_function(move |lua, options: Option<LuaTable>| {
+                    let mut dialog = rfd::FileDialog::new();
+
+                    let mut multiple = false;
+
+                    if let Some(options) = options {
+                        if let Some(title) = options.get::<Option<LuaValue>>("title")? {
+                            let title = LocalizableString::from_lua(&title)?;
+
+                            let config = config::get();
+
+                            let language = config.general.language.parse::<LanguageIdentifier>();
+
+                            let title = match &language {
+                                Ok(language) => title.translate(language),
+                                Err(_) => title.default_translation()
+                            };
+
+                            dialog = dialog.set_title(title);
+                        }
+
+                        if let Some(directory) = options.get::<Option<LuaString>>("directory")? {
+                            dialog = dialog.set_directory(PathBuf::from(directory.to_string_lossy()));
+                        }
+
+                        multiple = options.get::<bool>("multiple").unwrap_or(false);
+                    }
+
+                    #[allow(clippy::collapsible_else_if)]
+                    if multiple {
+                        if let Some(folders) = dialog.pick_folders() {
+                            let result = lua.create_table_with_capacity(folders.len(), 0)?;
+
+                            for folder in folders {
+                                local_validator.allow_path(resource_hash, &folder)
+                                    .map_err(LuaError::external)?;
+
+                                result.raw_push(lua.create_string(folder.as_os_str().as_bytes())?)?;
+                            }
+
+                            return Ok(LuaValue::Table(result));
+                        }
+                    }
+
+                    else {
+                        if let Some(folder) = dialog.pick_folder() {
+                            local_validator.allow_path(resource_hash, &folder)
+                                .map_err(LuaError::external)?;
+
+                            return Ok(LuaValue::String(lua.create_string(folder.as_os_str().as_bytes())?));
+                        }
+                    }
+
+                    Ok(LuaValue::Nil)
+                })
+            }),
+
+            portals_save_file: {
+                let file_handles = options.file_handles.clone();
+
+                lua.create_function(move |lua, options: Option<LuaTable>| {
+                    let mut dialog = rfd::FileDialog::new()
+                        .set_can_create_directories(true);
+
+                    if let Some(options) = options {
+                        if let Some(title) = options.get::<Option<LuaValue>>("title")? {
+                            let title = LocalizableString::from_lua(&title)?;
+
+                            let config = config::get();
+
+                            let language = config.general.language.parse::<LanguageIdentifier>();
+
+                            let title = match &language {
+                                Ok(language) => title.translate(language),
+                                Err(_) => title.default_translation()
+                            };
+
+                            dialog = dialog.set_title(title);
+                        }
+
+                        if let Some(directory) = options.get::<Option<LuaString>>("directory")? {
+                            dialog = dialog.set_directory(PathBuf::from(directory.to_string_lossy()));
+                        }
+
+                        if let Some(file_name) = options.get::<Option<LuaString>>("file_name")? {
+                            dialog = dialog.set_file_name(file_name.to_string_lossy());
+                        }
+                    }
+
+                    if let Some(path) = dialog.save_file() {
+                        let file = File::options()
+                            .read(true)
+                            .write(true)
+                            .create(true)
+                            .truncate(true)
+                            .open(&path)
+                            .map_err(LuaError::external)?;
+
+                        let mut handles = file_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+
+                        let mut handle = rand::random::<i32>();
+
+                        while handles.contains_key(&handle) {
+                            handle = rand::random::<i32>();
+                        }
+
+                        handles.insert(handle, BufReaderWriterRand::reader_with_capacity(IO_BUF_SIZE, file));
+
+                        let response = lua.create_table_with_capacity(0, 2)?;
+
+                        response.raw_set("path", path)?;
+                        response.raw_set("handle", handle)?;
+
+                        return Ok(LuaValue::Table(response));
+                    }
+
+                    Ok(LuaValue::Nil)
+                })?
+            },
+
             lua
         })
     }
@@ -200,12 +435,15 @@ impl PortalsAPI {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, _context: &Context) -> Result<LuaTable, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 3)?;
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+        let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("toast", self.portals_toast.clone())?;
         env.raw_set("notify", self.portals_notify.clone())?;
         env.raw_set("dialog", self.portals_dialog.clone())?;
+        env.raw_set("open_file", self.portals_open_file.clone())?;
+        env.raw_set("open_folder", (self.portals_open_folder)(&self.lua, context)?)?;
+        env.raw_set("save_file", self.portals_save_file.clone())?;
 
         Ok(env)
     }

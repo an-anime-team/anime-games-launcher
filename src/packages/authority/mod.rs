@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+
 use serde_json::Value as Json;
 
 pub mod manifest;
@@ -17,6 +21,63 @@ pub enum AuthorityValidatorError {
 
     #[error("Failed to decode authority index manifest: {0}")]
     AsJson(#[from] AsJsonError)
+}
+
+#[derive(Debug, Clone)]
+/// Local resource permissions storage.
+pub struct LocalValidator {
+    path: PathBuf,
+    allowed_paths: Arc<RwLock<HashMap<Hash, Vec<PathBuf>>>>
+}
+
+impl LocalValidator {
+    /// Open local validator in a json file.
+    pub fn open(path: impl Into<PathBuf>) -> anyhow::Result<Self> {
+        let path: PathBuf = path.into();
+
+        if !path.exists() {
+            return Ok(Self {
+                path,
+                allowed_paths: Arc::new(RwLock::new(HashMap::new()))
+            });
+        }
+
+        let allowed_paths = serde_json::from_slice::<HashMap<String, Vec<PathBuf>>>(&std::fs::read(&path)?)?;
+
+        let allowed_paths = allowed_paths.into_iter()
+            .map(|(k, v)| Hash::from_base32(k).map(|k| (k, v)))
+            .collect::<Option<HashMap<_, _>>>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to read local validator file"))?;
+
+        Ok(Self {
+            path,
+            allowed_paths: Arc::new(RwLock::new(allowed_paths))
+        })
+    }
+
+    /// Get list of paths which are allowed to be accessed by the given module.
+    pub fn get_allowed_paths(&self, resource: &Hash) -> Option<Vec<PathBuf>> {
+        self.allowed_paths.read().ok()?.get(resource).cloned()
+    }
+
+    /// Allow path to be accessed by the given module.
+    pub fn allow_path(&self, resource: Hash, path: impl Into<PathBuf>) -> anyhow::Result<()> {
+        if let Ok(mut allowed_paths) = self.allowed_paths.write() {
+            let path: PathBuf = path.into();
+
+            allowed_paths.entry(resource)
+                .or_default()
+                .push(path);
+
+            let allowed_paths = allowed_paths.iter()
+                .map(|(k, v)| (k.to_base32(), v))
+                .collect::<HashMap<_, _>>();
+
+            std::fs::write(&self.path, serde_json::to_vec_pretty(&allowed_paths)?)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]

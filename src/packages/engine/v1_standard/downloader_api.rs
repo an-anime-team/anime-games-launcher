@@ -240,12 +240,14 @@ mod tests {
         let api = DownloaderAPI::new(lua.clone())?;
 
         let env = api.create_env(&Context {
+            resource_hash: Hash::rand(),
             temp_folder: std::env::temp_dir(),
             module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
             input_resources: vec![],
             ext_process_api: false,
-            ext_allowed_paths: vec![]
+            ext_allowed_paths: vec![],
+            local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
         })?;
 
         let path = std::env::temp_dir().join(".agl-v1-downloader-test-dxvk.tar.gz");
