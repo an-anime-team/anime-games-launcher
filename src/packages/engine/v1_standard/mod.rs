@@ -136,11 +136,7 @@ impl Context {
             }
         }
 
-        dbg!(&self);
-
         if let Some(allowed_paths) = self.local_validator.get_allowed_paths(&self.resource_hash) {
-            dbg!(&allowed_paths);
-
             for allowed_path in allowed_paths {
                 if path.starts_with(allowed_path) {
                     return true;
