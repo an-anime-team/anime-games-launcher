@@ -5,7 +5,8 @@ some most used ones for you.
 
 | Function       | Description                               |
 | -------------- | ----------------------------------------- |
-| `hash.calc`    | Calculate hash for a bytes slice.         |
+| `hash.calc`    | Calculate hash for a given bytes slice.   |
+| `hash.file`    | Calculate hash for a given file.          |
 | `hash.builder` | Create new hash builder.                  |
 | `hash.write`   | Write a chunk of data to the open hasher. |
 | `hash.finalize`| Finalize hash value.                      |
@@ -32,12 +33,25 @@ Following table contains list of `HashAlgorithm` enum values.
 
 ## `hash.calc(value: any, [algorithm: HashAlgorithm]) -> [number]`
 
-Calculate hash for a given bytes slice using specified algorithm.
-By default `seahash` is used as a launcher's internal algorithm.
+Calculate hash for a given bytes slice using specified algorithm. By default
+`seahash` is used as a launcher's internal algorithm.
 
 ```luau
 -- [236, 74, 195, 208]
 dbg(hash.calc("Hello, World!", "crc32"))
+```
+
+## `hash.file(path: string, [algorithm: HashAlgorithm]) -> [number]`
+
+Calculate hash for a given file path using specified algorithm. By default
+`seahash` is used as a launcher's internal algorithm. Only accessible files can
+be hashed.
+
+```luau
+fs.write_file("test.txt", "Hello, World!")
+
+-- [236, 74, 195, 208]
+dbg(hash.file("test.txt", "crc32"))
 ```
 
 ## `hash.builder([algorithm: HashAlgorithm]) -> number`

@@ -260,7 +260,7 @@ impl Standard {
         env.set("net", self.network_api.create_env()?)?;
         env.set("downloader", self.downloader_api.create_env(context)?)?;
         env.set("archive", self.archive_api.create_env(context)?)?;
-        env.set("hash", self.hash_api.create_env()?)?;
+        env.set("hash", self.hash_api.create_env(context)?)?;
         env.set("sync", self.sync_api.create_env()?)?;
         env.set("sqlite", self.sqlite_api.create_env(context)?)?;
         env.set("portals", self.portals_api.create_env(context)?)?;

@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::sync::{Arc, Mutex};
-use std::io::Write;
+use std::io::{Read, Write};
 
 use mlua::prelude::*;
 
+use super::filesystem_api::IO_READ_CHUNK_LEN;
 use super::*;
 
 enum Hasher {
@@ -127,6 +129,7 @@ pub struct HashAPI {
     lua: Lua,
 
     hash_calc: LuaFunction,
+    hash_file: LuaFunctionBuilder,
     hash_builder: LuaFunction,
     hash_write: LuaFunction,
     hash_finalize: LuaFunction
@@ -147,6 +150,47 @@ impl HashAPI {
 
                 Ok(hasher.calc(get_value_bytes(value)?)?)
             })?,
+
+            hash_file: {
+                Box::new(move |lua: &Lua, context: &Context| {
+                    let context = context.to_owned();
+
+                    lua.create_function(move |_, (path, algorithm): (LuaString, Option<LuaString>)| {
+                        let mut path = resolve_path(path.to_string_lossy())?;
+
+                        if path.is_relative() {
+                            path = context.module_folder.join(path);
+                        }
+
+                        if !context.is_accessible(&path) {
+                            return Err(LuaError::external("path is inaccessible"));
+                        }
+
+                        let mut file = File::open(path)?;
+
+                        let mut hasher = match algorithm {
+                            Some(name) => Hasher::from_name(name.to_string_lossy())
+                                .ok_or_else(|| LuaError::external("invalid hash algorithm name"))?,
+
+                            None => Hasher::default()
+                        };
+
+                        let mut buf = [0; IO_READ_CHUNK_LEN];
+
+                        loop {
+                            let n = file.read(&mut buf)?;
+
+                            if n == 0 {
+                                break;
+                            }
+
+                            hasher.write(&buf[..n])?;
+                        }
+
+                        Ok(hasher.finalize())
+                    })
+                })
+            },
 
             hash_builder: {
                 let hasher_handles = hasher_handles.clone();
@@ -216,10 +260,11 @@ impl HashAPI {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
-        let env = self.lua.create_table_with_capacity(0, 4)?;
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+        let env = self.lua.create_table_with_capacity(0, 5)?;
 
         env.raw_set("calc", self.hash_calc.clone())?;
+        env.raw_set("file", (self.hash_file)(&self.lua, context)?)?;
         env.raw_set("builder", self.hash_builder.clone())?;
         env.raw_set("write", self.hash_write.clone())?;
         env.raw_set("finalize", self.hash_finalize.clone())?;
