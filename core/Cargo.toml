@@ -1,0 +1,138 @@
+[package]
+name = "anime-games-launcher-core"
+version = "0.1.0"
+authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
+license = "GPL-3.0-or-later"
+edition = "2024"
+publish = false
+
+[features]
+tracing = ["dep:tracing"]
+tasks = ["dep:tokio"]
+
+network = [
+    "tasks",
+    "dep:reqwest"
+]
+network-all = [
+    "network",
+    "network-downloader"
+]
+network-downloader = ["network"]
+
+archives = []
+archives-all = [
+    "archives",
+    "archives-tar",
+    "archives-zip",
+    "archives-7z"
+]
+archives-tar = ["archives"]
+archives-zip = ["archives"]
+archives-7z = ["archives"]
+
+hashes = []
+hashes-all = [
+    "hashes",
+    "hashes-seahash",
+    "hashes-crc32",
+    "hashes-crc32c",
+    "hashes-siphash",
+    "hashes-xxh",
+    "hashes-md5",
+    "hashes-sha1",
+    "hashes-sha2",
+    "hashes-sha3",
+    "hashes-blake2",
+    "hashes-blake3"
+]
+hashes-seahash = ["hashes", "dep:seahash"]
+hashes-crc32 = ["hashes", "dep:crc32fast"]
+hashes-crc32c = ["hashes", "dep:crc32c"]
+hashes-siphash = ["hashes", "dep:siphasher"]
+hashes-xxh = ["hashes", "dep:xxhash-rust"]
+hashes-md5 = ["hashes", "dep:md-5"]
+hashes-sha1 = ["hashes", "dep:sha1"]
+hashes-sha2 = ["hashes", "dep:sha2"]
+hashes-sha3 = ["hashes", "dep:sha3"]
+hashes-blake2 = ["hashes", "dep:blake2"]
+hashes-blake3 = ["hashes", "dep:blake3"]
+
+compression = []
+compression-all = [
+    "compression",
+    "compression-lz4",
+    "compression-bzip2",
+    "compression-deflate",
+    "compression-zstd"
+]
+compression-lz4 = ["dep:lz4_flex"]
+compression-bzip2 = ["dep:bzip2"]
+compression-deflate = ["dep:flate2"]
+compression-zstd = ["dep:zstd"]
+
+default = [
+    "tracing",
+    "tasks",
+    "network-all",
+    "archives-all",
+    "hashes-all",
+    "compression-all"
+]
+
+[dependencies.tokio]
+package = "tokio"
+version = "1.44"
+features = [
+    "rt-multi-thread",
+    "macros",
+    "fs",
+    "io-std"
+]
+optional = true
+
+[dependencies.reqwest]
+package = "reqwest"
+version = "0.12"
+default-features = false
+features = [
+    "charset",
+    "brotli",
+    "deflate",
+    "gzip",
+    "zstd",
+    "http2",
+    "stream",
+    "socks",
+    "system-proxy",
+    "rustls-tls",
+    "rustls-tls-native-roots"
+]
+optional = true
+
+[dependencies]
+thiserror = "1.0"
+lazy_static = "1.5"
+
+# Tracing
+tracing = { version = "0.1", optional = true }
+
+# Hashes
+seahash = { version = "4.1", optional = true }
+crc32fast = { version = "1.4", optional = true }
+crc32c = { version = "0.6", optional = true }
+siphasher = { version = "1.0", optional = true }
+xxhash-rust = { version = "0.8", features = ["xxh32", "xxh64", "xxh3"], optional = true }
+md-5 = { version = "0.10", features = ["asm"], optional = true }
+sha1 = { version = "0.10", features = ["asm"], optional = true }
+sha2 = { version = "0.10", features = ["asm"], optional = true }
+sha3 = { version = "0.10", features = ["asm"], optional = true }
+blake2 = { version = "0.10", optional = true }
+blake3 = { version = "1.8", optional = true }
+
+# Compression
+lz4_flex = { version = "0.11", optional = true }
+bzip2 = { version = "0.5", features = ["libbz2-rs-sys"], optional = true }
+flate2 = { version = "1.1", features = ["zlib-rs"], optional = true }
+zstd = { version = "0.13", optional = true }
+# lzma-rust = { version = "0.1.7", optional = true }
