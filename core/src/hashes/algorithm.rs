@@ -398,3 +398,10 @@ impl std::fmt::Display for HashAlgorithm {
         f.write_str(self.name())
     }
 }
+
+impl AsRef<HashAlgorithm> for HashAlgorithm {
+    #[inline(always)]
+    fn as_ref(&self) -> &HashAlgorithm {
+        self
+    }
+}

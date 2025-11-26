@@ -79,3 +79,10 @@ impl std::str::FromStr for ArchiveFormat {
         }
     }
 }
+
+impl AsRef<ArchiveFormat> for ArchiveFormat {
+    #[inline(always)]
+    fn as_ref(&self) -> &ArchiveFormat {
+        self
+    }
+}

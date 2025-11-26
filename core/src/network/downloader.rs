@@ -9,13 +9,12 @@ use tokio::io::{AsyncSeekExt, AsyncWriteExt, BufWriter};
 use tokio::task::{JoinError, JoinHandle};
 use reqwest::Client;
 
-// TODO: make a global vector of atomics for all active downloads.
-// Each one will store download speed in b/s. Then, using a user-
-// specified speed limit, we will calculate the timeout for each
-// downloader to achieve this limit.
+// TODO: make a global vector of atomics for all active downloads. Each one will
+// store download speed in b/s. Then, using a user-specified speed limit, we
+// will calculate the timeout for each downloader to achieve this limit.
 
-/// Timeout between requests of the content chunks.
-/// Used to slow down downloading speed.
+/// Timeout between requests of the content chunks. Used to slow down
+/// downloading speed.
 const DOWNLOADER_CHUNKS_REQUESTS_TIMEOUT: Option<Duration> = None;
 
 lazy_static::lazy_static! {
@@ -94,8 +93,16 @@ impl Downloader {
 
     /// Start downloading of the file using default options.
     #[inline]
-    pub fn download(&self, url: impl ToString, output_file: impl Into<PathBuf>) -> DownloaderTask {
-        self.download_with_options(url, output_file, DownloadOptions::default())
+    pub fn download(
+        &self,
+        url: impl ToString,
+        output_file: impl Into<PathBuf>
+    ) -> DownloaderTask {
+        self.download_with_options(
+            url,
+            output_file,
+            DownloadOptions::default()
+        )
     }
 
     /// Start downloading of the file, returning struct to control the process.
@@ -195,6 +202,7 @@ impl Downloader {
                 if let Some(range) = response.headers().get("Content-Range") {
                     let range = String::from_utf8_lossy(range.as_bytes());
 
+                    #[allow(clippy::collapsible_if)]
                     if let Some(range) = range.strip_prefix("bytes ") {
                         if let Some((range, size)) = range.split_once('/') {
                             // Downloading finished.

@@ -5,7 +5,7 @@ use tokio::runtime::{Runtime, Builder};
 
 lazy_static::lazy_static! {
     pub static ref RUNTIME: Runtime = Builder::new_multi_thread()
-        .thread_name("wineyard_core")
+        .thread_name("anime_games_launcher_core")
         .enable_all()
         .build()
         .expect("failed to initialize tokio runtime");

@@ -2,8 +2,8 @@
 resolver = "3"
 members = [
     "core",
-    "runtime",
-    "launcher"
+    # "runtime",
+    # "launcher"
 ]
 
 [profile.release]

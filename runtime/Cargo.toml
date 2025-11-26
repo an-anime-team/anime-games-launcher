@@ -35,7 +35,7 @@ default = [
 ]
 
 [dependencies.anime-games-launcher-core]
-path = "../anime-games-launcher-core"
+path = "../core"
 default-features = false
 features = [
     "tasks",

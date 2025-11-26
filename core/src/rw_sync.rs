@@ -27,7 +27,10 @@ impl<T: Read + Write> Read for ReadWriteMutex<T> {
     }
 
     #[inline]
-    fn read_vectored(&mut self, bufs: &mut [std::io::IoSliceMut<'_>]) -> std::io::Result<usize> {
+    fn read_vectored(
+        &mut self,
+        bufs: &mut [std::io::IoSliceMut<'_>]
+    ) -> std::io::Result<usize> {
         self.inner()?.read_vectored(bufs)
     }
 
@@ -64,12 +67,18 @@ impl<T: Read + Write> Write for ReadWriteMutex<T> {
     }
 
     #[inline]
-    fn write_vectored(&mut self, bufs: &[std::io::IoSlice<'_>]) -> std::io::Result<usize> {
+    fn write_vectored(
+        &mut self,
+        bufs: &[std::io::IoSlice<'_>]
+    ) -> std::io::Result<usize> {
         self.inner()?.write_vectored(bufs)
     }
 
     #[inline]
-    fn write_fmt(&mut self, args: std::fmt::Arguments<'_>) -> std::io::Result<()> {
+    fn write_fmt(
+        &mut self,
+        args: std::fmt::Arguments<'_>
+    ) -> std::io::Result<()> {
         self.inner()?.write_fmt(args)
     }
 }
