@@ -20,6 +20,7 @@ mod network_api;
 mod downloader_api;
 mod archive_api;
 mod hash_api;
+mod compression_api;
 mod sync_api;
 mod sqlite_api;
 mod portals_api;
