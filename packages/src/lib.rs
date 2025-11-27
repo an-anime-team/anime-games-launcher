@@ -22,3 +22,4 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod hash;
 pub mod package;
 pub mod storage;
+pub mod lock;
