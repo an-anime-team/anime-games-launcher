@@ -15,10 +15,3 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-/// Version of the `agl-packages` library.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-pub mod hash;
-pub mod package;
-pub mod storage;

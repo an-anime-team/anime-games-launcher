@@ -40,9 +40,8 @@ version = "0.1.0"
 dependencies = [
  "agl-core",
  "base32",
- "mlua",
  "rand",
- "serde",
+ "seahash",
  "serde_json",
  "thiserror 1.0.69",
  "tracing",

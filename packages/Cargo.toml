@@ -28,17 +28,11 @@ features = [
     "network-downloader"
 ]
 
-[dependencies.mlua]
-package = "mlua"
-version = "0.10"
-features = ["luau-jit", "serialize", "send", "error-send"]
-optional = true
-
 [dependencies]
 thiserror = "1.0"
 rand = "0.9"
+seahash = "4.1"
 base32 = "0.5"
-serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Tracing
