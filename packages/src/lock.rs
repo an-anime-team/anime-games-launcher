@@ -16,18 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
+use std::str::FromStr;
 
 use serde_json::{json, Value as Json};
 
 use crate::hash::Hash;
-use crate::package::ResourceInfoManifest;
+use crate::package::ResourceFormat;
 
 /// Anime Games Launcher packages lock.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Lock {
     /// List of the root level packages hashes.
-    pub root: Vec<Hash>,
+    pub root: HashSet<Hash>,
 
     /// Table of locked packages info.
     pub packages: HashMap<Hash, LockedPackageInfo>,
@@ -37,6 +38,35 @@ pub struct Lock {
 }
 
 impl Lock {
+    /// Verify the lock structure.
+    ///
+    /// Return `false` if the lock is missing some packages or resource info.
+    /// Otherwise return `true`.
+    pub fn verify(&self) -> bool {
+        // TODO: check that there's no module which has same-called input for
+        //       different resource hashes
+
+        for hash in self.root.iter() {
+            let Some(info) = self.packages.get(hash) else {
+                return false;
+            };
+
+            for resource in info.inputs.values() {
+                if !self.resources.contains_key(&resource.hash) {
+                    return false;
+                }
+            }
+
+            for resource in info.outputs.values() {
+                if !self.resources.contains_key(&resource.hash) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
     pub fn to_json(&self) -> Json {
         json!({
             "root": self.root.iter()
@@ -63,7 +93,7 @@ impl Lock {
                             hash.as_str()
                                 .and_then(Hash::from_base32)
                         })
-                        .collect::<Option<Vec<Hash>>>()
+                        .collect::<Option<HashSet<Hash>>>()
                 })?,
 
             packages: value.get("packages")
@@ -101,10 +131,10 @@ pub struct LockedPackageInfo {
     pub url: String,
 
     /// Inputs of the package.
-    pub inputs: HashMap<String, ResourceInfoManifest>,
+    pub inputs: HashMap<String, LockedResourceInfo>,
 
     /// Outputs of the package.
-    pub outputs: HashMap<String, ResourceInfoManifest>
+    pub outputs: HashMap<String, LockedResourceInfo>
 }
 
 impl LockedPackageInfo {
@@ -132,7 +162,7 @@ impl LockedPackageInfo {
                 .and_then(Json::as_object)?
                 .iter()
                 .map(|(k, v)| {
-                    ResourceInfoManifest::from_json(v)
+                    LockedResourceInfo::from_json(v)
                         .map(|v| (k.to_string(), v))
                 })
                 .collect::<Option<HashMap<_, _>>>()?,
@@ -141,10 +171,48 @@ impl LockedPackageInfo {
                 .and_then(Json::as_object)?
                 .iter()
                 .map(|(k, v)| {
-                    ResourceInfoManifest::from_json(v)
+                    LockedResourceInfo::from_json(v)
                         .map(|v| (k.to_string(), v))
                 })
                 .collect::<Option<HashMap<_, _>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LockedResourceInfo {
+    /// URI of the resource.
+    pub uri: String,
+
+    /// Format of the resource.
+    pub format: ResourceFormat,
+
+    /// Base32 seahash of the resource.
+    pub hash: Hash
+}
+
+impl LockedResourceInfo {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "uri": self.uri,
+            "format": self.format.to_string(),
+            "hash": self.hash.to_base32()
+        })
+    }
+
+    pub fn from_json(value: &Json) -> Option<Self> {
+        Some(Self {
+            uri: value.get("uri")
+                .and_then(Json::as_str)
+                .map(String::from)?,
+
+            format: value.get("format")
+                .and_then(Json::as_str)
+                .and_then(|format| ResourceFormat::from_str(format).ok())?,
+
+            hash: value.get("hash")
+                .and_then(Json::as_str)
+                .and_then(Hash::from_base32)?
         })
     }
 }

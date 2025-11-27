@@ -19,6 +19,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::hash::Hash;
+use crate::lock::Lock;
 
 /// Anime Games Launcher packages storage.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -110,5 +111,17 @@ impl Storage {
         }
 
         Ok(&Hash::from_path(path)? == hash)
+    }
+
+    /// Verify that the storage has all the resources listed in the provided
+    /// lock and that their hashes are valid.
+    pub fn verify_lock(&self, lock: &Lock) -> std::io::Result<bool> {
+        for hash in lock.resources.keys() {
+            if !self.verify_resource(hash)? {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 }
