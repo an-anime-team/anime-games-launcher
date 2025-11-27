@@ -38,7 +38,7 @@ mod sqlite_api;
 // mod portals_api;
 mod process_api;
 
-use super::ModuleScope;
+use crate::module::ModuleScope;
 
 /// Convert arbitrary lua value into bytes slice some reasonable way.
 pub fn lua_value_to_bytes(value: LuaValue) -> Result<Vec<u8>, LuaError> {

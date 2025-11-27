@@ -2,7 +2,7 @@
 resolver = "3"
 members = [
     "core",
-    # "packages",
+    "packages",
     "runtime",
     # "launcher"
 ]

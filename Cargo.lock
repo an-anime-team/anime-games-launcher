@@ -35,6 +35,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "agl-packages"
+version = "0.1.0"
+dependencies = [
+ "agl-core",
+ "base32",
+ "mlua",
+ "rand",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+]
+
+[[package]]
 name = "agl-runtime"
 version = "0.1.0"
 dependencies = [
