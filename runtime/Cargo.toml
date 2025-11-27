@@ -1,5 +1,5 @@
 [package]
-name = "anime-games-launcher-runtime"
+name = "agl-runtime"
 version = "0.1.0"
 authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
 license = "GPL-3.0-or-later"
@@ -8,63 +8,30 @@ publish = false
 
 [features]
 tracing = [
-    "anime-games-launcher-core/tracing",
     "dep:tracing"
-]
-
-packages-resolver = ["anime-games-launcher-core/archives-all"]
-
-runtime = [
-    "anime-games-launcher-core/hashes-all",
-    "anime-games-launcher-core/compression-all",
-    "dep:mlua",
-    "dep:bufreaderwriter",
-    "dep:rusqlite",
-    "dep:hex",
-    "dep:base64",
-    "dep:encoding_rs",
-    "dep:serde_json",
-    "dep:serde_yml"
-]
-
-default = [
-    "anime-games-launcher-core/hashes-seahash",
-    # "tracing",
-    "packages-resolver",
-    "runtime"
-]
-
-[dependencies.anime-games-launcher-core]
-path = "../core"
-default-features = false
-features = [
-    "tasks",
-    "network-downloader"
 ]
 
 [dependencies.mlua]
 package = "mlua"
 version = "0.10"
 features = ["luau-jit", "serialize", "send", "error-send"]
-optional = true
 
 [dependencies]
 thiserror = "1.0"
 rand = "0.9"
+seahash = "4.1"
 base32 = "0.5"
 serde = { version = "1.0", features = ["derive"] }
-toml = "0.8"
+serde_json = "1.0"
 
-# Tracing
 tracing = { version = "0.1", optional = true }
 
-# Runtime
-bufreaderwriter = { version = "0.2.4", optional = true }
-rusqlite = { version = "0.34", features = ["bundled"], optional = true }
+bufreaderwriter = "0.2.4"
+rusqlite = { version = "0.37", features = ["bundled"] }
 
-serde_json = { version = "1.0", optional = true }
-serde_yml = { version = "0.0.12", optional = true }
+toml = "0.9"
+serde_yml = "0.0.12"
 
-hex = { version = "0.4", optional = true }
-base64 = { version = "0.22", optional = true }
-encoding_rs = { version = "0.8", optional = true }
+hex = "0.4"
+base64 = "0.22"
+encoding_rs = "0.8"

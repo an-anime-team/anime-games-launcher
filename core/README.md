@@ -1,4 +1,4 @@
-# anime-games-launcher-core
+# agl-core
 
 Standard abstractions provider.
 

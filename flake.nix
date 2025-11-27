@@ -35,7 +35,7 @@
                     meta = with pkgs.lib; {
                         description = config.package.description;
                         homepage = config.package.homepage;
-                        license = licenses.gpl3Only;
+                        license = licenses.gpl3Plus;
 
                         maintainers = [
                             {

@@ -1,0 +1,70 @@
+[package]
+name = "agl-packages"
+version = "0.1.0"
+authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
+license = "GPL-3.0-or-later"
+edition = "2024"
+publish = false
+
+[features]
+tracing = [
+    "agl-core/tracing",
+    "dep:tracing"
+]
+
+packages-resolver = ["agl-core/archives-all"]
+
+runtime = [
+    "agl-core/hashes-all",
+    "agl-core/compression-all",
+    "dep:mlua",
+    "dep:bufreaderwriter",
+    "dep:rusqlite",
+    "dep:hex",
+    "dep:base64",
+    "dep:encoding_rs",
+    "dep:toml",
+    "dep:serde_yml"
+]
+
+default = [
+    "agl-core/hashes-seahash",
+    # "tracing",
+    "packages-resolver",
+    "runtime"
+]
+
+[dependencies.agl-core]
+path = "../core"
+default-features = false
+features = [
+    "tasks",
+    "network-downloader"
+]
+
+[dependencies.mlua]
+package = "mlua"
+version = "0.10"
+features = ["luau-jit", "serialize", "send", "error-send"]
+optional = true
+
+[dependencies]
+thiserror = "1.0"
+rand = "0.9"
+base32 = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Tracing
+tracing = { version = "0.1", optional = true }
+
+# Runtime
+bufreaderwriter = { version = "0.2.4", optional = true }
+rusqlite = { version = "0.37", features = ["bundled"], optional = true }
+
+toml = { version = "0.9", optional = true }
+serde_yml = { version = "0.0.12", optional = true }
+
+hex = { version = "0.4", optional = true }
+base64 = { version = "0.22", optional = true }
+encoding_rs = { version = "0.8", optional = true }
