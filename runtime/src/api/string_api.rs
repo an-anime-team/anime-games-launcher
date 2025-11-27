@@ -228,7 +228,7 @@ impl StringEncoding {
     }
 }
 
-pub struct StringAPI {
+pub struct StringApi {
     lua: Lua,
 
     str_to_bytes: LuaFunction,
@@ -237,8 +237,8 @@ pub struct StringAPI {
     str_decode: LuaFunction
 }
 
-impl StringAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl StringApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         Ok(Self {
             str_to_bytes: lua.create_function(|_, (value, charset): (LuaValue, Option<LuaString>)| {
                 let value = lua_value_to_bytes(value)?;
@@ -291,13 +291,8 @@ impl StringAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("to_bytes", self.str_to_bytes.clone())?;
@@ -309,86 +304,86 @@ impl StringAPI {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn str_bytes() -> anyhow::Result<()> {
-//         let api = StringAPI::new(Lua::new())?;
+    #[test]
+    fn text_encodings() -> Result<(), LuaError> {
+        let api = StringApi::new(Lua::new())?;
 
-//         assert_eq!(api.str_to_bytes.call::<Vec<u8>>("abc")?, &[97, 98, 99]);
-//         assert_eq!(api.str_to_bytes.call::<Vec<u8>>(0.5)?, &[63, 224, 0, 0, 0, 0, 0, 0]);
-//         assert_eq!(api.str_to_bytes.call::<Vec<u8>>(vec![1, 2, 3])?, &[1, 2, 3]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>("abc")?, &[97, 98, 99]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(0.5)?, &[63, 224, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(vec![1, 2, 3])?, &[1, 2, 3]);
 
-//         assert_eq!(api.str_to_bytes.call::<Vec<u8>>("абоба")?, &[208, 176, 208, 177, 208, 190, 208, 177, 208, 176]);
-//         assert_eq!(api.str_to_bytes.call::<Vec<u8>>(("абоба", "cp1251"))?, &[224, 225, 238, 225, 224]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>("абоба")?, &[208, 176, 208, 177, 208, 190, 208, 177, 208, 176]);
+        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(("абоба", "cp1251"))?, &[224, 225, 238, 225, 224]);
 
-//         assert_eq!(api.str_from_bytes.call::<LuaString>(vec![97, 98, 99])?, b"abc");
+        assert_eq!(api.str_from_bytes.call::<LuaString>(vec![97, 98, 99])?, b"abc");
 
-//         assert_eq!(api.str_from_bytes.call::<LuaString>(vec![208, 176, 208, 177, 208, 190, 208, 177, 208, 176])?, "абоба");
-//         assert_eq!(api.str_from_bytes.call::<LuaString>((vec![224, 225, 238, 225, 224], "cp1251"))?, "абоба");
+        assert_eq!(api.str_from_bytes.call::<LuaString>(vec![208, 176, 208, 177, 208, 190, 208, 177, 208, 176])?, "абоба");
+        assert_eq!(api.str_from_bytes.call::<LuaString>((vec![224, 225, 238, 225, 224], "cp1251"))?, "абоба");
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[test]
-//     fn str_encodings() -> anyhow::Result<()> {
-//         let lua = Lua::new();
-//         let api = StringAPI::new(lua.clone())?;
+    #[test]
+    fn text_formats() -> Result<(), LuaError> {
+        let lua = Lua::new();
+        let api = StringApi::new(lua.clone())?;
 
-//         let encodings = [
-//             ("hex",                  "48656c6c6f2c20576f726c6421"),
-//             ("base16",               "48656c6c6f2c20576f726c6421"),
-//             ("base32",               "jbswy3dpfqqfo33snrscc==="),
-//             ("base32/pad",           "jbswy3dpfqqfo33snrscc==="),
-//             ("base32/nopad",         "jbswy3dpfqqfo33snrscc"),
-//             ("base32/hex-pad",       "91imor3f5gg5erridhi22==="),
-//             ("base32/hex-nopad",     "91imor3f5gg5erridhi22"),
-//             ("base64",               "SGVsbG8sIFdvcmxkIQ=="),
-//             ("base64/pad",           "SGVsbG8sIFdvcmxkIQ=="),
-//             // ("base64/nopad",         "SGVsbG8sIFdvcmxkIQ"),
-//             ("base64/urlsafe-pad",   "SGVsbG8sIFdvcmxkIQ=="),
-//             // ("base64/urlsafe-nopad", "SGVsbG8sIFdvcmxkIQ")
-//         ];
+        let encodings = [
+            ("hex",                  "48656c6c6f2c20576f726c6421"),
+            ("base16",               "48656c6c6f2c20576f726c6421"),
+            ("base32",               "jbswy3dpfqqfo33snrscc==="),
+            ("base32/pad",           "jbswy3dpfqqfo33snrscc==="),
+            ("base32/nopad",         "jbswy3dpfqqfo33snrscc"),
+            ("base32/hex-pad",       "91imor3f5gg5erridhi22==="),
+            ("base32/hex-nopad",     "91imor3f5gg5erridhi22"),
+            ("base64",               "SGVsbG8sIFdvcmxkIQ=="),
+            ("base64/pad",           "SGVsbG8sIFdvcmxkIQ=="),
+            // ("base64/nopad",         "SGVsbG8sIFdvcmxkIQ"),
+            ("base64/urlsafe-pad",   "SGVsbG8sIFdvcmxkIQ=="),
+            // ("base64/urlsafe-nopad", "SGVsbG8sIFdvcmxkIQ")
+        ];
 
-//         for (name, value) in encodings {
-//             let encoded = api.str_encode.call::<LuaString>(("Hello, World!", name))?;
-//             let decoded = api.str_decode.call::<Vec<u8>>((value, name))?;
+        for (name, value) in encodings {
+            let encoded = api.str_encode.call::<LuaString>(("Hello, World!", name))?;
+            let decoded = api.str_decode.call::<Vec<u8>>((value, name))?;
 
-//             assert_eq!(encoded, value);
-//             assert_eq!(decoded, b"Hello, World!");
-//         }
+            assert_eq!(encoded, value);
+            assert_eq!(decoded, b"Hello, World!");
+        }
 
-//         let table = lua.create_table_with_capacity(0, 3)?;
+        let table = lua.create_table_with_capacity(0, 3)?;
 
-//         table.set("test_string", "str")?;
-//         table.set("test_null", LuaValue::Nil)?;
-//         table.set("test_bool", true)?;
+        table.set("test_string", "str")?;
+        table.set("test_null", LuaValue::Nil)?;
+        table.set("test_bool", true)?;
 
-//         let encodings = [
-//             ("json", "{ \"test_string\": \"str\", \"test_bool\": true, \"test_null\": null }"),
-//             ("toml", "test_string = \"str\"\ntest_bool = true"),
-//             ("yaml", "test_string: \"str\"\ntest_bool: true\ntest_null: null")
-//         ];
+        let encodings = [
+            ("json", "{ \"test_string\": \"str\", \"test_bool\": true, \"test_null\": null }"),
+            ("toml", "test_string = \"str\"\ntest_bool = true"),
+            ("yaml", "test_string: \"str\"\ntest_bool: true\ntest_null: null")
+        ];
 
-//         for (name, value) in encodings {
-//             let encoded = api.str_encode.call::<LuaString>((table.clone(), name))?;
-//             let decoded_1 = api.str_decode.call::<LuaTable>((value, name))?;
-//             let decoded_2 = api.str_decode.call::<LuaTable>((encoded, name))?;
+        for (name, value) in encodings {
+            let encoded = api.str_encode.call::<LuaString>((table.clone(), name))?;
+            let decoded_1 = api.str_decode.call::<LuaTable>((value, name))?;
+            let decoded_2 = api.str_decode.call::<LuaTable>((encoded, name))?;
 
-//             assert_eq!(decoded_1.get::<LuaString>("test_string")?, "str");
-//             assert_eq!(decoded_1.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));
+            assert_eq!(decoded_1.get::<LuaString>("test_string")?, "str");
+            assert_eq!(decoded_1.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));
 
-//             assert_eq!(decoded_2.get::<LuaString>("test_string")?, "str");
-//             assert_eq!(decoded_2.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));
+            assert_eq!(decoded_2.get::<LuaString>("test_string")?, "str");
+            assert_eq!(decoded_2.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));
 
-//             if name != "toml" {
-//                 assert_eq!(decoded_1.get::<LuaValue>("test_null")?, LuaValue::Nil);
-//                 assert_eq!(decoded_2.get::<LuaValue>("test_null")?, LuaValue::Nil);
-//             }
-//         }
+            if name != "toml" {
+                assert_eq!(decoded_1.get::<LuaValue>("test_null")?, LuaValue::Nil);
+                assert_eq!(decoded_2.get::<LuaValue>("test_null")?, LuaValue::Nil);
+            }
+        }
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}

@@ -27,7 +27,7 @@ use super::*;
 
 const PROCESS_READ_CHUNK_LEN: usize = 4096;
 
-pub struct ProcessAPI {
+pub struct ProcessApi {
     lua: Lua,
 
     process_exec: LuaFunctionBuilder,
@@ -40,8 +40,8 @@ pub struct ProcessAPI {
     process_finished: LuaFunction
 }
 
-impl ProcessAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl ProcessApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let process_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -49,8 +49,12 @@ impl ProcessAPI {
                 let context = context.to_owned();
                 let module_folder = context.module_folder.clone();
 
-                lua.create_function(move |lua, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                lua.create_function(move |lua, (mut path, args, env): (PathBuf, Option<LuaTable>, Option<LuaTable>)| {
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
+
+                    path = path.canonicalize()?;
 
                     let mut command = Command::new(path);
 
@@ -110,8 +114,12 @@ impl ProcessAPI {
                     let module_folder = context.module_folder.clone();
                     let process_handles = process_handles.clone();
 
-                    lua.create_function(move |_, (path, args, env): (LuaString, Option<LuaTable>, Option<LuaTable>)| {
-                        let path = resolve_path(path.to_string_lossy())?;
+                    lua.create_function(move |_, (mut path, args, env): (PathBuf, Option<LuaTable>, Option<LuaTable>)| {
+                        if path.is_relative() {
+                            path = context.module_folder.join(path);
+                        }
+
+                        path = path.canonicalize()?;
 
                         let mut command = Command::new(path);
 
@@ -299,13 +307,8 @@ impl ProcessAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
         env.raw_set("exec", (self.process_exec)(&self.lua, context)?)?;
@@ -327,7 +330,7 @@ impl ProcessAPI {
 
 //     #[test]
 //     fn process_exec() -> anyhow::Result<()> {
-//         let api = ProcessAPI::new(Lua::new())?;
+//         let api = ProcessApi::new(Lua::new())?;
 
 //         let env = api.create_env(&Context {
 //             resource_hash: Hash::rand(),

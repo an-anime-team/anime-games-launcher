@@ -91,7 +91,7 @@ impl ChannelMessage {
     }
 }
 
-pub struct SyncAPI {
+pub struct SyncApi {
     lua: Lua,
 
     sync_channel_open: LuaFunction,
@@ -105,7 +105,7 @@ pub struct SyncAPI {
     sync_mutex_close: LuaFunction
 }
 
-impl SyncAPI {
+impl SyncApi {
     pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
         let sync_channels_consumers = Arc::new(Mutex::new(HashMap::new())); // key => handle
         let sync_channels_data = Arc::new(Mutex::new(HashMap::new())); // handle => (key, data)

@@ -20,8 +20,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use wineyard_core::tasks;
-use wineyard_core::network::downloader::{Downloader, DownloadOptions};
+use agl_core::tasks;
+use agl_core::network::downloader::{Downloader, DownloadOptions};
 
 use mlua::prelude::*;
 
@@ -29,7 +29,7 @@ use super::*;
 
 pub const DOWNLOADER_WAIT_UPDATE_INTERVAL: Duration = Duration::from_millis(50);
 
-pub struct DownloaderAPI {
+pub struct DownloaderApi {
     lua: Lua,
 
     downloader_create: LuaFunction,
@@ -40,8 +40,8 @@ pub struct DownloaderAPI {
     downloader_close: LuaFunction
 }
 
-impl DownloaderAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl DownloaderApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let downloader_handles = Arc::new(Mutex::new(HashMap::new()));
         let tasks_handles = Arc::new(Mutex::new(HashMap::new()));
 
@@ -81,22 +81,20 @@ impl DownloaderAPI {
 
                     lua.create_function(move |_, (handle, options): (i32, LuaTable)| {
                         let url = options.get::<LuaString>("url")?;
-                        let output_file = options.get::<LuaString>("output_file")?;
-
-                        let mut output_file = resolve_path(output_file.to_string_lossy())?;
+                        let mut output_file = options.get::<PathBuf>("output_file")?;
 
                         if output_file.is_relative() {
                             output_file = context.module_folder.join(output_file);
                         }
 
-                        if !context.is_accessible(&output_file) {
+                        output_file = output_file.canonicalize()?;
+
+                        if !context.is_accessible(&output_file)? {
                             return Err(LuaError::external("path is inaccessible"));
                         }
 
-                        if let Some(parent) = output_file.parent() {
-                            if !parent.is_dir() {
-                                std::fs::create_dir_all(parent)?;
-                            }
+                        if let Some(parent) = output_file.parent() && !parent.is_dir() {
+                            std::fs::create_dir_all(parent)?;
                         }
 
                         let mut download_options = DownloadOptions {
@@ -255,13 +253,8 @@ impl DownloaderAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("create", self.downloader_create.clone())?;

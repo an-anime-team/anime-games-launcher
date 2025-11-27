@@ -14,24 +14,10 @@ tracing = [
 
 packages-resolver = ["agl-core/archives-all"]
 
-runtime = [
-    "agl-core/hashes-all",
-    "agl-core/compression-all",
-    "dep:mlua",
-    "dep:bufreaderwriter",
-    "dep:rusqlite",
-    "dep:hex",
-    "dep:base64",
-    "dep:encoding_rs",
-    "dep:toml",
-    "dep:serde_yml"
-]
-
 default = [
     "agl-core/hashes-seahash",
     # "tracing",
-    "packages-resolver",
-    "runtime"
+    "packages-resolver"
 ]
 
 [dependencies.agl-core]
@@ -57,14 +43,3 @@ serde_json = "1.0"
 
 # Tracing
 tracing = { version = "0.1", optional = true }
-
-# Runtime
-bufreaderwriter = { version = "0.2.4", optional = true }
-rusqlite = { version = "0.37", features = ["bundled"], optional = true }
-
-toml = { version = "0.9", optional = true }
-serde_yml = { version = "0.0.12", optional = true }
-
-hex = { version = "0.4", optional = true }
-base64 = { version = "0.22", optional = true }
-encoding_rs = { version = "0.8", optional = true }

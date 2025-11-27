@@ -38,6 +38,7 @@ dependencies = [
 name = "agl-runtime"
 version = "0.1.0"
 dependencies = [
+ "agl-core",
  "base32",
  "base64",
  "bufreaderwriter",

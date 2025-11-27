@@ -8,7 +8,21 @@ publish = false
 
 [features]
 tracing = [
-    "dep:tracing"
+    "dep:tracing",
+    "agl-core/tracing"
+]
+
+default = ["tracing"]
+
+[dependencies.agl-core]
+path = "../core"
+default-features = false
+features = [
+    "tasks",
+    "network-all",
+    "archives-all",
+    "hashes-all",
+    "compression-all"
 ]
 
 [dependencies.mlua]
@@ -24,8 +38,10 @@ base32 = "0.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
+# Tracing
 tracing = { version = "0.1", optional = true }
 
+# Luau engine
 bufreaderwriter = "0.2.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 

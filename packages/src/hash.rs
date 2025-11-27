@@ -50,7 +50,7 @@ pub trait AsHash {
     Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
     Serialize, Deserialize
 )]
-pub struct Hash(pub u64);
+pub struct Hash(u64);
 
 impl Hash {
     /// Generate new random hash.
@@ -185,6 +185,15 @@ impl AsRef<Hash> for Hash {
 impl AsRef<u64> for Hash {
     #[inline(always)]
     fn as_ref(&self) -> &u64 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Hash {
+    type Target = u64;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }

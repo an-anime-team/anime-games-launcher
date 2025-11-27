@@ -19,12 +19,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use wineyard_core::export::network::reqwest::{Client, RequestBuilder, Method};
-use wineyard_core::tasks;
+use agl_core::export::network::reqwest::{Client, RequestBuilder, Method};
+use agl_core::tasks;
 
 use mlua::prelude::*;
-
-use super::*;
 
 fn create_request(
     client: &Client,
@@ -88,7 +86,7 @@ fn create_request(
     Ok(request)
 }
 
-pub struct NetworkAPI {
+pub struct NetworkApi {
     lua: Lua,
 
     net_fetch: LuaFunction,
@@ -97,8 +95,8 @@ pub struct NetworkAPI {
     net_close: LuaFunction
 }
 
-impl NetworkAPI {
-    pub fn new(lua: Lua, client: Client) -> Result<Self, PackagesEngineError> {
+impl NetworkApi {
+    pub fn new(lua: Lua, client: Client) -> Result<Self, LuaError> {
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -223,13 +221,8 @@ impl NetworkAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("fetch", self.net_fetch.clone())?;
@@ -241,46 +234,46 @@ impl NetworkAPI {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn net_fetch() -> anyhow::Result<()> {
-//         let api = NetworkAPI::new(Lua::new())?;
+    #[test]
+    fn fetch() -> Result<(), LuaError> {
+        let api = NetworkApi::new(Lua::new(), Client::new())?;
 
-//         let response = api.net_fetch.call::<LuaTable>(
-//             "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/tests/packages/1/package.json"
-//         )?;
+        let response = api.net_fetch.call::<LuaTable>(
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/tests/packages/1/package.json"
+        )?;
 
-//         assert_eq!(response.get::<u16>("status")?, 200);
-//         assert!(response.get::<bool>("is_ok")?);
-//         assert_eq!(Hash::for_slice(&response.get::<Vec<u8>>("body")?), Hash(9442626994218140953));
+        assert_eq!(response.get::<u16>("status")?, 200);
+        assert!(response.get::<bool>("is_ok")?);
+        assert_eq!(seahash::hash(&response.get::<Vec<u8>>("body")?), 9442626994218140953);
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[test]
-//     fn net_read() -> anyhow::Result<()> {
-//         let api = NetworkAPI::new(Lua::new())?;
+    #[test]
+    fn read() -> Result<(), LuaError> {
+        let api = NetworkApi::new(Lua::new(), Client::new())?;
 
-//         let header = api.net_open.call::<LuaTable>(
-//             "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz"
-//         )?;
+        let header = api.net_open.call::<LuaTable>(
+            "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz"
+        )?;
 
-//         assert_eq!(header.get::<u16>("status")?, 200);
-//         assert!(header.get::<bool>("is_ok")?);
+        assert_eq!(header.get::<u16>("status")?, 200);
+        assert!(header.get::<bool>("is_ok")?);
 
-//         let handle = header.get::<i32>("handle")?;
+        let handle = header.get::<i32>("handle")?;
 
-//         let mut body_len = 0;
+        let mut body_len = 0;
 
-//         while let Some(chunk) = api.net_read.call::<Option<Vec<u8>>>(handle)? {
-//             body_len += chunk.len();
-//         }
+        while let Some(chunk) = api.net_read.call::<Option<Vec<u8>>>(handle)? {
+            body_len += chunk.len();
+        }
 
-//         assert_eq!(body_len, 9215513);
+        assert_eq!(body_len, 9215513);
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}

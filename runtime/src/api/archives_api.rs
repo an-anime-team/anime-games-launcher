@@ -20,13 +20,13 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-use wineyard_core::archives::{Archive, ArchiveFormat};
+use agl_core::archives::{Archive, ArchiveFormat};
 
 use mlua::prelude::*;
 
 use super::*;
 
-pub struct ArchivesAPI {
+pub struct ArchivesApi {
     lua: Lua,
 
     archive_open: LuaFunctionBuilder,
@@ -35,8 +35,8 @@ pub struct ArchivesAPI {
     archive_close: LuaFunction
 }
 
-impl ArchivesAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl ArchivesApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let archive_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -47,14 +47,14 @@ impl ArchivesAPI {
                     let context = context.to_owned();
                     let archive_handles = archive_handles.clone();
 
-                    lua.create_function(move |_, (path, format): (LuaString, Option<LuaString>)| {
-                        let mut path = resolve_path(path.to_string_lossy())?;
-
+                    lua.create_function(move |_, (mut path, format): (PathBuf, Option<LuaString>)| {
                         if path.is_relative() {
                             path = context.module_folder.join(path);
                         }
 
-                        if !context.is_accessible(&path) {
+                        path = path.canonicalize()?;
+
+                        if !context.is_accessible(&path)? {
                             return Err(LuaError::external("path is inaccessible"));
                         }
 
@@ -127,14 +127,14 @@ impl ArchivesAPI {
                     let context = context.to_owned();
                     let archive_handles = archive_handles.clone();
 
-                    lua.create_function(move |_, (handle, target, progress): (i32, LuaString, Option<LuaFunction>)| {
-                        let mut target = resolve_path(target.to_string_lossy())?;
-
+                    lua.create_function(move |_, (handle, mut target, progress): (i32, PathBuf, Option<LuaFunction>)| {
                         if target.is_relative() {
                             target = context.module_folder.join(target);
                         }
 
-                        if !context.is_accessible(&target) {
+                        target = target.canonicalize()?;
+
+                        if !context.is_accessible(&target)? {
                             return Err(LuaError::external("target path is inaccessible"));
                         }
 
@@ -201,13 +201,8 @@ impl ArchivesAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("open", (self.archive_open)(&self.lua, context)?)?;

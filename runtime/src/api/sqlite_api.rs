@@ -110,7 +110,7 @@ impl FromSql for SqliteParam {
     }
 }
 
-pub struct SQLiteAPI {
+pub struct SqliteApi {
     lua: Lua,
 
     sqlite_open: LuaFunctionBuilder,
@@ -121,8 +121,8 @@ pub struct SQLiteAPI {
     sqlite_close: LuaFunction
 }
 
-impl SQLiteAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl SqliteApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let connection_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -133,17 +133,19 @@ impl SQLiteAPI {
                     let context = context.to_owned();
                     let connection_handles = connection_handles.clone();
 
-                    lua.create_function(move |_, path: LuaString| {
-                        let path = resolve_path(path.to_string_lossy())?;
+                    lua.create_function(move |_, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = context.module_folder.join(path);
+                        }
 
-                        if !context.is_accessible(&path) {
+                        path = path.canonicalize()?;
+
+                        if !context.is_accessible(&path)? {
                             return Err(LuaError::external("path is inaccessible"));
                         }
 
-                        if let Some(parent) = path.parent() {
-                            if !parent.is_dir() {
-                                std::fs::create_dir_all(parent)?;
-                            }
+                        if let Some(parent) = path.parent() && !parent.is_dir() {
+                            std::fs::create_dir_all(parent)?;
                         }
 
                         let connection = Connection::open(path)
@@ -362,13 +364,8 @@ impl SQLiteAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("open", (self.sqlite_open)(&self.lua, context)?)?;

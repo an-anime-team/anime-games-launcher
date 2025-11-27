@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 
-use wineyard_core::compression::{Compressor, Decompressor};
+use agl_core::compression::{Compressor, Decompressor};
 
 use mlua::prelude::*;
 
@@ -58,7 +58,7 @@ impl Write for Variant {
     }
 }
 
-pub struct CompressionAPI {
+pub struct CompressionApi {
     lua: Lua,
 
     compression_compress: LuaFunction,
@@ -71,8 +71,8 @@ pub struct CompressionAPI {
     compression_close: LuaFunction
 }
 
-impl CompressionAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl CompressionApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let compression_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
@@ -263,13 +263,8 @@ impl CompressionAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
         env.raw_set("compress", self.compression_compress.clone())?;
@@ -284,9 +279,3 @@ impl CompressionAPI {
         Ok(env)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-// }

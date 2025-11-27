@@ -66,7 +66,7 @@ fn split_path(path: impl AsRef<str>) -> Option<Vec<String>> {
     normalize_path_parts(&raw_parts)
 }
 
-pub struct PathAPI {
+pub struct PathApi {
     lua: Lua,
 
     path_temp_dir: LuaFunctionBuilder,
@@ -77,12 +77,12 @@ pub struct PathAPI {
     path_parts: LuaFunction,
     path_parent: LuaFunction,
     path_file_name: LuaFunction,
-    path_exists: LuaFunction,
+    path_exists: LuaFunctionBuilder,
     path_accessible: LuaFunctionBuilder
 }
 
-impl PathAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl PathApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         Ok(Self {
             path_temp_dir: Box::new(|lua: &Lua, context: &Context| {
                 let path = context.temp_folder.clone();
@@ -101,7 +101,7 @@ impl PathAPI {
 
                 lua.create_function(move |_, key: LuaString| {
                     fn normalize_key(key: LuaString) -> String {
-                        let hash = Hash::for_slice(key.as_bytes()).to_base32();
+                        let hash = seahash::hash(&key.as_bytes());
 
                         let key = key.to_string_lossy()
                             .chars()
@@ -117,10 +117,11 @@ impl PathAPI {
                         let key = key.trim_matches('_')
                             .replace("__", "_");
 
+                        // TODO: consider changing it
                         if key.is_empty() {
-                            hash
+                            format!("{hash:x}")
                         } else {
-                            format!("{hash}-{key}")
+                            format!("{hash:x}-{key}")
                         }
                     }
 
@@ -281,19 +282,31 @@ impl PathAPI {
                     .map(LuaValue::String)
             })?,
 
-            path_exists: lua.create_function(|_, path: LuaString| {
-                let path = resolve_path(path.to_string_lossy())?;
+            path_exists: Box::new(move |lua: &Lua, context: &Context| {
+                let context = context.to_owned();
 
-                Ok(path.exists())
-            })?,
+                lua.create_function(move |_, mut path: PathBuf| {
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
+
+                    // TODO: is it needed here?
+                    path = path.canonicalize()?;
+
+                    Ok(path.exists())
+                })
+            }),
 
             path_accessible: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let path = resolve_path(path.to_string_lossy())?;
+                lua.create_function(move |_, mut path: PathBuf| {
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
 
-                    Ok(context.is_accessible(path))
+                    context.is_accessible(path)
+                        .map_err(LuaError::external)
                 })
             }),
 
@@ -301,13 +314,8 @@ impl PathAPI {
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 10)?;
 
         env.raw_set("temp_dir", (self.path_temp_dir)(&self.lua, context)?)?;
@@ -318,70 +326,70 @@ impl PathAPI {
         env.raw_set("parts", self.path_parts.clone())?;
         env.raw_set("parent", self.path_parent.clone())?;
         env.raw_set("file_name", self.path_file_name.clone())?;
-        env.raw_set("exists", self.path_exists.clone())?;
+        env.raw_set("exists", (self.path_exists)(&self.lua, context)?)?;
         env.raw_set("accessible", (self.path_accessible)(&self.lua, context)?)?;
 
         Ok(env)
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn path_actions() -> anyhow::Result<()> {
-//         let api = PathAPI::new(Lua::new())?;
+    #[test]
+    fn path_actions() -> Result<(), LuaError> {
+        let api = PathApi::new(Lua::new())?;
 
-//         assert_eq!(api.path_normalize.call::<String>("/")?, "/");
-//         assert_eq!(api.path_normalize.call::<String>("a/b/c")?, "a/b/c");
-//         assert_eq!(api.path_normalize.call::<String>("/a/b/c")?, "/a/b/c");
-//         assert_eq!(api.path_normalize.call::<String>("a/./c")?, "a/c");
-//         assert_eq!(api.path_normalize.call::<String>("a/../c")?, "c");
-//         assert_eq!(api.path_normalize.call::<String>("a/../c/./")?, "c");
-//         assert_eq!(api.path_normalize.call::<String>("./a//\\./../b")?, "b");
-//         assert_eq!(api.path_normalize.call::<String>(" ")?, " "); // space is a correct entry name
-//         assert_eq!(api.path_normalize.call::<Option<String>>("")?, None); // entry name cannot be empty
-//         assert_eq!(api.path_normalize.call::<Option<String>>(".")?, None); // we do not support relative paths
-//         assert_eq!(api.path_normalize.call::<Option<String>>("..")?, None);
-//         assert_eq!(api.path_normalize.call::<Option<String>>("./..")?, None);
-//         assert_eq!(api.path_normalize.call::<Option<String>>("a/..")?, None);
+        assert_eq!(api.path_normalize.call::<String>("/")?, "/");
+        assert_eq!(api.path_normalize.call::<String>("a/b/c")?, "a/b/c");
+        assert_eq!(api.path_normalize.call::<String>("/a/b/c")?, "/a/b/c");
+        assert_eq!(api.path_normalize.call::<String>("a/./c")?, "a/c");
+        assert_eq!(api.path_normalize.call::<String>("a/../c")?, "c");
+        assert_eq!(api.path_normalize.call::<String>("a/../c/./")?, "c");
+        assert_eq!(api.path_normalize.call::<String>("./a//\\./../b")?, "b");
+        assert_eq!(api.path_normalize.call::<String>(" ")?, " "); // space is a correct entry name
+        assert_eq!(api.path_normalize.call::<Option<String>>("")?, None); // entry name cannot be empty
+        assert_eq!(api.path_normalize.call::<Option<String>>(".")?, None); // we do not support relative paths FIXME: resolve under module's folder?
+        assert_eq!(api.path_normalize.call::<Option<String>>("..")?, None);
+        assert_eq!(api.path_normalize.call::<Option<String>>("./..")?, None);
+        assert_eq!(api.path_normalize.call::<Option<String>>("a/..")?, None);
 
-//         assert_eq!(api.path_join.call::<String>(("a", "b", "c"))?, "a/b/c");
-//         assert_eq!(api.path_join.call::<String>(("/", "a", "b", "c"))?, "/a/b/c");
-//         assert_eq!(api.path_join.call::<String>(("a", "..", "b"))?, "b");
-//         assert_eq!(api.path_join.call::<String>((".", "a", ".", "b"))?, "a/b");
-//         assert_eq!(api.path_join.call::<Option<String>>("")?, None);
-//         assert_eq!(api.path_join.call::<Option<String>>(".")?, None);
-//         assert_eq!(api.path_join.call::<Option<String>>("..")?, None);
-//         assert_eq!(api.path_join.call::<Option<String>>((".", ".."))?, None);
-//         assert_eq!(api.path_join.call::<Option<String>>(("a", ".."))?, None);
+        assert_eq!(api.path_join.call::<String>(("a", "b", "c"))?, "a/b/c");
+        assert_eq!(api.path_join.call::<String>(("/", "a", "b", "c"))?, "/a/b/c");
+        assert_eq!(api.path_join.call::<String>(("a", "..", "b"))?, "b");
+        assert_eq!(api.path_join.call::<String>((".", "a", ".", "b"))?, "a/b");
+        assert_eq!(api.path_join.call::<Option<String>>("")?, None);
+        assert_eq!(api.path_join.call::<Option<String>>(".")?, None);
+        assert_eq!(api.path_join.call::<Option<String>>("..")?, None);
+        assert_eq!(api.path_join.call::<Option<String>>((".", ".."))?, None);
+        assert_eq!(api.path_join.call::<Option<String>>(("a", ".."))?, None);
 
-//         assert_eq!(api.path_parts.call::<Vec<String>>("a/b/c")?, &["a", "b", "c"]);
-//         assert_eq!(api.path_parts.call::<Vec<String>>("a/./c")?, &["a", "c"]);
-//         assert_eq!(api.path_parts.call::<Vec<String>>("a/./c/..")?, &["a"]);
-//         assert_eq!(api.path_parts.call::<Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
-//         assert_eq!(api.path_parts.call::<Option<Vec<String>>>("")?, None);
-//         assert_eq!(api.path_parts.call::<Option<Vec<String>>>(".")?, None);
-//         assert_eq!(api.path_parts.call::<Option<Vec<String>>>("..")?, None);
-//         assert_eq!(api.path_parts.call::<Option<Vec<String>>>("./..")?, None);
-//         assert_eq!(api.path_parts.call::<Option<Vec<String>>>("a/..")?, None);
+        assert_eq!(api.path_parts.call::<Vec<String>>("a/b/c")?, &["a", "b", "c"]);
+        assert_eq!(api.path_parts.call::<Vec<String>>("a/./c")?, &["a", "c"]);
+        assert_eq!(api.path_parts.call::<Vec<String>>("a/./c/..")?, &["a"]);
+        assert_eq!(api.path_parts.call::<Vec<String>>("\\a/b/// /c")?, &["a", "b", " ", "c"]);
+        assert_eq!(api.path_parts.call::<Option<Vec<String>>>("")?, None);
+        assert_eq!(api.path_parts.call::<Option<Vec<String>>>(".")?, None);
+        assert_eq!(api.path_parts.call::<Option<Vec<String>>>("..")?, None);
+        assert_eq!(api.path_parts.call::<Option<Vec<String>>>("./..")?, None);
+        assert_eq!(api.path_parts.call::<Option<Vec<String>>>("a/..")?, None);
 
-//         assert_eq!(api.path_parent.call::<String>("a/b/c")?, "a/b");
-//         assert_eq!(api.path_parent.call::<String>("/a/b/c")?, "/a/b");
-//         assert_eq!(api.path_parent.call::<String>("a\\./b")?, "a");
-//         assert_eq!(api.path_parent.call::<Option<Vec<String>>>("a")?, None);
-//         assert_eq!(api.path_parent.call::<Option<Vec<String>>>("a/.")?, None);
-//         assert_eq!(api.path_parent.call::<Option<Vec<String>>>("a/../b")?, None);
+        assert_eq!(api.path_parent.call::<String>("a/b/c")?, "a/b");
+        assert_eq!(api.path_parent.call::<String>("/a/b/c")?, "/a/b");
+        assert_eq!(api.path_parent.call::<String>("a\\./b")?, "a");
+        assert_eq!(api.path_parent.call::<Option<Vec<String>>>("a")?, None);
+        assert_eq!(api.path_parent.call::<Option<Vec<String>>>("a/.")?, None);
+        assert_eq!(api.path_parent.call::<Option<Vec<String>>>("a/../b")?, None);
 
-//         assert_eq!(api.path_file_name.call::<String>("/")?, "/");
-//         assert_eq!(api.path_file_name.call::<String>("a")?, "a");
-//         assert_eq!(api.path_file_name.call::<String>("a/b/c")?, "c");
-//         assert_eq!(api.path_file_name.call::<String>("/a/b/c")?, "c");
-//         assert_eq!(api.path_file_name.call::<String>("a\\./b")?, "b");
-//         assert_eq!(api.path_file_name.call::<Option<Vec<String>>>(".")?, None);
-//         assert_eq!(api.path_file_name.call::<Option<Vec<String>>>("a/..")?, None);
+        assert_eq!(api.path_file_name.call::<String>("/")?, "/");
+        assert_eq!(api.path_file_name.call::<String>("a")?, "a");
+        assert_eq!(api.path_file_name.call::<String>("a/b/c")?, "c");
+        assert_eq!(api.path_file_name.call::<String>("/a/b/c")?, "c");
+        assert_eq!(api.path_file_name.call::<String>("a\\./b")?, "b");
+        assert_eq!(api.path_file_name.call::<Option<Vec<String>>>(".")?, None);
+        assert_eq!(api.path_file_name.call::<Option<Vec<String>>>("a/..")?, None);
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}

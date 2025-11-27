@@ -31,9 +31,8 @@ use super::*;
 pub const IO_READ_CHUNK_LEN: usize = 8192; // 8 KiB reads
 pub const IO_BUF_SIZE: usize = 16384; // 16 KiB read/write in-RAM cache
 
-pub struct FilesystemAPI {
+pub struct FilesystemApi {
     lua: Lua,
-    file_handles: Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>>,
 
     fs_exists: LuaFunctionBuilder,
     fs_metadata: LuaFunctionBuilder,
@@ -58,38 +57,39 @@ pub struct FilesystemAPI {
     fs_remove_dir: LuaFunctionBuilder
 }
 
-impl FilesystemAPI {
-    pub fn new(lua: Lua) -> Result<Self, PackagesEngineError> {
+impl FilesystemApi {
+    pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
             fs_exists: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| -> Result<bool, LuaError> {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
+
+                    path = path.canonicalize()?;
 
                     if !path.exists() {
                         return Ok(false);
                     }
 
-                    Ok(context.is_accessible(path))
+                    context.is_accessible(&path)
+                        .map_err(LuaError::external)
                 })
             }),
 
             fs_metadata: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |lua, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
+
+                    path = path.canonicalize()?;
 
                     let metadata = path.metadata()?;
 
@@ -112,7 +112,7 @@ impl FilesystemAPI {
                     })?;
 
                     result.raw_set("length", metadata.len())?;
-                    result.raw_set("is_accessible", context.is_accessible(path))?;
+                    result.raw_set("is_accessible", context.is_accessible(path)?)?;
 
                     result.raw_set("type", {
                         if metadata.is_symlink() {
@@ -131,10 +131,7 @@ impl FilesystemAPI {
             fs_copy: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
-                    let mut source = resolve_path(source.to_string_lossy())?;
-                    let mut target = resolve_path(target.to_string_lossy())?;
-
+                lua.create_function(move |_, (mut source, mut target): (PathBuf, PathBuf)| {
                     if source.is_relative() {
                         source = context.module_folder.join(source);
                     }
@@ -143,12 +140,15 @@ impl FilesystemAPI {
                         target = context.module_folder.join(target);
                     }
 
+                    source = source.canonicalize()?;
+                    target = target.canonicalize()?;
+
                     // Throw an error if source path doesn't exists or inaccessible.
                     if !source.exists() {
                         return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    if !context.is_accessible(&source) {
+                    if !context.is_accessible(&source)? {
                         return Err(LuaError::external("source path is inaccessible"));
                     }
 
@@ -157,7 +157,7 @@ impl FilesystemAPI {
                         return Err(LuaError::external("target path already exists"));
                     }
 
-                    if !context.is_accessible(&target) {
+                    if !context.is_accessible(&target)? {
                         return Err(LuaError::external("target path is inaccessible"));
                     }
 
@@ -177,6 +177,10 @@ impl FilesystemAPI {
                         }
 
                         else if source.is_symlink() {
+                            // FIXME: only works on unix systems while we target
+                            //        to support all the OSes.
+
+                            #[allow(clippy::collapsible_if)]
                             if let Some(source_filename) = source.file_name() {
                                 std::os::unix::fs::symlink(
                                     source.read_link()?,
@@ -197,10 +201,7 @@ impl FilesystemAPI {
             fs_move: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (source, target): (LuaString, LuaString)| {
-                    let mut source = resolve_path(source.to_string_lossy())?;
-                    let mut target = resolve_path(target.to_string_lossy())?;
-
+                lua.create_function(move |_, (mut source, mut target): (PathBuf, PathBuf)| {
                     if source.is_relative() {
                         source = context.module_folder.join(source);
                     }
@@ -209,12 +210,15 @@ impl FilesystemAPI {
                         target = context.module_folder.join(target);
                     }
 
+                    source = source.canonicalize()?;
+                    target = target.canonicalize()?;
+
                     // Throw an error if source path doesn't exists or inaccessible.
                     if !source.exists() {
                         return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    if !context.is_accessible(&source) {
+                    if !context.is_accessible(&source)? {
                         return Err(LuaError::external("source path is inaccessible"));
                     }
 
@@ -223,7 +227,7 @@ impl FilesystemAPI {
                         return Err(LuaError::external("target path already exists"));
                     }
 
-                    if !context.is_accessible(&target) {
+                    if !context.is_accessible(&target)? {
                         return Err(LuaError::external("target path is inaccessible"));
                     }
 
@@ -277,14 +281,14 @@ impl FilesystemAPI {
             fs_remove: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
@@ -308,21 +312,19 @@ impl FilesystemAPI {
                     let context = context.to_owned();
                     let file_handles = file_handles.clone();
 
-                    lua.create_function(move |_, (path, options): (LuaString, Option<LuaTable>)| {
-                        let mut path = resolve_path(path.to_string_lossy())?;
-
+                    lua.create_function(move |_, (mut path, options): (PathBuf, Option<LuaTable>)| {
                         if path.is_relative() {
                             path = context.module_folder.join(path);
                         }
 
-                        if !context.is_accessible(&path) {
+                        path = path.canonicalize()?;
+
+                        if !context.is_accessible(&path)? {
                             return Err(LuaError::external("path is inaccessible"));
                         }
 
-                        if let Some(parent) = path.parent() {
-                            if !parent.is_dir() {
-                                std::fs::create_dir_all(parent)?;
-                            }
+                        if let Some(parent) = path.parent() && !parent.is_dir() {
+                            std::fs::create_dir_all(parent)?;
                         }
 
                         let mut read = true;
@@ -530,21 +532,19 @@ impl FilesystemAPI {
             fs_create_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
-                    if let Some(parent) = path.parent() {
-                        if !parent.is_dir() {
-                            std::fs::create_dir_all(parent)?;
-                        }
+                    if let Some(parent) = path.parent() && !parent.is_dir() {
+                        std::fs::create_dir_all(parent)?;
                     }
 
                     std::fs::write(path, [])?;
@@ -556,14 +556,14 @@ impl FilesystemAPI {
             fs_read_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
@@ -574,21 +574,19 @@ impl FilesystemAPI {
             fs_write_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (path, content): (LuaString, LuaValue)| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, (mut path, content): (PathBuf, LuaValue)| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
-                    if let Some(parent) = path.parent() {
-                        if !parent.is_dir() {
-                            std::fs::create_dir_all(parent)?;
-                        }
+                    if let Some(parent) = path.parent() && !parent.is_dir() {
+                        std::fs::create_dir_all(parent)?;
                     }
 
                     match content {
@@ -617,14 +615,14 @@ impl FilesystemAPI {
             fs_remove_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
@@ -637,14 +635,14 @@ impl FilesystemAPI {
             fs_create_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
@@ -657,14 +655,14 @@ impl FilesystemAPI {
             fs_read_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |lua, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
@@ -698,14 +696,14 @@ impl FilesystemAPI {
             fs_remove_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, path: LuaString| {
-                    let mut path = resolve_path(path.to_string_lossy())?;
-
+                lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    if !context.is_accessible(&path) {
+                    path = path.canonicalize()?;
+
+                    if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
                     }
 
@@ -715,23 +713,12 @@ impl FilesystemAPI {
                 })
             }),
 
-            lua,
-            file_handles
+            lua
         })
     }
 
-    #[inline(always)]
-    pub const fn lua(&self) -> &Lua {
-        &self.lua
-    }
-
-    #[inline]
-    pub fn file_handles(&self) -> Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>> {
-        self.file_handles.clone()
-    }
-
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, PackagesEngineError> {
+    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 20)?;
 
         env.raw_set("exists", (self.fs_exists)(&self.lua, context)?)?;
