@@ -81,7 +81,7 @@ impl Archive {
     pub fn open(path: impl Into<PathBuf>) -> Option<Self> {
         let path: PathBuf = path.into();
 
-        let format = ArchiveFormat::from_path(&path)?;
+        let format = ArchiveFormat::from_filename(path.to_string_lossy())?;
 
         Self::open_with_format(path, format)
     }

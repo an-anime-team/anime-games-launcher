@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::Path;
-
 const FORMATS: &[(ArchiveFormat, &[&str])] = &[
     (ArchiveFormat::Tar, &[
         ".tar",
@@ -52,15 +50,13 @@ pub enum ArchiveFormat {
 }
 
 impl ArchiveFormat {
-    /// Assume archive format from the fs path.
-    pub fn from_path(path: impl AsRef<Path>) -> Option<Self> {
-        let path = path.as_ref()
-            .as_os_str()
-            .to_string_lossy();
+    /// Predict archive format from its filename.
+    pub fn from_filename(name: impl AsRef<str>) -> Option<Self> {
+        let name = name.as_ref();
 
         for (format, exts) in FORMATS {
             for ext in exts.iter() {
-                if path.ends_with(ext) {
+                if name.ends_with(ext) {
                     return Some(*format);
                 }
             }

@@ -47,10 +47,10 @@ pub enum DownloaderError {
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
 
-    #[error("Failed to send data between downloader and writer")]
+    #[error("failed to send data between downloader and writer")]
     SendError,
 
-    #[error("Failed to await downloader task: {0}")]
+    #[error("failed to await downloader task: {0}")]
     RuntimeJoin(#[from] JoinError)
 }
 
@@ -330,8 +330,8 @@ impl DownloaderTask {
         self.task.is_finished()
     }
 
-    /// Use current thread to wait until the download task is finished,
-    /// returning amount of output file bytes.
+    /// Wait until the download task is finished, returning amount of output
+    /// file bytes.
     #[inline]
     pub async fn wait(self) -> Result<u64, DownloaderError> {
         self.task.await?
