@@ -22,6 +22,7 @@ use std::str::FromStr;
 use serde_json::{json, Value as Json};
 
 use crate::hash::Hash;
+use crate::format::ResourceFormat;
 
 /// Anime Games Launcher package manifest.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,42 +133,5 @@ impl ResourceInfoManifest {
                 .and_then(Json::as_str)
                 .and_then(Hash::from_base32)
         })
-    }
-}
-
-/// Format of an Anime Games Launcher package's input/output resource.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ResourceFormat {
-    /// Anime Games Launcher package manifest.
-    Package,
-
-    /// Arbitrary file.
-    File,
-
-    /// Arbitrary archive.
-    Archive
-}
-
-impl std::fmt::Display for ResourceFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Package => f.write_str("package"),
-            Self::File    => f.write_str("file"),
-            Self::Archive => f.write_str("archive")
-        }
-    }
-}
-
-impl FromStr for ResourceFormat {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "package" => Ok(Self::Package),
-            "file"    => Ok(Self::File),
-            "archive" => Ok(Self::Archive),
-
-            _ => Err(())
-        }
     }
 }

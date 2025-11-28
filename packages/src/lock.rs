@@ -22,7 +22,7 @@ use std::str::FromStr;
 use serde_json::{json, Value as Json};
 
 use crate::hash::Hash;
-use crate::package::ResourceFormat;
+use crate::format::ResourceFormat;
 
 /// Anime Games Launcher packages lock.
 #[derive(Debug, Clone, PartialEq, Eq)]
