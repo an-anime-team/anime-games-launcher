@@ -181,8 +181,8 @@ impl LockedPackageInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LockedResourceInfo {
-    /// URI of the resource.
-    pub uri: String,
+    /// URL of the resource.
+    pub url: String,
 
     /// Format of the resource.
     pub format: ResourceFormat,
@@ -194,7 +194,7 @@ pub struct LockedResourceInfo {
 impl LockedResourceInfo {
     pub fn to_json(&self) -> Json {
         json!({
-            "uri": self.uri,
+            "url": self.url,
             "format": self.format.to_string(),
             "hash": self.hash.to_base32()
         })
@@ -202,7 +202,7 @@ impl LockedResourceInfo {
 
     pub fn from_json(value: &Json) -> Option<Self> {
         Some(Self {
-            uri: value.get("uri")
+            url: value.get("url")
                 .and_then(Json::as_str)
                 .map(String::from)?,
 

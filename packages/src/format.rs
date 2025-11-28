@@ -18,6 +18,8 @@
 
 use std::str::FromStr;
 
+use agl_core::archives::ArchiveFormat;
+
 /// Format of an Anime Games Launcher package's input/output resource.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ResourceFormat {
@@ -29,6 +31,25 @@ pub enum ResourceFormat {
 
     /// Arbitrary archive.
     Archive
+}
+
+impl ResourceFormat {
+    /// Predict resource format from provided filename.
+    pub fn from_filename(name: impl AsRef<str>) -> Self {
+        let name = name.as_ref();
+
+        if name.ends_with("package.json") {
+            Self::Package
+        }
+
+        else if ArchiveFormat::from_filename(name).is_some() {
+            Self::Archive
+        }
+
+        else {
+            Self::File
+        }
+    }
 }
 
 impl std::fmt::Display for ResourceFormat {

@@ -33,6 +33,12 @@ const ALPHABET: Alphabet = Alphabet::Rfc4648HexLower {
 pub struct Hash(u64);
 
 impl Hash {
+    /// Get random hash.
+    #[inline]
+    pub fn rand() -> Self {
+        Self(fastrand::u64(..))
+    }
+
     /// Calculate hash value from the given bytes buffer.
     pub fn from_bytes(buf: &[u8]) -> Self {
         Self(seahash::hash(buf))

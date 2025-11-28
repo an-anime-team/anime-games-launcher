@@ -26,7 +26,7 @@ use crate::format::ResourceFormat;
 
 /// Anime Games Launcher package manifest.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Manifest {
+pub struct PackageManifest {
     /// Table of the package's inputs.
     ///
     /// `[name] => [resource]`
@@ -38,7 +38,7 @@ pub struct Manifest {
     pub outputs: HashMap<String, ResourceInfoManifest>
 }
 
-impl Manifest {
+impl PackageManifest {
     pub fn to_json(&self) -> Json {
         json!({
             "inputs": self.inputs.iter()

@@ -12,25 +12,20 @@ tracing = [
     "dep:tracing"
 ]
 
-packages-resolver = ["agl-core/archives-all"]
-
-default = [
-    "agl-core/hashes-seahash",
-    # "tracing",
-    "packages-resolver"
-]
+default = ["tracing"]
 
 [dependencies.agl-core]
 path = "../core"
 default-features = false
 features = [
     "tasks",
-    "network-downloader"
+    "network-downloader",
+    "archives-all"
 ]
 
 [dependencies]
 thiserror = "1.0"
-rand = "0.9"
+fastrand = "2.3"
 seahash = "4.1"
 base32 = "0.5"
 serde_json = "1.0"
