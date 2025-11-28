@@ -63,7 +63,7 @@ impl ArchivesApi {
                             Some(format) => ArchiveFormat::from_str(&format.to_string_lossy())
                                 .map_err(LuaError::external)?,
 
-                            None => ArchiveFormat::from_path(&path)
+                            None => ArchiveFormat::from_filename(path.to_string_lossy())
                                 .ok_or_else(|| LuaError::external("unsupported archive format"))?
                         };
 
