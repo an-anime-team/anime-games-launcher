@@ -75,3 +75,43 @@ impl FromStr for ResourceFormat {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_filename() {
+        const NAMES: &[(&str, ResourceFormat)] = &[
+            ("package.json", ResourceFormat::Package),
+            ("././package.json", ResourceFormat::Package),
+
+            ("banana.json", ResourceFormat::File),
+            ("package.jsonc", ResourceFormat::File),
+            ("./../sus", ResourceFormat::File),
+
+            ("banana.tar", ResourceFormat::Archive),
+            ("banana.tar.gz", ResourceFormat::Archive),
+            ("banana.zip", ResourceFormat::Archive),
+            ("banana.7z", ResourceFormat::Archive)
+        ];
+
+        for (name, expected) in NAMES {
+            assert_eq!(ResourceFormat::from_filename(name), *expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn as_str() {
+        const FORMATS: &[(&str, ResourceFormat)] = &[
+            ("package", ResourceFormat::Package),
+            ("file", ResourceFormat::File),
+            ("archive", ResourceFormat::Archive)
+        ];
+
+        for (name, format) in FORMATS {
+            assert_eq!(&format.to_string(), name);
+            assert_eq!(ResourceFormat::from_str(name), Ok(*format));
+        }
+    }
+}
