@@ -109,6 +109,11 @@ impl Downloader {
         Self(client)
     }
 
+    #[inline(always)]
+    pub const fn client(&self) -> &Client {
+        &self.0
+    }
+
     /// Start downloading of the file using default options.
     #[inline]
     pub fn download(
