@@ -258,6 +258,9 @@ impl Storage {
         let mut packages_lock_info = HashMap::new();
         let mut resources_lock_info = HashMap::new();
 
+        // Create table of processed resources.
+        let mut processed_resources = HashSet::new();
+
         // Prepare root packages list.
         let root_packages = urls.into_iter()
             .map(|url| {
@@ -283,7 +286,7 @@ impl Storage {
 
             for package_url in packages_queue.drain(..) {
                 // Skip already downloaded packages.
-                if resource_hashes.contains_key(&package_url) {
+                if processed_resources.contains(&(package_url.clone(), ResourceFormat::Package)) {
                     continue;
                 }
 
@@ -333,6 +336,9 @@ impl Storage {
 
                 // Delete temporary file.
                 let _ = std::fs::remove_file(&temp_path);
+
+                // List this package as processed.
+                processed_resources.insert((package_url.clone(), ResourceFormat::Package));
 
                 // Link requested URL with its output hash.
                 resource_hashes.insert(package_url.clone(), manifest_hash);
@@ -441,7 +447,7 @@ impl Storage {
 
             for (resource_url, resource_format, resource_info) in resources_queue.drain(..) {
                 // Skip already downloaded resources.
-                if resource_hashes.contains_key(&resource_url) {
+                if processed_resources.contains(&(resource_url.clone(), resource_format)) {
                     continue;
                 }
 
@@ -509,6 +515,9 @@ impl Storage {
                         // Delete temporary file.
                         let _ = std::fs::remove_file(&temp_path);
 
+                        // List this resource as processed.
+                        processed_resources.insert((resource_url.clone(), resource_format));
+
                         // Link file URL with its hash.
                         resource_hashes.insert(resource_url.clone(), resource_hash);
 
@@ -571,6 +580,9 @@ impl Storage {
                             temp_extract_path,
                             self.path.join(resource_hash.to_base32())
                         )?;
+
+                        // List this resource as processed.
+                        processed_resources.insert((resource_url.clone(), resource_format));
 
                         // Link file URL with its hash.
                         resource_hashes.insert(resource_url.clone(), resource_hash);
