@@ -21,14 +21,24 @@ const FORMATS: &[(ArchiveFormat, &[&str])] = &[
         ".tar",
         ".tar.xz",
         ".tar.gz",
+        ".tar.bz",
         ".tar.bz2",
         ".tar.zst",
         ".tar.zstd",
+        ".tar.lz",
+        ".tar.lzma",
+        ".tar.lzmo",
         ".txz",
         ".tgz",
+        ".tbz",
         ".tbz2",
         ".tzst",
-        ".tzstd"
+        ".tzstd",
+        ".tlz",
+        ".tzma",
+        ".tlzma",
+        ".tlzo",
+        ".tzo"
     ]),
 
     (ArchiveFormat::Zip, &[

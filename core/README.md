@@ -56,3 +56,5 @@ Compression support: `compression`.
 | `bzip2`                   | `compression-bzip2`   |
 | `deflate`, `gzip`, `zlib` | `compression-deflate` |
 | `zstd`                    | `compression-zstd`    |
+
+Licensed under [GPL-3.0-or-later](./LICENSE)
