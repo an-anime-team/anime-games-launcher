@@ -171,3 +171,48 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn self_reference() -> Result<(), Box<dyn std::error::Error>> {
+    let manifest_url = format!("{TESTS_DIR_URL}/self_reference/package.json");
+
+    let manifest_hash = Hash::from_base32("6j83ocpqdtt36").unwrap();
+
+    let storage = Storage::open(get_test_dir("self_reference")?)?;
+
+    let lock = storage.install_packages([
+        manifest_url.clone()
+    ]).await?;
+
+    assert!(lock.root.iter().all(|root| root == &manifest_hash));
+    assert_eq!(lock.packages.len(), 1);
+    assert_eq!(lock.resources.len(), 1);
+
+    assert_eq!(lock.resources.get(&manifest_hash), Some(&manifest_url));
+
+    let Some(package_info) = lock.packages.get(&manifest_hash) else {
+        return Err("missing package info".into());
+    };
+
+    assert_eq!(package_info.url, manifest_url);
+    assert_eq!(package_info.inputs.len(), 2);
+    assert!(package_info.outputs.is_empty());
+
+    let Some(resource_info) = package_info.inputs.get("as_file") else {
+        return Err("missing resource info".into());
+    };
+
+    assert_eq!(resource_info.url.as_str(), &manifest_url);
+    assert_eq!(resource_info.format, ResourceFormat::File);
+    assert_eq!(resource_info.hash, manifest_hash);
+
+    let Some(resource_info) = package_info.inputs.get("as_package") else {
+        return Err("missing resource info".into());
+    };
+
+    assert_eq!(resource_info.url.as_str(), &manifest_url);
+    assert_eq!(resource_info.format, ResourceFormat::Package);
+    assert_eq!(resource_info.hash, manifest_hash);
+
+    Ok(())
+}

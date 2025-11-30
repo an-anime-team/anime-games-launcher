@@ -1,0 +1,12 @@
+{
+    "inputs": {
+        "as_file": {
+            "uri": "package.json",
+            "format": "file"
+        },
+        "as_package": {
+            "uri": "package.json",
+            "format": "package"
+        }
+    }
+}
