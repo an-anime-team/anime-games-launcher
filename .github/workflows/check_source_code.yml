@@ -41,7 +41,7 @@ jobs:
       - name: Install runtime dependencies
         run: |
           apt update
-          apt install -y tar zip p7zip-full
+          apt install -y tar zip p7zip-full gzip bzip2 zstd
 
       - name: Download rust toolchain
         uses: dtolnay/rust-toolchain@stable
