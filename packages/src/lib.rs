@@ -24,3 +24,6 @@ pub mod format;
 pub mod package;
 pub mod storage;
 pub mod lock;
+
+#[cfg(test)]
+mod tests;

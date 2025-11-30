@@ -25,7 +25,7 @@ use agl_core::network::downloader::{
     Downloader, DownloadOptions, DownloaderError
 };
 
-use agl_core::archives::{Archive, ArchiveError};
+use agl_core::archives::{Archive, ArchiveFormat, ArchiveError};
 
 use crate::hash::Hash;
 use crate::format::ResourceFormat;
@@ -277,7 +277,7 @@ impl Storage {
         packages_queue.extend(root_packages.clone());
 
         // Loop while there are packages to process.
-        while packages_queue.is_empty() {
+        while !packages_queue.is_empty() {
             // Iterate over the packages URLs.
             let mut tasks = Vec::new();
 
@@ -522,8 +522,17 @@ impl Storage {
 
                         std::fs::create_dir_all(&temp_extract_path)?;
 
+                        // Try to predict the format of the archive from its
+                        // download URL. It's needed because `temp_path` doesn't
+                        // have any extension.
+                        let Some(archive_format) = ArchiveFormat::from_filename(&resource_url) else {
+                            return Err(InstallPackagesError::ArchiveFormatUnsupported {
+                                url: resource_url
+                            });
+                        };
+
                         // Try to open the archive.
-                        let Some(archive) = Archive::open(&temp_path) else {
+                        let Some(archive) = Archive::open_with_format(&temp_path, archive_format) else {
                             return Err(InstallPackagesError::ArchiveFormatUnsupported {
                                 url: resource_url
                             });

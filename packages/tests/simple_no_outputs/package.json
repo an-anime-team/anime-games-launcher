@@ -1,0 +1,39 @@
+{
+    "inputs": {
+        "example_file": {
+            "uri": "example_file.txt",
+            "format": "file",
+            "hash": "dfhtkkli693ji"
+        },
+        "example_tar": {
+            "uri": "example_tar.tar",
+            "format": "archive",
+            "hash": "bfcut078nb5sq"
+        },
+        "example_tar_gz": {
+            "uri": "example_tar_gz.tar.gz",
+            "format": "archive",
+            "hash": "nuasi909r9ek2"
+        },
+        "example_tar_bz2": {
+            "uri": "example_tar_bz2.tar.bz2",
+            "format": "archive",
+            "hash": "rl09ekeb9s9sm"
+        },
+        "example_tar_zstd": {
+            "uri": "example_tar_zstd.tar.zstd",
+            "format": "archive",
+            "hash": "4ib8sfl2v57te"
+        },
+        "example_zip": {
+            "uri": "example_zip.zip",
+            "format": "archive",
+            "hash": "s4lst5543nd1k"
+        },
+        "example_7z": {
+            "uri": "example_7z.7z",
+            "format": "archive",
+            "hash": "i8bois3gmu8mk"
+        }
+    }
+}

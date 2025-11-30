@@ -54,22 +54,32 @@ impl PackageManifest {
     pub fn from_json(value: &Json) -> Option<Self> {
         Some(Self {
             inputs: value.get("inputs")
-                .and_then(Json::as_object)?
-                .iter()
-                .map(|(k, v)| {
-                    ResourceInfoManifest::from_json(v)
-                        .map(|v| (k.to_string(), v))
+                .and_then(Json::as_object)
+                .map(|inputs| {
+                    inputs.iter()
+                        .map(|(k, v)| {
+                            ResourceInfoManifest::from_json(v)
+                                .map(|v| (k.to_string(), v))
+                        })
+                        .collect::<Option<HashMap<_, _>>>()
                 })
-                .collect::<Option<HashMap<_, _>>>()?,
+                // First `None` is if `inputs` is missing, second `None` if
+                // we couldn't build the `ResourceInfoManifest`, thus error.
+                .unwrap_or_else(|| Some(HashMap::new()))?,
 
             outputs: value.get("outputs")
-                .and_then(Json::as_object)?
-                .iter()
-                .map(|(k, v)| {
-                    ResourceInfoManifest::from_json(v)
-                        .map(|v| (k.to_string(), v))
+                .and_then(Json::as_object)
+                .map(|outputs| {
+                    outputs.iter()
+                        .map(|(k, v)| {
+                            ResourceInfoManifest::from_json(v)
+                                .map(|v| (k.to_string(), v))
+                        })
+                        .collect::<Option<HashMap<_, _>>>()
                 })
-                .collect::<Option<HashMap<_, _>>>()?
+                // First `None` is if `outputs` is missing, second `None` if
+                // we couldn't build the `ResourceInfoManifest`, thus error.
+                .unwrap_or_else(|| Some(HashMap::new()))?
         })
     }
 }
