@@ -154,7 +154,7 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(package_info.outputs.len(), 1);
 
     let Some(resource_info) = package_info.inputs.get("example_file") else {
-        return Err("missing resource info".into());
+        return Err("missing input resource info".into());
     };
 
     assert_eq!(resource_info.url.as_str(), &file_url);
@@ -162,7 +162,7 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(resource_info.hash, file_hash);
 
     let Some(resource_info) = package_info.outputs.get("example_file") else {
-        return Err("missing resource info".into());
+        return Err("missing output resource info".into());
     };
 
     assert_eq!(resource_info.url.as_str(), &file_url);
@@ -199,7 +199,7 @@ async fn self_reference() -> Result<(), Box<dyn std::error::Error>> {
     assert!(package_info.outputs.is_empty());
 
     let Some(resource_info) = package_info.inputs.get("as_file") else {
-        return Err("missing resource info".into());
+        return Err("missing as_file resource info".into());
     };
 
     assert_eq!(resource_info.url.as_str(), &manifest_url);
@@ -207,12 +207,49 @@ async fn self_reference() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(resource_info.hash, manifest_hash);
 
     let Some(resource_info) = package_info.inputs.get("as_package") else {
-        return Err("missing resource info".into());
+        return Err("missing as_package resource info".into());
     };
 
     assert_eq!(resource_info.url.as_str(), &manifest_url);
     assert_eq!(resource_info.format, ResourceFormat::Package);
     assert_eq!(resource_info.hash, manifest_hash);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn cycle() -> Result<(), Box<dyn std::error::Error>> {
+    let package_1_url = format!("{TESTS_DIR_URL}/cycle/package_1.json");
+    let package_2_url = format!("{TESTS_DIR_URL}/cycle/package_2.json");
+
+    let package_1_hash = Hash::from_base32("30mc77m5bcqje").unwrap();
+    let package_2_hash = Hash::from_base32("s7lffv3k21im0").unwrap();
+
+    let storage = Storage::open(get_test_dir("cycle")?)?;
+
+    let lock = storage.install_packages([
+        package_1_url.clone()
+    ]).await?;
+
+    assert!(lock.root.iter().all(|root| root == &package_1_hash));
+    assert_eq!(lock.packages.len(), 2);
+    assert!(lock.resources.is_empty());
+
+    let Some(package_info) = lock.packages.get(&package_1_hash) else {
+        return Err("missing package 1 info".into());
+    };
+
+    assert_eq!(package_info.url, package_1_url);
+    assert_eq!(package_info.inputs.len(), 1);
+    assert!(package_info.outputs.is_empty());
+
+    let Some(package_info) = lock.packages.get(&package_2_hash) else {
+        return Err("missing package 2 info".into());
+    };
+
+    assert_eq!(package_info.url, package_2_url);
+    assert_eq!(package_info.inputs.len(), 1);
+    assert!(package_info.outputs.is_empty());
 
     Ok(())
 }
