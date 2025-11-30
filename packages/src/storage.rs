@@ -263,17 +263,7 @@ impl Storage {
 
         // Prepare root packages list.
         let root_packages = urls.into_iter()
-            .map(|url| {
-                let mut url = url.to_string();
-
-                // Append the "package.json" to the link if it's missing.
-                if !url.ends_with("/package.json") {
-                    url = format!("{url}/package.json");
-                }
-
-                // Normalize the URL.
-                normalize_url(url)
-            })
+            .map(|url| normalize_url(url.to_string()))
             .collect::<HashSet<String>>();
 
         // Push root packages to the processing queue.
@@ -343,10 +333,9 @@ impl Storage {
                 // Link requested URL with its output hash.
                 resource_hashes.insert(package_url.clone(), manifest_hash);
 
-                // Obtain the parent "folder" from the "package.json" URL.
-                let parent_url = package_url.strip_suffix("package.json")
-                    .map(String::from)
-                    .unwrap_or_else(|| package_url.clone());
+                // Obtain the parent "folder" from the package manifest URL.
+                let (parent_url, _) = package_url.rsplit_once('/')
+                    .unwrap_or((package_url.as_str(), ""));
 
                 // Update the package's info in the lock table.
                 let (_, mut inputs, mut outputs) = packages_lock_info.remove(&manifest_hash)
