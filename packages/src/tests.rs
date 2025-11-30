@@ -7,6 +7,7 @@ use crate::storage::Storage;
 use agl_core::export::tasks::tokio;
 
 const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/packages/tests";
+// const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
 
 fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
     let path = std::env::temp_dir()
@@ -120,6 +121,53 @@ async fn simple_no_outputs() -> Result<(), Box<dyn std::error::Error>> {
         assert_eq!(resource_info.format, *format);
         assert_eq!(resource_info.hash, *hash);
     }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
+    let manifest_url = format!("{TESTS_DIR_URL}/duplicate_input_output/package.json");
+    let file_url = format!("{TESTS_DIR_URL}/duplicate_input_output/example_file.txt");
+
+    let manifest_hash = Hash::from_base32("ukkgn5btkiu8s").unwrap();
+    let file_hash = Hash::from_base32("dfhtkkli693ji").unwrap();
+
+    let storage = Storage::open(get_test_dir("duplicate_input_output")?)?;
+
+    let lock = storage.install_packages([
+        manifest_url.clone()
+    ]).await?;
+
+    assert!(lock.root.iter().all(|root| root == &manifest_hash));
+    assert_eq!(lock.packages.len(), 1);
+    assert_eq!(lock.resources.len(), 1);
+
+    assert_eq!(lock.resources.get(&file_hash), Some(&file_url));
+
+    let Some(package_info) = lock.packages.get(&manifest_hash) else {
+        return Err("missing package info".into());
+    };
+
+    assert_eq!(package_info.url, manifest_url);
+    assert_eq!(package_info.inputs.len(), 1);
+    assert_eq!(package_info.outputs.len(), 1);
+
+    let Some(resource_info) = package_info.inputs.get("example_file") else {
+        return Err("missing resource info".into());
+    };
+
+    assert_eq!(resource_info.url.as_str(), &file_url);
+    assert_eq!(resource_info.format, ResourceFormat::File);
+    assert_eq!(resource_info.hash, file_hash);
+
+    let Some(resource_info) = package_info.outputs.get("example_file") else {
+        return Err("missing resource info".into());
+    };
+
+    assert_eq!(resource_info.url.as_str(), &file_url);
+    assert_eq!(resource_info.format, ResourceFormat::File);
+    assert_eq!(resource_info.hash, file_hash);
 
     Ok(())
 }
