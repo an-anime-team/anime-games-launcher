@@ -67,15 +67,21 @@ impl Hash {
 
         let mut hasher = Hasher::default();
 
-        let mut queue = VecDeque::<PathBuf>::new();
+        let mut queue = VecDeque::<(PathBuf, bool)>::new();
 
-        queue.push_back(path.into());
+        // Do not include filename of the entry path since it can be e.g.
+        // a randomly generated archive folder name, or a name of the file
+        // which we want to hash. All the nested files and folders, on the other
+        // hand, should match both filename and content.
+        queue.push_back((path.into(), false));
 
-        while let Some(path) = queue.pop_front() {
+        while let Some((path, include_name)) = queue.pop_front() {
             let path = path.canonicalize()?;
 
             // Write the filename to the hasher.
-            if let Some(filename) = path.file_name().and_then(|name| name.to_str()) {
+            if include_name
+                && let Some(filename) = path.file_name().and_then(|name| name.to_str())
+            {
                 hasher.update(filename.as_bytes());
             }
 
@@ -91,7 +97,7 @@ impl Hash {
                 // Resolve all the first level folder entries.
                 let mut paths = path.read_dir()?
                     .map(|entry| {
-                        entry.map(|entry| entry.path())
+                        entry.map(|entry| (entry.path(), true))
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 
@@ -127,6 +133,12 @@ impl Hash {
 
                 Some(Self(u64::from_le_bytes(hash)))
             })
+    }
+}
+
+impl std::fmt::Display for Hash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.to_base32())
     }
 }
 
