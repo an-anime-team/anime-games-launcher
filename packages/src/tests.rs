@@ -45,6 +45,9 @@ async fn simple_no_inputs() -> Result<(), Box<dyn std::error::Error>> {
         manifest_url.clone()
     ]).await?;
 
+    assert!(lock.verify());
+    assert!(storage.verify_lock(&lock)?);
+
     assert!(lock.root.iter().all(|root| root == &manifest_hash));
     assert_eq!(lock.packages.len(), 1);
     assert_eq!(lock.resources.len(), resources.len());
@@ -96,6 +99,9 @@ async fn simple_no_outputs() -> Result<(), Box<dyn std::error::Error>> {
         manifest_url.clone()
     ]).await?;
 
+    assert!(lock.verify());
+    assert!(storage.verify_lock(&lock)?);
+
     assert!(lock.root.iter().all(|root| root == &manifest_hash));
     assert_eq!(lock.packages.len(), 1);
     assert_eq!(lock.resources.len(), resources.len());
@@ -138,6 +144,9 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
     let lock = storage.install_packages([
         manifest_url.clone()
     ]).await?;
+
+    assert!(lock.verify());
+    assert!(storage.verify_lock(&lock)?);
 
     assert!(lock.root.iter().all(|root| root == &manifest_hash));
     assert_eq!(lock.packages.len(), 1);
@@ -183,6 +192,9 @@ async fn self_reference() -> Result<(), Box<dyn std::error::Error>> {
     let lock = storage.install_packages([
         manifest_url.clone()
     ]).await?;
+
+    assert!(lock.verify());
+    assert!(storage.verify_lock(&lock)?);
 
     assert!(lock.root.iter().all(|root| root == &manifest_hash));
     assert_eq!(lock.packages.len(), 1);
@@ -231,6 +243,9 @@ async fn cycle() -> Result<(), Box<dyn std::error::Error>> {
         package_1_url.clone()
     ]).await?;
 
+    assert!(lock.verify());
+    assert!(storage.verify_lock(&lock)?);
+
     assert!(lock.root.iter().all(|root| root == &package_1_hash));
     assert_eq!(lock.packages.len(), 2);
     assert!(lock.resources.is_empty());
@@ -271,6 +286,9 @@ async fn nested_packages() -> Result<(), Box<dyn std::error::Error>> {
     let lock = storage.install_packages([
         package_1_url.clone()
     ]).await?;
+
+    assert!(lock.verify());
+    assert!(storage.verify_lock(&lock)?);
 
     assert!(lock.root.iter().all(|root| root == &package_1_hash));
     assert_eq!(lock.packages.len(), 3);
