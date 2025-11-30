@@ -51,15 +51,22 @@ impl Lock {
                 return false;
             };
 
-            for resource in info.inputs.values() {
-                if !self.resources.contains_key(&resource.hash) {
-                    return false;
-                }
-            }
+            let resources = info.inputs.values()
+                .chain(info.outputs.values());
 
-            for resource in info.outputs.values() {
-                if !self.resources.contains_key(&resource.hash) {
-                    return false;
+            for resource in resources {
+                match resource.format {
+                    ResourceFormat::Package => {
+                        if !self.packages.contains_key(&resource.hash) {
+                            return false;
+                        }
+                    }
+
+                    ResourceFormat::File | ResourceFormat::Archive => {
+                        if !self.resources.contains_key(&resource.hash) {
+                            return false;
+                        }
+                    }
                 }
             }
         }
