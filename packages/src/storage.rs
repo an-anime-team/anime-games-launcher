@@ -32,50 +32,6 @@ use crate::format::ResourceFormat;
 use crate::package::PackageManifest;
 use crate::lock::{Lock, LockedPackageInfo, LockedResourceInfo};
 
-/// Normalize given URL.
-#[inline]
-fn normalize_url(url: impl AsRef<str>) -> String {
-    let (scheme, url) = url.as_ref()
-        .split_once("://")
-        .map(|(scheme, url)| (Some(scheme), url))
-        .unwrap_or((None, url.as_ref()));
-
-    let url = url
-        .replace('\\', "/")
-        .replace("/./", "/")
-        .replace("//", "/");
-
-    let url = url.split('/')
-        .collect::<Vec<_>>();
-
-    let mut clean_parts = Vec::with_capacity(url.len());
-
-    let mut i = 0;
-    let n = url.len() - 1;
-
-    while i < n {
-        if url[i + 1] == ".." {
-            i += 2;
-
-            continue;
-        }
-
-        clean_parts.push(url[i]);
-
-        i += 1;
-    }
-
-    clean_parts.push(url[n]);
-
-    let url = clean_parts.join("/");
-
-    if let Some(scheme) = scheme {
-        format!("{scheme}://{url}")
-    } else {
-        url
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum InstallPackagesError {
     #[error(transparent)]
@@ -235,6 +191,50 @@ impl Storage {
         &self,
         urls: impl IntoIterator<Item = T>
     ) -> Result<Lock, InstallPackagesError> {
+        /// Normalize given URL.
+        #[inline]
+        fn normalize_url(url: impl AsRef<str>) -> String {
+            let (scheme, url) = url.as_ref()
+                .split_once("://")
+                .map(|(scheme, url)| (Some(scheme), url))
+                .unwrap_or((None, url.as_ref()));
+
+            let url = url
+                .replace('\\', "/")
+                .replace("/./", "/")
+                .replace("//", "/");
+
+            let url = url.split('/')
+                .collect::<Vec<_>>();
+
+            let mut clean_parts = Vec::with_capacity(url.len());
+
+            let mut i = 0;
+            let n = url.len() - 1;
+
+            while i < n {
+                if url[i + 1] == ".." {
+                    i += 2;
+
+                    continue;
+                }
+
+                clean_parts.push(url[i]);
+
+                i += 1;
+            }
+
+            clean_parts.push(url[n]);
+
+            let url = clean_parts.join("/");
+
+            if let Some(scheme) = scheme {
+                format!("{scheme}://{url}")
+            } else {
+                url
+            }
+        }
+
         // Create the downloader.
         let downloader = Downloader::new();
 
