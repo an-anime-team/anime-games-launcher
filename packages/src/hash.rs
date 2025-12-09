@@ -142,6 +142,15 @@ impl std::fmt::Display for Hash {
     }
 }
 
+impl std::ops::Deref for Hash {
+    type Target = u64;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// Standard `agl-packages` hasher.
 #[derive(Default)]
 pub struct Hasher(seahash::SeaHasher);
