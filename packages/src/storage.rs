@@ -103,6 +103,18 @@ impl Storage {
         })
     }
 
+    /// Get storage folder path.
+    #[inline]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// Get path to a resource with provided hash.
+    #[inline]
+    pub fn resource_path(&self, hash: &Hash) -> PathBuf {
+        self.path.join(hash.to_base32())
+    }
+
     /// Store a resource from provided filesystem entry path. This can be either
     /// a file or a folder, symlinks are resolved. Original entry is kept
     /// untouched.
@@ -146,7 +158,7 @@ impl Storage {
         let hash = Hash::from_path(path.clone())?;
 
         // Copy the resource into the storage folder.
-        try_copy(&path, &self.path.join(hash.to_base32()))?;
+        try_copy(&path, &self.resource_path(&hash))?;
 
         Ok(hash)
     }
@@ -157,7 +169,7 @@ impl Storage {
     /// content.
     #[inline]
     pub fn has_resource(&self, hash: &Hash) -> bool {
-        self.path.join(hash.to_base32()).exists()
+        self.resource_path(hash).exists()
     }
 
     /// Verify that resource content for provided hash is valid.
@@ -165,7 +177,7 @@ impl Storage {
     /// If resource with provided hash is not stored, then `Ok(false)` is
     /// returned.
     pub fn verify_resource(&self, hash: &Hash) -> std::io::Result<bool> {
-        let path = self.path.join(hash.to_base32());
+        let path = self.resource_path(hash);
 
         if !path.exists() {
             return Ok(false);
@@ -281,7 +293,7 @@ impl Storage {
                 }
 
                 // Prepare a temp path for the package's manifest file.
-                let temp_path = self.path.join(Hash::rand().to_base32());
+                let temp_path = self.resource_path(&Hash::rand());
 
                 // Start downloading the package's manifest.
                 let task = downloader.download_with_options(
@@ -450,7 +462,7 @@ impl Storage {
                 }
 
                 // Prepare a temp path for the resource.
-                let temp_path = self.path.join(Hash::rand().to_base32());
+                let temp_path = self.resource_path(&Hash::rand());
 
                 // Start downloading the resource.
                 let task = downloader.download_with_options(
@@ -516,7 +528,7 @@ impl Storage {
 
                     ResourceFormat::Archive => {
                         // Prepare temporary archive extraction folder.
-                        let temp_extract_path = self.path.join(Hash::rand().to_base32());
+                        let temp_extract_path = self.resource_path(&Hash::rand());
 
                         std::fs::create_dir_all(&temp_extract_path)?;
 
@@ -567,7 +579,7 @@ impl Storage {
                         // TODO: make sane use of store_resource here somehow
                         std::fs::rename(
                             temp_extract_path,
-                            self.path.join(resource_hash.to_base32())
+                            self.resource_path(&resource_hash)
                         )?;
 
                         // List this resource as processed.
