@@ -112,6 +112,8 @@ pub struct ModuleScope {
     /// Default: `false`.
     pub allow_process_api: bool,
 
+    // TODO: read_paths and write_paths instead of allowed_paths
+
     /// Paths allowed to be accessed for this module. When provided, the module
     /// can use Filesystem and other APIs to read or write into provided files
     /// or folders/subfolders.

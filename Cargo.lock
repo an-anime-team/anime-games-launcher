@@ -52,6 +52,7 @@ name = "agl-runtime"
 version = "0.1.0"
 dependencies = [
  "agl-core",
+ "agl-packages",
  "base32",
  "base64",
  "bufreaderwriter",
@@ -61,7 +62,6 @@ dependencies = [
  "rand",
  "rusqlite",
  "seahash",
- "serde",
  "serde_json",
  "serde_yml",
  "thiserror 1.0.69",

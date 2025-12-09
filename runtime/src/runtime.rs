@@ -20,6 +20,14 @@ use std::path::PathBuf;
 
 use mlua::prelude::*;
 
+#[cfg(feature = "packages-support")]
+use agl_packages::{
+    hash::Hash,
+    format::ResourceFormat,
+    storage::Storage,
+    lock::Lock
+};
+
 use crate::module::{Module, ModuleScope};
 use crate::api::{Api, Context};
 
@@ -37,16 +45,17 @@ pub enum RuntimeError {
         err: std::io::Error
     },
 
-    #[error("module with hash '{hash}' at path '{path:?}' is already loaded")]
-    ModuleAlreadyLoaded {
-        hash: u64,
-        path: PathBuf
+    #[cfg(feature = "packages-support")]
+    #[error("packages lock is missing a package with hash '{}'", hash.to_base32())]
+    LockPackageMissing {
+        hash: Hash
     },
 
-    #[error("module with hash '{module_hash}' already has a resource with name '{resource_name}'")]
-    ModuleInputAlreadyExists {
-        module_hash: u64,
-        resource_name: String
+    #[cfg(feature = "packages-support")]
+    #[error("module with hash '{}' has duplicate input under name '{input_name}'", module_hash.to_base32())]
+    ModuleHasDuplicateInput {
+        module_hash: Hash,
+        input_name: String
     }
 }
 
@@ -65,15 +74,13 @@ impl Runtime {
 
         // Prepare tables and create a registry key to be able to access them
         // from the rust side.
-        let engine_table = lua.create_table_with_capacity(0, 3)?;
+        let engine_table = lua.create_table_with_capacity(0, 2)?;
 
-        let modules_table = lua.create_table()?;
-        let resources_table = lua.create_table()?;
-        let inputs_table = lua.create_table()?;
+        let values_table = lua.create_table()?;
+        let refs_table = lua.create_table()?;
 
-        engine_table.raw_set("modules", modules_table.clone())?;     //   [module_hash] => [module_output]
-        engine_table.raw_set("resources", resources_table.clone())?; // [resource_hash] => [resource_value]
-        engine_table.raw_set("inputs", inputs_table.clone())?;       //   [module_hash] => { [resource_name] => [resource_hash] }
+        engine_table.raw_set("values", values_table.clone())?; // [value_key] => [value]
+        engine_table.raw_set("refs", refs_table.clone())?;     // [value_key] => { [name] => [value_key] }
 
         lua.set_named_registry_value("engine", engine_table)?;
 
@@ -89,88 +96,137 @@ impl Runtime {
     /// Try to create a luau module environment from provided permissions scope.
     fn create_env_from_scope(
         &self,
-        hash: u64,
+        module_key: String,
         scope: ModuleScope
     ) -> Result<LuaTable, RuntimeError> {
         // Create environment table with the standard library APIs.
         let env = self.api.create_env(&Context {
-            module_hash: hash,
-
             // TODO
             temp_folder: std::env::temp_dir(),
-            module_folder: std::env::temp_dir().join(hash.to_string()),
+            module_folder: std::env::temp_dir(),
             persistent_folder: std::env::temp_dir(),
 
             scope
         })?;
 
-        // Load dependency module or resource.
-        env.set("load", self.lua.create_function(move |lua, name: String| -> Result<LuaTable, LuaError> {
+        // Load referenced value.
+        env.set("load", self.lua.create_function(move |lua, name: String| -> Result<LuaValue, LuaError> {
             // Read the engine table from the registry key.
             let engine_table = lua.named_registry_value::<LuaTable>("engine")?;
 
-            // Read the inputs table from the engine.
-            let inputs_table = engine_table.raw_get::<LuaTable>("inputs")?;
+            // Read the values and refs tables from the engine.
+            let values_table = engine_table.raw_get::<LuaTable>("values")?;
+            let refs_table = engine_table.raw_get::<LuaTable>("refs")?;
 
-            // Try to read current module input resources.
-            let Ok(module_inputs) = inputs_table.raw_get::<LuaTable>(hash.to_string()) else {
-                return Err(LuaError::external("module '{hash}' doesn't have any inputs"));
-            };
+            // If current module doesn't reference any values - return `nil`.
+            if !refs_table.contains_key(module_key.as_str())? {
+                return Ok(LuaValue::Nil);
+            }
 
-            // Try to read input resource hash from its name.
-            let Ok(resource_hash) = module_inputs.raw_get::<String>(name.as_str()) else {
-                return Err(LuaError::external(format!("module '{hash}' missing dependency called '{name}'")));
-            };
+            // Read the module's references.
+            let module_refs_table = refs_table.raw_get::<LuaTable>(module_key.as_str())?;
 
-            // Read the resources table from the engine.
-            let resources_table = engine_table.raw_get::<LuaTable>("resources")?;
+            // If current module doesn't have reference with provided name -
+            // return `nil`.
+            if !module_refs_table.contains_key(name.as_str())? {
+                return Ok(LuaValue::Nil);
+            }
 
-            // Try to read resource value from its hash.
-            let Ok(resource) = resources_table.raw_get::<LuaValue>(resource_hash.as_str()) else {
-                return Err(LuaError::external(format!("missing resource with hash '{resource_hash}'")));
-            };
+            // Read the referenced value's key.
+            let ref_key = module_refs_table.raw_get::<String>(name)?;
 
-            // TODO: support importing sub-modules (right now only resources can be imported).
-
-            // Prepare function output.
-            let output_table = lua.create_table_with_capacity(0, 3)?;
-
-            output_table.raw_set("hash", resource_hash.as_str())?;
-            output_table.raw_set("format", "resource")?;
-            output_table.raw_set("value", resource)?;
-
-            Ok(output_table)
+            // Read the referenced value.
+            values_table.raw_get(ref_key)
         })?)?;
-
-        // TODO: implement `import` function.
 
         Ok(env)
     }
 
-    /// Try to load new luau module into the runtime.
-    ///
-    /// - If the module with provided hash is already loaded, then its scope
-    ///   will be updated to allow new permissions if some were diallowed.
-    /// - If the module was not loaded, then it will be attempted to load.
-    ///
-    /// Hash of the module will be returned. It can be used to add dependencies
-    /// to it.
-    ///
-    /// > **Important note:** due to the runtime nature it's impossible to load
-    /// > the same module multiple times. Attempts to load the same module will
-    /// > lead to a runtime error. You must merge all the repeating modules and
-    /// > their scopes before using this method.
+    /// Try to set luau value to the runtime key-value storage.
+    pub fn set_value(
+        &self,
+        key: impl AsRef<str>,
+        value: impl IntoLua
+    ) -> Result<(), LuaError> {
+        // Load value using the luau engine.
+        let value = value.into_lua(&self.lua)?;
+
+        // Read the engine table from the registry key.
+        let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
+
+        // Read the values table from the engine.
+        let values_table = engine_table.raw_get::<LuaTable>("values")?;
+
+        // Store the value.
+        values_table.raw_set(key.as_ref(), value)?;
+
+        Ok(())
+    }
+
+    /// Try to get luau value from the runtime key-value storage.
+    pub fn get_value<T: FromLua>(
+        &self,
+        key: impl AsRef<str>
+    ) -> Result<Option<T>, LuaError> {
+        // Read the engine table from the registry key.
+        let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
+
+        // Read the values table from the engine.
+        let values_table = engine_table.raw_get::<LuaTable>("values")?;
+
+        // Return `None` if there's no value with provided key.
+        if !values_table.contains_key(key.as_ref())? {
+            return Ok(None);
+        }
+
+        // Read the value.
+        values_table.raw_get(key.as_ref()).map(Some)
+    }
+
+    /// Reference `target_key` value in a value (module) with key `source_key`
+    /// using `name` as a reference name.
+    pub fn set_named_reference(
+        &self,
+        source_key: impl AsRef<str>,
+        target_key: impl AsRef<str>,
+        name: impl AsRef<str>
+    ) -> Result<(), RuntimeError> {
+        // Read the engine table from the registry key.
+        let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
+
+        // Read the references table from the engine.
+        let refs_table = engine_table.raw_get::<LuaTable>("refs")?;
+
+        // Insert new empty refs table if it doesn't exist.
+        if !refs_table.contains_key(source_key.as_ref())? {
+            let value_refs_table = self.lua.create_table_with_capacity(0, 1)?;
+
+            refs_table.raw_set(source_key.as_ref(), value_refs_table)?;
+        }
+
+        // Read the value's refs table.
+        let value_refs_table = refs_table.raw_get::<LuaTable>(source_key.as_ref())?;
+
+        // Insert the named reference.
+        value_refs_table.raw_set(name.as_ref(), target_key.as_ref())?;
+
+        Ok(())
+    }
+
+    /// Try to load new luau module into the runtime. The module's output will
+    /// be stored in the runtime key-value storage under provided key.
     pub fn load_module(
-        &mut self,
+        &self,
+        key: impl ToString,
         module: Module
-    ) -> Result<u64, RuntimeError> {
+    ) -> Result<(), RuntimeError> {
         // Check if the module file exists and is a readable file.
         if !module.path.is_file() {
             return Err(RuntimeError::ModuleDoesntExist(module.path));
         }
 
         // Read the module file.
-        let file = std::fs::read(&module.path)
+        let module_content = std::fs::read(&module.path)
             .map_err(|err| {
                 RuntimeError::ModuleReadError {
                     path: module.path.clone(),
@@ -178,91 +234,203 @@ impl Runtime {
                 }
             })?;
 
-        // Calculate module hash.
-        let hash = seahash::hash(&file);
-
         // Read the engine table from the registry key.
         let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
 
-        // Read the modules table from the engine.
-        let modules_table = engine_table.raw_get::<LuaTable>("modules")?;
+        // Read the values table from the engine.
+        let values_table = engine_table.raw_get::<LuaTable>("values")?;
 
-        // Prevent module double-loading.
-        //
-        // We can't merge scope permissions because it would require module to
-        // be re-loaded with new environment which is not intended behavior.
-        if modules_table.contains_key(hash.to_string())? {
-            return Err(RuntimeError::ModuleAlreadyLoaded {
-                hash,
-                path: module.path
-            });
-        }
+        // Get the module key.
+        let key = key.to_string();
 
         // Create environment for the module.
-        let env = self.create_env_from_scope(hash, module.scope)?;
+        let env = self.create_env_from_scope(key.clone(), module.scope)?;
 
         // Execute the module.
-        let result = self.lua.load(file)
+        let result = self.lua.load(module_content)
             .set_name(module.path.to_string_lossy())
             .set_environment(env)
             .call::<LuaValue>(())?;
 
         // Insert the module's result into the table.
-        modules_table.raw_set(hash.to_string(), result)?;
+        values_table.raw_set(key, result)?;
 
-        Ok(hash)
+        Ok(())
     }
 
-    // TODO: also add something like module_add_dependency/submodule
-
-    /// Try to add a resource value into the loaded module with provided hash.
-    pub fn module_add_input_resource(
+    /// Try to load all the packages and luau modules from provided Anime Games
+    /// Launcher packages manager lock.
+    #[cfg(feature = "packages-support")]
+    pub fn load_packages(
         &self,
-        hash: u64,
-        name: impl AsRef<str>,
-        value: impl IntoLua
+        lock: &Lock,
+        storage: &Storage
     ) -> Result<(), RuntimeError> {
-        // Obtain the resource value.
-        let value = value.into_lua(&self.lua)?;
+        use std::collections::{VecDeque, HashSet, HashMap};
 
-        // Cast this value to a string and calculate its hash.
-        // Technically a huge performance loss....
-        let resource_hash = seahash::hash(value.to_string()?.as_bytes());
+        // TODO: implement something like RichResourceFormat with Module format
+        //       instead of doing shit with is_module_resource and so
 
-        // Read the engine table from the registry key.
-        let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
-
-        // Read the resources and inputs tables from the engine.
-        let resources_table = engine_table.raw_get::<LuaTable>("resources")?;
-        let inputs_table = engine_table.raw_get::<LuaTable>("inputs")?;
-
-        // Read module inputs table.
-        let module_inputs_table = match inputs_table.raw_get::<LuaTable>(hash.to_string()) {
-            Ok(module_inputs_table) => module_inputs_table,
-
-            Err(_) => {
-                let module_inputs_table = self.lua.create_table_with_capacity(0, 1)?;
-
-                inputs_table.raw_set(
-                    hash.to_string(),
-                    module_inputs_table.clone()
-                )?;
-
-                module_inputs_table
-            }
-        };
-
-        // Check if module already has an input with this name.
-        if module_inputs_table.contains_key(name.as_ref())? {
-            return Err(RuntimeError::ModuleInputAlreadyExists {
-                module_hash: hash,
-                resource_name: name.as_ref().to_string()
-            });
+        #[inline]
+        fn get_resource_key(
+            hash: impl std::fmt::Display,
+            format: impl std::fmt::Display
+        ) -> String {
+            format!("{hash}#{format}")
         }
 
-        // Reference the input in the module.
-        resources_table.raw_set(resource_hash.to_string(), value)?;
-        module_inputs_table.raw_set(name.as_ref(), resource_hash.to_string())?;
+        #[inline]
+        fn is_module_resource(url: &str) -> bool {
+            url.ends_with(".lua") || url.ends_with(".luau")
+        }
+
+        // Prepare the packages queue and set of processed packages.
+        let mut packages_queue = VecDeque::with_capacity(lock.packages.len());
+        let mut processed_packages = HashSet::new();
+
+        // Prepare the [module_hash] => { [input_name] => [resource_key] } table.
+        let mut modules_table = HashMap::new();
+
+        // Enqueue root packages.
+        packages_queue.extend(lock.root.iter().copied());
+
+        // Iterate over all the queued packages.
+        while let Some(hash) = packages_queue.pop_front() {
+            // Skip already processed package.
+            if processed_packages.contains(&hash) {
+                continue;
+            }
+
+            // Try to read the package's info or return an error if it's
+            // missing.
+            let Some(package) = lock.packages.get(&hash) else {
+                return Err(RuntimeError::LockPackageMissing {
+                    hash
+                });
+            };
+
+            // Iterate over the package's resources.
+            let resources = package.inputs.values()
+                .chain(package.outputs.values());
+
+            for resource in resources {
+                let resource_key = if is_module_resource(&resource.url) {
+                    get_resource_key(resource.hash.to_base32(), "module")
+                } else {
+                    get_resource_key(resource.hash.to_base32(), resource.format.to_string())
+                };
+
+                match resource.format {
+                    // Order package's processing.
+                    ResourceFormat::Package => {
+                        packages_queue.push_back(resource.hash);
+                    }
+
+                    // Schedule lua or luau files loading as modules.
+                    ResourceFormat::File if is_module_resource(&resource.url) => {
+                        let module: &mut HashMap<String, String> = modules_table.entry(resource.hash)
+                            .or_default();
+
+                        for (name, input_resource) in package.inputs.iter() {
+                            // Prevent names re-assigning.
+                            if module.contains_key(name) {
+                                return Err(RuntimeError::ModuleHasDuplicateInput {
+                                    module_hash: input_resource.hash,
+                                    input_name: name.to_string()
+                                });
+                            }
+
+                            let input_resource_key = if is_module_resource(&input_resource.url) {
+                                get_resource_key(input_resource.hash.to_base32(), "module")
+                            } else {
+                                get_resource_key(input_resource.hash.to_base32(), input_resource.format.to_string())
+                            };
+
+                            module.insert(name.to_string(), input_resource_key);
+                        }
+                    }
+
+                    // Load normal files or archives as filesystem path values.
+                    ResourceFormat::File | ResourceFormat::Archive => {
+                        let value = self.lua.create_table_with_capacity(0, 3)?;
+
+                        value.raw_set("hash", resource.hash.to_base32())?;
+                        value.raw_set("format", resource.format.to_string())?;
+                        value.raw_set("value", storage.resource_path(&resource.hash))?;
+
+                        self.set_value(resource_key, value)?;
+                    }
+                }
+            }
+
+            // Add package as runtime value.
+
+            // Prepare package outputs table.
+            // We don't need to store package inputs since they're private.
+            let package_value = self.lua.create_table_with_capacity(0, package.outputs.len())?;
+
+            // Insert output values.
+            for (name, resource) in package.outputs.iter() {
+                let resource_table = self.lua.create_table_with_capacity(0, 2)?;
+
+                resource_table.raw_set("hash", resource.hash.to_base32())?;
+
+                resource_table.raw_set("format",
+                    if is_module_resource(&resource.url) {
+                        String::from("module")
+                    } else {
+                        resource.format.to_string()
+                    }
+                )?;
+
+                package_value.raw_set(
+                    name.to_string(),
+                    resource_table
+                )?;
+            }
+
+            // Prepare runtime value table.
+            let value = self.lua.create_table_with_capacity(0, 3)?;
+
+            value.raw_set("hash", hash.to_base32())?;
+            value.raw_set("format", ResourceFormat::Package.to_string())?;
+            value.raw_set("value", package_value)?;
+
+            self.set_value(
+                get_resource_key(hash.to_base32(), ResourceFormat::Package.to_string()),
+                value
+            )?;
+
+            // Mark current package as processed.
+            processed_packages.insert(hash);
+        }
+
+        // Load modules.
+        for hash in modules_table.keys() {
+            let module_key = get_resource_key(hash.to_base32(), "module");
+
+            self.load_module(module_key, Module {
+                path: storage.resource_path(hash),
+
+                // TODO: update sandbox_allowed_paths
+                scope: ModuleScope::default()
+            })?;
+        }
+
+        // Add input references to all the loaded modules.
+        //
+        // We're doing it *after* loading all the modules since one module
+        // could reference the other one, which could happen to not be
+        // loaded yet.
+        for (hash, inputs) in modules_table {
+            let module_key = get_resource_key(hash, "module");
+
+            // Iterate over the module's inputs.
+            for (name, input_key) in inputs {
+                // Add named reference to the input.
+                self.set_named_reference(&module_key, input_key, name)?;
+            }
+        }
 
         Ok(())
     }

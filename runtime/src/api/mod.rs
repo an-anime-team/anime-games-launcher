@@ -80,9 +80,6 @@ pub fn bytes_to_lua_table(
 /// Luau module standard library builder context.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Context {
-    /// Hash of the module.
-    pub module_hash: u64,
-
     /// Path to a temporary folder. It is always accessible for the module.
     pub temp_folder: PathBuf,
 

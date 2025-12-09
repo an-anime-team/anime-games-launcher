@@ -9,10 +9,16 @@ publish = false
 [features]
 tracing = [
     "dep:tracing",
-    "agl-core/tracing"
+    "agl-core/tracing",
+    "agl-packages/tracing"
 ]
 
-default = ["tracing"]
+packages-support = ["dep:agl-packages"]
+
+default = [
+    "tracing",
+    "packages-support"
+]
 
 [dependencies.agl-core]
 path = "../core"
@@ -25,6 +31,11 @@ features = [
     "compression-all"
 ]
 
+[dependencies.agl-packages]
+path = "../packages"
+default-features = false
+optional = true
+
 [dependencies.mlua]
 package = "mlua"
 version = "0.10"
@@ -32,11 +43,6 @@ features = ["luau-jit", "serialize", "send", "error-send"]
 
 [dependencies]
 thiserror = "1.0"
-rand = "0.9"
-seahash = "4.1"
-base32 = "0.5"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 
 # Tracing
 tracing = { version = "0.1", optional = true }
@@ -46,8 +52,13 @@ bufreaderwriter = "0.2.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 
 toml = "0.9"
+serde_json = "1.0"
 serde_yml = "0.0.12"
 
+rand = "0.9"
+seahash = "4.1"
+
 hex = "0.4"
+base32 = "0.5"
 base64 = "0.22"
 encoding_rs = "0.8"
