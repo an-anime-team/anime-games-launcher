@@ -30,8 +30,8 @@ use crate::module::{Module, ModuleScope};
 use crate::runtime::{Runtime, RuntimeError};
 
 #[cfg(feature = "packages-support")]
-// const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/runtime/tests";
-const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
+const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/runtime/tests";
+// const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
 
 fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
     let path = std::env::temp_dir()
