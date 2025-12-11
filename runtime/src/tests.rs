@@ -30,8 +30,8 @@ use crate::module::{Module, ModuleScope};
 use crate::runtime::{Runtime, RuntimeError};
 
 #[cfg(feature = "packages-support")]
-const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/runtime/tests";
-// const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
+// const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/runtime/tests";
+const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
 
 fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
     let path = std::env::temp_dir()
@@ -88,11 +88,41 @@ async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
     runtime.load_packages(&lock, &storage)?;
 
     // Find some better and standardized way for querying loaded modules.
-    let Some(module) = runtime.get_value::<LuaFunction>("p9ffktad8ns1g#module")? else {
+    let Some(module) = runtime.get_value::<LuaTable>("p9ffktad8ns1g#module")? else {
         panic!("missing loaded module value");
     };
 
+    let module = module.raw_get::<LuaFunction>("value")?;
+
     assert_eq!(module.call::<String>(())?, "Hello, World!\n");
+
+    Ok(())
+}
+
+#[cfg(feature = "packages-support")]
+#[tokio::test]
+async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
+    let storage = Storage::open(get_test_dir("dependency_module")?)?;
+
+    let lock = storage.install_packages([
+        format!("{TESTS_DIR_URL}/dependency_module/package.json")
+    ]).await?;
+
+    let runtime = Runtime::new()?;
+
+    runtime.load_packages(&lock, &storage)?;
+
+    // Find some better and standardized way for querying loaded modules.
+    let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
+        panic!("missing loaded module value");
+    };
+
+    let module = module.raw_get::<LuaFunction>("value")?;
+
+    runtime.set_value("test", "World")?;
+    runtime.set_named_reference("hlm1n2jp72hbg#module", "test", "name")?;
+
+    assert_eq!(module.call::<String>(())?, "Hello, World!");
 
     Ok(())
 }
