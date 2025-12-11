@@ -84,7 +84,8 @@ impl Runtime {
 
         lua.set_named_registry_value("engine", engine_table)?;
 
-        // Enable sandbox for modules execution.
+        // Enable JIT and sandbox for modules execution.
+        lua.enable_jit(true);
         lua.sandbox(true)?;
 
         Ok(Self {
@@ -371,21 +372,15 @@ impl Runtime {
 
             // Insert output values.
             for (name, resource) in package.outputs.iter() {
-                let resource_table = self.lua.create_table_with_capacity(0, 2)?;
-
-                resource_table.raw_set("hash", resource.hash.to_base32())?;
-
-                resource_table.raw_set("format",
-                    if is_module_resource(&resource.url) {
-                        String::from("module")
-                    } else {
-                        resource.format.to_string()
-                    }
-                )?;
+                let value_key = if is_module_resource(&resource.url) {
+                    get_resource_key(resource.hash.to_base32(), "module")
+                } else {
+                    get_resource_key(resource.hash.to_base32(), resource.format.to_string())
+                };
 
                 package_value.raw_set(
                     name.to_string(),
-                    resource_table
+                    value_key
                 )?;
             }
 
@@ -396,10 +391,13 @@ impl Runtime {
             value.raw_set("format", ResourceFormat::Package.to_string())?;
             value.raw_set("value", package_value)?;
 
-            self.set_value(
-                get_resource_key(hash.to_base32(), ResourceFormat::Package.to_string()),
-                value
-            )?;
+            // Store the value table.
+            let package_key = get_resource_key(
+                hash.to_base32(),
+                ResourceFormat::Package.to_string()
+            );
+
+            self.set_value(package_key, value)?;
 
             // Mark current package as processed.
             processed_packages.insert(hash);
@@ -442,6 +440,29 @@ impl Runtime {
             for (name, input_key) in inputs {
                 // Add named reference to the input.
                 self.set_named_reference(&module_key, input_key, name)?;
+            }
+        }
+
+        // Update packages outputs.
+        for hash in processed_packages {
+            let package_key = get_resource_key(
+                hash.to_base32(),
+                ResourceFormat::Package.to_string()
+            );
+
+            if let Some(package_table) = self.get_value::<LuaTable>(&package_key)? {
+                let package_values = package_table.raw_get::<LuaTable>("value")?;
+
+                // Iterate over the package's outputs.
+                for result in package_values.pairs::<String, String>() {
+                    let (output_name, output_value_key) = result?;
+
+                    // Replace key by its stored value.
+                    package_values.raw_set(
+                        output_name,
+                        self.get_value::<LuaValue>(output_value_key)?
+                    )?;
+                }
             }
         }
 
