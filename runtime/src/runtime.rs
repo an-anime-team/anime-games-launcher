@@ -409,12 +409,25 @@ impl Runtime {
         for hash in modules_table.keys() {
             let module_key = get_resource_key(hash.to_base32(), "module");
 
-            self.load_module(module_key, Module {
+            self.load_module(module_key.clone(), Module {
                 path: storage.resource_path(hash),
 
                 // TODO: update sandbox_allowed_paths
                 scope: ModuleScope::default()
             })?;
+
+            // Read the loaded module's result.
+            let module_result = self.get_value::<LuaValue>(&module_key)?;
+
+            // Prepare formatted table.
+            let result_table = self.lua.create_table_with_capacity(0, 3)?;
+
+            result_table.raw_set("hash", hash.to_base32())?;
+            result_table.raw_set("format", "module")?;
+            result_table.raw_set("value", module_result)?;
+
+            // Replace the module's result with formatted table.
+            self.set_value(module_key, result_table)?;
         }
 
         // Add input references to all the loaded modules.
