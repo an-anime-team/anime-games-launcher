@@ -1,0 +1,15 @@
+{
+    "inputs": {
+        "package_1": {
+            "uri": "package_1.json",
+            "format": "package",
+            "hash": "07d19jbftmc26"
+        }
+    },
+    "outputs": {
+        "module_2": {
+            "uri": "module_2.luau",
+            "hash": "op5h5fuc7kqr4"
+        }
+    }
+}

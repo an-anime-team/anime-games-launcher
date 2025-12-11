@@ -126,3 +126,31 @@ async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[cfg(feature = "packages-support")]
+#[tokio::test]
+async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
+    let storage = Storage::open(get_test_dir("nested_package")?)?;
+
+    let lock = storage.install_packages([
+        format!("{TESTS_DIR_URL}/nested_package/package_1.json"),
+        format!("{TESTS_DIR_URL}/nested_package/package_2.json")
+    ]).await?;
+
+    let runtime = Runtime::new()?;
+
+    runtime.load_packages(&lock, &storage)?;
+
+    // Find some better and standardized way for querying loaded modules.
+    let Some(module) = runtime.get_value::<LuaTable>("op5h5fuc7kqr4#module")? else {
+        panic!("missing loaded module value");
+    };
+
+    let module = module.raw_get::<LuaFunction>("value")?;
+
+    assert_eq!(module.call::<String>(())?, "Counter: 1");
+    assert_eq!(module.call::<String>(())?, "Counter: 2");
+    assert_eq!(module.call::<String>(())?, "Counter: 3");
+
+    Ok(())
+}
