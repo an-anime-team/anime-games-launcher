@@ -16,7 +16,7 @@ The project is split into the following subcrates:
 3. Modules runtime [`agl-runtime`](./runtime) implements a sandboxed, scoped 
    luau scripts standard library and a runtime struct which can be used to run
    scripts downloaded by the packages manager.
-4. Games API [`agl-games-api`](./games-api) - TBD
+4. Games API [`agl-games`](./games) - implements 
 5. Anime Games Launcher [`anime-games-launcher`](./launcher) - TBD
 
 The whole project and all its components listed in this repo are licensed 

@@ -4,6 +4,7 @@ members = [
     "core",
     "packages",
     "runtime",
+    "games",
     # "launcher"
 ]
 
