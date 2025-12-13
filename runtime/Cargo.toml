@@ -43,7 +43,7 @@ thiserror = "1.0"
 tracing = { version = "0.1", optional = true }
 
 # Luau engine
-mlua = { version = "0.10", features = ["luau-jit"] }
+mlua = { version = "0.10", features = ["luau-jit", "serialize", "send", "error-send"] }
 bufreaderwriter = "0.2.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 
