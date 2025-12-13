@@ -47,25 +47,12 @@ pub enum LocalizableString {
 }
 
 impl LocalizableString {
-    /// Create new raw localizable string.
-    ///
-    /// ```
-    /// let string = LocalizableString::raw("Hello, World!");
-    /// ```
+    /// Create new string with no translations.
     pub fn raw(value: impl ToString) -> Self {
         Self::Raw(value.to_string())
     }
 
-    /// Create new translatable string.
-    ///
-    /// ```
-    /// use unic_langid::langid;
-    ///
-    /// let string = LocalizableString::translatable([
-    ///     ("en".parse::<LanguageIdentifier>().unwrap(), "Hello, World!"),
-    ///     ("ru".parse::<LanguageIdentifier>().unwrap(), "Привет, Мир!")
-    /// ]);
-    /// ```
+    /// Create new string with provided translations table.
     pub fn translatable<T>(
         iter: impl IntoIterator<Item = (LanguageIdentifier, T)>
     ) -> Self
