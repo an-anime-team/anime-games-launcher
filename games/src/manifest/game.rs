@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 
 use super::*;
 
@@ -42,6 +42,13 @@ pub struct GameManifest {
 }
 
 impl GameManifest {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "game": self.game.to_json(),
+            "package": self.package.to_json()
+        })
+    }
+
     pub fn from_json(
         value: &Json
     ) -> Result<Self, GameManifestDeserializeError> {

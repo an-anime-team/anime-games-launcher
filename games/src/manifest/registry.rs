@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum GamesRegistryManifestDeserializeError {
@@ -29,10 +29,18 @@ pub enum GamesRegistryManifestDeserializeError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GamesRegistryManifest {
-    pub games: Box<[GameManifestReference]>
+    pub games: Vec<GameManifestReference>
 }
 
 impl GamesRegistryManifest {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "games": self.games.iter()
+                .map(|game| game.to_json())
+                .collect::<Vec<_>>()
+        })
+    }
+
     pub fn from_json(
         value: &Json
     ) -> Result<Self, GamesRegistryManifestDeserializeError> {
@@ -42,7 +50,7 @@ impl GamesRegistryManifest {
                 .map(|games| {
                     games.iter()
                         .map(GameManifestReference::from_json)
-                        .collect::<Result<Box<[_]>, _>>()
+                        .collect::<Result<Vec<_>, _>>()
                 })
                 .ok_or(GamesRegistryManifestDeserializeError::MissingGames)??
         })
@@ -59,6 +67,13 @@ pub struct GameManifestReference {
 }
 
 impl GameManifestReference {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "url": self.url,
+            "featured": self.featured
+        })
+    }
+
     pub fn from_json(
         value: &Json
     ) -> Result<Self, GamesRegistryManifestDeserializeError> {

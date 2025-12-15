@@ -19,7 +19,7 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 
 use crate::localizable_string::LocalizableString;
 
@@ -69,6 +69,19 @@ pub struct GameInfo {
 }
 
 impl GameInfo {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "title": self.title.to_json(),
+            "description": self.description.to_json(),
+            "developer": self.developer.to_json(),
+            "publisher": self.publisher.to_json(),
+            "images": self.images.to_json(),
+            "tags": self.tags.iter()
+                .map(|tag| tag.to_string())
+                .collect::<Vec<_>>()
+        })
+    }
+
     pub fn from_json(value: &Json) -> Result<Self, GameInfoDeserializeError> {
         Ok(Self {
             title: value.get("title")
@@ -127,6 +140,15 @@ pub struct GameImages {
 }
 
 impl GameImages {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "icon": self.icon,
+            "poster": self.poster,
+            "background": self.background,
+            "slides": self.slides
+        })
+    }
+
     pub fn from_json(value: &Json) -> Result<Self, GameInfoDeserializeError> {
         Ok(Self {
             icon: value.get("icon").and_then(Json::as_str)

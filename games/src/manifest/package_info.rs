@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum PackageInfoDeserializeError {
@@ -34,6 +34,13 @@ pub struct PackageInfo {
 }
 
 impl PackageInfo {
+    pub fn to_json(&self) -> Json {
+        json!({
+            "url": self.url,
+            "output": self.output
+        })
+    }
+
     pub fn from_json(
         value: &Json
     ) -> Result<Self, PackageInfoDeserializeError> {
