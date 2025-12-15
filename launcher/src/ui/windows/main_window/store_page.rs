@@ -29,6 +29,7 @@ use crate::ui::components::game_store_details::{
     GameStoreDetails, GameStoreDetailsMsg
 };
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorePageInput {
     AddGame {
@@ -36,9 +37,8 @@ pub enum StorePageInput {
         manifest: GameManifest
     },
 
-    Activate,
-    HideGamePage,
-    OpenGameDetails(DynamicIndex)
+    OpenGameDetails(DynamicIndex),
+    CloseGameDetails
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,7 +53,7 @@ pub struct StorePage {
 
     games: Vec<(String, GameManifest)>,
 
-    show_game_page: bool
+    show_game_details: bool
 }
 
 #[relm4::component(pub, async)]
@@ -68,7 +68,7 @@ impl SimpleAsyncComponent for StorePage {
             set_orientation: gtk::Orientation::Vertical,
 
             #[transition(SlideLeftRight)]
-            append = if !model.show_game_page {
+            append = if !model.show_game_details {
                 adw::ClampScrollable {
                     set_maximum_size: 900,
 
@@ -134,7 +134,7 @@ impl SimpleAsyncComponent for StorePage {
 
             games: Vec::new(),
 
-            show_game_page: false
+            show_game_details: false
         };
 
         let widgets = view_output!();
@@ -167,10 +167,6 @@ impl SimpleAsyncComponent for StorePage {
                 self.games.push((manifest_url, manifest));
             }
 
-            StorePageInput::HideGamePage => {
-                self.show_game_page = false;
-            }
-
             StorePageInput::OpenGameDetails(index) => {
                 let Some((manifest_url, manifest)) = self.games.get(index.current_index()) else {
                     tracing::warn!(
@@ -187,15 +183,13 @@ impl SimpleAsyncComponent for StorePage {
                     manifest: manifest.clone()
                 });
 
-                self.show_game_page = true;
+                self.show_game_details = true;
             }
 
-            StorePageInput::Activate => {
-                // Update back button visibility when switching pages
-            }
+            StorePageInput::CloseGameDetails => self.show_game_details = false
         }
 
         // Update back button visibility
-        let _ = sender.output(StorePageOutput::SetShowBack(self.show_game_page));
+        let _ = sender.output(StorePageOutput::SetShowBack(self.show_game_details));
     }
 }

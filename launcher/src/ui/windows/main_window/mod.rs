@@ -40,7 +40,7 @@ pub mod store_page;
 // pub mod library_page;
 // pub mod downloads_page;
 
-use store_page::{StorePage, StorePageInput};
+use store_page::{StorePage, StorePageInput, StorePageOutput};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -51,6 +51,9 @@ pub enum MainWindowMsg {
         manifest_url: String,
         manifest: GameManifest
     },
+
+    SetShowBackButton(bool),
+    GoBackButtonClicked,
 
     // FinishLoading {
     //     generation: GenerationManifest,
@@ -80,7 +83,9 @@ pub struct MainWindow {
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
 
-    loading_status: Option<String>
+    loading_status: Option<String>,
+
+    show_back_button: bool
 }
 
 #[relm4::component(pub, async)]
@@ -93,9 +98,7 @@ impl SimpleAsyncComponent for MainWindow {
         #[root]
         window = adw::ApplicationWindow {
             set_title: Some("Anime Games Launcher"),
-
             set_size_request: (1200, 800),
-            set_hide_on_close: false,
 
             add_css_class?: consts::APP_DEBUG.then_some("devel"),
 
@@ -132,6 +135,26 @@ impl SimpleAsyncComponent for MainWindow {
                     set_visible: model.loading_status.is_none(),
 
                     adw::HeaderBar {
+                        // pack_start = &gtk::Button {
+                        //     set_icon_name: "loupe-symbolic",
+                        //     add_css_class: "flat",
+
+                        //     #[watch]
+                        //     set_visible: model.show_search && !model.show_back,
+
+                        //     connect_clicked => MainWindowMsg::ToggleSearching
+                        // },
+
+                        pack_start = &gtk::Button {
+                            set_icon_name: "go-previous-symbolic",
+                            add_css_class: "flat",
+
+                            #[watch]
+                            set_visible: model.show_back_button,
+
+                            connect_clicked => MainWindowMsg::GoBackButtonClicked
+                        },
+
                         #[wrap(Some)]
                         set_title_widget = &adw::ViewSwitcher {
                             set_policy: adw::ViewSwitcherPolicy::Wide,
@@ -191,17 +214,19 @@ impl SimpleAsyncComponent for MainWindow {
         let mut model = Self {
             store_page: StorePage::builder()
                 .launch(())
-                .detach(),
-                // .forward(sender.input_sender(), |msg| match msg {
-                //     StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
-                // }),
+                .forward(sender.input_sender(), |msg| match msg {
+                    StorePageOutput::SetShowBack(show)
+                        => MainWindowMsg::SetShowBackButton(show)
+                }),
 
             // library_page: None,
 
             window: None,
             view_stack: adw::ViewStack::new(),
 
-            loading_status: Some(String::new())
+            loading_status: Some(String::new()),
+
+            show_back_button: false
         };
 
         let view_stack = &model.view_stack;
@@ -452,6 +477,12 @@ impl SimpleAsyncComponent for MainWindow {
                     manifest_url,
                     manifest
                 });
+            }
+
+            MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,
+
+            MainWindowMsg::GoBackButtonClicked => {
+                self.store_page.emit(StorePageInput::CloseGameDetails);
             }
 
             // MainWindowMsg::FinishLoading { generation, validator, local_validator } => {

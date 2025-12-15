@@ -182,8 +182,14 @@ impl SimpleAsyncComponent for CardComponent {
             #[watch]
             set_maximum_size: model.size.width(),
 
+            set_halign: gtk::Align::Start,
+            set_valign: gtk::Align::Start,
+
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
+
+                set_halign: gtk::Align::Start,
+                set_valign: gtk::Align::Start,
 
                 gtk::Overlay {
                     #[watch]

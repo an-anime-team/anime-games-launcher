@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use adw::prelude::*;
 use relm4::prelude::*;
 
 use super::card::{CardComponent, CardComponentOutput};
@@ -41,6 +42,9 @@ impl AsyncFactoryComponent for CardsGrid {
     view! {
         #[root]
         gtk::Box {
+            set_halign: gtk::Align::Center,
+            set_valign: gtk::Align::Center,
+
             self.card.widget(),
         }
     }
