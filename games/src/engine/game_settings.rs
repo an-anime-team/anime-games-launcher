@@ -122,6 +122,31 @@ impl GameSettingsEntry {
                 .and_then(|entry| GameSettingsEntryFormat::from_lua(&entry))?
         })
     }
+
+    #[inline]
+    pub const fn name(&self) -> Option<&String> {
+        self.name.as_ref()
+    }
+
+    #[inline]
+    pub const fn title(&self) -> &LocalizableString {
+        &self.title
+    }
+
+    #[inline]
+    pub const fn description(&self) -> Option<&LocalizableString> {
+        self.description.as_ref()
+    }
+
+    #[inline]
+    pub const fn reactivity(&self) -> Option<&GameSettingsEntryReactivity> {
+        self.reactivity.as_ref()
+    }
+
+    #[inline]
+    pub const fn entry(&self) -> &GameSettingsEntryFormat {
+        &self.entry
+    }
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
