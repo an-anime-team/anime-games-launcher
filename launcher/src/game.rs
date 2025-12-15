@@ -20,12 +20,19 @@ use anyhow::Context;
 use serde_json::{json, Value as Json};
 
 use agl_core::network::downloader::{Downloader, DownloadOptions};
+use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_packages::lock::Lock as PackageLock;
 use agl_games::manifest::GameManifest;
 
 use crate::config;
 use crate::cache;
+
+/// Get game lock filename from its manifest URL.
+#[inline]
+pub fn get_name(manifest_url: &str) -> String {
+    Hash::from_bytes(manifest_url.as_bytes()).to_base32()
+}
 
 /// Lock file for a game package.
 #[derive(Debug, Clone, PartialEq, Eq)]

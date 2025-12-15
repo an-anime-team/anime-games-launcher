@@ -30,6 +30,7 @@ use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use crate::consts;
 use crate::config;
 use crate::cache;
+use crate::game::GameLock;
 use crate::ui::dialogs::critical_error;
 
 // pub mod actions;
@@ -352,7 +353,7 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            // Fetch game registries.
+            // Fetch game manifests.
 
             tracing::debug!(
                 urls = ?games_manifests.keys()
@@ -407,6 +408,35 @@ impl SimpleAsyncComponent for MainWindow {
 
                     return Err(err);
                 }
+            }
+
+            // Load added game packages locks.
+
+            tracing::debug!("loading added game packages locks");
+
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Loading added games"))
+            ));
+
+            let mut available_games = Vec::new();
+
+            for entry in config::startup().games_path.read_dir()? {
+                let entry = entry?;
+
+                tracing::trace!(
+                    path = ?entry.path(),
+                    "loading added game package lock"
+                );
+
+                // TODO: update the lock before loading it.
+
+                let lock = std::fs::read(entry.path())?;
+                let lock = serde_json::from_slice::<Json>(&lock)?;
+
+                let lock = GameLock::from_json(&lock)
+                    .context("failed to deserialize game package lock")?;
+
+                available_games.push(lock);
             }
 
             // Add store page games.
