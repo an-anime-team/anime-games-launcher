@@ -19,6 +19,7 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_games::manifest::GameManifest;
 
@@ -350,11 +351,34 @@ impl SimpleAsyncComponent for GameStoreDetails {
                     tokio::spawn(async move {
                         tracing::debug!(?url, "download game package");
 
-                        match GameLock::download(url, &storage).await {
+                        match GameLock::download(&url, &storage).await {
                             Ok(lock) => {
                                 sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::Added));
 
-                                dbg!(lock);
+                                let config = config::get();
+
+                                let lock_hash = Hash::from_bytes(lock.url.as_bytes());
+
+                                let path = config.games_path.join(format!("{}.json", lock_hash.to_base32()));
+
+                                tracing::info!(?url, ?path, "game added");
+
+                                let lock = match serde_json::to_vec_pretty(&lock.to_json()) {
+                                    Ok(lock) => lock,
+                                    Err(err) => {
+                                        tracing::error!(?err, "failed to serialize game package lock");
+
+                                        dialogs::error("Failed to serialize game package lock", err);
+
+                                        return;
+                                    }
+                                };
+
+                                if let Err(err) = std::fs::write(path, lock) {
+                                    tracing::error!(?err, "failed to save game package lock");
+
+                                    dialogs::error("Failed to save game package lock", err);
+                                }
                             }
 
                             Err(err) => {
