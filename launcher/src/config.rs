@@ -21,10 +21,12 @@ use std::time::Duration;
 
 use toml::{toml, Value as Toml, Table as TomlTable};
 
+use agl_core::export::network::reqwest;
+
 use crate::consts::{DATA_FOLDER, CONFIG_FILE};
 
 lazy_static::lazy_static! {
-    pub static ref STARTUP_CONFIG: Config = get();
+    static ref STARTUP_CONFIG: Config = get();
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -228,6 +230,33 @@ impl Config {
 
         config
     }
+
+    /// Get `reqwest` crate client builder from the current config file's
+    /// network settings.
+    pub fn client_builder(&self) -> anyhow::Result<reqwest::ClientBuilder> {
+        let mut builder = reqwest::ClientBuilder::new()
+            .connect_timeout(self.general_network_timeout);
+
+        if let Some(proxy_url) = &self.general_network_proxy_url {
+            let proxy = match self.general_network_proxy_mode.as_deref() {
+                Some("http")  => reqwest::Proxy::http(proxy_url)?,
+                Some("https") => reqwest::Proxy::https(proxy_url)?,
+                Some("all")   => reqwest::Proxy::all(proxy_url)?,
+
+                _ => reqwest::Proxy::all(proxy_url)?
+            };
+
+            builder = builder.proxy(proxy);
+        }
+
+        Ok(builder)
+    }
+}
+
+/// Get startup config. It is loaded when the application is started and is not
+/// changed afterwards. Use `config::get()` to get the actual config.
+pub fn startup() -> &'static Config {
+    &STARTUP_CONFIG
 }
 
 /// Read configuration from the file.
