@@ -1,9 +1,0 @@
-{
-    "standard": 1,
-    "outputs": {
-        "integration": {
-            "uri": "integration.lua",
-            "format": "module/v1"
-        }
-    }
-}

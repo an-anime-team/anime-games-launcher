@@ -18,7 +18,7 @@
 
 use std::path::PathBuf;
 
-use crate::prelude::*;
+use agl_games::platform::Platform;
 
 pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
@@ -27,12 +27,12 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 lazy_static::lazy_static! {
     pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
 
-    pub static ref CURRENT_PLATFORM: TargetPlatform = {
-        let platform = TargetPlatform::current();
+    pub static ref CURRENT_PLATFORM: Platform = {
+        let platform = Platform::current();
 
-        tracing::info!("Current platform: {:?}", platform.map(|platform| platform.to_string()));
+        tracing::info!("current platform: {:?}", platform.map(|platform| platform.to_string()));
 
-        platform.expect("Failed to detect current system platform")
+        platform.expect("failed to detect current system platform")
     };
 
     /// Path to the data folder.
@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
                 std::env::current_dir()
                     .map(|current| current.join("data"))
             })
-            .expect("Couldn't locate data directory");
+            .expect("couldn't locate data directory");
 
         path.canonicalize().unwrap_or(path)
     };
@@ -98,7 +98,7 @@ lazy_static::lazy_static! {
                 std::env::current_dir()
                     .map(|current| current.join("config"))
             })
-            .expect("Couldn't locate config directory");
+            .expect("couldn't locate config directory");
 
         path.canonicalize().unwrap_or(path)
     };
@@ -132,15 +132,15 @@ lazy_static::lazy_static! {
                 std::env::current_dir()
                     .map(|current| current.join("cache"))
             })
-            .expect("Couldn't locate cache directory");
+            .expect("couldn't locate cache directory");
 
         path.canonicalize().unwrap_or(path)
     };
 
     /// Path to the config file.
     ///
-    /// Default is `CONFIG_FOLDER/config.json`.
-    pub static ref CONFIG_FILE: PathBuf = CONFIG_FOLDER.join("config.json");
+    /// Default is `CONFIG_FOLDER/config.toml`.
+    pub static ref CONFIG_FILE: PathBuf = CONFIG_FOLDER.join("config.toml");
 
     /// Path to the debug log file.
     ///

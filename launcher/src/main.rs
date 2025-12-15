@@ -24,16 +24,12 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::filter::*;
 
 pub mod consts;
-pub mod core;
 pub mod config;
 pub mod cache;
-pub mod packages;
-pub mod generations;
-pub mod games;
 
-pub mod i18n;
+// pub mod i18n;
 pub mod utils;
-pub mod ui;
+// pub mod ui;
 
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
@@ -44,11 +40,7 @@ pub mod prelude {
     pub use super::utils::*;
     pub use super::cache::*;
 
-    pub use super::core::prelude::*;
-    pub use super::packages::prelude::*;
-    pub use super::generations::prelude::*;
-    pub use super::games::prelude::*;
-    pub use super::ui::prelude::*;
+    // pub use super::ui::prelude::*;
 
     pub use super::config::{
         STARTUP_CONFIG,
@@ -80,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
             }
         });
 
-    // Prepare debug file logger.
+    // Prepare debug files logger.
     if let Some(parent) = consts::DEBUG_FILE.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -117,13 +109,14 @@ async fn main() -> anyhow::Result<()> {
         .with(trace_log)
         .init();
 
-    tracing::info!("Starting application ({APP_VERSION})");
+    // Initialize libadwaita and GTK.
+    tracing::info!("starting application ({APP_VERSION})");
 
-    adw::init().expect("Failed to initializa libadwaita");
+    adw::init().expect("failed to initializa libadwaita");
 
     // Register and include resources.
     gtk::gio::resources_register_include!("resources.gresource")
-        .expect("Failed to register resources");
+        .expect("failed to register resources");
 
     // Set icons search path.
     if let Some(display) = gtk::gdk::Display::default() {
@@ -136,9 +129,6 @@ async fn main() -> anyhow::Result<()> {
     gtk::glib::set_application_name("Anime Games Launcher");
     gtk::glib::set_program_name(Some("Anime Games Launcher"));
 
-    // Set relm4 runtime threads.
-    let _ = relm4::RELM_THREADS.set(8); // TODO: consider using CPU cores number here.
-
     // Set global css.
     relm4::set_global_css("
         .warning-action {
@@ -147,10 +137,10 @@ async fn main() -> anyhow::Result<()> {
     ");
 
     // Create the app.
-    let app = RelmApp::new(APP_ID);
+    // let app = RelmApp::new(APP_ID);
 
     // Show loading window.
-    app.run_async::<MainWindow>(());
+    // app.run_async::<MainWindow>(());
 
     Ok(())
 }

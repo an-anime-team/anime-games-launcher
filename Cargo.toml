@@ -5,7 +5,7 @@ members = [
     "packages",
     "runtime",
     "games",
-    # "launcher"
+    "launcher"
 ]
 
 [profile.release]
