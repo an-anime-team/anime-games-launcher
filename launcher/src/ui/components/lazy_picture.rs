@@ -126,11 +126,12 @@ impl SimpleAsyncComponent for LazyPictureComponent {
 
                 Some(ImagePath::LazyLoad(url)) => {
                     let cache = FilesCache::default();
-                    let downloader = Downloader::default();
 
-                    let cache_path = cache.get_path(url.as_str());
+                    let cache_path = cache.get_path(url);
 
-                    {
+                    if cache.is_expired(url).unwrap_or(true) {
+                        let downloader = Downloader::default();
+
                         let sender = sender.input_sender().clone();
                         let cache_path = cache_path.clone();
 
@@ -147,6 +148,12 @@ impl SimpleAsyncComponent for LazyPictureComponent {
                                 }))
                             }
                         );
+                    }
+
+                    else {
+                        sender.input(LazyPictureComponentMsg::SetImage(
+                            Some(ImagePath::path(&cache_path))
+                        ));
                     }
 
                     Some(Some(cache_path))
