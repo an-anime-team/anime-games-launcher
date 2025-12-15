@@ -38,14 +38,17 @@ pub enum GameManifestDeserializeError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameManifest {
     pub game: GameInfo,
-    pub package: PackageInfo
+    pub package: PackageInfo,
+    pub maintainers: Vec<String>
 }
 
 impl GameManifest {
     pub fn to_json(&self) -> Json {
         json!({
+            "version": 1,
             "game": self.game.to_json(),
-            "package": self.package.to_json()
+            "package": self.package.to_json(),
+            "maintainers": self.maintainers
         })
     }
 
@@ -59,7 +62,19 @@ impl GameManifest {
 
             package: value.get("package")
                 .map(PackageInfo::from_json)
-                .ok_or(GameManifestDeserializeError::MissingPackageInfo)??
+                .ok_or(GameManifestDeserializeError::MissingPackageInfo)??,
+
+            maintainers: value.get("maintainers")
+                .and_then(Json::as_array)
+                .map(|maintainers| {
+                    maintainers.iter()
+                        .flat_map(|maintainer| {
+                            maintainer.as_str()
+                                .map(String::from)
+                        })
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default()
         })
     }
 }
