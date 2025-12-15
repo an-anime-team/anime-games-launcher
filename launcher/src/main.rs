@@ -26,10 +26,11 @@ use tracing_subscriber::filter::*;
 pub mod consts;
 pub mod config;
 pub mod cache;
+pub mod game;
 
 // pub mod i18n;
 pub mod utils;
-pub mod ui;
+// pub mod ui;
 
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
