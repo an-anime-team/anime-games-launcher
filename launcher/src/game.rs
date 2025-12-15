@@ -24,6 +24,9 @@ use agl_packages::lock::Lock as PackageLock;
 /// Lock file for a game package.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameLock {
+    /// URL to the game manifest.
+    pub url: String,
+
     /// Manifest of the locked game.
     pub game: GameManifest,
 
@@ -34,13 +37,24 @@ pub struct GameLock {
 impl GameLock {
     pub fn to_json(&self) -> Json {
         json!({
+            "version": 1,
+            "url": self.url,
             "game": self.game.to_json(),
             "package": self.package.to_json()
         })
     }
 
     pub fn from_json(value: &Json) -> anyhow::Result<Self> {
+        if value.get("version").and_then(Json::as_u64) != Some(1) {
+            anyhow::bail!("unsupported game lock file version");
+        }
+
         Ok(Self {
+            url: value.get("url")
+                .and_then(Json::as_str)
+                .map(String::from)
+                .ok_or_else(|| anyhow::anyhow!("missing 'url' field in game lock"))?,
+
             game: value.get("game")
                 .ok_or_else(|| anyhow::anyhow!("missing 'game' field in game lock"))
                 .and_then(|game| {
