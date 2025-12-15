@@ -30,7 +30,7 @@ pub mod game;
 
 // pub mod i18n;
 pub mod utils;
-// pub mod ui;
+pub mod ui;
 
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
@@ -68,7 +68,6 @@ async fn main() -> anyhow::Result<()> {
 
     let debug_log = tracing_subscriber::fmt::layer()
         .with_writer(File::create(consts::DEBUG_FILE.as_path())?)
-        .pretty()
         .with_ansi(false)
         .with_filter({
             filter_fn(|metadata| {
@@ -78,7 +77,6 @@ async fn main() -> anyhow::Result<()> {
 
     let trace_log = tracing_subscriber::fmt::layer()
         .with_writer(File::create(consts::TRACE_FILE.as_path())?)
-        .pretty()
         .with_ansi(false)
         .with_filter({
             filter_fn(|metadata| {
@@ -126,10 +124,10 @@ async fn main() -> anyhow::Result<()> {
     ");
 
     // Create the app.
-    // let app = RelmApp::new(APP_ID);
+    let app = RelmApp::new(consts::APP_ID);
 
     // Show loading window.
-    // app.run_async::<MainWindow>(());
+    app.run_async::<ui::windows::main_window::MainWindow>(());
 
     Ok(())
 }

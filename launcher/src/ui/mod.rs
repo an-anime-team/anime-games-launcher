@@ -16,6 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod windows;
+pub mod windows;
 pub mod components;
 pub mod dialogs;

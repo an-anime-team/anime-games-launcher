@@ -1,10 +1,32 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
 use tokio::sync::mpsc::UnboundedSender;
 use unic_langid::LanguageIdentifier;
 
-use crate::prelude::*;
+use agl_games::engine::{
+    GameSettingsGroup,
+    GameSettingsEntry,
+    GameSettingsEntryFormat
+};
 
 enum ParentWidget<'widget> {
     Group(&'widget adw::PreferencesGroup),
@@ -22,22 +44,22 @@ impl ParentWidget<'_> {
 
 fn render_entry(
     group_widget: ParentWidget<'_>,
-    entry: GameSettingsEntry,
+    entry: &GameSettingsEntry,
     lang: Option<&LanguageIdentifier>,
     listener: relm4::Sender<GameSettingsWindowInput>
 ) {
-    match entry.entry {
+    match entry.entry() {
         GameSettingsEntryFormat::Switch { value } => {
             let widget = adw::SwitchRow::new();
 
             let title = match lang {
-                Some(lang) => entry.title.translate(lang),
-                None => entry.title.default_translation()
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
             };
 
             widget.set_title(title);
 
-            if let Some(description) = entry.description.as_ref() {
+            if let Some(description) = entry.description() {
                 let description = match lang {
                     Some(lang) => description.translate(lang),
                     None => description.default_translation()
@@ -46,10 +68,12 @@ fn render_entry(
                 widget.set_subtitle(description);
             }
 
-            widget.set_active(value);
+            widget.set_active(*value);
 
-            if let Some(name) = entry.name {
-                let reactivity = entry.reactivity.unwrap_or_default();
+            if let Some(name) = entry.name() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
 
                 widget.connect_active_notify(move |widget| {
                     listener.emit(GameSettingsWindowInput::SetBoolProperty {
@@ -69,13 +93,13 @@ fn render_entry(
             widget.set_show_apply_button(true);
 
             let title = match lang {
-                Some(lang) => entry.title.translate(lang),
-                None => entry.title.default_translation()
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
             };
 
             widget.set_title(title);
 
-            if let Some(description) = entry.description.as_ref() {
+            if let Some(description) = entry.description() {
                 let description = match lang {
                     Some(lang) => description.translate(lang),
                     None => description.default_translation()
@@ -86,9 +110,11 @@ fn render_entry(
 
             widget.set_text(&value);
 
-            if let Some(name) = entry.name {
+            if let Some(name) = entry.name() {
                 widget.connect_apply(move |widget| {
-                    let reactivity = entry.reactivity.unwrap_or_default();
+                    let reactivity = entry.reactivity()
+                        .copied()
+                        .unwrap_or_default();
 
                     listener.emit(GameSettingsWindowInput::SetStringProperty {
                         name: name.clone(),
@@ -105,13 +131,13 @@ fn render_entry(
             let widget = adw::ComboRow::new();
 
             let title = match lang {
-                Some(lang) => entry.title.translate(lang),
-                None => entry.title.default_translation()
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
             };
 
             widget.set_title(title);
 
-            if let Some(description) = entry.description.as_ref() {
+            if let Some(description) = entry.description() {
                 let description = match lang {
                     Some(lang) => description.translate(lang),
                     None => description.default_translation()
@@ -132,7 +158,7 @@ fn render_entry(
 
                 model.append(value);
 
-                if key == &selected {
+                if key == selected {
                     selected_index = i;
                 }
             }
@@ -140,12 +166,14 @@ fn render_entry(
             widget.set_model(Some(&model));
             widget.set_selected(selected_index as u32);
 
-            if let Some(name) = entry.name {
+            if let Some(name) = entry.name() {
                 widget.connect_selected_notify(move |widget| {
                     let selected = widget.selected();
 
                     if let Some((key, _)) = values.get(selected as usize) {
-                        let reactivity = entry.reactivity.unwrap_or_default();
+                        let reactivity = entry.reactivity()
+                            .copied()
+                            .unwrap_or_default();
 
                         listener.emit(GameSettingsWindowInput::SetStringProperty {
                             name: name.clone(),
@@ -163,13 +191,13 @@ fn render_entry(
             let widget = adw::ExpanderRow::new();
 
             let title = match lang {
-                Some(lang) => entry.title.translate(lang),
-                None => entry.title.default_translation()
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
             };
 
             widget.set_title(title);
 
-            if let Some(description) = entry.description.as_ref() {
+            if let Some(description) = entry.description() {
                 let description = match lang {
                     Some(lang) => description.translate(lang),
                     None => description.default_translation()
@@ -179,7 +207,12 @@ fn render_entry(
             }
 
             for entry in entries {
-                render_entry(ParentWidget::Expandable(&widget), entry, lang, listener.clone());
+                render_entry(
+                    ParentWidget::Expandable(&widget),
+                    entry,
+                    lang,
+                    listener.clone()
+                );
             }
 
             group_widget.add(&widget);
@@ -232,7 +265,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
     view! {
         #[root]
-        window = adw::PreferencesDialog {
+        adw::PreferencesDialog {
             set_title: "Settings",
 
             set_content_width: 800,
@@ -297,7 +330,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                         for group in layout {
                             let group_widget = adw::PreferencesGroup::new();
 
-                            if let Some(title) = group.title.as_ref() {
+                            if let Some(title) = group.title() {
                                 let title = match language.as_ref() {
                                     Some(lang) => title.translate(lang),
                                     None => title.default_translation()
@@ -306,7 +339,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                                 group_widget.set_title(title);
                             }
 
-                            if let Some(description) = group.description.as_ref() {
+                            if let Some(description) = group.description() {
                                 let description = match language.as_ref() {
                                     Some(lang) => description.translate(lang),
                                     None => description.default_translation()
@@ -317,7 +350,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
                             page_widget.add(&group_widget);
 
-                            for entry in group.entries {
+                            for entry in group.entries() {
                                 render_entry(
                                     ParentWidget::Group(&group_widget),
                                     entry,

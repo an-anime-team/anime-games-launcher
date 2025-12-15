@@ -1,70 +1,85 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::prelude::*;
+use serde_json::Value as Json;
+use anyhow::Context;
 
-pub mod actions;
+use agl_core::network::downloader::{Downloader, DownloadOptions};
+use agl_games::manifest::GamesRegistryManifest;
 
-pub use actions::prelude::*;
+use crate::consts;
+use crate::config;
+use crate::cache::FilesCache;
+use crate::ui::dialogs::critical_error;
+
+// pub mod actions;
+
+// pub use actions::prelude::*;
 
 // pub mod downloads_page;
-pub mod library_page;
-pub mod store_page;
+// pub mod library_page;
+// pub mod store_page;
 
 // use downloads_page::*;
-use library_page::*;
-use store_page::*;
+// use library_page::*;
+// use store_page::*;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
-    SetLoadingAction(String),
+    SetLoadingStatus(Option<String>),
 
-    FinishLoading {
-        generation: GenerationManifest,
-        validator: AuthorityValidator,
-        local_validator: LocalValidator
-    },
+    // FinishLoading {
+    //     generation: GenerationManifest,
+    //     validator: AuthorityValidator,
+    //     local_validator: LocalValidator
+    // },
 
-    AddGame {
-        url: String,
-        manifest: GameManifest
-    },
+    // AddGame {
+    //     url: String,
+    //     manifest: GameManifest
+    // },
 
-    ToggleSearching,
-    SetShowSearch(bool),
-    SetShowBack(bool),
-    GoBack,
+    // ToggleSearching,
+    // SetShowSearch(bool),
+    // SetShowBack(bool),
+    // GoBack,
 
-    ActivateStorePage,
-    ActivateLibraryPage
+    // ActivateStorePage,
+    // ActivateLibraryPage
 }
 
+#[derive(Debug, Clone)]
 pub struct MainWindow {
-    store_page: AsyncController<StorePage>,
-    library_page: Option<AsyncController<LibraryPage>>,
+    // store_page: AsyncController<StorePage>,
+    // library_page: Option<AsyncController<LibraryPage>>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
 
-    games: HashMap<String, Arc<GameManifest>>,
+    loading_status: Option<String>,
 
-    is_loading: bool,
-    loading_action: Option<String>,
-
-    show_search: bool,
-    searching: bool,
-
-    show_back: bool
-}
-
-impl MainWindow {
-    pub fn window(&self) -> &adw::ApplicationWindow {
-        self.window.as_ref().expect("Failed to load application window")
-    }
+    // games: HashMap<String, Arc<GameManifest>>
 }
 
 #[relm4::component(pub, async)]
@@ -81,7 +96,7 @@ impl SimpleAsyncComponent for MainWindow {
             set_size_request: (1200, 800),
             set_hide_on_close: false,
 
-            add_css_class?: APP_DEBUG.then_some("devel"),
+            add_css_class?: consts::APP_DEBUG.then_some("devel"),
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -90,7 +105,7 @@ impl SimpleAsyncComponent for MainWindow {
                     set_orientation: gtk::Orientation::Vertical,
 
                     #[watch]
-                    set_visible: model.is_loading,
+                    set_visible: model.loading_status.is_some(),
 
                     adw::HeaderBar {
                         add_css_class: "flat"
@@ -100,12 +115,12 @@ impl SimpleAsyncComponent for MainWindow {
                         set_vexpand: true,
                         set_hexpand: true,
 
-                        set_icon_name: Some(APP_ID),
+                        set_icon_name: Some(consts::APP_ID),
 
                         set_title: "Loading",
 
                         #[watch]
-                        set_description: model.loading_action.as_deref()
+                        set_description: model.loading_status.as_deref()
                     }
                 },
 
@@ -113,29 +128,9 @@ impl SimpleAsyncComponent for MainWindow {
                     set_orientation: gtk::Orientation::Vertical,
 
                     #[watch]
-                    set_visible: !model.is_loading,
+                    set_visible: model.loading_status.is_none(),
 
                     adw::HeaderBar {
-                        pack_start = &gtk::Button {
-                            set_icon_name: "loupe-symbolic",
-                            add_css_class: "flat",
-
-                            #[watch]
-                            set_visible: model.show_search && !model.show_back,
-
-                            connect_clicked => MainWindowMsg::ToggleSearching
-                        },
-
-                        pack_start = &gtk::Button {
-                            set_icon_name: "go-previous-symbolic",
-                            add_css_class: "flat",
-
-                            #[watch]
-                            set_visible: model.show_back,
-
-                            connect_clicked => MainWindowMsg::GoBack
-                        },
-
                         #[wrap(Some)]
                         set_title_widget = &adw::ViewSwitcher {
                             set_policy: adw::ViewSwitcherPolicy::Wide,
@@ -144,272 +139,251 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     },
 
-                    #[local_ref]
-                    view_stack -> adw::ViewStack {
-                        add = &gtk::Box {
-                            set_vexpand: true,
-                            set_hexpand: true,
+                    // #[local_ref]
+                    // view_stack -> adw::ViewStack {
+                    //     add = &gtk::Box {
+                    //         set_vexpand: true,
+                    //         set_hexpand: true,
 
-                            model.store_page.widget(),
-                        } -> {
-                            set_title: Some("Store"),
-                            set_name: Some("store"),
-                            set_icon_name: Some("folder-download-symbolic")
-                        },
+                    //         model.store_page.widget(),
+                    //     } -> {
+                    //         set_title: Some("Store"),
+                    //         set_name: Some("store"),
+                    //         set_icon_name: Some("folder-download-symbolic")
+                    //     },
 
-                        #[name(library_page_box)]
-                        add = &gtk::Box {
-                            set_vexpand: true,
-                            set_hexpand: true
-                        } -> {
-                            set_title: Some("Library"),
-                            set_name: Some("library"),
-                            set_icon_name: Some("applications-games-symbolic")
-                        },
+                    //     #[name(library_page_box)]
+                    //     add = &gtk::Box {
+                    //         set_vexpand: true,
+                    //         set_hexpand: true
+                    //     } -> {
+                    //         set_title: Some("Library"),
+                    //         set_name: Some("library"),
+                    //         set_icon_name: Some("applications-games-symbolic")
+                    //     },
 
-                        connect_visible_child_notify[sender] => move |stack| {
-                            if let Some(name) = stack.visible_child_name() {
-                                sender.input(MainWindowMsg::SetShowSearch(
-                                    ["store", "library"].contains(&name.as_str())
-                                ));
+                    //     connect_visible_child_notify[sender] => move |stack| {
+                    //         if let Some(name) = stack.visible_child_name() {
+                    //             sender.input(MainWindowMsg::SetShowSearch(
+                    //                 ["store", "library"].contains(&name.as_str())
+                    //             ));
 
-                                match name.as_str() {
-                                    "store" => sender.input(MainWindowMsg::ActivateStorePage),
-                                    "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
+                    //             match name.as_str() {
+                    //                 "store" => sender.input(MainWindowMsg::ActivateStorePage),
+                    //                 "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
 
-                                    _ => ()
-                                }
-                            }
-                        }
-                    }
+                    //                 _ => ()
+                    //             }
+                    //         }
+                    //     }
+                    // }
                 }
             }
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let mut model = Self {
-            store_page: StorePage::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
-                }),
+            // store_page: StorePage::builder()
+            //     .launch(())
+            //     .forward(sender.input_sender(), |msg| match msg {
+            //         StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+            //     }),
 
-            library_page: None,
+            // library_page: None,
 
             window: None,
             view_stack: adw::ViewStack::new(),
 
-            is_loading: true,
-            loading_action: None,
-
-            games: HashMap::new(),
-
-            show_search: true,
-            searching: false,
-
-            show_back: false,
+            loading_status: Some(String::new())
         };
 
         let view_stack = &model.view_stack;
 
         let widgets = view_output!();
 
-        let library_page = LibraryPage::builder()
-            .launch(widgets.window.clone())
-            .forward(sender.input_sender(), |msg| match msg {
-                LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
-            });
+        // let library_page = LibraryPage::builder()
+        //     .launch(widgets.window.clone())
+        //     .forward(sender.input_sender(), |msg| match msg {
+        //         LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+        //     });
 
-        widgets.library_page_box.append(library_page.widget());
+        // widgets.library_page_box.append(library_page.widget());
 
         model.window = Some(widgets.window.clone());
-        model.library_page = Some(library_page);
+        // model.library_page = Some(library_page);
 
         let task = tokio::spawn(async move {
             // Create default folders.
-            tracing::debug!("Creating default folders");
 
-            sender.input(MainWindowMsg::SetLoadingAction(String::from("Creating default folders")));
+            tracing::debug!("creating default folders");
 
-            tokio::try_join!(
-                tokio::fs::create_dir_all(DATA_FOLDER.as_path()),
-                tokio::fs::create_dir_all(CONFIG_FOLDER.as_path()),
-                tokio::fs::create_dir_all(CACHE_FOLDER.as_path()),
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Creating default folders"))
+            ));
 
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.resources_store.path),
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.modules_store.path),
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.persist_store.path),
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.temp_store.path),
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.generations.store.path)
-            )?;
+            std::fs::create_dir_all(consts::DATA_FOLDER.as_path())?;
+            std::fs::create_dir_all(consts::CONFIG_FOLDER.as_path())?;
+            std::fs::create_dir_all(consts::CACHE_FOLDER.as_path())?;
 
-            // Update the config file to create it
-            // if it didn't exist before.
-            config::update(&STARTUP_CONFIG)?;
+            std::fs::create_dir_all(&config::startup().packages_resources_path)?;
+            std::fs::create_dir_all(&config::startup().packages_modules_path)?;
+            std::fs::create_dir_all(&config::startup().packages_persistent_path)?;
+            std::fs::create_dir_all(&config::startup().packages_temporary_path)?;
+            std::fs::create_dir_all(&config::startup().games_path)?;
 
-            // Start fetching games manifests for the store page.
-            {
-                let sender = sender.clone();
+            // Update the config file to create it if it didn't exist before.
+            // Do it after creating all the folders, including the config one.
+            config::set(config::startup())?;
 
-                tokio::spawn(fetch_games(move |url, manifest| {
-                    sender.input(MainWindowMsg::AddGame { url, manifest });
-                }));
-            }
+            // Fetch game registries.
 
-            // Fetch authority indexes.
-            tracing::debug!("Fetching authority indexes");
-
-            sender.input(MainWindowMsg::SetLoadingAction(String::from("Fetching authority indexes")));
-
-            let validator = AuthorityValidator::build(&STARTUP_CONFIG.packages.authorities).await?;
-            let local_validator = LocalValidator::open(&STARTUP_CONFIG.packages.local_validator)?;
-
-            // Open generations and packages stores.
             tracing::debug!(
-                generations_store = ?STARTUP_CONFIG.generations.store.path,
-                packages_store = ?STARTUP_CONFIG.packages.resources_store.path,
-                "Opening generations and packages stores"
+                registries = ?config::startup().games_registries,
+                "fetching game registries"
             );
 
-            sender.input(MainWindowMsg::SetLoadingAction(String::from("Opening generations and packages stores")));
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Fetching game registries"))
+            ));
 
-            let generations_store = GenerationsStore::new(&STARTUP_CONFIG.generations.store.path);
-            let packages_store = PackagesStore::new(&STARTUP_CONFIG.packages.resources_store.path);
+            // Create network client from config file.
+            let client = config::startup()
+                .client_builder()
+                .context("failed to create network client from the config values")?
+                .build()
+                .context("failed to build network client")?;
 
-            // List all available generations.
-            tracing::debug!("Listing available generations");
+            // Prepare downloader and files cache.
+            let downloader = Downloader::from_client(client);
+            let cache = FilesCache::default();
 
-            sender.input(MainWindowMsg::SetLoadingAction(String::from("Listing available generations")));
+            let mut tasks = Vec::with_capacity(config::startup().games_registries.len());
+            let mut paths = Vec::with_capacity(tasks.capacity());
 
-            let mut generations = generations_store.list()?.unwrap_or_default();
+            // Either fetch game registry manifest or use cached one.
+            for url in &config::startup().games_registries {
+                let cache_path = cache.get_path(url);
 
-            let mut games = None;
-            let mut valid_generation = None;
+                tracing::debug!(?url, ?cache_path, "fetching game registry");
 
-            // Iterate over available generations, from newest to oldest,
-            // and try to load them.
-            while let Some(generation) = generations.pop() {
-                tracing::debug!(hash = generation.to_base32(), "Trying to load generation");
+                // If cache for this registry is expired - request the registry
+                // value again.
+                if cache.is_expired(url)? {
+                    tracing::debug!(?url, ?cache_path, "game registry cache is expired");
 
-                sender.input(MainWindowMsg::SetLoadingAction(String::from("Loading generation")));
-
-                // Try to load the generation file.
-                let Some(generation) = generations_store.load(&generation)? else {
-                    tracing::warn!("Generation is missing");
-
-                    continue;
-                };
-
-                // Save the added games.
-                if games.is_none() {
-                    games = Some(generation.games.iter()
-                        .map(|game| game.url.clone())
-                        .collect::<Vec<_>>());
-                }
-
-                // Validate the generation.
-                tracing::debug!("Validating generation resources");
-
-                sender.input(MainWindowMsg::SetLoadingAction(String::from("Validating generation")));
-
-                if !packages_store.validate(&generation.lock_file)? {
-                    tracing::warn!("Generation is invalid. Skipping it");
-
-                    continue;
-                }
-
-                for resource in &generation.lock_file.resources {
-                    if let Some(status) = validator.get_status(&resource.lock.hash) {
-                        if !status.is_trusted() {
-                            tracing::warn!(
-                                resource = resource.lock.hash.to_base32(),
-                                "Generation resource is NOT trusted. Skipping it"
-                            );
-
-                            continue;
+                    let task = downloader.download_with_options(
+                        url,
+                        &cache_path,
+                        DownloadOptions {
+                            continue_download: false,
+                            on_update: None,
+                            on_finish: None
                         }
-                    }
+                    );
+
+                    tasks.push((url, cache_path.clone(), task));
                 }
 
-                // Store the valid generation for future use.
-                valid_generation = Some(generation);
-
-                break;
+                paths.push(cache_path);
             }
 
-            // Start building the new generation with potentially updated games info.
-            let new_generation_task = tokio::spawn(async move {
-                let generation = games.map(Generation::new).unwrap_or_default();
+            // Wait for all the game registries to be downloaded.
+            for (url, path, task) in tasks {
+                tracing::debug!(?url, ?path, "awaiting game registry downloading");
 
-                tracing::debug!(?generation, "Building new generation");
+                let result = task.wait().await
+                    .context("failed to await game registry fetching");
 
-                let generation = generation.build(&packages_store, &generations_store).await
-                    .map_err(|err| anyhow::anyhow!(err.to_string()));
+                if let Err(err) = result {
+                    // Remove half-downloaded/broken file.
+                    let _ = std::fs::remove_file(path);
 
-                match generation {
-                    Ok(generation) => {
-                        tracing::debug!("Indexing new generation in the store");
-
-                        generations_store.insert(&generation)?;
-
-                        Ok::<_, anyhow::Error>(generation)
-                    }
-
-                    // We should not spawn any GUI handler here because it's done in the other place.
-                    // There's a setting called lazy_load, and if we couldn't make a new generation
-                    // in *background* thread - we shouldn't directly notify the user about it (or should we?).
-                    // If the task is in *foreground* thread, however (when there's no generations or lazy_load = false)
-                    // then this error will be handled later and displayed in GUI dialog.
-                    Err(err) => {
-                        tracing::error!(?err, "Failed to build new generation");
-
-                        Err(err)
-                    }
-                }
-            });
-
-            // Resolve the generation.
-            let valid_generation = match valid_generation {
-                Some(generation) if STARTUP_CONFIG.generations.lazy_load => generation,
-
-                // Make a new generation if no valid one was found
-                // or lazy loading is disabled.
-                _ => {
-                    if STARTUP_CONFIG.generations.lazy_load {
-                        tracing::debug!("No valid generation found, awaiting the new one");
-                    } else {
-                        tracing::debug!("Generations lazy loading is disabled. Awaiting new generation to build");
-                    }
-
-                    sender.input(MainWindowMsg::SetLoadingAction(String::from("Building new generation")));
-
-                    new_generation_task.await??
-                }
-            };
-
-            for resource in &valid_generation.lock_file.resources {
-                if let Some(status) = validator.get_status(&resource.lock.hash) {
-                    if !status.is_trusted() {
-                        let hash = resource.lock.hash.to_base32();
-
-                        tracing::warn!(resource = hash, "Generation resource is NOT trusted. Skipping it");
-
-                        anyhow::bail!("Failed to find generation without malicious resources: '{hash}' is unsafe to use")
-                    }
+                    return Err(err);
                 }
             }
 
-            // Load the main window.
-            tracing::debug!("Load main window");
+            let mut games_manifests = HashMap::<String, bool>::new();
 
-            sender.input(MainWindowMsg::SetLoadingAction(String::from("Almost done")));
+            for path in paths {
+                tracing::debug!(?path, "reading game registry");
 
-            sender.input(MainWindowMsg::FinishLoading {
-                generation: valid_generation,
-                validator,
-                local_validator
-            });
+                let registry = std::fs::read(path)?;
+                let registry = serde_json::from_slice::<Json>(&registry)?;
+
+                let registry = GamesRegistryManifest::from_json(&registry)
+                    .context("failed to deserialize games registry")?;
+
+                // List all the games manifests' URLs and whether they're
+                // featured.
+                for game in registry.games {
+                    *games_manifests.entry(game.url)
+                        .or_default() |= game.featured;
+                }
+            }
+
+            // Fetch game registries.
+
+            tracing::debug!(
+                urls = ?games_manifests.keys()
+                    .collect::<Vec<_>>(),
+                "fetching games manifests"
+            );
+
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Fetching games manifests"))
+            ));
+
+            let mut tasks = Vec::with_capacity(games_manifests.len());
+            let mut paths = Vec::with_capacity(games_manifests.len());
+
+            // Iterate over the list of game manifests URLs.
+            for (url, is_featured) in games_manifests {
+                let cache_path = cache.get_path(&url);
+
+                tracing::debug!(?url, ?cache_path, "fetching game manifest");
+
+                // If cache for this game manifest is expired - request the
+                // manifest again.
+                if cache.is_expired(&url)? {
+                    tracing::debug!(?url, ?cache_path, "game manifest cache is expired");
+
+                    let task = downloader.download_with_options(
+                        &url,
+                        &cache_path,
+                        DownloadOptions {
+                            continue_download: false,
+                            on_update: None,
+                            on_finish: None
+                        }
+                    );
+
+                    tasks.push((url, cache_path.clone(), task));
+                }
+
+                paths.push((cache_path, is_featured));
+            }
+
+            // Wait for all the game manifests to be downloaded.
+            for (url, path, task) in tasks {
+                tracing::debug!(?url, ?path, "awaiting game manifest downloading");
+
+                let result = task.wait().await
+                    .context("failed to await game manifest fetching");
+
+                if let Err(err) = result {
+                    // Remove half-downloaded/broken file.
+                    let _ = std::fs::remove_file(path);
+
+                    return Err(err);
+                }
+            }
+
+            
 
             Ok::<_, anyhow::Error>(())
         });
@@ -420,15 +394,15 @@ impl SimpleAsyncComponent for MainWindow {
                 Ok(Ok(())) => (),
 
                 Ok(Err(err)) => {
-                    tracing::error!(?err, "Failed to execute startup task");
+                    tracing::error!(?err, "failed to execute startup task");
 
-                    critical_error("Failed to execute startup task", err);
+                    critical_error("failed to execute startup task", err);
                 }
 
                 Err(err) => {
-                    tracing::error!(?err, "Failed to execute startup task");
+                    tracing::error!(?err, "failed to execute startup task");
 
-                    critical_error("Failed to execute startup task", err);
+                    critical_error("failed to execute startup task", err);
                 }
             }
         });
@@ -436,70 +410,74 @@ impl SimpleAsyncComponent for MainWindow {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, message: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        message: Self::Input,
+        _sender: AsyncComponentSender<Self>
+    ) {
         match message {
-            MainWindowMsg::SetLoadingAction(action) => self.loading_action = Some(action),
+            MainWindowMsg::SetLoadingStatus(status) => self.loading_status = status,
 
-            MainWindowMsg::FinishLoading { generation, validator, local_validator } => {
-                if let Some(library_page) = self.library_page.as_ref() {
-                    library_page.emit(LibraryPageInput::SpawnLuauEngine {
-                        generation,
-                        validator,
-                        local_validator
-                    });
-                }
+            // MainWindowMsg::FinishLoading { generation, validator, local_validator } => {
+            //     if let Some(library_page) = self.library_page.as_ref() {
+            //         library_page.emit(LibraryPageInput::SpawnLuauEngine {
+            //             generation,
+            //             validator,
+            //             local_validator
+            //         });
+            //     }
 
-                self.is_loading = false;
-            }
+            //     self.is_loading = false;
+            // }
 
-            MainWindowMsg::AddGame { url, manifest } => {
-                let manifest = Arc::new(manifest);
+            // MainWindowMsg::AddGame { url, manifest } => {
+            //     let manifest = Arc::new(manifest);
 
-                self.games.insert(url.clone(), manifest.clone());
+            //     self.games.insert(url.clone(), manifest.clone());
 
-                self.store_page.emit(StorePageInput::AddGame {
-                    url,
-                    manifest: manifest.clone()
-                });
-            }
+            //     self.store_page.emit(StorePageInput::AddGame {
+            //         url,
+            //         manifest: manifest.clone()
+            //     });
+            // }
 
-            MainWindowMsg::ToggleSearching => {
-                self.store_page.emit(StorePageInput::ToggleSearching);
+            // MainWindowMsg::ToggleSearching => {
+            //     self.store_page.emit(StorePageInput::ToggleSearching);
 
-                self.searching = !self.searching;
-            }
+            //     self.searching = !self.searching;
+            // }
 
-            MainWindowMsg::SetShowSearch(state) => {
-                self.show_search = state;
-            }
+            // MainWindowMsg::SetShowSearch(state) => {
+            //     self.show_search = state;
+            // }
 
-            MainWindowMsg::SetShowBack(state) => {
-                self.show_back = state;
-            }
+            // MainWindowMsg::SetShowBack(state) => {
+            //     self.show_back = state;
+            // }
 
-            MainWindowMsg::GoBack => {
-                self.show_back = false;
+            // MainWindowMsg::GoBack => {
+            //     self.show_back = false;
 
-                // Navigate back only on the visible page
-                if let Some(name) = self.view_stack.visible_child_name() {
-                    match name.as_str() {
-                        "store"   => self.store_page.emit(StorePageInput::HideGamePage),
-                        // "library" => self.library_page.emit(LibraryPageInput::ToggleDownloadsPage),
+            //     // Navigate back only on the visible page
+            //     if let Some(name) = self.view_stack.visible_child_name() {
+            //         match name.as_str() {
+            //             "store"   => self.store_page.emit(StorePageInput::HideGamePage),
+            //             // "library" => self.library_page.emit(LibraryPageInput::ToggleDownloadsPage),
 
-                        _ => ()
-                    }
-                }
-            }
+            //             _ => ()
+            //         }
+            //     }
+            // }
 
-            MainWindowMsg::ActivateStorePage => {
-                self.store_page.emit(StorePageInput::Activate);
-            }
+            // MainWindowMsg::ActivateStorePage => {
+            //     self.store_page.emit(StorePageInput::Activate);
+            // }
 
-            MainWindowMsg::ActivateLibraryPage => {
-                if let Some(library_page) = self.library_page.as_ref() {
-                    library_page.emit(LibraryPageInput::Activate);
-                }
-            }
+            // MainWindowMsg::ActivateLibraryPage => {
+            //     if let Some(library_page) = self.library_page.as_ref() {
+            //         library_page.emit(LibraryPageInput::Activate);
+            //     }
+            // }
         }
     }
 }
