@@ -1,11 +1,28 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use std::backtrace::Backtrace;
 
 use relm4::prelude::*;
 use adw::prelude::*;
 
-/// Display critical error dialog. It will allow user to look
-/// through the given error, current thread's backtrace, and
-/// close the app safely.
+/// Display critical error dialog. It will allow user to look through the given
+/// error, current thread's backtrace, and close the app safely.
 pub fn critical_error(title: impl ToString, body: impl ToString) {
     let backtrace = Backtrace::force_capture().to_string();
 

@@ -1,9 +1,30 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use std::path::PathBuf;
 
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::prelude::*;
+use agl_core::network::downloader::{Downloader, DownloadOptions};
+
+use crate::consts::APP_RESOURCE_PREFIX;
+use crate::cache::FilesCache;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImagePath {
@@ -13,22 +34,21 @@ pub enum ImagePath {
     /// Path to the GTK resource.
     Resource(String),
 
-    /// Lazily load the image from the given URL.
+    /// Lazily load image from the given URL.
     LazyLoad(String)
 }
 
 impl ImagePath {
-    #[inline]
     /// Create new image from the filesystem path.
     ///
     /// ```
     /// ImagePath::path("/tmp/image.png")
     /// ```
+    #[inline]
     pub fn path(path: impl Into<PathBuf>) -> Self {
         Self::Path(path.into())
     }
 
-    #[inline]
     /// Create new image stored in the GTK resources.
     /// This function will automatically append the app prefix.
     ///
@@ -36,16 +56,17 @@ impl ImagePath {
     /// // APP_RESOURCE_PREFIX/images/icon.png
     /// ImagePath::lazy_load("images/icon.png")
     /// ```
+    #[inline]
     pub fn resource(path: impl AsRef<str>) -> Self {
         Self::Resource(format!("{APP_RESOURCE_PREFIX}/{}", path.as_ref()))
     }
 
-    #[inline]
     /// Create new lazy loaded image.
     ///
     /// ```
     /// ImagePath::lazy_load("https://example.com/image.png")
     /// ```
+    #[inline]
     pub fn lazy_load(url: impl ToString) -> Self {
         Self::LazyLoad(url.to_string())
     }
@@ -61,13 +82,18 @@ pub enum LazyPictureComponentMsg {
     SetBlurred(bool)
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LazyPictureComponent {
+    /// Path to the image.
     pub image: Option<ImagePath>,
 
+    /// Picture width.
     pub width: Option<i32>,
+
+    /// Picture height.
     pub height: Option<i32>,
 
+    /// Whether the image should be blurred.
     pub blurred: bool
 }
 
@@ -99,33 +125,35 @@ impl SimpleAsyncComponent for LazyPictureComponent {
                 Some(ImagePath::Path(path)) => Some(Some(path.to_path_buf())),
 
                 Some(ImagePath::LazyLoad(url)) => {
-                    let sender = sender.input_sender();
+                    let cache = FilesCache::default();
+                    let downloader = Downloader::default();
 
-                    let (path_sender, path_reader) = tokio::sync::oneshot::channel();
+                    let cache_path = cache.get_path(url.as_str());
 
                     {
-                        let sender = sender.clone();
+                        let sender = sender.input_sender().clone();
+                        let cache_path = cache_path.clone();
 
-                        tokio::spawn(async move {
-                            if let Ok(path) = path_reader.await {
-                                sender.emit(LazyPictureComponentMsg::SetImage(Some(ImagePath::path(path))));
+                        downloader.download_with_options(
+                            url,
+                            cache_path.clone(),
+                            DownloadOptions {
+                                continue_download: false,
+                                on_update: None,
+                                on_finish: Some(Box::new(move |_| {
+                                    sender.emit(LazyPictureComponentMsg::SetImage(
+                                        Some(ImagePath::path(cache_path))
+                                    ));
+                                }))
                             }
-                        });
+                        );
                     }
 
-                    let path = FileCache::default().swap(url, path_sender);
-
-                    if let Some(path) = &path {
-                        sender.emit(LazyPictureComponentMsg::SetImage(Some(ImagePath::path(path))));
-                    }
-
-                    Some(path)
+                    Some(Some(cache_path))
                 },
 
                 _ => None
             },
-
-            // FUCK YOU, GTK-RS !!!
 
             #[watch]
             set_resource?: if let Some(ImagePath::Resource(path)) = &model.image {
@@ -145,14 +173,21 @@ impl SimpleAsyncComponent for LazyPictureComponent {
         }
     }
 
-    #[inline]
-    async fn init(model: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        model: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncComponentSender<Self>
+    ) {
         match msg {
             LazyPictureComponentMsg::SetImage(image) => self.image = image,
 

@@ -1,7 +1,26 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::prelude::*;
+use super::lazy_picture::{LazyPictureComponent, ImagePath};
+use super::card::CardSize;
 
 #[derive(Debug)]
 pub struct PictureCarousel {
@@ -71,7 +90,11 @@ impl SimpleAsyncComponent for PictureCarousel {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
             pictures: AsyncFactoryVecDeque::builder()
                 .launch_default()
@@ -83,7 +106,11 @@ impl SimpleAsyncComponent for PictureCarousel {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncComponentSender<Self>
+    ) {
         let current = self.pictures.widget().position() as u32;
         let total = self.pictures.widget().n_pages();
 
@@ -103,8 +130,10 @@ impl SimpleAsyncComponent for PictureCarousel {
                     let target_page = current.checked_sub(1)
                         .unwrap_or(total - 1);
 
-                    self.pictures.widget()
-                        .scroll_to(&self.pictures.widget().nth_page(target_page), true);
+                    self.pictures.widget().scroll_to(
+                        &self.pictures.widget().nth_page(target_page),
+                        true
+                    );
                 }
             }
 
@@ -112,8 +141,10 @@ impl SimpleAsyncComponent for PictureCarousel {
                 if total != 0 {
                     let target_page = (current + 1) % total;
 
-                    self.pictures.widget()
-                        .scroll_to(&self.pictures.widget().nth_page(target_page), true);
+                    self.pictures.widget().scroll_to(
+                        &self.pictures.widget().nth_page(target_page),
+                        true
+                    );
                 }
             }
         }
@@ -144,13 +175,18 @@ impl AsyncFactoryComponent for PictureCarouselFactory {
         }
     }
 
-    async fn init_model(image: Self::Init, _index: &DynamicIndex, _sender: AsyncFactorySender<Self>) -> Self {
+    async fn init_model(
+        image: Self::Init,
+        _index: &DynamicIndex,
+        _sender: AsyncFactorySender<Self>
+    ) -> Self {
         Self {
             picture: LazyPictureComponent::builder()
                 .launch(LazyPictureComponent {
                     image: Some(image),
-
-                    ..LazyPictureComponent::default()
+                    width: None,
+                    height: None,
+                    blurred: false
                 })
                 .detach()
         }

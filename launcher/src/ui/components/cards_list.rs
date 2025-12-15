@@ -1,9 +1,28 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::prelude::*;
+use super::lazy_picture::ImagePath;
+use super::card::CardComponent;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CardsListInit {
     pub image: ImagePath,
     pub title: String,
@@ -11,7 +30,11 @@ pub struct CardsListInit {
 }
 
 impl CardsListInit {
-    pub fn new(image: ImagePath, title: impl ToString, variants: Option<impl IntoIterator<Item = String>>) -> Self {
+    pub fn new(
+        image: ImagePath,
+        title: impl ToString,
+        variants: Option<impl IntoIterator<Item = String>>
+    ) -> Self {
         Self {
             image,
             title: title.to_string(),
@@ -97,7 +120,11 @@ impl AsyncFactoryComponent for CardsList {
         }
     }
 
-    async fn init_model(init: Self::Init, index: &DynamicIndex, _sender: AsyncFactorySender<Self>) -> Self {
+    async fn init_model(
+        init: Self::Init,
+        index: &DynamicIndex,
+        _sender: AsyncFactorySender<Self>
+    ) -> Self {
         let mut model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent::small().with_image(init.image))
@@ -128,12 +155,17 @@ impl AsyncFactoryComponent for CardsList {
         model
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        sender: AsyncFactorySender<Self>
+    ) {
         match msg {
             CardsListInput::EmitClick => {
                 let _ = sender.output(CardsListOutput::HideOtherVariants(self.index.clone()));
 
                 if self.has_variants {
+                    #[allow(clippy::collapsible_if)]
                     if self.variants.widget().selected_row().is_none() {
                         if let Some(variant) = self.variants.widget().first_child() {
                             self.variants.widget().select_row(Some(&unsafe {
@@ -177,7 +209,7 @@ impl AsyncFactoryComponent for CardsList {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardVariantsList {
     title: String,
     index: DynamicIndex
@@ -215,8 +247,11 @@ impl AsyncFactoryComponent for CardVariantsList {
         }
     }
 
-    #[inline]
-    async fn init_model(title: Self::Init, index: &DynamicIndex, _sender: AsyncFactorySender<Self>) -> Self {
+    async fn init_model(
+        title: Self::Init,
+        index: &DynamicIndex,
+        _sender: AsyncFactorySender<Self>
+    ) -> Self {
         Self {
             title,
             index: index.to_owned()

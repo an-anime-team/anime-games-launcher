@@ -29,27 +29,11 @@ pub mod cache;
 
 // pub mod i18n;
 pub mod utils;
-// pub mod ui;
+pub mod ui;
 
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
-pub mod prelude {
-    pub use super::consts::*;
-    pub use super::utils::*;
-    pub use super::cache::*;
-
-    // pub use super::ui::prelude::*;
-
-    pub use super::config::{
-        STARTUP_CONFIG,
-        Config,
-        self
-    };
-}
-
-use prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -65,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
             })
         })
         .with_filter({
-            if *APP_DEBUG {
+            if *consts::APP_DEBUG {
                 LevelFilter::TRACE
             } else {
                 LevelFilter::WARN
@@ -110,7 +94,11 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Initialize libadwaita and GTK.
-    tracing::info!("starting application ({APP_VERSION})");
+    tracing::info!(
+        version = consts::APP_VERSION,
+        platform = consts::CURRENT_PLATFORM.to_string(),
+        "starting application"
+    );
 
     adw::init().expect("failed to initializa libadwaita");
 
@@ -122,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(display) = gtk::gdk::Display::default() {
         let theme = gtk::IconTheme::for_display(&display);
 
-        theme.add_resource_path(&format!("{APP_RESOURCE_PREFIX}/icons"));
+        theme.add_resource_path(&format!("{}/icons", consts::APP_RESOURCE_PREFIX));
     }
 
     // Set application's title.

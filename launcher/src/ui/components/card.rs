@@ -1,7 +1,27 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::prelude::*;
+use super::lazy_picture::{
+    LazyPictureComponent, LazyPictureComponentMsg, ImagePath
+};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CardSize {
@@ -13,8 +33,7 @@ pub enum CardSize {
 }
 
 impl CardSize {
-    #[inline]
-    pub fn width(&self) -> i32 {
+    pub const fn width(&self) -> i32 {
         match self {
             Self::Large  => 240,
             Self::Medium => 160,
@@ -22,8 +41,7 @@ impl CardSize {
         }
     }
 
-    #[inline]
-    pub fn height(&self) -> i32 {
+    pub const fn height(&self) -> i32 {
         // 10:14
         match self {
             Self::Large  => 336,
@@ -32,8 +50,7 @@ impl CardSize {
         }
     }
 
-    #[inline]
-    pub fn size(&self) -> (i32, i32) {
+    pub const fn size(&self) -> (i32, i32) {
         (self.width(), self.height())
     }
 }
@@ -59,8 +76,13 @@ pub enum CardComponentOutput {
 pub struct CardComponent {
     picture: AsyncController<LazyPictureComponent>,
 
+    /// Size of the card.
     pub size: CardSize,
+
+    /// Title of the card.
     pub title: Option<String>,
+
+    /// Whether the card is clickable.
     pub clickable: bool
 }
 
@@ -134,7 +156,6 @@ impl CardComponent {
         self
     }
 
-    #[inline]
     pub fn with_title(mut self, title: impl ToString) -> Self {
         self.title = Some(title.to_string());
 
@@ -142,7 +163,7 @@ impl CardComponent {
     }
 
     #[inline]
-    pub fn with_clickable(mut self, clickable: bool) -> Self {
+    pub const fn with_clickable(mut self, clickable: bool) -> Self {
         self.clickable = clickable;
 
         self
@@ -200,14 +221,21 @@ impl SimpleAsyncComponent for CardComponent {
         }
     }
 
-    #[inline]
-    async fn init(model: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        model: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        sender: AsyncComponentSender<Self>
+    ) {
         match msg {
             CardComponentInput::SetTitle(title) => self.title = title,
 

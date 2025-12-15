@@ -30,8 +30,6 @@ lazy_static::lazy_static! {
     pub static ref CURRENT_PLATFORM: Platform = {
         let platform = Platform::current();
 
-        tracing::info!("current platform: {:?}", platform.map(|platform| platform.to_string()));
-
         platform.expect("failed to detect current system platform")
     };
 

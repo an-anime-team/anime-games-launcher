@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use std::collections::VecDeque;
 
 use adw::prelude::*;
@@ -7,7 +25,7 @@ use relm4::abstractions::DrawHandler;
 
 const OFFSET: f64 = 10.0;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GraphInit {
     /// Width of the DrawingArea.
     pub width: i32,
@@ -118,15 +136,18 @@ impl SimpleAsyncComponent for Graph {
         gtk::Box {
             add_css_class: "card",
 
-            #[local_ref]
-            area -> gtk::DrawingArea {
+            gtk::DrawingArea {
                 set_content_width: model.width,
                 set_content_height: model.height
             }
         }
     }
 
-    async fn init(init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        init: Self::Init,
+        root: Self::Root,
+        _sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let model = Graph {
             width: init.width,
             height: init.height,
@@ -140,14 +161,16 @@ impl SimpleAsyncComponent for Graph {
             handler: DrawHandler::new()
         };
 
-        let area = model.handler.drawing_area();
-
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncComponentSender<Self>
+    ) {
         match msg {
             GraphMsg::SetColor(color) => self.color = color,
 
@@ -173,7 +196,7 @@ impl SimpleAsyncComponent for Graph {
         }
 
         if let Err(err) = self.draw() {
-            tracing::error!(?err, "Failed to draw graph");
+            tracing::error!(?err, "failed to draw graph");
         }
     }
 }
