@@ -83,7 +83,12 @@ pub struct Config {
     /// URLs of the game registry files.
     ///
     /// `games.registries`
-    pub games_registries: Vec<String>
+    pub games_registries: Vec<String>,
+
+    /// Path to the folder where game locks are stored.
+    ///
+    /// `games.path`
+    pub games_path: PathBuf
 }
 
 impl Default for Config {
@@ -101,7 +106,8 @@ impl Default for Config {
 
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/games/registry.json")
-            ]
+            ],
+            games_path: DATA_FOLDER.join("games")
         }
     }
 }
@@ -133,6 +139,7 @@ impl Config {
 
             [games]
             registries = (self.games_registries.iter().map(|url| url.as_str()).collect::<Vec<_>>())
+            path = (self.games_path.to_string_lossy())
         }
     }
 
@@ -211,6 +218,11 @@ impl Config {
                     .flat_map(Toml::as_str)
                     .map(String::from)
                     .collect();
+            }
+
+            // `games.path`
+            if let Some(path) = games.get("path").and_then(Toml::as_str) {
+                config.games_path = PathBuf::from(path);
             }
         }
 
