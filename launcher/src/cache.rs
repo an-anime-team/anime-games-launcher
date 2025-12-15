@@ -65,13 +65,13 @@ impl FilesCache {
         self.path.join(Hash::from_bytes(key.as_ref()).to_base32())
     }
 
-    /// Check if a file with provided cache key is expired. Return `Ok(false)`
+    /// Check if a file with provided cache key is expired. Return `Ok(true)`
     /// if such file doesn't exist.
     pub fn is_expired(&self, key: impl AsRef<[u8]>) -> anyhow::Result<bool> {
         let path = self.get_path(key);
 
         if !path.exists() {
-            return Ok(false);
+            return Ok(true);
         }
 
         let metadata = path.metadata()
