@@ -34,10 +34,10 @@ pub struct GameLock {
     pub url: String,
 
     /// Manifest of the locked game.
-    pub game: GameManifest,
+    pub manifest: GameManifest,
 
     /// Lock of the game package.
-    pub package: PackageLock
+    pub lock: PackageLock
 }
 
 impl GameLock {
@@ -45,8 +45,8 @@ impl GameLock {
         json!({
             "version": 1,
             "url": self.url,
-            "game": self.game.to_json(),
-            "package": self.package.to_json()
+            "manifest": self.manifest.to_json(),
+            "lock": self.lock.to_json()
         })
     }
 
@@ -61,18 +61,18 @@ impl GameLock {
                 .map(String::from)
                 .ok_or_else(|| anyhow::anyhow!("missing 'url' field in game lock"))?,
 
-            game: value.get("game")
-                .ok_or_else(|| anyhow::anyhow!("missing 'game' field in game lock"))
+            manifest: value.get("manifest")
+                .ok_or_else(|| anyhow::anyhow!("missing 'manifest' field in game lock"))
                 .and_then(|game| {
                     GameManifest::from_json(game)
                         .map_err(|err| anyhow::anyhow!(err))
                 })?,
 
-            package: value.get("package")
-                .ok_or_else(|| anyhow::anyhow!("missing 'package' field in game lock"))
+            lock: value.get("lock")
+                .ok_or_else(|| anyhow::anyhow!("missing 'lock' field in game lock"))
                 .and_then(|game| {
                     PackageLock::from_json(game)
-                        .ok_or_else(|| anyhow::anyhow!("invalid 'package' field value in game lock"))
+                        .ok_or_else(|| anyhow::anyhow!("invalid 'lock' field value in game lock"))
                 })?
         })
     }
@@ -132,8 +132,8 @@ impl GameLock {
 
         Ok(Self {
             url: manifest_url,
-            game: manifest,
-            package: lock
+            manifest,
+            lock
         })
     }
 }
