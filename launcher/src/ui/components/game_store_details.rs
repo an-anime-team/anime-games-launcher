@@ -24,6 +24,7 @@ use agl_games::manifest::GameManifest;
 
 use crate::config;
 use crate::game::GameLock;
+use crate::ui::dialogs;
 
 use super::lazy_picture::ImagePath;
 use super::card::{CardComponent, CardComponentInput};
@@ -46,7 +47,8 @@ pub enum GameStoreDetailsMsg {
         manifest: GameManifest
     },
 
-    AddGameClicked
+    AddGameClicked,
+    SetGameStatus(GameStatus)
 }
 
 #[derive(Debug)]
@@ -259,7 +261,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
     async fn update(
         &mut self,
         msg: Self::Input,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) {
         match msg {
             GameStoreDetailsMsg::SetGameInfo { manifest_url, manifest } => {
@@ -350,16 +352,24 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                         match GameLock::download(url, &storage).await {
                             Ok(lock) => {
+                                sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::Added));
+
                                 dbg!(lock);
                             }
 
                             Err(err) => {
+                                sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::NotAdded));
+
                                 tracing::error!(?err, "failed to download game package");
+
+                                dialogs::error("Failed to download game package", err);
                             }
                         }
                     });
                 }
             }
+
+            GameStoreDetailsMsg::SetGameStatus(status) => self.status = status
         }
     }
 }
