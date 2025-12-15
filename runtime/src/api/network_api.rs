@@ -243,12 +243,12 @@ mod tests {
         let api = NetworkApi::new(Lua::new(), Client::new())?;
 
         let response = api.net_fetch.call::<LuaTable>(
-            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/launcher/tests/packages/1/package.json"
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/runtime/tests/simple_package/package.json"
         )?;
 
         assert_eq!(response.get::<u16>("status")?, 200);
         assert!(response.get::<bool>("is_ok")?);
-        assert_eq!(seahash::hash(&response.get::<Vec<u8>>("body")?), 9442626994218140953);
+        assert_eq!(seahash::hash(&response.get::<Vec<u8>>("body")?), 8997647943168728036);
 
         Ok(())
     }
