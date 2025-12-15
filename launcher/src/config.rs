@@ -19,7 +19,9 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use anyhow::Context;
 use toml::{toml, Value as Toml, Table as TomlTable};
+use unic_langid::LanguageIdentifier;
 
 use agl_core::export::network::reqwest;
 
@@ -152,14 +154,22 @@ impl Config {
         if let Some(general) = value.get("general") {
             // `general.language`
             if let Some(language) = general.get("language").and_then(Toml::as_str) {
-                config.general_language = Some(language.to_string());
+                config.general_language = if language == "system" {
+                    None
+                } else {
+                    Some(language.to_string())
+                };
             }
 
             // `general.network.*`
             if let Some(network) = general.get("network") {
                 // `general.network.timeout`
                 if let Some(timeout) = network.get("timeout").and_then(Toml::as_integer) {
-                    config.general_network_timeout = Duration::from_millis(timeout as u64);
+                    config.general_network_timeout = if timeout == 0 {
+                        Duration::from_mins(5)
+                    } else {
+                        Duration::from_millis(timeout as u64)
+                    };
                 }
 
                 // `general.network.proxy.*`
@@ -237,6 +247,19 @@ impl Config {
         }
 
         config
+    }
+
+    /// Get language identifier specified in the launcher config or, if absent,
+    /// from the system settings.
+    pub fn language(&self) -> anyhow::Result<LanguageIdentifier> {
+        let lang = self.general_language.clone()
+            .or_else(|| std::env::var("LANG").ok())
+            .or_else(|| std::env::var("LC_ALL").ok())
+            .unwrap_or_else(|| String::from("en-us"));
+
+        lang.parse::<LanguageIdentifier>()
+            .map_err(|err| anyhow::anyhow!(err))
+            .context("failed to parse language identifier")
     }
 
     /// Get `reqwest` crate client builder from the current config file's
