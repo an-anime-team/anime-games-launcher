@@ -94,8 +94,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize libadwaita and GTK.
     tracing::info!(
-        version = consts::APP_VERSION,
         platform = consts::CURRENT_PLATFORM.to_string(),
+        launcher_version = consts::APP_VERSION,
+        core_version = agl_core::VERSION,
+        packages_version = agl_packages::VERSION,
+        runtime_version = agl_runtime::VERSION,
+        games_version = agl_games::VERSION,
         "starting application"
     );
 
