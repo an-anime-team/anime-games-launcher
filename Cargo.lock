@@ -130,11 +130,13 @@ dependencies = [
  "libadwaita",
  "mimalloc",
  "relm4",
+ "serde_json",
  "time",
  "tokio",
  "toml",
  "tracing",
  "tracing-subscriber",
+ "unic-langid",
 ]
 
 [[package]]
