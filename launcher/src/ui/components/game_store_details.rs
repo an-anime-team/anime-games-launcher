@@ -19,9 +19,11 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use agl_packages::storage::Storage;
 use agl_games::manifest::GameManifest;
 
 use crate::config;
+use crate::game::GameLock;
 
 use super::lazy_picture::ImagePath;
 use super::card::{CardComponent, CardComponentInput};
@@ -328,6 +330,35 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 tracing::info!(url = ?self.manifest_url, "add game");
 
                 self.status = GameStatus::Adding;
+
+                let config = config::get();
+
+                let storage = match Storage::open(config.packages_resources_path) {
+                    Ok(storage) => storage,
+                    Err(err) => {
+                        tracing::error!(?err, "failed to open packages storage");
+
+                        return;
+                    }
+                };
+
+                {
+                    let url = self.manifest_url.clone();
+
+                    tokio::spawn(async move {
+                        tracing::debug!(?url, "download game package");
+
+                        match GameLock::download(url, &storage).await {
+                            Ok(lock) => {
+                                dbg!(lock);
+                            }
+
+                            Err(err) => {
+                                tracing::error!(?err, "failed to download game package");
+                            }
+                        }
+                    });
+                }
             }
         }
     }

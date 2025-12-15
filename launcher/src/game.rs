@@ -16,10 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use anyhow::Context;
 use serde_json::{json, Value as Json};
 
-use agl_games::manifest::GameManifest;
+use agl_core::network::downloader::{Downloader, DownloadOptions};
+use agl_packages::storage::Storage;
 use agl_packages::lock::Lock as PackageLock;
+use agl_games::manifest::GameManifest;
+
+use crate::config;
+use crate::cache;
 
 /// Lock file for a game package.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +74,66 @@ impl GameLock {
                     PackageLock::from_json(game)
                         .ok_or_else(|| anyhow::anyhow!("invalid 'package' field value in game lock"))
                 })?
+        })
+    }
+
+    /// Download game package and manifest files and lock them.
+    pub async fn download(
+        manifest_url: impl ToString,
+        storage: &Storage
+    ) -> anyhow::Result<Self> {
+        // Prepare files downloader.
+        let config = config::get();
+
+        let client = config.client_builder()?
+            .build()?;
+
+        let downloader = Downloader::from_client(client);
+
+        // Check if manifest is already downloaded or download it.
+        let manifest_url = manifest_url.to_string();
+
+        let manifest_path = cache::get_path(&manifest_url);
+
+        if cache::is_expired(&manifest_url, cache::DEFAULT_TTL)? {
+            let task = downloader.download_with_options(
+                &manifest_url,
+                &manifest_path,
+                DownloadOptions {
+                    continue_download: false,
+                    on_update: None,
+                    on_finish: None
+                }
+            );
+
+            task.wait().await
+                .context("failed to download game manifest")?;
+        }
+
+        // Read manifest file.
+        let manifest = std::fs::read(&manifest_path)?;
+        let manifest = serde_json::from_slice::<Json>(&manifest)?;
+
+        let manifest = GameManifest::from_json(&manifest)
+            .context("failed to deserialize game manifest")?;
+
+        // Install game package.
+        let result = storage.install_packages(&downloader, [
+            manifest.package.url.clone()
+        ]).await;
+
+        let lock = match result {
+            Ok(lock) => lock,
+            Err(err) => {
+                return Err(anyhow::anyhow!(err)
+                    .context("failed to install game package"));
+            }
+        };
+
+        Ok(Self {
+            url: manifest_url,
+            game: manifest,
+            package: lock
         })
     }
 }
