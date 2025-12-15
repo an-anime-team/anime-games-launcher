@@ -29,6 +29,7 @@ use super::picture_carousel::{PictureCarousel, PictureCarouselMsg};
 use super::game_tags::GameTagFactory;
 use super::maintainers_row::MaintainersRowFactory;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsMsg {
     SetGameInfo {
@@ -281,6 +282,15 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                 for tag in &manifest.game.tags {
                     guard.push_back(*tag);
+                }
+
+                drop(guard);
+
+                // Set game package maintainers.
+                let mut guard = self.maintainers.guard();
+
+                for maintainer in &manifest.maintainers {
+                    guard.push_back(maintainer.clone());
                 }
 
                 drop(guard);
