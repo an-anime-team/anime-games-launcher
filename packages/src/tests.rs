@@ -23,6 +23,7 @@ use crate::hash::Hash;
 use crate::storage::Storage;
 
 use agl_core::export::tasks::tokio;
+use agl_core::network::downloader::Downloader;
 
 const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/packages/tests";
 // const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
@@ -57,9 +58,10 @@ async fn simple_no_inputs() -> Result<(), Box<dyn std::error::Error>> {
         ("example_7z",       format!("{TESTS_DIR_URL}/simple_no_inputs/example_7z.7z"),             Hash::from_base32("i8bois3gmu8mk").unwrap(), ResourceFormat::Archive)
     ];
 
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("simple_no_inputs")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         manifest_url.clone()
     ]).await?;
 
@@ -111,9 +113,10 @@ async fn simple_no_outputs() -> Result<(), Box<dyn std::error::Error>> {
         ("example_7z",       format!("{TESTS_DIR_URL}/simple_no_outputs/example_7z.7z"),             Hash::from_base32("i8bois3gmu8mk").unwrap(), ResourceFormat::Archive)
     ];
 
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("simple_no_outputs")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         manifest_url.clone()
     ]).await?;
 
@@ -157,9 +160,10 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_hash = Hash::from_base32("ukkgn5btkiu8s").unwrap();
     let file_hash = Hash::from_base32("dfhtkkli693ji").unwrap();
 
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("duplicate_input_output")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         manifest_url.clone()
     ]).await?;
 
@@ -205,9 +209,10 @@ async fn self_reference() -> Result<(), Box<dyn std::error::Error>> {
 
     let manifest_hash = Hash::from_base32("6j83ocpqdtt36").unwrap();
 
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("self_reference")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         manifest_url.clone()
     ]).await?;
 
@@ -255,9 +260,10 @@ async fn cycle() -> Result<(), Box<dyn std::error::Error>> {
     let package_1_hash = Hash::from_base32("30mc77m5bcqje").unwrap();
     let package_2_hash = Hash::from_base32("s7lffv3k21im0").unwrap();
 
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("cycle")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         package_1_url.clone()
     ]).await?;
 
@@ -299,9 +305,10 @@ async fn nested_packages() -> Result<(), Box<dyn std::error::Error>> {
     let package_3_hash = Hash::from_base32("gndmqnirsuij8").unwrap();
     let file_hash = Hash::from_base32("dfhtkkli693ji").unwrap();
 
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("nested_packages")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         package_1_url.clone()
     ]).await?;
 

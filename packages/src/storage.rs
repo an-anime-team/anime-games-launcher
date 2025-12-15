@@ -201,6 +201,7 @@ impl Storage {
     /// Install packages to the current storage and provide a lock for them.
     pub async fn install_packages<T: ToString>(
         &self,
+        downloader: &Downloader,
         urls: impl IntoIterator<Item = T>
     ) -> Result<Lock, InstallPackagesError> {
         /// Normalize given URL.
@@ -246,9 +247,6 @@ impl Storage {
                 url
             }
         }
-
-        // Create the downloader.
-        let downloader = Downloader::new();
 
         // Create [url] => [hash] table.
         let mut resource_hashes = HashMap::new();
