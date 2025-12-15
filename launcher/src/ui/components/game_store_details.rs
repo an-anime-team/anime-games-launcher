@@ -29,6 +29,13 @@ use super::picture_carousel::{PictureCarousel, PictureCarouselMsg};
 use super::game_tags::GameTagFactory;
 use super::maintainers_row::MaintainersRowFactory;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GameStatus {
+    NotAdded,
+    Adding,
+    Added
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsMsg {
@@ -52,7 +59,9 @@ pub struct GameStoreDetails {
     title: String,
     description: String,
     developer: String,
-    publisher: String
+    publisher: String,
+
+    status: GameStatus
 }
 
 #[relm4::component(pub, async)]
@@ -130,13 +139,30 @@ impl SimpleAsyncComponent for GameStoreDetails {
                             model.card.widget(),
 
                             gtk::Button {
-                                add_css_class: "pill",
-                                add_css_class: "suggested-action",
+                                #[watch]
+                                set_css_classes: match model.status {
+                                    GameStatus::NotAdded => &["pill", "suggested-action"],
+                                    GameStatus::Adding   => &["pill"],
+                                    GameStatus::Added    => &["pill", "suggested-action"]
+                                },
+
+                                #[watch]
+                                set_sensitive: model.status != GameStatus::Adding,
 
                                 adw::ButtonContent {
-                                    set_icon_name: "list-add-symbolic",
+                                    #[watch]
+                                    set_icon_name: match model.status {
+                                        GameStatus::NotAdded => "list-add-symbolic",
+                                        GameStatus::Adding   => "document-save-symbolic",
+                                        GameStatus::Added    => "input-gaming-symbolic"
+                                    },
 
-                                    set_label: "Add"
+                                    #[watch]
+                                    set_label: match model.status {
+                                        GameStatus::NotAdded => "Add",
+                                        GameStatus::Adding   => "Adding to library...",
+                                        GameStatus::Added    => "Open in library"
+                                    }
                                 },
 
                                 connect_clicked => GameStoreDetailsMsg::AddGameClicked
@@ -218,7 +244,9 @@ impl SimpleAsyncComponent for GameStoreDetails {
             title: String::new(),
             developer: String::new(),
             publisher: String::new(),
-            description: String::new()
+            description: String::new(),
+
+            status: GameStatus::NotAdded
         };
 
         let widgets = view_output!();
@@ -298,6 +326,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
             GameStoreDetailsMsg::AddGameClicked => {
                 tracing::info!(url = ?self.manifest_url, "add game");
+
+                self.status = GameStatus::Adding;
             }
         }
     }
