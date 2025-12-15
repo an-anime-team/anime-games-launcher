@@ -123,6 +123,11 @@ async fn main() -> anyhow::Result<()> {
         }
     ");
 
+    // Check for WINE_CANONICAL_HOLE variable.
+    if let Ok(value) = std::env::var("WINE_CANONICAL_HOLE") && !value.is_empty() {
+        tracing::warn!("WINE_CANONICAL_HOLE={value} is not supported, please contact <https://github.com/NelloKudo> to fix it");
+    }
+
     // Create the app.
     let app = RelmApp::new(consts::APP_ID);
 
