@@ -29,7 +29,7 @@ use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 
 use crate::consts;
 use crate::config;
-use crate::cache::FilesCache;
+use crate::cache;
 use crate::ui::dialogs::critical_error;
 
 // pub mod actions;
@@ -287,21 +287,20 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Prepare downloader and files cache.
             let downloader = Downloader::from_client(client);
-            let cache = FilesCache::default();
 
             let mut tasks = Vec::with_capacity(config::startup().games_registries.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
 
             // Either fetch game registry manifest or use cached one.
             for url in &config::startup().games_registries {
-                let cache_path = cache.get_path(url);
+                let cache_path = cache::get_path(url);
 
-                tracing::debug!(?url, ?cache_path, "fetching game registry");
+                tracing::trace!(?url, ?cache_path, "fetching game registry");
 
                 // If cache for this registry is expired - request the registry
                 // value again.
-                if cache.is_expired(url)? {
-                    tracing::debug!(?url, ?cache_path, "game registry cache is expired");
+                if cache::is_expired(url, cache::DEFAULT_TTL)? {
+                    tracing::trace!(?url, ?cache_path, "game registry cache is expired");
 
                     let task = downloader.download_with_options(
                         url,
@@ -321,7 +320,7 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Wait for all the game registries to be downloaded.
             for (url, path, task) in tasks {
-                tracing::debug!(?url, ?path, "awaiting game registry downloading");
+                tracing::trace!(?url, ?path, "awaiting game registry downloading");
 
                 let result = task.wait().await
                     .context("failed to await game registry fetching");
@@ -337,7 +336,7 @@ impl SimpleAsyncComponent for MainWindow {
             let mut games_manifests = HashMap::<String, bool>::new();
 
             for path in paths {
-                tracing::debug!(?path, "reading game registry");
+                tracing::trace!(?path, "reading game registry");
 
                 let registry = std::fs::read(path)?;
                 let registry = serde_json::from_slice::<Json>(&registry)?;
@@ -370,14 +369,14 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Iterate over the list of game manifests URLs.
             for (url, is_featured) in games_manifests {
-                let cache_path = cache.get_path(&url);
+                let cache_path = cache::get_path(&url);
 
-                tracing::debug!(?url, ?cache_path, "fetching game manifest");
+                tracing::trace!(?url, ?cache_path, "fetching game manifest");
 
                 // If cache for this game manifest is expired - request the
                 // manifest again.
-                if cache.is_expired(&url)? {
-                    tracing::debug!(?url, ?cache_path, "game manifest cache is expired");
+                if cache::is_expired(&url, cache::DEFAULT_TTL)? {
+                    tracing::trace!(?url, ?cache_path, "game manifest cache is expired");
 
                     let task = downloader.download_with_options(
                         &url,
@@ -397,7 +396,7 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Wait for all the game manifests to be downloaded.
             for (url, path, task) in tasks {
-                tracing::debug!(?url, ?path, "awaiting game manifest downloading");
+                tracing::trace!(?url, ?path, "awaiting game manifest downloading");
 
                 let result = task.wait().await
                     .context("failed to await game manifest fetching");
@@ -419,7 +418,7 @@ impl SimpleAsyncComponent for MainWindow {
             ));
 
             for (url, path, _is_featured) in paths {
-                tracing::debug!(?url, ?path, "reading game manifest");
+                tracing::trace!(?url, ?path, "reading game manifest");
 
                 let manifest = std::fs::read(path)?;
                 let manifest = serde_json::from_slice::<Json>(&manifest)?;

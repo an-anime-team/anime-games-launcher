@@ -24,7 +24,7 @@ use relm4::prelude::*;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 
 use crate::consts::APP_RESOURCE_PREFIX;
-use crate::cache::FilesCache;
+use crate::cache;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImagePath {
@@ -125,11 +125,9 @@ impl SimpleAsyncComponent for LazyPictureComponent {
                 Some(ImagePath::Path(path)) => Some(Some(path.to_path_buf())),
 
                 Some(ImagePath::LazyLoad(url)) => {
-                    let cache = FilesCache::default();
+                    let cache_path = cache::get_path(url);
 
-                    let cache_path = cache.get_path(url);
-
-                    if cache.is_expired(url).unwrap_or(true) {
+                    if cache::is_expired(url, cache::DEFAULT_TTL).unwrap_or(true) {
                         let downloader = Downloader::default();
 
                         let sender = sender.input_sender().clone();

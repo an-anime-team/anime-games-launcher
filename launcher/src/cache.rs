@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Context;
@@ -25,74 +25,28 @@ use agl_packages::hash::Hash;
 
 use crate::consts::CACHE_FOLDER;
 
-/// A general files cache storage.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FilesCache {
-    /// Path to the folder where cached files will be stored.
-    path: PathBuf,
+pub const DEFAULT_TTL: Duration = Duration::from_hours(8);
 
-    /// Amount of time before file cache is considered expired.
-    cache_time: Duration
+/// Get path to a file with provided cache key.
+#[inline]
+pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {
+    CACHE_FOLDER.join(Hash::from_bytes(key.as_ref()).to_base32())
 }
 
-impl Default for FilesCache {
-    #[inline]
-    fn default() -> Self {
-        Self::open(CACHE_FOLDER.as_path())
-    }
-}
+/// Check if a file with provided cache key is expired. Return `Ok(true)`
+/// if such file doesn't exist.
+pub fn is_expired(key: impl AsRef<[u8]>, ttl: Duration) -> anyhow::Result<bool> {
+    let path = get_path(key);
 
-impl FilesCache {
-    /// Open files cache in provided folder.
-    pub fn open(path: impl Into<PathBuf>) -> Self {
-        Self {
-            path: path.into(),
-            cache_time: Duration::from_secs(8 * 3600) // 8 hours
-        }
+    if !path.exists() {
+        return Ok(true);
     }
 
-    /// Set cache expiry time.
-    #[inline]
-    pub fn with_cache_time(mut self, cache_time: Duration) -> Self {
-        self.cache_time = cache_time;
+    let metadata = path.metadata()
+        .context("failed to read cached file metadata")?;
 
-        self
-    }
+    let created_at = metadata.created()
+        .context("failed to read cached file creation time")?;
 
-    /// Get path to a file with provided cache key.
-    #[inline]
-    pub fn get_path(&self, key: impl AsRef<[u8]>) -> PathBuf {
-        self.path.join(Hash::from_bytes(key.as_ref()).to_base32())
-    }
-
-    /// Check if a file with provided cache key is expired. Return `Ok(true)`
-    /// if such file doesn't exist.
-    pub fn is_expired(&self, key: impl AsRef<[u8]>) -> anyhow::Result<bool> {
-        let path = self.get_path(key);
-
-        if !path.exists() {
-            return Ok(true);
-        }
-
-        let metadata = path.metadata()
-            .context("failed to read cached file metadata")?;
-
-        let created_at = metadata.created()
-            .context("failed to read cached file creation time")?;
-
-        Ok(created_at.elapsed()? > self.cache_time)
-    }
-
-    /// Copy file with provided path to the cache folder under specified key.
-    /// The original file is kept unchanged.
-    pub fn cache_file(
-        &self,
-        key: impl AsRef<[u8]>,
-        path: impl AsRef<Path>
-    ) -> anyhow::Result<()> {
-        std::fs::copy(path.as_ref(), self.get_path(key))
-            .context("failed to copy file to the cache folder")?;
-
-        Ok(())
-    }
+    Ok(created_at.elapsed()? > ttl)
 }
