@@ -25,7 +25,7 @@ use serde_json::Value as Json;
 use anyhow::Context;
 
 use agl_core::network::downloader::{Downloader, DownloadOptions};
-use agl_games::manifest::GamesRegistryManifest;
+use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 
 use crate::consts;
 use crate::config;
@@ -36,18 +36,21 @@ use crate::ui::dialogs::critical_error;
 
 // pub use actions::prelude::*;
 
-// pub mod downloads_page;
+pub mod store_page;
 // pub mod library_page;
-// pub mod store_page;
+// pub mod downloads_page;
 
-// use downloads_page::*;
-// use library_page::*;
-// use store_page::*;
+use store_page::{StorePage, StorePageInput};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
     SetLoadingStatus(Option<String>),
+
+    AddStorePageGame {
+        manifest_url: String,
+        manifest: GameManifest
+    },
 
     // FinishLoading {
     //     generation: GenerationManifest,
@@ -69,17 +72,15 @@ pub enum MainWindowMsg {
     // ActivateLibraryPage
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MainWindow {
-    // store_page: AsyncController<StorePage>,
+    store_page: AsyncController<StorePage>,
     // library_page: Option<AsyncController<LibraryPage>>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
 
-    loading_status: Option<String>,
-
-    // games: HashMap<String, Arc<GameManifest>>
+    loading_status: Option<String>
 }
 
 #[relm4::component(pub, async)]
@@ -139,44 +140,44 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     },
 
-                    // #[local_ref]
-                    // view_stack -> adw::ViewStack {
-                    //     add = &gtk::Box {
-                    //         set_vexpand: true,
-                    //         set_hexpand: true,
+                    #[local_ref]
+                    view_stack -> adw::ViewStack {
+                        add = &gtk::Box {
+                            set_vexpand: true,
+                            set_hexpand: true,
 
-                    //         model.store_page.widget(),
-                    //     } -> {
-                    //         set_title: Some("Store"),
-                    //         set_name: Some("store"),
-                    //         set_icon_name: Some("folder-download-symbolic")
-                    //     },
+                            model.store_page.widget(),
+                        } -> {
+                            set_title: Some("Store"),
+                            set_name: Some("store"),
+                            set_icon_name: Some("folder-download-symbolic")
+                        },
 
-                    //     #[name(library_page_box)]
-                    //     add = &gtk::Box {
-                    //         set_vexpand: true,
-                    //         set_hexpand: true
-                    //     } -> {
-                    //         set_title: Some("Library"),
-                    //         set_name: Some("library"),
-                    //         set_icon_name: Some("applications-games-symbolic")
-                    //     },
+                        // #[name(library_page_box)]
+                        // add = &gtk::Box {
+                        //     set_vexpand: true,
+                        //     set_hexpand: true
+                        // } -> {
+                        //     set_title: Some("Library"),
+                        //     set_name: Some("library"),
+                        //     set_icon_name: Some("applications-games-symbolic")
+                        // },
 
-                    //     connect_visible_child_notify[sender] => move |stack| {
-                    //         if let Some(name) = stack.visible_child_name() {
-                    //             sender.input(MainWindowMsg::SetShowSearch(
-                    //                 ["store", "library"].contains(&name.as_str())
-                    //             ));
+                        // connect_visible_child_notify[sender] => move |stack| {
+                        //     if let Some(name) = stack.visible_child_name() {
+                        //         sender.input(MainWindowMsg::SetShowSearch(
+                        //             ["store", "library"].contains(&name.as_str())
+                        //         ));
 
-                    //             match name.as_str() {
-                    //                 "store" => sender.input(MainWindowMsg::ActivateStorePage),
-                    //                 "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
+                        //         match name.as_str() {
+                        //             "store" => sender.input(MainWindowMsg::ActivateStorePage),
+                        //             "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
 
-                    //                 _ => ()
-                    //             }
-                    //         }
-                    //     }
-                    // }
+                        //             _ => ()
+                        //         }
+                        //     }
+                        // }
+                    }
                 }
             }
         }
@@ -188,11 +189,12 @@ impl SimpleAsyncComponent for MainWindow {
         sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let mut model = Self {
-            // store_page: StorePage::builder()
-            //     .launch(())
-            //     .forward(sender.input_sender(), |msg| match msg {
-            //         StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
-            //     }),
+            store_page: StorePage::builder()
+                .launch(())
+                .detach(),
+                // .forward(sender.input_sender(), |msg| match msg {
+                //     StorePageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
+                // }),
 
             // library_page: None,
 
@@ -362,10 +364,10 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url, cache_path.clone(), task));
+                    tasks.push((url.clone(), cache_path.clone(), task));
                 }
 
-                paths.push((cache_path, is_featured));
+                paths.push((url, cache_path, is_featured));
             }
 
             // Wait for all the game manifests to be downloaded.
@@ -383,7 +385,34 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            
+            // Add store page games.
+
+            tracing::debug!(?paths, "adding store page games");
+
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Adding store page games"))
+            ));
+
+            for (url, path, _is_featured) in paths {
+                tracing::debug!(?url, ?path, "reading game manifest");
+
+                let manifest = std::fs::read(path)?;
+                let manifest = serde_json::from_slice::<Json>(&manifest)?;
+
+                let manifest = GameManifest::from_json(&manifest)
+                    .context("failed to deserialize game manifest")?;
+
+                sender.input(MainWindowMsg::AddStorePageGame {
+                    manifest_url: url,
+                    manifest
+                });
+            }
+
+            // Finish loading.
+
+            tracing::info!("loading finished");
+
+            sender.input(MainWindowMsg::SetLoadingStatus(None));
 
             Ok::<_, anyhow::Error>(())
         });
@@ -417,6 +446,13 @@ impl SimpleAsyncComponent for MainWindow {
     ) {
         match message {
             MainWindowMsg::SetLoadingStatus(status) => self.loading_status = status,
+
+            MainWindowMsg::AddStorePageGame { manifest_url, manifest } => {
+                self.store_page.emit(StorePageInput::AddGame {
+                    manifest_url,
+                    manifest
+                });
+            }
 
             // MainWindowMsg::FinishLoading { generation, validator, local_validator } => {
             //     if let Some(library_page) = self.library_page.as_ref() {

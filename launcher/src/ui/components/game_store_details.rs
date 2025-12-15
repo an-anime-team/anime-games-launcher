@@ -1,19 +1,39 @@
-use std::sync::Arc;
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use adw::prelude::*;
-
 use relm4::prelude::*;
-use relm4::factory::AsyncFactoryVecDeque;
 
-use unic_langid::LanguageIdentifier;
+use agl_games::manifest::GameManifest;
 
-use crate::prelude::*;
+use crate::config;
+
+use super::lazy_picture::ImagePath;
+use super::card::{CardComponent, CardComponentInput};
+use super::picture_carousel::{PictureCarousel, PictureCarouselMsg};
+use super::game_tags::GameTagFactory;
+use super::maintainers_row::MaintainersRowFactory;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsMsg {
     SetGameInfo {
-        url: String,
-        manifest: Arc<GameManifest>
+        manifest_url: String,
+        manifest: GameManifest
     },
 
     AddGameClicked
@@ -23,18 +43,15 @@ pub enum GameStoreDetailsMsg {
 pub struct GameStoreDetails {
     card: AsyncController<CardComponent>,
     carousel: AsyncController<PictureCarousel>,
-    maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
     tags: AsyncFactoryVecDeque<GameTagFactory>,
-    requirements: AsyncController<HardwareRequirementsComponent>,
+    maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
 
-    game_url: String,
+    manifest_url: String,
 
     title: String,
     description: String,
     developer: String,
-    publisher: String,
-
-    show_requirements: bool
+    publisher: String
 }
 
 #[relm4::component(pub, async)]
@@ -100,24 +117,6 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     #[watch]
                                     set_text: &model.description
                                 }
-                            },
-
-                            gtk::Box {
-                                set_orientation: gtk::Orientation::Vertical,
-                                set_spacing: 8,
-
-                                #[watch]
-                                set_visible: model.show_requirements,
-
-                                gtk::Label {
-                                    set_align: gtk::Align::Start,
-
-                                    add_css_class: "title-4",
-
-                                    set_text: "System Requirements",
-                                },
-
-                                model.requirements.widget(),
                             }
                         },
 
@@ -191,7 +190,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
                 .launch(CardComponent::large())
@@ -209,18 +212,12 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 .launch_default()
                 .detach(),
 
-            requirements: HardwareRequirementsComponent::builder()
-                .launch(())
-                .detach(),
-
-            game_url: String::new(),
+            manifest_url: String::new(),
 
             title: String::new(),
             developer: String::new(),
             publisher: String::new(),
-            description: String::new(),
-
-            show_requirements: false
+            description: String::new()
         };
 
         let widgets = view_output!();
@@ -228,12 +225,15 @@ impl SimpleAsyncComponent for GameStoreDetails {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncComponentSender<Self>
+    ) {
         match msg {
-            GameStoreDetailsMsg::SetGameInfo { url, manifest } => {
+            GameStoreDetailsMsg::SetGameInfo { manifest_url, manifest } => {
                 let config = config::get();
-
-                let lang = config.general.language.parse::<LanguageIdentifier>().ok();
+                let lang = config.language().ok();
 
                 let title = match &lang {
                     Some(lang) => manifest.game.title.translate(lang),
@@ -256,7 +256,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 };
 
                 // Set text info.
-                self.game_url = url;
+                self.manifest_url = manifest_url;
 
                 self.title = title.to_string();
                 self.description = description.to_string();
@@ -264,84 +264,30 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 self.publisher = publisher.to_string();
 
                 // Set images.
-                self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
-                self.carousel.emit(PictureCarouselMsg::SetImages(manifest.game.images.slides.iter().map(ImagePath::lazy_load).collect()));
+                self.card.emit(CardComponentInput::SetImage(
+                    Some(ImagePath::lazy_load(&manifest.game.images.poster))
+                ));
 
-                // Reset general game info.
-                self.tags.guard().clear();
+                self.carousel.emit(PictureCarouselMsg::SetImages(
+                    manifest.game.images.slides.iter()
+                        .map(ImagePath::lazy_load)
+                        .collect()
+                ));
 
-                self.requirements.emit(HardwareRequirementsComponentMsg::Clear);
+                // Set game tags.
+                let mut guard = self.tags.guard();
 
-                self.show_requirements = false;
+                guard.clear();
 
-                // Update general game info.
-                if let Some(info) = &manifest.info {
-                    // Set game tags.
-                    if let Some(tags) = &info.tags {
-                        let mut guard = self.tags.guard();
-
-                        for tag in tags {
-                            guard.push_back(tag.to_owned());
-                        }
-                    }
-
-                    // Set hardware requirements.
-                    if let Some(requirements) = &info.hardware_requirements {
-                        self.show_requirements = true;
-
-                        self.requirements.emit(HardwareRequirementsComponentMsg::SetRequirements(requirements.clone()));
-                    }
+                for tag in &manifest.game.tags {
+                    guard.push_back(*tag);
                 }
+
+                drop(guard);
             }
 
             GameStoreDetailsMsg::AddGameClicked => {
-                tracing::trace!("Loading latest generation");
-
-                let packages_store = PackagesStore::new(&STARTUP_CONFIG.packages.resources_store.path);
-                let generations_store = GenerationsStore::new(&STARTUP_CONFIG.generations.store.path);
-
-                // FIXME
-                let generation = generations_store.latest()
-                    .unwrap()
-                    .and_then(|generation| generations_store.load(&generation).transpose())
-                    .transpose()
-                    .unwrap();
-
-                tracing::trace!("Preparing locked games list");
-
-                let games = match generation {
-                    Some(generation) => {
-                        let mut games = generation.games.into_iter()
-                            .map(|game| game.url)
-                            .collect::<Vec<_>>();
-
-                        games.push(self.game_url.clone());
-
-                        games
-                    }
-
-                    None => vec![self.game_url.clone()]
-                };
-
-                tracing::trace!(?games, "Building new generation");
-
-                let generation = Generation::new(games)
-                    .build(&packages_store, &generations_store)
-                    .await;
-
-                match generation {
-                    Ok(generation) => {
-                        if let Err(err) = generations_store.insert(&generation) {
-                            tracing::error!(?err, ?generations_store, ?generation, "Failed to index new generation");
-                        }
-
-                        tracing::debug!(generation = generation.hash().to_base32(), "Built new generation");
-                    }
-
-                    Err(err) => {
-                        tracing::error!(?err, "Failed to build new generation");
-                    }
-                }
+                tracing::info!(url = ?self.manifest_url, "add game");
             }
         }
     }

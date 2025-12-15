@@ -23,7 +23,9 @@ pub mod cards_list;
 pub mod cards_grid;
 pub mod graph;
 
-// pub mod game_store_details;
+pub mod game_tags;
+pub mod maintainers_row;
+pub mod game_store_details;
 // pub mod hardware_requirements;
 
 // // FIXME: NOT REFACTORED

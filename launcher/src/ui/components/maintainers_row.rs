@@ -1,25 +1,34 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use adw::prelude::*;
 
-use relm4::{factory::*, prelude::*};
+use relm4::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MaintainersRowFactory {
     pub name: String,
-    pub contact: Option<String>,
+    pub link: Option<String>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MaintainersRowFactoryMsg {
-    /// Uses the value in contact if present and attempts to open
-    /// a supported application with xdg-open so the user can
-    /// contact the maintainer - currently the supported appplications
-    /// are as follows:
-    /// - No application: "John Doe"
-    /// - Email: "John Doe <johndoe@mail.com>"
-    /// - URL: "John Doe <https://johndoe.com>"
-    /// - Phone number: "John Doe <+123123123123>"
-    /// - Any URI supported by `xdg-open`: "John Doe <magnet:123123123123>"
-    Activate,
+    Clicked
 }
 
 #[relm4::factory(pub, async)]
@@ -34,57 +43,72 @@ impl AsyncFactoryComponent for MaintainersRowFactory {
         #[root]
         adw::ActionRow {
             set_title: &self.name,
-            set_subtitle: &self.contact.clone().unwrap_or_default(),
-            set_tooltip: "Open contact",
+            set_subtitle?: &self.link,
+
             set_activatable: true,
-            connect_activated => MaintainersRowFactoryMsg::Activate,
+
+            connect_activated => MaintainersRowFactoryMsg::Clicked
         }
     }
 
     async fn init_model(
         init: Self::Init,
-        index: &DynamicIndex,
-        sender: AsyncFactorySender<Self>,
+        _index: &DynamicIndex,
+        _sender: AsyncFactorySender<Self>,
     ) -> Self {
-        if let Some(start) = init.find('<') {
-            if let Some(end) = init.find('>') {
-                if end > start {
-                    return Self {
-                        name: init[0..start].to_string(),
-                        contact: Some(init[start + 1..end].to_string()),
-                    };
-                }
+        let name = init.trim();
+
+        // Name <link>
+        //
+        // TODO: Technically "na<>me" <link> is also appropriate syntax, so this
+        //       should be supported as well.
+        if let Some(name) = name.strip_suffix('>') {
+            let (name, link) = name.split_once('<')
+                .unwrap_or((name, ""));
+
+            Self {
+                name: name.to_string(),
+                link: Some(link.to_string())
             }
         }
-        Self {
-            name: init,
-            contact: None,
+
+        else {
+            Self {
+                name: name.to_string(),
+                link: None
+            }
         }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncFactorySender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncFactorySender<Self>
+    ) {
         match msg {
-            MaintainersRowFactoryMsg::Activate => {
-                if let Some(contact) = &self.contact {
-                     // Email could contain url characters so check url first
-                    // Assume uri is valid if contact is present
-                    let uri = if contact.starts_with("https://") || contact.starts_with("https://") {
-                        contact.to_string()
-                    } else if contact.contains('@') && contact.split('@').count() == 2 && contact.chars().all(|c| c.is_alphanumeric() || ".-_@".contains(c)) {
-                        format!("mailto:{}", contact)
-                    } else if contact.chars().all(|c| c.is_ascii_digit() || " +-".contains(c)) {
-                        format!("tel:{}", contact.replace([' ', '-'], ""))
+            MaintainersRowFactoryMsg::Clicked => {
+                if let Some(link) = self.link.clone() {
+                    // TODO: more strict rules.
+                    let uri = if link.contains('@') {
+                        format!("mailto:{link}")
+                    } else if link.chars().all(|c| c.is_ascii_digit() || " +-".contains(c)) {
+                        format!("tel:{}", link.replace([' ', '-'], ""))
                     } else {
-                        contact.to_string()
+                        link
                     };
 
-                    let out = std::process::Command::new("xdg-open")
+                    let output = std::process::Command::new("xdg-open")
                         .arg(&uri)
-                        .output()
-                        .expect("Failed to open contact");
+                        .output();
 
-                    if out.status.success() {
-                        println!("Opened: {}", uri);
+                    if let Err(err) = output {
+                        tracing::error!(
+                            ?err,
+                            name = ?self.name,
+                            link = ?self.link,
+                            ?uri,
+                            "failed to open maintainer link"
+                        );
                     }
                 }
             }

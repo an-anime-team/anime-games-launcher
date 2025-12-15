@@ -1,26 +1,47 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use adw::prelude::*;
-
 use relm4::prelude::*;
-use relm4::factory::AsyncFactoryVecDeque;
 
-use unic_langid::LanguageIdentifier;
+use agl_games::manifest::GameManifest;
 
-use super::*;
+use crate::config;
+use crate::ui::components::lazy_picture::ImagePath;
+use crate::ui::components::card::CardComponent;
+use crate::ui::components::cards_grid::{CardsGrid, CardsGridOutput};
+use crate::ui::components::game_store_details::{
+    GameStoreDetails, GameStoreDetailsMsg
+};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorePageInput {
     AddGame {
-        url: String,
-        manifest: Arc<GameManifest>
+        manifest_url: String,
+        manifest: GameManifest
     },
 
     Activate,
-    ToggleSearching,
     HideGamePage,
     OpenGameDetails(DynamicIndex)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StorePageOutput {
     SetShowBack(bool)
 }
@@ -30,9 +51,8 @@ pub struct StorePage {
     games_cards: AsyncFactoryVecDeque<CardsGrid>,
     game_details: AsyncController<GameStoreDetails>,
 
-    games: Vec<(String, Arc<GameManifest>)>,
+    games: Vec<(String, GameManifest)>,
 
-    searching: bool,
     show_game_page: bool
 }
 
@@ -77,11 +97,6 @@ impl SimpleAsyncComponent for StorePage {
                                 }
                             },
 
-                            gtk::SearchEntry {
-                                #[watch]
-                                set_visible: model.searching,
-                            },
-
                             model.games_cards.widget() {
                                 set_row_spacing: 8,
                                 set_column_spacing: 8,
@@ -101,7 +116,11 @@ impl SimpleAsyncComponent for StorePage {
         }
     }
 
-    async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let model = Self {
             games_cards: AsyncFactoryVecDeque::builder()
                 .launch_default()
@@ -115,7 +134,6 @@ impl SimpleAsyncComponent for StorePage {
 
             games: Vec::new(),
 
-            searching: false,
             show_game_page: false
         };
 
@@ -124,16 +142,19 @@ impl SimpleAsyncComponent for StorePage {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        sender: AsyncComponentSender<Self>
+    ) {
         match msg {
-            StorePageInput::AddGame { url, manifest } => {
+            StorePageInput::AddGame { manifest_url, manifest } => {
                 let config = config::get();
-
-                let lang = config.general.language.parse::<LanguageIdentifier>();
+                let lang = config.language().ok();
 
                 let title = match &lang {
-                    Ok(lang) => manifest.game.title.translate(lang),
-                    Err(_) => manifest.game.title.default_translation()
+                    Some(lang) => manifest.game.title.translate(lang),
+                    None => manifest.game.title.default_translation()
                 };
 
                 let card = CardComponent::medium()
@@ -143,11 +164,7 @@ impl SimpleAsyncComponent for StorePage {
 
                 self.games_cards.guard().push_back(card);
 
-                self.games.push((url, manifest));
-            }
-
-            StorePageInput::ToggleSearching => {
-                self.searching = !self.searching;
+                self.games.push((manifest_url, manifest));
             }
 
             StorePageInput::HideGamePage => {
@@ -155,19 +172,19 @@ impl SimpleAsyncComponent for StorePage {
             }
 
             StorePageInput::OpenGameDetails(index) => {
-                let Some((url, game)) = self.games.get(index.current_index()) else {
-                    tracing::error!(
+                let Some((manifest_url, manifest)) = self.games.get(index.current_index()) else {
+                    tracing::warn!(
                         index = index.current_index(),
                         length = self.games.len(),
-                        "Trying to open details page of an unexisting game"
+                        "trying to open details page of non-existing game"
                     );
 
                     return;
                 };
 
                 self.game_details.emit(GameStoreDetailsMsg::SetGameInfo {
-                    url: url.clone(),
-                    manifest: game.clone()
+                    manifest_url: manifest_url.clone(),
+                    manifest: manifest.clone()
                 });
 
                 self.show_game_page = true;
@@ -179,8 +196,6 @@ impl SimpleAsyncComponent for StorePage {
         }
 
         // Update back button visibility
-        sender
-            .output(StorePageOutput::SetShowBack(self.show_game_page))
-            .unwrap();
+        let _ = sender.output(StorePageOutput::SetShowBack(self.show_game_page));
     }
 }
