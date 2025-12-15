@@ -47,9 +47,10 @@ pub enum GameStoreDetailsMsg {
         manifest: GameManifest
     },
 
-    AddGameClicked,
     SetGameStatus(GameStatus),
-    UpdateGameStatus
+    UpdateGameStatus,
+
+    EmitClick
 }
 
 #[derive(Debug)]
@@ -170,7 +171,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     }
                                 },
 
-                                connect_clicked => GameStoreDetailsMsg::AddGameClicked
+                                connect_clicked => GameStoreDetailsMsg::EmitClick
                             },
 
                             gtk::Box {
@@ -332,7 +333,21 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 sender.input(GameStoreDetailsMsg::UpdateGameStatus);
             }
 
-            GameStoreDetailsMsg::AddGameClicked => {
+            GameStoreDetailsMsg::SetGameStatus(status) => self.status = status,
+
+            GameStoreDetailsMsg::UpdateGameStatus => {
+                let config = config::get();
+
+                let path = config.games_path.join(game::get_name(&self.manifest_url));
+
+                if path.is_file() {
+                    self.status = GameStatus::Added;
+                } else {
+                    self.status = GameStatus::NotAdded;
+                }
+            }
+
+            GameStoreDetailsMsg::EmitClick if self.status == GameStatus::NotAdded => {
                 tracing::info!(url = ?self.manifest_url, "add game");
 
                 self.status = GameStatus::Adding;
@@ -403,19 +418,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 }
             }
 
-            GameStoreDetailsMsg::SetGameStatus(status) => self.status = status,
-
-            GameStoreDetailsMsg::UpdateGameStatus => {
-                let config = config::get();
-
-                let path = config.games_path.join(game::get_name(&self.manifest_url));
-
-                if path.is_file() {
-                    self.status = GameStatus::Added;
-                } else {
-                    self.status = GameStatus::NotAdded;
-                }
-            }
+            _ => ()
         }
     }
 }
