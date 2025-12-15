@@ -166,12 +166,20 @@ impl Config {
                 if let Some(proxy) = network.get("proxy") {
                     // `general.network.proxy.url`
                     if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
-                        config.general_network_proxy_url = Some(url.to_string());
+                        config.general_network_proxy_url = if url == "system" {
+                            None
+                        } else {
+                            Some(url.to_string())
+                        };
                     }
 
                     // `general.network.proxy.mode`
                     if let Some(mode) = proxy.get("mode").and_then(Toml::as_str) {
-                        config.general_network_proxy_mode = Some(mode.to_string());
+                        config.general_network_proxy_mode = if mode == "system" {
+                            None
+                        } else {
+                            Some(mode.to_string())
+                        };
                     }
                 }
             }
