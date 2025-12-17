@@ -178,7 +178,9 @@ impl SimpleAsyncComponent for MainWindow {
 
                         add = &gtk::Box {
                             set_vexpand: true,
-                            set_hexpand: true
+                            set_hexpand: true,
+
+                            model.library_page.widget(),
                         } -> {
                             set_title: Some("Library"),
                             set_name: Some("library"),
