@@ -59,6 +59,25 @@ pub enum RuntimeError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ModulePaths {
+    /// Path to the folder where temporary files should be stored. This folder
+    /// is accessible by all the modules and is expected that will be cleaned
+    /// automatically eventually.
+    pub temp_folder: PathBuf,
+
+    /// Path to the folder where modules will have their own secure storages.
+    /// Each module will get a subfolder which can be accessed only by this
+    /// module.
+    pub modules_folder: PathBuf,
+
+    /// Path to the folder where persistent files should be stored. This folder
+    /// is accessible by all the modules and is expected that it will not be
+    /// cleaned in long amount of time, so that modules can store important
+    /// files there (e.g. downloaded game files).
+    pub persistent_folder: PathBuf
+}
+
 /// A host struct for luau scripts runtime. Allows to spawn new scripts and
 /// provide them with scoped permissions.
 pub struct Runtime {
@@ -97,15 +116,17 @@ impl Runtime {
     /// Try to create a luau module environment from provided permissions scope.
     fn create_env_from_scope(
         &self,
+        temp_folder: PathBuf,
+        module_folder: PathBuf,
+        persistent_folder: PathBuf,
         module_key: String,
         scope: ModuleScope
     ) -> Result<LuaTable, RuntimeError> {
         // Create environment table with the standard library APIs.
         let env = self.api.create_env(&Context {
-            // TODO
-            temp_folder: std::env::temp_dir(),
-            module_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir(),
+            temp_folder,
+            module_folder,
+            persistent_folder,
 
             scope
         })?;
@@ -219,7 +240,8 @@ impl Runtime {
     pub fn load_module(
         &self,
         key: impl ToString,
-        module: Module
+        module: Module,
+        paths: ModulePaths
     ) -> Result<(), RuntimeError> {
         // Check if the module file exists and is a readable file.
         if !module.path.is_file() {
@@ -235,6 +257,8 @@ impl Runtime {
                 }
             })?;
 
+        let module_hash = Hash::from_bytes(&module_content);
+
         // Read the engine table from the registry key.
         let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
 
@@ -245,7 +269,13 @@ impl Runtime {
         let key = key.to_string();
 
         // Create environment for the module.
-        let env = self.create_env_from_scope(key.clone(), module.scope)?;
+        let env = self.create_env_from_scope(
+            paths.temp_folder,
+            paths.modules_folder.join(module_hash.to_base32()),
+            paths.persistent_folder,
+            key.clone(),
+            module.scope
+        )?;
 
         // Execute the module.
         let result = self.lua.load(module_content)
@@ -265,7 +295,8 @@ impl Runtime {
     pub fn load_packages(
         &self,
         lock: &Lock,
-        storage: &Storage
+        storage: &Storage,
+        paths: &ModulePaths
     ) -> Result<(), RuntimeError> {
         use std::collections::{VecDeque, HashSet, HashMap};
 
@@ -409,12 +440,14 @@ impl Runtime {
         for hash in modules_table.keys() {
             let module_key = get_resource_key(hash.to_base32(), "module");
 
-            self.load_module(module_key.clone(), Module {
+            let module = Module {
                 path: storage.resource_path(hash),
 
                 // TODO: update sandbox_allowed_paths
                 scope: ModuleScope::default()
-            })?;
+            };
+
+            self.load_module(module_key.clone(), module, paths.clone())?;
 
             // Read the loaded module's result.
             let module_result = self.get_value::<LuaValue>(&module_key)?;

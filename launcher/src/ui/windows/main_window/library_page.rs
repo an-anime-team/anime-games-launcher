@@ -20,7 +20,7 @@ use relm4::prelude::*;
 use adw::prelude::*;
 
 use agl_packages::storage::Storage;
-use agl_runtime::runtime::Runtime;
+use agl_runtime::runtime::{Runtime, ModulePaths};
 
 use crate::config;
 use crate::games::GameLock;
@@ -221,7 +221,15 @@ impl SimpleAsyncComponent for LibraryPage {
                     "loading game package"
                 );
 
-                if let Err(err) = self.runtime.load_packages(&game.lock, &self.storage) {
+                let config = config::get();
+
+                let paths = ModulePaths {
+                    temp_folder: config.packages_temporary_path.clone(),
+                    modules_folder: config.packages_modules_path.clone(),
+                    persistent_folder: config.packages_persistent_path.clone()
+                };
+
+                if let Err(err) = self.runtime.load_packages(&game.lock, &self.storage, &paths) {
                     tracing::error!(
                         ?err,
                         url = game.url,
@@ -233,8 +241,6 @@ impl SimpleAsyncComponent for LibraryPage {
 
                     return;
                 }
-
-                let config = config::get();
 
                 let title = match config.language() {
                     Ok(lang) => game.manifest.game.title.translate(&lang),

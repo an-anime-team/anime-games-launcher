@@ -30,7 +30,7 @@ use agl_core::network::downloader::Downloader;
 use agl_packages::storage::Storage;
 
 use crate::module::{Module, ModuleScope};
-use crate::runtime::{Runtime, RuntimeError};
+use crate::runtime::{Runtime, RuntimeError, ModulePaths};
 
 #[cfg(feature = "packages-support")]
 const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/runtime/tests";
@@ -54,10 +54,18 @@ fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
 fn simple_module() -> Result<(), RuntimeError> {
     let runtime = Runtime::new()?;
 
-    runtime.load_module("module", Module {
+    let module = Module {
         path: PathBuf::from("tests/simple_module/module.luau"),
         scope: ModuleScope::default()
-    })?;
+    };
+
+    let paths = ModulePaths {
+        temp_folder: std::env::temp_dir(),
+        modules_folder: std::env::temp_dir(),
+        persistent_folder: std::env::temp_dir()
+    };
+
+    runtime.load_module("module", module, paths)?;
 
     let Some(module) = runtime.get_value::<LuaFunction>("module")? else {
         panic!("missing loaded module value");
@@ -89,7 +97,13 @@ async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
 
     let runtime = Runtime::new()?;
 
-    runtime.load_packages(&lock, &storage)?;
+    let paths = ModulePaths {
+        temp_folder: std::env::temp_dir(),
+        modules_folder: std::env::temp_dir(),
+        persistent_folder: std::env::temp_dir()
+    };
+
+    runtime.load_packages(&lock, &storage, &paths)?;
 
     // Find some better and standardized way for querying loaded modules.
     let Some(module) = runtime.get_value::<LuaTable>("p9ffktad8ns1g#module")? else {
@@ -115,7 +129,13 @@ async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
 
     let runtime = Runtime::new()?;
 
-    runtime.load_packages(&lock, &storage)?;
+    let paths = ModulePaths {
+        temp_folder: std::env::temp_dir(),
+        modules_folder: std::env::temp_dir(),
+        persistent_folder: std::env::temp_dir()
+    };
+
+    runtime.load_packages(&lock, &storage, &paths)?;
 
     // Find some better and standardized way for querying loaded modules.
     let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
@@ -145,7 +165,13 @@ async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
 
     let runtime = Runtime::new()?;
 
-    runtime.load_packages(&lock, &storage)?;
+    let paths = ModulePaths {
+        temp_folder: std::env::temp_dir(),
+        modules_folder: std::env::temp_dir(),
+        persistent_folder: std::env::temp_dir()
+    };
+
+    runtime.load_packages(&lock, &storage, &paths)?;
 
     // Find some better and standardized way for querying loaded modules.
     let Some(module) = runtime.get_value::<LuaTable>("op5h5fuc7kqr4#module")? else {
