@@ -246,6 +246,11 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 let config = config::get();
 
+                let title = match config.language() {
+                    Ok(lang) => game_lock.manifest.game.title.translate(&lang),
+                    Err(_) => game_lock.manifest.game.title.default_translation()
+                };
+
                 let paths = ModulePaths {
                     temp_folder: config.packages_temporary_path.clone(),
                     modules_folder: config.packages_modules_path.clone(),
@@ -260,15 +265,13 @@ impl SimpleAsyncComponent for LibraryPage {
                         "failed to load game package"
                     );
 
-                    error("Failed to load game package", err.to_string());
+                    error(
+                        format!("Failed to load {title} game package"),
+                        err.to_string()
+                    );
 
                     return;
                 }
-
-                let title = match config.language() {
-                    Ok(lang) => game_lock.manifest.game.title.translate(&lang),
-                    Err(_) => game_lock.manifest.game.title.default_translation()
-                };
 
                 fn find_module_key(lock: &GameLock) -> Option<String> {
                     for hash in &lock.lock.root {
@@ -328,7 +331,10 @@ impl SimpleAsyncComponent for LibraryPage {
                             "failed to read game integration from the runtime"
                         );
 
-                        error("Failed to read game integration from the runtime", err.to_string());
+                        error(
+                            format!("Failed to read {title} game integration from the runtime"),
+                            err.to_string()
+                        );
 
                         return;
                     }
@@ -350,7 +356,10 @@ impl SimpleAsyncComponent for LibraryPage {
                             "failed to build game integration"
                         );
 
-                        error("Failed to build game integration", err.to_string());
+                        error(
+                            format!("Failed to build {title} game integration"),
+                            err.to_string()
+                        );
 
                         return;
                     }
