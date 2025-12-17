@@ -19,6 +19,8 @@
 /// Version of the `agl-runtime` library.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub use mlua;
+
 pub mod module;
 pub mod api;
 pub mod runtime;
