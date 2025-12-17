@@ -53,8 +53,10 @@ pub enum GameStoreDetailsInput {
     EmitClick
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsOutput {
+    AddLibraryPageGame(GameLock),
     ShowLibraryGameWithUrl(String)
 }
 
@@ -393,7 +395,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 tracing::info!(?url, ?path, "game added");
 
-                                let lock = match serde_json::to_vec_pretty(&lock.to_json()) {
+                                let lock_bytes = match serde_json::to_vec_pretty(&lock.to_json()) {
                                     Ok(lock) => lock,
 
                                     Err(err) => {
@@ -407,7 +409,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     }
                                 };
 
-                                if let Err(err) = std::fs::write(path, lock) {
+                                if let Err(err) = std::fs::write(path, lock_bytes) {
                                     sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
                                     tracing::error!(?err, "failed to save game package lock");
@@ -416,6 +418,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     return;
                                 }
+
+                                let _ = sender.output(GameStoreDetailsOutput::AddLibraryPageGame(lock));
 
                                 sender.input(GameStoreDetailsInput::UpdateGameStatus);
                             }

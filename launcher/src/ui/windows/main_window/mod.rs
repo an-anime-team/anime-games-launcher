@@ -221,6 +221,9 @@ impl SimpleAsyncComponent for MainWindow {
                     StorePageOutput::SetShowBack(show)
                         => MainWindowMsg::SetShowBackButton(show),
 
+                    StorePageOutput::AddLibraryPageGame(game)
+                        => MainWindowMsg::AddLibraryPageGame(game),
+
                     StorePageOutput::ShowLibraryGameWithUrl(url)
                         => MainWindowMsg::ShowLibraryGameWithUrl(url)
                 }),

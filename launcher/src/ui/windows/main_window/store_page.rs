@@ -22,6 +22,7 @@ use relm4::prelude::*;
 use agl_games::manifest::GameManifest;
 
 use crate::config;
+use crate::games::GameLock;
 use crate::ui::components::lazy_picture::ImagePath;
 use crate::ui::components::card::CardComponent;
 use crate::ui::components::cards_grid::{CardsGrid, CardsGridOutput};
@@ -40,12 +41,15 @@ pub enum StorePageInput {
     OpenGameDetails(DynamicIndex),
     CloseGameDetails,
 
+    AddLibraryPageGame(GameLock),
     ShowLibraryGameWithUrl(String)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorePageOutput {
     SetShowBack(bool),
+    AddLibraryPageGame(GameLock),
     ShowLibraryGameWithUrl(String)
 }
 
@@ -134,8 +138,12 @@ impl SimpleAsyncComponent for StorePage {
             game_details: GameStoreDetails::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
+                    GameStoreDetailsOutput::AddLibraryPageGame(game)
+                        => StorePageInput::AddLibraryPageGame(game),
+
                     GameStoreDetailsOutput::ShowLibraryGameWithUrl(url)
                         => StorePageInput::ShowLibraryGameWithUrl(url)
+
                 }),
 
             games: Vec::new(),
@@ -193,6 +201,10 @@ impl SimpleAsyncComponent for StorePage {
             }
 
             StorePageInput::CloseGameDetails => self.show_game_details = false,
+
+            StorePageInput::AddLibraryPageGame(game) => {
+                let _ = sender.output(StorePageOutput::AddLibraryPageGame(game));
+            }
 
             StorePageInput::ShowLibraryGameWithUrl(url) => {
                 let _ = sender.output(StorePageOutput::ShowLibraryGameWithUrl(url));
