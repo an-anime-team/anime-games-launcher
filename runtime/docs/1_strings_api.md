@@ -1,7 +1,7 @@
 # Strings API
 
 Rust-lua bridge API is designed to return raw bytes instead of strings. While
-many methods can accept strings, as well as other data types, as their inputs,
+many methods can accept strings and other data types as their inputs,
 outputs always return tables of bytes. Strings API provides functions to perform
 bytes-string conversions, support for data encoding and serialization.
 
