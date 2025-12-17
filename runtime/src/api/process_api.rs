@@ -54,7 +54,10 @@ impl ProcessApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     let mut command = Command::new(path);
 
@@ -119,7 +122,10 @@ impl ProcessApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = path.canonicalize()?;
+                        path = normalize_path(path)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
                         let mut command = Command::new(path);
 

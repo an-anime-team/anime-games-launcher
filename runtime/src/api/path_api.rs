@@ -291,7 +291,10 @@ impl PathApi {
                     }
 
                     // TODO: is it needed here?
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     Ok(path.exists())
                 })

@@ -70,7 +70,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !path.exists() {
                         return Ok(false);
@@ -89,7 +92,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     let metadata = path.metadata()?;
 
@@ -140,8 +146,15 @@ impl FilesystemApi {
                         target = context.module_folder.join(target);
                     }
 
-                    source = source.canonicalize()?;
-                    target = target.canonicalize()?;
+                    source = normalize_path(source)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize source path: {err}"))
+                        })?;
+
+                    target = normalize_path(target)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize target path: {err}"))
+                        })?;
 
                     // Throw an error if source path doesn't exists or inaccessible.
                     if !source.exists() {
@@ -210,8 +223,15 @@ impl FilesystemApi {
                         target = context.module_folder.join(target);
                     }
 
-                    source = source.canonicalize()?;
-                    target = target.canonicalize()?;
+                    source = normalize_path(source)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize source path: {err}"))
+                        })?;
+
+                    target = normalize_path(target)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize target path: {err}"))
+                        })?;
 
                     // Throw an error if source path doesn't exists or inaccessible.
                     if !source.exists() {
@@ -286,7 +306,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -317,7 +340,10 @@ impl FilesystemApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = path.canonicalize()?;
+                        path = normalize_path(path)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
                         if !context.is_accessible(&path)? {
                             return Err(LuaError::external("path is inaccessible"));
@@ -537,7 +563,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -561,7 +590,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -579,7 +611,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -620,7 +655,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -640,7 +678,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -660,7 +701,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));
@@ -701,7 +745,10 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = path.canonicalize()?;
+                    path = normalize_path(path)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
 
                     if !context.is_accessible(&path)? {
                         return Err(LuaError::external("path is inaccessible"));

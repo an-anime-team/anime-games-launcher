@@ -77,6 +77,15 @@ pub fn bytes_to_lua_table(
     Ok(table)
 }
 
+/// Normalize path by resolving symbolic links.
+pub fn normalize_path(mut path: PathBuf) -> std::io::Result<PathBuf> {
+    while path.is_symlink() {
+        path = path.read_link()?;
+    }
+
+    Ok(path.components().collect())
+}
+
 /// Luau module standard library builder context.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Context {
@@ -98,7 +107,7 @@ impl Context {
     /// Check if a path is allowed to be accessed by the current module.
     pub fn is_accessible(
         &self,
-        path: impl AsRef<Path>
+        path: impl Into<PathBuf>
     ) -> std::io::Result<bool> {
         fn is_parent_of(parent: &Path, child: &Path) -> bool {
             parent.components()
@@ -106,7 +115,7 @@ impl Context {
                 .all(|(p, c)| p == c)
         }
 
-        let path = path.as_ref().canonicalize()?;
+        let path = normalize_path(path.into())?;
 
         if is_parent_of(&self.temp_folder, &path)
             || is_parent_of(&self.module_folder, &path)

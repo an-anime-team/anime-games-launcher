@@ -70,7 +70,10 @@ impl HashesApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = path.canonicalize()?;
+                        path = normalize_path(path)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
                         if !context.is_accessible(&path)? {
                             return Err(LuaError::external("path is inaccessible"));

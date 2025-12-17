@@ -52,7 +52,10 @@ impl ArchivesApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = path.canonicalize()?;
+                        path = normalize_path(path)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
                         if !context.is_accessible(&path)? {
                             return Err(LuaError::external("path is inaccessible"));
@@ -132,7 +135,10 @@ impl ArchivesApi {
                             target = context.module_folder.join(target);
                         }
 
-                        target = target.canonicalize()?;
+                        target = normalize_path(target)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
                         if !context.is_accessible(&target)? {
                             return Err(LuaError::external("target path is inaccessible"));

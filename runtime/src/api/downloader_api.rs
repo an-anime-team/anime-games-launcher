@@ -87,7 +87,10 @@ impl DownloaderApi {
                             output_file = context.module_folder.join(output_file);
                         }
 
-                        output_file = output_file.canonicalize()?;
+                        output_file = normalize_path(output_file)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize output file path: {err}"))
+                            })?;
 
                         if !context.is_accessible(&output_file)? {
                             return Err(LuaError::external("path is inaccessible"));
