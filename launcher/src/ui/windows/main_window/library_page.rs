@@ -29,6 +29,9 @@ use crate::ui::components::lazy_picture::ImagePath;
 use crate::ui::components::cards_list::{
     CardsList, CardsListInit, CardsListInput, CardsListOutput
 };
+use crate::ui::components::game_library_details::{
+    GameLibraryDetails, GameLibraryDetailsMsg
+};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,8 +41,8 @@ pub enum LibraryPageInput {
     SelectGameWithUrl(String),
 
     SelectGameWithIndex {
-        game: DynamicIndex,
-        variant: Option<DynamicIndex>
+        game: usize,
+        variant: Option<usize>
     },
 
     CollapseGamesExceptIndex(DynamicIndex),
@@ -106,8 +109,8 @@ pub enum LibraryPageOutput {
 
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
-    // pub game_details: AsyncController<GameLibraryDetails>,
-    // pub download_manager: AsyncController<DownloadManagerWindow>,
+    game_details: AsyncController<GameLibraryDetails>,
+    // download_manager: AsyncController<DownloadManagerWindow>,
 
     // main_window: Option<adw::ApplicationWindow>,
     // toast_overlay: Option<adw::ToastOverlay>,
@@ -150,9 +153,12 @@ impl SimpleAsyncComponent for LibraryPage {
                     set_child = model.cards_list.widget() {
                         add_css_class: "navigation-sidebar",
 
-                        // connect_row_activated[sender] => move |_, row| {
-                        //     sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
-                        // }
+                        connect_row_activated[sender] => move |_, row| {
+                            sender.input(LibraryPageInput::SelectGameWithIndex {
+                                game: row.index() as usize,
+                                variant: None
+                            });
+                        }
                     }
                 },
 
@@ -162,8 +168,8 @@ impl SimpleAsyncComponent for LibraryPage {
 
                     set_hexpand: true,
 
-                    // #[wrap(Some)]
-                    // set_child = model.game_details.widget(),
+                    #[wrap(Some)]
+                    set_child = model.game_details.widget(),
                 }
             }
         }
@@ -178,16 +184,20 @@ impl SimpleAsyncComponent for LibraryPage {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .forward(sender.input_sender(), |msg| match msg {
-                    CardsListOutput::Selected { card: game, variant }
-                        => LibraryPageInput::SelectGameWithIndex { game, variant },
+                    CardsListOutput::Selected { card, variant } => {
+                        LibraryPageInput::SelectGameWithIndex {
+                            game: card.current_index(),
+                            variant: variant.map(|variant| variant.current_index())
+                        }
+                    }
 
                     CardsListOutput::HideOtherVariants(index)
                         => LibraryPageInput::CollapseGamesExceptIndex(index)
                 }),
 
-            // game_details: GameLibraryDetails::builder()
-            //     .launch(parent.clone())
-            //     .detach(),
+            game_details: GameLibraryDetails::builder()
+                .launch(())
+                .detach(),
 
             // download_manager: DownloadManagerWindow::builder()
             //     .launch(())
@@ -271,7 +281,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 for (game, index) in &self.games {
                     if game.url == url {
                         sender.input(LibraryPageInput::SelectGameWithIndex {
-                            game: index.clone(),
+                            game: index.current_index(),
                             variant: None
                         });
 
@@ -280,8 +290,15 @@ impl SimpleAsyncComponent for LibraryPage {
                 }
             }
 
-            LibraryPageInput::SelectGameWithIndex { game, variant } => {
-                dbg!(game);
+            LibraryPageInput::SelectGameWithIndex { game, variant: _ } => {
+                let game = self.games.iter()
+                    .find(|(_, index)| index.current_index() == game);
+
+                if let Some((game, _)) = game {
+                    self.game_details.emit(GameLibraryDetailsMsg::SetGame(
+                        game.manifest.clone()
+                    ));
+                }
             }
 
             LibraryPageInput::CollapseGamesExceptIndex(index) => {

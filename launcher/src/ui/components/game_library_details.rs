@@ -19,8 +19,7 @@
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use unic_langid::LanguageIdentifier;
-
+use agl_games::manifest::GameManifest;
 use agl_games::engine::{
     GameEdition,
     GameLaunchStatus,
@@ -30,27 +29,17 @@ use agl_games::engine::{
 };
 
 use crate::consts;
+use crate::config;
 
-use super::lazy_picture::LazyPictureComponent;
-use super::card::CardComponent;
-
-#[derive(Debug, Clone)]
-pub struct GameLibraryDetailsMetadata {
-    pub title: String,
-    pub developer: String,
-    pub publisher: String
-}
-
-#[derive(Debug, Clone)]
-pub struct GameLibraryDetailsInfo {
-    pub edition: Option<GameEdition>,
-    pub install_status: Option<InstallationStatus>,
-    pub launch_info: Option<GameLaunchInfo>,
-    pub settings_layout: Option<Vec<GameSettingsGroup>>
-}
+use super::lazy_picture::{
+    LazyPictureComponent, LazyPictureComponentMsg, ImagePath
+};
+use super::card::{CardComponent, CardComponentInput};
 
 #[derive(Debug)]
 pub enum GameLibraryDetailsMsg {
+    SetGame(GameManifest),
+
     // /// Set metadata for the games library details page.
     // /// This is used to render game title, pictures and other information.
     // UpdateGameMetadata {
@@ -86,17 +75,16 @@ pub struct GameLibraryDetails {
     background: AsyncController<LazyPictureComponent>,
     // settings_window: AsyncController<GameSettingsWindow>,
 
-    // listener: Option<UnboundedSender<SyncGameCommand>>,
-    game_metadata: Option<GameLibraryDetailsMetadata>,
-    game_info: Option<GameLibraryDetailsInfo>,
+    game_title: Option<String>,
+    game_developer: Option<String>,
+    game_publisher: Option<String>,
 
-    // is_loading: bool,
     // running_game: Option<Child>
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameLibraryDetails {
-    type Init = adw::ApplicationWindow;
+    type Init = ();
     type Input = GameLibraryDetailsMsg;
     type Output = ();
 
@@ -116,7 +104,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 set_title: "No game selected",
 
                 #[watch]
-                set_visible: model.is_loading
+                set_visible: model.game_title.is_none()
             },
 
             adw::Clamp {
@@ -124,7 +112,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 set_hexpand: true,
 
                 #[watch]
-                set_visible: !model.is_loading,
+                set_visible: model.game_title.is_some(),
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
@@ -138,7 +126,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         add_css_class: "title-1",
 
                         #[watch]
-                        set_label?: model.game_metadata.as_ref().map(|info| info.title.as_str())
+                        set_label?: model.game_title.as_deref()
                     },
 
                     model.background.widget() {
@@ -151,137 +139,137 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         set_spacing: 12,
 
                         // Play button.
-                        gtk::Button {
-                            #[watch]
-                            set_css_classes?: model.game_info.as_ref().and_then(|info| {
-                                info.launch_info.as_ref().map(|info| {
-                                    match info.status {
-                                        GameLaunchStatus::Normal    => &["pill", "suggested-action"],
-                                        GameLaunchStatus::Warning   => &["pill", "warning-action"],
-                                        GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
-                                        GameLaunchStatus::Disabled  => &["pill", ""]
-                                    }
-                                })
-                            }),
+                        // gtk::Button {
+                        //     #[watch]
+                        //     set_css_classes?: model.game_info.as_ref().and_then(|info| {
+                        //         info.launch_info.as_ref().map(|info| {
+                        //             match info.status {
+                        //                 GameLaunchStatus::Normal   => &["pill", "suggested-action"],
+                        //                 GameLaunchStatus::Warning  => &["pill", "warning-action"],
+                        //                 GameLaunchStatus::Danger   => &["pill", "destructive-action"],
+                        //                 GameLaunchStatus::Disabled => &["pill", ""]
+                        //             }
+                        //         })
+                        //     }),
 
-                            #[watch]
-                            set_visible: {
-                                let game_installed = model.game_info.as_ref()
-                                    .and_then(|info| info.install_status)
-                                    .map(|install_status| {
-                                        [
-                                            InstallationStatus::Installed,
-                                            InstallationStatus::UpdateAvailable
-                                        ].contains(&install_status)
-                                    }).unwrap_or(false);
+                        //     #[watch]
+                        //     set_visible: {
+                        //         let game_installed = model.game_info.as_ref()
+                        //             .and_then(|info| info.install_status)
+                        //             .map(|install_status| {
+                        //                 [
+                        //                     InstallationStatus::Installed,
+                        //                     InstallationStatus::UpdateAvailable
+                        //                 ].contains(&install_status)
+                        //             }).unwrap_or(false);
 
-                                model.running_game.is_none() && game_installed
-                            },
+                        //         model.running_game.is_none() && game_installed
+                        //     },
 
-                            #[watch]
-                            set_sensitive?: model.game_info.as_ref().and_then(|info| {
-                                info.launch_info.as_ref().map(|info| {
-                                    info.status != GameLaunchStatus::Disabled
-                                })
-                            }),
+                        //     #[watch]
+                        //     set_sensitive?: model.game_info.as_ref().and_then(|info| {
+                        //         info.launch_info.as_ref().map(|info| {
+                        //             info.status != GameLaunchStatus::Disabled
+                        //         })
+                        //     }),
 
-                            #[watch]
-                            set_tooltip?: model.game_info.as_ref()
-                                .and_then(|info| info.launch_info.as_ref())
-                                .map(|info| info.hint.as_ref())
-                                .and_then(|hint| {
-                                    hint.as_ref()
-                                        .map(|hint| {
-                                            // FIXME: IO-heavy thing (there's around 6 update calls each time)
-                                            let config = config::get();
+                        //     #[watch]
+                        //     set_tooltip?: model.game_info.as_ref()
+                        //         .and_then(|info| info.launch_info.as_ref())
+                        //         .map(|info| info.hint.as_ref())
+                        //         .and_then(|hint| {
+                        //             hint.as_ref()
+                        //                 .map(|hint| {
+                        //                     // FIXME: IO-heavy thing (there's around 6 update calls each time)
+                        //                     let config = config::get();
 
-                                            let lang = config.general.language.parse::<LanguageIdentifier>();
+                        //                     let lang = config.general.language.parse::<LanguageIdentifier>();
 
-                                            match &lang {
-                                                Ok(lang) => hint.translate(lang),
-                                                Err(_) => hint.default_translation()
-                                            }
-                                        })
-                                }),
+                        //                     match &lang {
+                        //                         Ok(lang) => hint.translate(lang),
+                        //                         Err(_) => hint.default_translation()
+                        //                     }
+                        //                 })
+                        //         }),
 
-                            adw::ButtonContent {
-                                set_icon_name: "media-playback-start-symbolic",
+                        //     adw::ButtonContent {
+                        //         set_icon_name: "media-playback-start-symbolic",
 
-                                set_label: "Play"
-                            },
+                        //         set_label: "Play"
+                        //     },
 
-                            connect_clicked => GameLibraryDetailsMsg::EmitLaunchGame
-                        },
+                        //     connect_clicked => GameLibraryDetailsMsg::EmitLaunchGame
+                        // },
 
-                        // Kill game button.
-                        gtk::Button {
-                            add_css_class: "pill",
-                            add_css_class: "destructive-action",
+                        // // Kill game button.
+                        // gtk::Button {
+                        //     add_css_class: "pill",
+                        //     add_css_class: "destructive-action",
 
-                            #[watch]
-                            set_visible: model.running_game.is_some(),
+                        //     #[watch]
+                        //     set_visible: model.running_game.is_some(),
 
-                            adw::ButtonContent {
-                                set_icon_name: "violence-symbolic",
+                        //     adw::ButtonContent {
+                        //         set_icon_name: "violence-symbolic",
 
-                                set_label: "Kill game"
-                            },
+                        //         set_label: "Kill game"
+                        //     },
 
-                            connect_clicked => GameLibraryDetailsMsg::EmitKillGame
-                        },
+                        //     connect_clicked => GameLibraryDetailsMsg::EmitKillGame
+                        // },
 
-                        // Update / Install (execute diff) button.
-                        gtk::Button {
-                            #[watch]
-                            set_css_classes?: model.game_info.as_ref()
-                                .map(|info| {
-                                    if info.install_status == Some(InstallationStatus::UpdateAvailable) {
-                                        &["pill", ""]
-                                    } else {
-                                        &["pill", "suggested-action"]
-                                    }
-                                }),
+                        // // Update / Install (execute diff) button.
+                        // gtk::Button {
+                        //     #[watch]
+                        //     set_css_classes?: model.game_info.as_ref()
+                        //         .map(|info| {
+                        //             if info.install_status == Some(InstallationStatus::UpdateAvailable) {
+                        //                 &["pill", ""]
+                        //             } else {
+                        //                 &["pill", "suggested-action"]
+                        //             }
+                        //         }),
 
-                            #[watch]
-                            set_visible: model.game_info.as_ref()
-                                .map(|info| info.install_status != Some(InstallationStatus::Installed))
-                                .unwrap_or(false), // false because install_status can be None so we're not ready yet
+                        //     #[watch]
+                        //     set_visible: model.game_info.as_ref()
+                        //         .map(|info| info.install_status != Some(InstallationStatus::Installed))
+                        //         .unwrap_or(false), // false because install_status can be None so we're not ready yet
 
-                            adw::ButtonContent {
-                                set_icon_name: "document-save-symbolic",
+                        //     adw::ButtonContent {
+                        //         set_icon_name: "document-save-symbolic",
 
-                                #[watch]
-                                set_label: {
-                                    let not_installed = model.game_info.as_ref()
-                                        .map(|info| info.install_status == Some(InstallationStatus::NotInstalled))
-                                        .unwrap_or(true);
+                        //         #[watch]
+                        //         set_label: {
+                        //             let not_installed = model.game_info.as_ref()
+                        //                 .map(|info| info.install_status == Some(InstallationStatus::NotInstalled))
+                        //                 .unwrap_or(true);
 
-                                    if not_installed {
-                                        "Install"
-                                    } else {
-                                        "Update"
-                                    }
-                                }
-                            },
+                        //             if not_installed {
+                        //                 "Install"
+                        //             } else {
+                        //                 "Update"
+                        //             }
+                        //         }
+                        //     },
 
-                            connect_clicked => GameLibraryDetailsMsg::EmitInstallDiff
-                        },
+                        //     connect_clicked => GameLibraryDetailsMsg::EmitInstallDiff
+                        // },
 
-                        gtk::Button {
-                            add_css_class: "pill",
+                        // gtk::Button {
+                        //     add_css_class: "pill",
 
-                            #[watch]
-                            set_visible: model.game_info.as_ref()
-                                .map(|info| info.settings_layout.is_some())
-                                .unwrap_or(false),
+                        //     #[watch]
+                        //     set_visible: model.game_info.as_ref()
+                        //         .map(|info| info.settings_layout.is_some())
+                        //         .unwrap_or(false),
 
-                            adw::ButtonContent {
-                                set_icon_name: "settings-symbolic",
-                                set_label: "Settings"
-                            },
+                        //     adw::ButtonContent {
+                        //         set_icon_name: "settings-symbolic",
+                        //         set_label: "Settings"
+                        //     },
 
-                            connect_clicked => GameLibraryDetailsMsg::EmitOpenSettingsWindow
-                        }
+                        //     connect_clicked => GameLibraryDetailsMsg::EmitOpenSettingsWindow
+                        // }
                     }
                 }
             }
@@ -289,9 +277,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
     }
 
     async fn init(
-        parent: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
-        sender: AsyncComponentSender<Self>
+        _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
@@ -311,11 +299,10 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             //         }
             //     }),
 
-            // listener: None,
-            game_metadata: None,
-            game_info: None,
+            game_title: None,
+            game_developer: None,
+            game_publisher: None,
 
-            // is_loading: true,
             // running_game: None
         };
 
@@ -327,9 +314,42 @@ impl SimpleAsyncComponent for GameLibraryDetails {
     async fn update(
         &mut self,
         msg: Self::Input,
-        sender: AsyncComponentSender<Self>
+        _sender: AsyncComponentSender<Self>
     ) {
         match msg {
+            GameLibraryDetailsMsg::SetGame(manifest) => {
+                self.card.emit(CardComponentInput::SetImage(Some(
+                    ImagePath::LazyLoad(manifest.game.images.poster.clone())
+                )));
+
+                self.background.emit(LazyPictureComponentMsg::SetImage(Some(
+                    ImagePath::LazyLoad(manifest.game.images.background.clone())
+                )));
+
+                let config = config::get();
+
+                let lang = config.language().ok();
+
+                let title = match &lang {
+                    Some(lang) => manifest.game.title.translate(lang),
+                    None => manifest.game.title.default_translation()
+                };
+
+                let developer = match &lang {
+                    Some(lang) => manifest.game.developer.translate(lang),
+                    None => manifest.game.developer.default_translation()
+                };
+
+                let publisher = match &lang {
+                    Some(lang) => manifest.game.publisher.translate(lang),
+                    None => manifest.game.publisher.default_translation()
+                };
+
+                self.game_title = Some(title.to_string());
+                self.game_developer = Some(developer.to_string());
+                self.game_publisher = Some(publisher.to_string());
+            }
+
             // GameLibraryDetailsMsg::UpdateGameMetadata { manifest, listener, edition } => {
             //     let config = config::get();
 
