@@ -342,9 +342,16 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     ImagePath::LazyLoad(manifest.game.images.poster.clone())
                 )));
 
-                self.background.emit(LazyPictureComponentMsg::SetImage(Some(
-                    ImagePath::LazyLoad(manifest.game.images.background.clone())
-                )));
+                // Little trolling. I think you can sorry me.
+                let date = time::OffsetDateTime::now_utc();
+
+                let background_image = if date.month() == time::Month::April && date.day() == 1 {
+                    ImagePath::resource("images/april-fools.jpg")
+                } else {
+                    ImagePath::lazy_load(&manifest.game.images.background)
+                };
+
+                self.background.emit(LazyPictureComponentMsg::SetImage(Some(background_image)));
 
                 let config = config::get();
 
