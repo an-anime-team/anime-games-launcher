@@ -18,6 +18,8 @@
 
 use serde_json::{json, Value as Json};
 
+use crate::localizable_string::LocalizableString;
+
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -39,7 +41,7 @@ pub enum GameManifestDeserializeError {
 pub struct GameManifest {
     pub game: GameInfo,
     pub package: PackageInfo,
-    pub maintainers: Vec<String>
+    pub maintainers: Vec<LocalizableString>
 }
 
 impl GameManifest {
@@ -48,7 +50,9 @@ impl GameManifest {
             "version": 1,
             "game": self.game.to_json(),
             "package": self.package.to_json(),
-            "maintainers": self.maintainers
+            "maintainers": self.maintainers.iter()
+                .map(|maintainer| maintainer.to_json())
+                .collect::<Vec<_>>()
         })
     }
 
@@ -68,11 +72,8 @@ impl GameManifest {
                 .and_then(Json::as_array)
                 .map(|maintainers| {
                     maintainers.iter()
-                        .flat_map(|maintainer| {
-                            maintainer.as_str()
-                                .map(String::from)
-                        })
-                        .collect::<Vec<String>>()
+                        .flat_map(LocalizableString::from_json)
+                        .collect::<Vec<_>>()
                 })
                 .unwrap_or_default()
         })

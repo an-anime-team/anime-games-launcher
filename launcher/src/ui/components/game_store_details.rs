@@ -329,7 +329,12 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 let mut guard = self.maintainers.guard();
 
                 for maintainer in &manifest.maintainers {
-                    guard.push_back(maintainer.clone());
+                    let maintainer = match &lang {
+                        Some(lang) => maintainer.translate(lang),
+                        None => maintainer.default_translation()
+                    };
+
+                    guard.push_back(maintainer.to_string());
                 }
 
                 drop(guard);
