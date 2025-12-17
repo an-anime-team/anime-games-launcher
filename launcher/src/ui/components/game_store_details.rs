@@ -213,6 +213,10 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     },
 
                                     adw::PreferencesGroup {
+                                        set_margin_start: 4,
+                                        set_margin_end: 4,
+                                        set_margin_bottom: 4,
+
                                         set_title: "Package",
 
                                         model.maintainers.widget() {
