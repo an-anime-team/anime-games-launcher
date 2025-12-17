@@ -125,6 +125,10 @@ async fn main() -> anyhow::Result<()> {
         .warning-action {
             background-color: #BFB04D;
         }
+
+        flowboxchild:hover {
+            background: unset;
+        }
     ");
 
     // Check for WINE_CANONICAL_HOLE variable.

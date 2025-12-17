@@ -182,14 +182,11 @@ impl SimpleAsyncComponent for CardComponent {
             #[watch]
             set_maximum_size: model.size.width(),
 
-            set_halign: gtk::Align::Start,
-            set_valign: gtk::Align::Start,
-
             gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
+                // set_vexpand: true,
+                // set_hexpand: true,
 
-                set_halign: gtk::Align::Start,
-                set_valign: gtk::Align::Start,
+                set_orientation: gtk::Orientation::Vertical,
 
                 gtk::Overlay {
                     #[watch]
@@ -209,19 +206,30 @@ impl SimpleAsyncComponent for CardComponent {
                     }
                 },
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_halign: gtk::Align::Center,
+                gtk::Label {
+                    set_margin_top: 12,
 
-                    set_margin_all: 12,
+                    set_halign: gtk::Align::Center,
+                    set_justify: gtk::Justification::Center,
 
                     #[watch]
                     set_visible: model.title.is_some(),
 
-                    gtk::Label {
-                        #[watch]
-                        set_label?: &model.title
-                    }
+                    #[watch]
+                    set_label?: model.title.clone()
+                        .map(|title| {
+                            let max_chars = model.size.width() as usize / 8;
+
+                            if title.chars().count() <= max_chars {
+                                return title;
+                            }
+
+                            title.chars()
+                                .take(max_chars.checked_sub(3).unwrap_or_default())
+                                .chain("...".chars())
+                                .collect::<String>()
+                        })
+                        .as_deref()
                 }
             }
         }

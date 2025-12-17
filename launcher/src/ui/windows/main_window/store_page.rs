@@ -76,12 +76,16 @@ impl SimpleAsyncComponent for StorePage {
 
             #[transition(SlideLeftRight)]
             append = if !model.show_game_details {
-                adw::ClampScrollable {
-                    set_maximum_size: 900,
+                gtk::ScrolledWindow {
+                    set_vexpand: true,
+                    set_hexpand: true,
 
-                    gtk::ScrolledWindow {
+                    adw::Clamp {
+                        set_maximum_size: 900,
+
                         gtk::Box {
                             set_orientation: gtk::Orientation::Vertical,
+
                             set_margin_all: 16,
                             set_spacing: 16,
 
@@ -93,7 +97,7 @@ impl SimpleAsyncComponent for StorePage {
 
                                     add_css_class: "title-1",
 
-                                    set_label: "Games store"
+                                    set_label: "Store"
                                 },
 
                                 gtk::Label {
@@ -105,10 +109,15 @@ impl SimpleAsyncComponent for StorePage {
                             },
 
                             model.games_cards.widget() {
-                                set_row_spacing: 8,
-                                set_column_spacing: 8,
-
                                 set_vexpand: true,
+                                set_hexpand: true,
+
+                                set_halign: gtk::Align::Center,
+
+                                set_row_spacing: 16,
+                                set_column_spacing: 24,
+
+                                set_homogeneous: true,
 
                                 set_selection_mode: gtk::SelectionMode::None
                             }

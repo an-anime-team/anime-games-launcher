@@ -106,9 +106,6 @@ impl SimpleAsyncComponent for LazyPictureComponent {
     view! {
         #[root]
         gtk::Picture {
-            // set_valign: gtk::Align::Start,
-            // set_halign: gtk::Align::Start,
-
             set_content_fit: gtk::ContentFit::Cover,
 
             #[watch]
