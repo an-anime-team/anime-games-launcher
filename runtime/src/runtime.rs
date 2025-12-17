@@ -113,6 +113,11 @@ impl Runtime {
         })
     }
 
+    #[inline(always)]
+    pub const fn lua(&self) -> &Lua {
+        &self.lua
+    }
+
     /// Try to create a luau module environment from provided permissions scope.
     fn create_env_from_scope(
         &self,
