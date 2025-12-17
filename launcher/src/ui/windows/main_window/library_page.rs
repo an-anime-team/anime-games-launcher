@@ -305,25 +305,18 @@ impl SimpleAsyncComponent for LibraryPage {
                     return;
                 };
 
-                let game_integration = match self.runtime.get_value::<LuaTable>(module_key) {
-                    Ok(Some(game_integration)) => game_integration,
+                let game_integration = self.runtime.get_value::<LuaTable>(module_key)
+                    .transpose()
+                    .map(|game_integration| {
+                        game_integration.and_then(|game_integration| {
+                            game_integration.raw_get::<LuaTable>("value")
+                        })
+                    });
 
-                    Ok(None) => {
-                        tracing::error!(
-                            url = game_lock.url,
-                            title = game_lock.manifest.game.title.default_translation(),
-                            "game integration module is missing in the runtime"
-                        );
+                let game_integration = match game_integration {
+                    Some(Ok(game_integration)) => game_integration,
 
-                        error(
-                            "Game integration module is missing in the runtime",
-                            format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime")
-                        );
-
-                        return;
-                    }
-
-                    Err(err) => {
+                    Some(Err(err)) => {
                         tracing::error!(
                             ?err,
                             url = game_lock.url,
@@ -334,6 +327,21 @@ impl SimpleAsyncComponent for LibraryPage {
                         error(
                             format!("Failed to read {title} game integration from the runtime"),
                             err.to_string()
+                        );
+
+                        return;
+                    }
+
+                    None => {
+                        tracing::error!(
+                            url = game_lock.url,
+                            title = game_lock.manifest.game.title.default_translation(),
+                            "game integration module is missing in the runtime"
+                        );
+
+                        error(
+                            "Game integration module is missing in the runtime",
+                            format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime")
                         );
 
                         return;
