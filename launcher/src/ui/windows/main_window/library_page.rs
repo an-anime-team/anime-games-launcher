@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
@@ -120,7 +122,7 @@ pub struct LibraryPage {
     storage: Storage,
     runtime: Runtime,
 
-    games: Vec<(GameLock, GameIntegration, DynamicIndex)>
+    games: Vec<(GameLock, Arc<GameIntegration>, DynamicIndex)>
 }
 
 impl std::fmt::Debug for LibraryPage {
@@ -354,7 +356,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 );
 
                 let game_integration = match game_integration {
-                    Ok(game_integration) => game_integration,
+                    Ok(game_integration) => Arc::new(game_integration),
 
                     Err(err) => {
                         tracing::error!(
@@ -399,10 +401,12 @@ impl SimpleAsyncComponent for LibraryPage {
                 let game = self.games.iter()
                     .find(|(_, _, index)| index.current_index() == game);
 
-                if let Some((game, _, _)) = game {
-                    self.game_details.emit(GameLibraryDetailsMsg::SetGame(
-                        game.manifest.clone()
-                    ));
+                if let Some((game, integration, _)) = game {
+                    self.game_details.emit(GameLibraryDetailsMsg::SetGame {
+                        manifest: game.manifest.clone(),
+                        edition: None,
+                        integration: integration.clone()
+                    });
                 }
             }
 

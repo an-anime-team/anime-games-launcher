@@ -16,29 +16,38 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
 use agl_games::manifest::GameManifest;
 use agl_games::engine::{
-    GameEdition,
-    GameLaunchStatus,
-    GameLaunchInfo,
+    GameIntegration,
+    GameVariant,
     InstallationStatus,
-    GameSettingsGroup
+    GameLaunchInfo
 };
 
 use crate::consts;
 use crate::config;
+use crate::ui::dialogs;
 
 use super::lazy_picture::{
     LazyPictureComponent, LazyPictureComponentMsg, ImagePath
 };
 use super::card::{CardComponent, CardComponentInput};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum GameLibraryDetailsMsg {
-    SetGame(GameManifest),
+    SetGame {
+        manifest: GameManifest,
+        edition: Option<String>,
+        integration: Arc<GameIntegration>
+    },
+
+    UpdateGameInfo,
 
     // /// Set metadata for the games library details page.
     // /// This is used to render game title, pictures and other information.
@@ -78,6 +87,12 @@ pub struct GameLibraryDetails {
     game_title: Option<String>,
     game_developer: Option<String>,
     game_publisher: Option<String>,
+
+    game_integration: Option<Arc<GameIntegration>>,
+    game_variant: Option<GameVariant>,
+
+    game_installation_status: Option<InstallationStatus>,
+    game_launch_info: Option<GameLaunchInfo>,
 
     // running_game: Option<Child>
 }
@@ -303,6 +318,12 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             game_developer: None,
             game_publisher: None,
 
+            game_integration: None,
+            game_variant: None,
+
+            game_installation_status: None,
+            game_launch_info: None,
+
             // running_game: None
         };
 
@@ -314,10 +335,14 @@ impl SimpleAsyncComponent for GameLibraryDetails {
     async fn update(
         &mut self,
         msg: Self::Input,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            GameLibraryDetailsMsg::SetGame(manifest) => {
+            GameLibraryDetailsMsg::SetGame {
+                manifest,
+                edition,
+                integration
+            } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::LazyLoad(manifest.game.images.poster.clone())
                 )));
@@ -348,6 +373,45 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 self.game_title = Some(title.to_string());
                 self.game_developer = Some(developer.to_string());
                 self.game_publisher = Some(publisher.to_string());
+
+                self.game_integration = Some(integration);
+
+                self.game_variant = Some(GameVariant {
+                    platform: *consts::CURRENT_PLATFORM,
+                    edition
+                });
+
+                sender.input(GameLibraryDetailsMsg::UpdateGameInfo);
+            }
+
+            GameLibraryDetailsMsg::UpdateGameInfo => {
+                if let Some(integration) = &self.game_integration
+                    && let Some(variant) = &self.game_variant
+                {
+                    match integration.game_status(variant) {
+                        Ok(status) => self.game_installation_status = Some(status),
+
+                        Err(err) => {
+                            self.game_installation_status = None;
+
+                            tracing::error!(?err, "failed to request game installation status");
+
+                            dialogs::error("Failed to request game installation status", err.to_string());
+                        }
+                    }
+
+                    match integration.game_launch_info(variant) {
+                        Ok(info) => self.game_launch_info = Some(info),
+
+                        Err(err) => {
+                            self.game_launch_info = None;
+
+                            tracing::error!(?err, "failed to request game launch info");
+
+                            dialogs::error("Failed to request game launch info", err.to_string());
+                        }
+                    }
+                }
             }
 
             // GameLibraryDetailsMsg::UpdateGameMetadata { manifest, listener, edition } => {
