@@ -24,6 +24,9 @@ use mlua::prelude::*;
 use agl_core::export::tasks::tokio;
 
 #[cfg(feature = "packages-support")]
+use agl_core::network::downloader::Downloader;
+
+#[cfg(feature = "packages-support")]
 use agl_packages::storage::Storage;
 
 use crate::module::{Module, ModuleScope};
@@ -77,9 +80,10 @@ fn simple_module() -> Result<(), RuntimeError> {
 #[cfg(feature = "packages-support")]
 #[tokio::test]
 async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("simple_package")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         format!("{TESTS_DIR_URL}/simple_package/package.json")
     ]).await?;
 
@@ -102,9 +106,10 @@ async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(feature = "packages-support")]
 #[tokio::test]
 async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("dependency_module")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         format!("{TESTS_DIR_URL}/dependency_module/package.json")
     ]).await?;
 
@@ -130,9 +135,10 @@ async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(feature = "packages-support")]
 #[tokio::test]
 async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
+    let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("nested_package")?)?;
 
-    let lock = storage.install_packages([
+    let lock = storage.install_packages(&downloader, [
         format!("{TESTS_DIR_URL}/nested_package/package_1.json"),
         format!("{TESTS_DIR_URL}/nested_package/package_2.json")
     ]).await?;

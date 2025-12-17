@@ -333,19 +333,21 @@ impl Runtime {
                             .or_default();
 
                         for (name, input_resource) in package.inputs.iter() {
-                            // Prevent names re-assigning.
-                            if module.contains_key(name) {
-                                return Err(RuntimeError::ModuleHasDuplicateInput {
-                                    module_hash: input_resource.hash,
-                                    input_name: name.to_string()
-                                });
-                            }
-
                             let input_resource_key = if is_module_resource(&input_resource.url) {
                                 get_resource_key(input_resource.hash.to_base32(), "module")
                             } else {
                                 get_resource_key(input_resource.hash.to_base32(), input_resource.format.to_string())
                             };
+
+                            // Prevent names re-assigning.
+                            if let Some(duplicate_key) = module.get(name)
+                                && duplicate_key != &input_resource_key
+                            {
+                                return Err(RuntimeError::ModuleHasDuplicateInput {
+                                    module_hash: input_resource.hash,
+                                    input_name: name.to_string()
+                                });
+                            }
 
                             module.insert(name.to_string(), input_resource_key);
                         }
