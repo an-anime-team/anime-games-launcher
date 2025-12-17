@@ -16,158 +16,180 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use tokio::sync::mpsc::UnboundedSender;
-use unic_langid::LanguageIdentifier;
+use agl_packages::storage::Storage;
+use agl_runtime::runtime::Runtime;
 
-#[derive(Debug, Clone)]
-pub struct GameInfo {
-    pub manifest: Arc<GameManifest>,
-    pub editions: Option<Vec<GameEdition>>,
-    pub listener: UnboundedSender<SyncGameCommand>
-}
+use crate::config;
+use crate::games::GameLock;
+use crate::ui::dialogs::error;
+use crate::ui::components::lazy_picture::ImagePath;
+use crate::ui::components::cards_list::{CardsList, CardsListInit};
 
-#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LibraryPageInput {
-    SpawnLuauEngine {
-        generation: GenerationManifest,
-        validator: AuthorityValidator,
-        local_validator: LocalValidator
-    },
+    AddGame(GameLock),
 
-    AddGameFromGeneration {
-        url: String,
-        manifest: GameManifest,
-        listener: UnboundedSender<SyncGameCommand>
-    },
+    // SpawnLuauEngine {
+    //     generation: GenerationManifest,
+    //     validator: AuthorityValidator,
+    //     local_validator: LocalValidator
+    // },
 
-    Activate,
+    // AddGameFromGeneration {
+    //     url: String,
+    //     manifest: GameManifest,
+    //     listener: UnboundedSender<SyncGameCommand>
+    // },
 
-    GameRowSelected(usize),
-    HideOtherGamesEditions(DynamicIndex),
+    // Activate,
 
-    ShowGameDetails {
-        game: DynamicIndex,
-        variant: Option<DynamicIndex>
-    },
+    // GameRowSelected(usize),
+    // HideOtherGamesEditions(DynamicIndex),
 
-    Call(Box<dyn FnOnce(&mut LibraryPage) + Send>)
+    // ShowGameDetails {
+    //     game: DynamicIndex,
+    //     variant: Option<DynamicIndex>
+    // },
+
+    // Call(Box<dyn FnOnce(&mut LibraryPage) + Send>)
 }
 
-impl std::fmt::Debug for LibraryPageInput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LibraryPageInput::SpawnLuauEngine { .. } => f.debug_struct("SpawnLuauEngine")
-                .finish(),
+// impl std::fmt::Debug for LibraryPageInput {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             LibraryPageInput::SpawnLuauEngine { .. } => f.debug_struct("SpawnLuauEngine")
+//                 .finish(),
 
-            LibraryPageInput::AddGameFromGeneration { url, .. } => f.debug_struct("AddGameFromGeneration")
-                .field("url", url)
-                .finish(),
+//             LibraryPageInput::AddGameFromGeneration { url, .. } => f.debug_struct("AddGameFromGeneration")
+//                 .field("url", url)
+//                 .finish(),
 
-            LibraryPageInput::Activate => f.write_str("Activate"),
+//             LibraryPageInput::Activate => f.write_str("Activate"),
 
-            LibraryPageInput::GameRowSelected(idx) => f.debug_tuple("GameRowSelected")
-                .field(idx)
-                .finish(),
+//             LibraryPageInput::GameRowSelected(idx) => f.debug_tuple("GameRowSelected")
+//                 .field(idx)
+//                 .finish(),
 
-            LibraryPageInput::HideOtherGamesEditions(idx) => f.debug_tuple("HideOtherGamesEditions")
-                .field(idx)
-                .finish(),
+//             LibraryPageInput::HideOtherGamesEditions(idx) => f.debug_tuple("HideOtherGamesEditions")
+//                 .field(idx)
+//                 .finish(),
 
-            LibraryPageInput::ShowGameDetails { game, variant } => f.debug_struct("ShowGameDetails")
-                .field("game", game)
-                .field("variant", variant)
-                .finish(),
+//             LibraryPageInput::ShowGameDetails { game, variant } => f.debug_struct("ShowGameDetails")
+//                 .field("game", game)
+//                 .field("variant", variant)
+//                 .finish(),
 
-            LibraryPageInput::Call(_) => f.write_str("Call(..)")
-        }
-    }
-}
+//             LibraryPageInput::Call(_) => f.write_str("Call(..)")
+//         }
+//     }
+// }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LibraryPageOutput {
-    SetShowBack(bool)
+    // SetShowBack(bool)
 }
 
 pub struct LibraryPage {
-    pub cards_list: AsyncFactoryVecDeque<CardsList>,
-    pub game_details: AsyncController<GameLibraryDetails>,
-    pub download_manager: AsyncController<DownloadManagerWindow>,
+    cards_list: AsyncFactoryVecDeque<CardsList>,
+    // pub game_details: AsyncController<GameLibraryDetails>,
+    // pub download_manager: AsyncController<DownloadManagerWindow>,
 
-    pub main_window: Option<adw::ApplicationWindow>,
-    pub toast_overlay: Option<adw::ToastOverlay>,
+    // main_window: Option<adw::ApplicationWindow>,
+    // toast_overlay: Option<adw::ToastOverlay>,
 
-    pub games: Vec<GameInfo>
+    storage: Storage,
+    runtime: Runtime,
+
+    games: Vec<GameLock>
+}
+
+impl std::fmt::Debug for LibraryPage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LibraryPage")
+            .field("cards_list", &self.cards_list)
+            .field("storage", &self.storage)
+            .field("runtime", &"Runtime")
+            .field("games", &self.games)
+            .finish()
+    }
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for LibraryPage {
-    type Init = adw::ApplicationWindow;
+    type Init = ();
     type Input = LibraryPageInput;
     type Output = LibraryPageOutput;
 
     view! {
         #[root]
-        toast_overlay = adw::ToastOverlay {
+        adw::ToastOverlay {
             adw::NavigationSplitView {
                 set_vexpand: true,
                 set_hexpand: true,
 
                 #[wrap(Some)]
                 set_sidebar = &adw::NavigationPage {
-                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
                     set_title: "Games",
 
                     #[wrap(Some)]
                     set_child = model.cards_list.widget() {
                         add_css_class: "navigation-sidebar",
 
-                        connect_row_activated[sender] => move |_, row| {
-                            sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
-                        }
+                        // connect_row_activated[sender] => move |_, row| {
+                        //     sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
+                        // }
                     }
                 },
 
                 #[wrap(Some)]
                 set_content = &adw::NavigationPage {
-                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
                     set_title: "Details",
 
                     set_hexpand: true,
 
-                    #[wrap(Some)]
-                    set_child = model.game_details.widget(),
+                    // #[wrap(Some)]
+                    // set_child = model.game_details.widget(),
                 }
             }
         }
     }
 
-    async fn init(parent: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let mut model = Self {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        _sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
+        let model = Self {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
-                .forward(sender.input_sender(), |msg| match msg {
-                    CardsListOutput::Selected { card: game, variant }
-                        => LibraryPageInput::ShowGameDetails { game, variant },
-
-                    CardsListOutput::HideOtherVariants(index)
-                        => LibraryPageInput::HideOtherGamesEditions(index)
-                }),
-
-            game_details: GameLibraryDetails::builder()
-                .launch(parent.clone())
                 .detach(),
+                // .forward(sender.input_sender(), |msg| match msg {
+                //     CardsListOutput::Selected { card: game, variant }
+                //         => LibraryPageInput::ShowGameDetails { game, variant },
 
-            download_manager: DownloadManagerWindow::builder()
-                .launch(())
-                .detach(),
+                //     CardsListOutput::HideOtherVariants(index)
+                //         => LibraryPageInput::HideOtherGamesEditions(index)
+                // }),
 
-            main_window: None,
-            toast_overlay: None,
+            // game_details: GameLibraryDetails::builder()
+            //     .launch(parent.clone())
+            //     .detach(),
+
+            // download_manager: DownloadManagerWindow::builder()
+            //     .launch(())
+            //     .detach(),
+
+            // main_window: None,
+            // toast_overlay: None,
+
+            storage: Storage::open(&config::startup().packages_resources_path)
+                .expect("failed to open packages storage"),
+
+            runtime: Runtime::new()
+                .expect("failed to initialize packages runtime"),
 
             games: Vec::new()
         };
@@ -180,129 +202,169 @@ impl SimpleAsyncComponent for LibraryPage {
 
         let widgets = view_output!();
 
-        model.main_window = Some(parent);
-        model.toast_overlay = Some(widgets.toast_overlay.clone());
+        // model.main_window = Some(parent);
+        // model.toast_overlay = Some(widgets.toast_overlay.clone());
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncComponentSender<Self>
+    ) {
         match msg {
-            LibraryPageInput::SpawnLuauEngine { generation, validator, local_validator } => {
-                self.games.clear();
-                self.cards_list.guard().clear();
+            LibraryPageInput::AddGame(game) => {
+                tracing::debug!(
+                    url = game.url,
+                    title = game.manifest.game.title.default_translation(),
+                    "loading game package"
+                );
 
-                let download_manager = self.download_manager.sender().to_owned();
+                if let Err(err) = self.runtime.load_packages(&game.lock, &self.storage) {
+                    tracing::error!(
+                        ?err,
+                        url = game.url,
+                        title = game.manifest.game.title.default_translation(),
+                        "failed to load game package"
+                    );
 
-                // TODO: we don't do this now, but in future this event could be called
-                //       multiple times, so we would need to kill unused threads.
-                std::thread::spawn(move || {
-                    if let Err(err) = serve_generation(sender, download_manager, generation, validator, local_validator) {
-                        tracing::error!(?err, "Failed to serve generation");
-                    }
-                });
-            }
-
-            LibraryPageInput::AddGameFromGeneration { url: _, manifest, listener } => {
-                let config = config::get();
-
-                let lang = config.general.language.parse::<LanguageIdentifier>();
-
-                let (send, recv) = tokio::sync::oneshot::channel();
-
-                // TODO: better errors handling
-                if let Err(err) = listener.send(SyncGameCommand::GetEditions { listener: send }) {
-                    tracing::error!(?err, "Failed to request game editions");
+                    error("Failed to load game package", err.to_string());
 
                     return;
                 }
 
-                // TODO: build Arc-s here
-                let editions = match recv.await {
-                    Ok(Ok(editions)) => editions,
+                let config = config::get();
 
-                    Ok(Err(err)) => {
-                        tracing::error!(?err, "Failed to request game editions");
-
-                        return;
-                    }
-
-                    Err(err) => {
-                        tracing::error!(?err, "Failed to request game editions");
-
-                        return;
-                    }
+                let title = match config.language() {
+                    Ok(lang) => game.manifest.game.title.translate(&lang),
+                    Err(_) => game.manifest.game.title.default_translation()
                 };
 
                 self.cards_list.guard().push_back(CardsListInit {
-                    image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
-
-                    title: match &lang {
-                        Ok(lang) => manifest.game.title.translate(lang).to_string(),
-                        Err(_) => manifest.game.title.default_translation().to_string()
-                    },
-
-                    variants: editions.as_ref().map(|editions| {
-                        editions.iter()
-                            .map(|edition| {
-                                match &lang {
-                                    Ok(lang) => edition.title.translate(lang).to_string(),
-                                    Err(_) => edition.title.default_translation().to_string()
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    })
+                    image: ImagePath::LazyLoad(game.manifest.game.images.poster.clone()),
+                    title: title.to_string(),
+                    variants: None
                 });
 
-                self.games.push(GameInfo {
-                    manifest: Arc::new(manifest),
-                    editions,
-                    listener
-                });
+                self.games.push(game);
             }
 
-            LibraryPageInput::GameRowSelected(index) => {
-                self.cards_list.send(index, CardsListInput::EmitClick);
-            }
+            // LibraryPageInput::SpawnLuauEngine { generation, validator, local_validator } => {
+            //     self.games.clear();
+            //     self.cards_list.guard().clear();
 
-            LibraryPageInput::HideOtherGamesEditions(index) => {
-                self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
-            }
+            //     let download_manager = self.download_manager.sender().to_owned();
 
-            LibraryPageInput::ShowGameDetails { game, variant } => {
-                // FIXME: don't update details page if it's already open for the given game.
+            //     // TODO: we don't do this now, but in future this event could be called
+            //     //       multiple times, so we would need to kill unused threads.
+            //     std::thread::spawn(move || {
+            //         if let Err(err) = serve_generation(sender, download_manager, generation, validator, local_validator) {
+            //             tracing::error!(?err, "Failed to serve generation");
+            //         }
+            //     });
+            // }
 
-                self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
+            // LibraryPageInput::AddGameFromGeneration { url: _, manifest, listener } => {
+            //     let config = config::get();
 
-                // TODO: proper errors handling
-                let Some(game) = self.games.get(game.current_index()) else {
-                    tracing::error!(
-                        game = game.current_index(),
-                        variant = variant.map(|variant| variant.current_index()),
-                        "Failed to read game info"
-                    );
+            //     let lang = config.general.language.parse::<LanguageIdentifier>();
 
-                    return;
-                };
+            //     let (send, recv) = tokio::sync::oneshot::channel();
 
-                let edition = match (&variant, &game.editions) {
-                    (_, None) => None,
-                    (Some(variant), Some(editions)) => editions.get(variant.current_index()),
-                    (None, Some(editions)) => editions.first()
-                };
+            //     // TODO: better errors handling
+            //     if let Err(err) = listener.send(SyncGameCommand::GetEditions { listener: send }) {
+            //         tracing::error!(?err, "Failed to request game editions");
 
-                self.game_details.emit(GameLibraryDetailsMsg::UpdateGameMetadata {
-                    manifest: game.manifest.clone(),
-                    listener: game.listener.clone(),
-                    edition: edition.cloned()
-                });
-            }
+            //         return;
+            //     }
 
-            LibraryPageInput::Activate => {
-                // Update back button visibility when switching pages
-            }
+            //     // TODO: build Arc-s here
+            //     let editions = match recv.await {
+            //         Ok(Ok(editions)) => editions,
 
-            LibraryPageInput::Call(callback) => callback(self)
+            //         Ok(Err(err)) => {
+            //             tracing::error!(?err, "Failed to request game editions");
+
+            //             return;
+            //         }
+
+            //         Err(err) => {
+            //             tracing::error!(?err, "Failed to request game editions");
+
+            //             return;
+            //         }
+            //     };
+
+            //     self.cards_list.guard().push_back(CardsListInit {
+            //         image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
+
+            //         title: match &lang {
+            //             Ok(lang) => manifest.game.title.translate(lang).to_string(),
+            //             Err(_) => manifest.game.title.default_translation().to_string()
+            //         },
+
+            //         variants: editions.as_ref().map(|editions| {
+            //             editions.iter()
+            //                 .map(|edition| {
+            //                     match &lang {
+            //                         Ok(lang) => edition.title.translate(lang).to_string(),
+            //                         Err(_) => edition.title.default_translation().to_string()
+            //                     }
+            //                 })
+            //                 .collect::<Vec<_>>()
+            //         })
+            //     });
+
+            //     self.games.push(GameInfo {
+            //         manifest: Arc::new(manifest),
+            //         editions,
+            //         listener
+            //     });
+            // }
+
+            // LibraryPageInput::GameRowSelected(index) => {
+            //     self.cards_list.send(index, CardsListInput::EmitClick);
+            // }
+
+            // LibraryPageInput::HideOtherGamesEditions(index) => {
+            //     self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
+            // }
+
+            // LibraryPageInput::ShowGameDetails { game, variant } => {
+            //     // FIXME: don't update details page if it's already open for the given game.
+
+            //     self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
+
+            //     // TODO: proper errors handling
+            //     let Some(game) = self.games.get(game.current_index()) else {
+            //         tracing::error!(
+            //             game = game.current_index(),
+            //             variant = variant.map(|variant| variant.current_index()),
+            //             "Failed to read game info"
+            //         );
+
+            //         return;
+            //     };
+
+            //     let edition = match (&variant, &game.editions) {
+            //         (_, None) => None,
+            //         (Some(variant), Some(editions)) => editions.get(variant.current_index()),
+            //         (None, Some(editions)) => editions.first()
+            //     };
+
+            //     self.game_details.emit(GameLibraryDetailsMsg::UpdateGameMetadata {
+            //         manifest: game.manifest.clone(),
+            //         listener: game.listener.clone(),
+            //         edition: edition.cloned()
+            //     });
+            // }
+
+            // LibraryPageInput::Activate => {
+            //     // Update back button visibility when switching pages
+            // }
+
+            // LibraryPageInput::Call(callback) => callback(self)
         }
     }
 }

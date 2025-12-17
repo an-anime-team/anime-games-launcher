@@ -22,8 +22,8 @@ use relm4::prelude::*;
 use agl_packages::storage::Storage;
 use agl_games::manifest::GameManifest;
 
-use crate::{config, game};
-use crate::game::GameLock;
+use crate::{config, games};
+use crate::games::GameLock;
 use crate::ui::dialogs;
 
 use super::lazy_picture::ImagePath;
@@ -338,7 +338,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
             GameStoreDetailsMsg::UpdateGameStatus => {
                 let config = config::get();
 
-                let path = config.games_path.join(game::get_name(&self.manifest_url));
+                let path = config.games_path.join(games::get_name(&self.manifest_url));
 
                 if path.is_file() {
                     self.status = GameStatus::Added;
@@ -375,7 +375,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 let config = config::get();
 
-                                let path = config.games_path.join(game::get_name(&lock.url));
+                                let path = config.games_path.join(games::get_name(&lock.url));
 
                                 tracing::info!(?url, ?path, "game added");
 

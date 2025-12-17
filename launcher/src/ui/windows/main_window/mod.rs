@@ -30,18 +30,15 @@ use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use crate::consts;
 use crate::config;
 use crate::cache;
-use crate::game::GameLock;
+use crate::games::GameLock;
 use crate::ui::dialogs::critical_error;
 
-// pub mod actions;
-
-// pub use actions::prelude::*;
-
 pub mod store_page;
-// pub mod library_page;
+pub mod library_page;
 // pub mod downloads_page;
 
 use store_page::{StorePage, StorePageInput, StorePageOutput};
+use library_page::{LibraryPage, LibraryPageInput};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -52,6 +49,8 @@ pub enum MainWindowMsg {
         manifest_url: String,
         manifest: GameManifest
     },
+
+    AddLibraryPageGame(GameLock),
 
     SetShowBackButton(bool),
     GoBackButtonClicked,
@@ -79,7 +78,7 @@ pub enum MainWindowMsg {
 #[derive(Debug)]
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
-    // library_page: Option<AsyncController<LibraryPage>>,
+    library_page: AsyncController<LibraryPage>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
@@ -177,15 +176,14 @@ impl SimpleAsyncComponent for MainWindow {
                             set_icon_name: Some("folder-download-symbolic")
                         },
 
-                        // #[name(library_page_box)]
-                        // add = &gtk::Box {
-                        //     set_vexpand: true,
-                        //     set_hexpand: true
-                        // } -> {
-                        //     set_title: Some("Library"),
-                        //     set_name: Some("library"),
-                        //     set_icon_name: Some("applications-games-symbolic")
-                        // },
+                        add = &gtk::Box {
+                            set_vexpand: true,
+                            set_hexpand: true
+                        } -> {
+                            set_title: Some("Library"),
+                            set_name: Some("library"),
+                            set_icon_name: Some("applications-games-symbolic")
+                        }
 
                         // connect_visible_child_notify[sender] => move |stack| {
                         //     if let Some(name) = stack.visible_child_name() {
@@ -220,7 +218,9 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::SetShowBackButton(show)
                 }),
 
-            // library_page: None,
+            library_page: LibraryPage::builder()
+                .launch(())
+                .detach(),
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -418,8 +418,6 @@ impl SimpleAsyncComponent for MainWindow {
                 Some(String::from("Loading added games"))
             ));
 
-            let mut available_games = Vec::new();
-
             for entry in config::startup().games_path.read_dir()? {
                 let entry = entry?;
 
@@ -436,7 +434,7 @@ impl SimpleAsyncComponent for MainWindow {
                 let lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
 
-                available_games.push(lock);
+                sender.input(MainWindowMsg::AddLibraryPageGame(lock));
             }
 
             // Add store page games.
@@ -506,6 +504,10 @@ impl SimpleAsyncComponent for MainWindow {
                     manifest_url,
                     manifest
                 });
+            }
+
+            MainWindowMsg::AddLibraryPageGame(game) => {
+                self.library_page.emit(LibraryPageInput::AddGame(game));
             }
 
             MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,

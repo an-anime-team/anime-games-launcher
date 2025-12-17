@@ -34,7 +34,6 @@ pub fn error(title: impl ToString, body: impl ToString) {
         let dialog = adw::AlertDialog::builder()
             .heading(title)
             .body(body)
-            .can_close(false)
             .build();
 
         dialog.add_responses(&[
