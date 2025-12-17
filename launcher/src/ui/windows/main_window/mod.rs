@@ -55,6 +55,8 @@ pub enum MainWindowMsg {
     SetShowBackButton(bool),
     GoBackButtonClicked,
 
+    ShowLibraryGameWithUrl(String),
+
     // FinishLoading {
     //     generation: GenerationManifest,
     //     validator: AuthorityValidator,
@@ -217,7 +219,10 @@ impl SimpleAsyncComponent for MainWindow {
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
                     StorePageOutput::SetShowBack(show)
-                        => MainWindowMsg::SetShowBackButton(show)
+                        => MainWindowMsg::SetShowBackButton(show),
+
+                    StorePageOutput::ShowLibraryGameWithUrl(url)
+                        => MainWindowMsg::ShowLibraryGameWithUrl(url)
                 }),
 
             library_page: LibraryPage::builder()
@@ -516,6 +521,12 @@ impl SimpleAsyncComponent for MainWindow {
 
             MainWindowMsg::GoBackButtonClicked => {
                 self.store_page.emit(StorePageInput::CloseGameDetails);
+            }
+
+            MainWindowMsg::ShowLibraryGameWithUrl(url) => {
+                self.view_stack.set_visible_child_name("library");
+
+                self.library_page.emit(LibraryPageInput::SelectGameWithUrl(url));
             }
 
             // MainWindowMsg::FinishLoading { generation, validator, local_validator } => {

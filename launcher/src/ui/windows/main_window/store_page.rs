@@ -26,7 +26,7 @@ use crate::ui::components::lazy_picture::ImagePath;
 use crate::ui::components::card::CardComponent;
 use crate::ui::components::cards_grid::{CardsGrid, CardsGridOutput};
 use crate::ui::components::game_store_details::{
-    GameStoreDetails, GameStoreDetailsMsg
+    GameStoreDetails, GameStoreDetailsInput, GameStoreDetailsOutput
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -38,12 +38,15 @@ pub enum StorePageInput {
     },
 
     OpenGameDetails(DynamicIndex),
-    CloseGameDetails
+    CloseGameDetails,
+
+    ShowLibraryGameWithUrl(String)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StorePageOutput {
-    SetShowBack(bool)
+    SetShowBack(bool),
+    ShowLibraryGameWithUrl(String)
 }
 
 #[derive(Debug)]
@@ -130,7 +133,10 @@ impl SimpleAsyncComponent for StorePage {
 
             game_details: GameStoreDetails::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), |msg| match msg {
+                    GameStoreDetailsOutput::ShowLibraryGameWithUrl(url)
+                        => StorePageInput::ShowLibraryGameWithUrl(url)
+                }),
 
             games: Vec::new(),
 
@@ -178,7 +184,7 @@ impl SimpleAsyncComponent for StorePage {
                     return;
                 };
 
-                self.game_details.emit(GameStoreDetailsMsg::SetGameInfo {
+                self.game_details.emit(GameStoreDetailsInput::SetGameInfo {
                     manifest_url: manifest_url.clone(),
                     manifest: manifest.clone()
                 });
@@ -186,7 +192,11 @@ impl SimpleAsyncComponent for StorePage {
                 self.show_game_details = true;
             }
 
-            StorePageInput::CloseGameDetails => self.show_game_details = false
+            StorePageInput::CloseGameDetails => self.show_game_details = false,
+
+            StorePageInput::ShowLibraryGameWithUrl(url) => {
+                let _ = sender.output(StorePageOutput::ShowLibraryGameWithUrl(url));
+            }
         }
 
         // Update back button visibility

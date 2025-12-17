@@ -26,11 +26,23 @@ use crate::config;
 use crate::games::GameLock;
 use crate::ui::dialogs::error;
 use crate::ui::components::lazy_picture::ImagePath;
-use crate::ui::components::cards_list::{CardsList, CardsListInit};
+use crate::ui::components::cards_list::{
+    CardsList, CardsListInit, CardsListInput, CardsListOutput
+};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LibraryPageInput {
     AddGame(GameLock),
+
+    SelectGameWithUrl(String),
+
+    SelectGameWithIndex {
+        game: DynamicIndex,
+        variant: Option<DynamicIndex>
+    },
+
+    CollapseGamesExceptIndex(DynamicIndex),
 
     // SpawnLuauEngine {
     //     generation: GenerationManifest,
@@ -103,7 +115,7 @@ pub struct LibraryPage {
     storage: Storage,
     runtime: Runtime,
 
-    games: Vec<GameLock>
+    games: Vec<(GameLock, DynamicIndex)>
 }
 
 impl std::fmt::Debug for LibraryPage {
@@ -160,19 +172,18 @@ impl SimpleAsyncComponent for LibraryPage {
     async fn init(
         _init: Self::Init,
         root: Self::Root,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
-                .detach(),
-                // .forward(sender.input_sender(), |msg| match msg {
-                //     CardsListOutput::Selected { card: game, variant }
-                //         => LibraryPageInput::ShowGameDetails { game, variant },
+                .forward(sender.input_sender(), |msg| match msg {
+                    CardsListOutput::Selected { card: game, variant }
+                        => LibraryPageInput::SelectGameWithIndex { game, variant },
 
-                //     CardsListOutput::HideOtherVariants(index)
-                //         => LibraryPageInput::HideOtherGamesEditions(index)
-                // }),
+                    CardsListOutput::HideOtherVariants(index)
+                        => LibraryPageInput::CollapseGamesExceptIndex(index)
+                }),
 
             // game_details: GameLibraryDetails::builder()
             //     .launch(parent.clone())
@@ -211,7 +222,7 @@ impl SimpleAsyncComponent for LibraryPage {
     async fn update(
         &mut self,
         msg: Self::Input,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) {
         match msg {
             LibraryPageInput::AddGame(game) => {
@@ -247,13 +258,34 @@ impl SimpleAsyncComponent for LibraryPage {
                     Err(_) => game.manifest.game.title.default_translation()
                 };
 
-                self.cards_list.guard().push_back(CardsListInit {
+                let index = self.cards_list.guard().push_back(CardsListInit {
                     image: ImagePath::LazyLoad(game.manifest.game.images.poster.clone()),
                     title: title.to_string(),
                     variants: None
                 });
 
-                self.games.push(game);
+                self.games.push((game, index));
+            }
+
+            LibraryPageInput::SelectGameWithUrl(url) => {
+                for (game, index) in &self.games {
+                    if game.url == url {
+                        sender.input(LibraryPageInput::SelectGameWithIndex {
+                            game: index.clone(),
+                            variant: None
+                        });
+
+                        break;
+                    }
+                }
+            }
+
+            LibraryPageInput::SelectGameWithIndex { game, variant } => {
+                dbg!(game);
+            }
+
+            LibraryPageInput::CollapseGamesExceptIndex(index) => {
+                self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
             }
 
             // LibraryPageInput::SpawnLuauEngine { generation, validator, local_validator } => {

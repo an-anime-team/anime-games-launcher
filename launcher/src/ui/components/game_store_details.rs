@@ -41,7 +41,7 @@ pub enum GameStatus {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GameStoreDetailsMsg {
+pub enum GameStoreDetailsInput {
     SetGameInfo {
         manifest_url: String,
         manifest: GameManifest
@@ -51,6 +51,11 @@ pub enum GameStoreDetailsMsg {
     UpdateGameStatus,
 
     EmitClick
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GameStoreDetailsOutput {
+    ShowLibraryGameWithUrl(String)
 }
 
 #[derive(Debug)]
@@ -73,8 +78,8 @@ pub struct GameStoreDetails {
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameStoreDetails {
     type Init = ();
-    type Input = GameStoreDetailsMsg;
-    type Output = ();
+    type Input = GameStoreDetailsInput;
+    type Output = GameStoreDetailsOutput;
 
     view! {
         #[root]
@@ -171,7 +176,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     }
                                 },
 
-                                connect_clicked => GameStoreDetailsMsg::EmitClick
+                                connect_clicked => GameStoreDetailsInput::EmitClick
                             },
 
                             gtk::Box {
@@ -266,7 +271,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            GameStoreDetailsMsg::SetGameInfo { manifest_url, manifest } => {
+            GameStoreDetailsInput::SetGameInfo { manifest_url, manifest } => {
                 let config = config::get();
                 let lang = config.language().ok();
 
@@ -330,12 +335,12 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 drop(guard);
 
                 // Update game status.
-                sender.input(GameStoreDetailsMsg::UpdateGameStatus);
+                sender.input(GameStoreDetailsInput::UpdateGameStatus);
             }
 
-            GameStoreDetailsMsg::SetGameStatus(status) => self.status = status,
+            GameStoreDetailsInput::SetGameStatus(status) => self.status = status,
 
-            GameStoreDetailsMsg::UpdateGameStatus => {
+            GameStoreDetailsInput::UpdateGameStatus => {
                 let config = config::get();
 
                 let path = config.games_path.join(games::get_name(&self.manifest_url));
@@ -347,7 +352,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 }
             }
 
-            GameStoreDetailsMsg::EmitClick if self.status == GameStatus::NotAdded => {
+            GameStoreDetailsInput::EmitClick if self.status == GameStatus::NotAdded => {
                 tracing::info!(url = ?self.manifest_url, "add game");
 
                 self.status = GameStatus::Adding;
@@ -371,7 +376,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                         match GameLock::download(&url, &storage).await {
                             Ok(lock) => {
-                                sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::Added));
+                                sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::Added));
 
                                 let config = config::get();
 
@@ -383,7 +388,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     Ok(lock) => lock,
 
                                     Err(err) => {
-                                        sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::NotAdded));
+                                        sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
                                         tracing::error!(?err, "failed to serialize game package lock");
 
@@ -394,7 +399,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                 };
 
                                 if let Err(err) = std::fs::write(path, lock) {
-                                    sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::NotAdded));
+                                    sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
                                     tracing::error!(?err, "failed to save game package lock");
 
@@ -403,11 +408,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     return;
                                 }
 
-                                sender.input(GameStoreDetailsMsg::UpdateGameStatus);
+                                sender.input(GameStoreDetailsInput::UpdateGameStatus);
                             }
 
                             Err(err) => {
-                                sender.input(GameStoreDetailsMsg::SetGameStatus(GameStatus::NotAdded));
+                                sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
                                 tracing::error!(?err, "failed to download game package");
 
@@ -416,6 +421,14 @@ impl SimpleAsyncComponent for GameStoreDetails {
                         }
                     });
                 }
+            }
+
+            GameStoreDetailsInput::EmitClick if self.status == GameStatus::Added => {
+                tracing::info!(url = ?self.manifest_url, "open game");
+
+                let _ = sender.output(GameStoreDetailsOutput::ShowLibraryGameWithUrl(
+                    self.manifest_url.clone()
+                ));
             }
 
             _ => ()
