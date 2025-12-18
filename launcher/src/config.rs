@@ -49,6 +49,24 @@ pub struct Config {
     /// `general.network.proxy.url`
     pub general_network_proxy_url: Option<String>,
 
+    /// Duration of the images cache in seconds. If `0` is set then no
+    /// cache is used. Default is `28800` (8 hours).
+    ///
+    /// `cache.images.duration`
+    pub cache_images_duration: Duration,
+
+    /// Duration of the game registries cache in seconds. If `0` is set
+    /// then no cache is used. Default is `28800` (8 hours).
+    ///
+    /// `cache.game_registries.duration`
+    pub cache_game_registries_duration: Duration,
+
+    /// Duration of the game manifests cache in seconds. If `0` is set then no
+    /// cache is used. Default is `28800` (8 hours).
+    ///
+    /// `cache.game_manifests.duration`
+    pub cache_game_manifests_duration: Duration,
+
     /// Proxy mode: `http`, `https` or `all`.
     ///
     /// `general.network.proxy.mode`
@@ -103,6 +121,10 @@ impl Default for Config {
             general_network_proxy_url: None,
             general_network_proxy_mode: None,
 
+            cache_images_duration: Duration::from_hours(8),
+            cache_game_registries_duration: Duration::from_hours(16),
+            cache_game_manifests_duration: Duration::from_hours(24),
+
             packages_resources_path: DATA_FOLDER.join("packages").join("resources"),
             packages_modules_path: DATA_FOLDER.join("packages").join("modules"),
             packages_persistent_path: DATA_FOLDER.join("packages").join("persistent"),
@@ -128,6 +150,15 @@ impl Config {
             [general.network.proxy]
             url = (self.general_network_proxy_url.as_deref().unwrap_or("system"))
             mode = (self.general_network_proxy_mode.as_deref().unwrap_or("system"))
+
+            [cache.images]
+            duration = (self.cache_images_duration.as_secs())
+
+            [cache.game_registries]
+            duration = (self.cache_game_registries_duration.as_secs())
+
+            [cache.game_manifests]
+            duration = (self.cache_game_manifests_duration.as_secs())
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
@@ -191,6 +222,33 @@ impl Config {
                             Some(mode.to_string())
                         };
                     }
+                }
+            }
+        }
+
+        // `cache.*`
+        if let Some(cache) = value.get("cache") {
+            // `cache.images.*`
+            if let Some(images) = cache.get("images") {
+                // `cache.images.duration`
+                if let Some(duration) = images.get("duration").and_then(Toml::as_integer) {
+                    config.cache_images_duration = Duration::from_secs(duration as u64);
+                }
+            }
+
+            // `cache.game_registries.*`
+            if let Some(game_registries) = cache.get("game_registries") {
+                // `cache.game_registries.duration`
+                if let Some(duration) = game_registries.get("duration").and_then(Toml::as_integer) {
+                    config.cache_game_registries_duration = Duration::from_secs(duration as u64);
+                }
+            }
+
+            // `cache.game_manifests.*`
+            if let Some(game_manifests) = cache.get("game_manifests") {
+                // `cache.game_manifests.duration`
+                if let Some(duration) = game_manifests.get("duration").and_then(Toml::as_integer) {
+                    config.cache_game_manifests_duration = Duration::from_secs(duration as u64);
                 }
             }
         }

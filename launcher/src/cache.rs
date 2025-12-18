@@ -25,8 +25,6 @@ use agl_packages::hash::Hash;
 
 use crate::consts::CACHE_FOLDER;
 
-pub const DEFAULT_TTL: Duration = Duration::from_hours(8);
-
 /// Get path to a file with provided cache key.
 #[inline]
 pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {

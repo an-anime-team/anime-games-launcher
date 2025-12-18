@@ -294,7 +294,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this registry is expired - request the registry
                 // value again.
-                if cache::is_expired(url, cache::DEFAULT_TTL)? {
+                if cache::is_expired(url, config::startup().cache_game_registries_duration)? {
                     tracing::trace!(?url, ?cache_path, "game registry cache is expired");
 
                     let task = downloader.download_with_options(
@@ -370,7 +370,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this game manifest is expired - request the
                 // manifest again.
-                if cache::is_expired(&url, cache::DEFAULT_TTL)? {
+                if cache::is_expired(&url, config::startup().cache_game_manifests_duration)? {
                     tracing::trace!(?url, ?cache_path, "game manifest cache is expired");
 
                     let task = downloader.download_with_options(

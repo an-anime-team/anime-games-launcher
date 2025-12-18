@@ -102,7 +102,12 @@ impl GameLock {
 
         let manifest_path = cache::get_path(&manifest_url);
 
-        if cache::is_expired(&manifest_url, cache::DEFAULT_TTL)? {
+        let is_expired = cache::is_expired(
+            &manifest_url,
+            config.cache_game_manifests_duration
+        )?;
+
+        if is_expired {
             let task = downloader.download_with_options(
                 &manifest_url,
                 &manifest_path,
