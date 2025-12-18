@@ -43,10 +43,11 @@ use crate::ui::windows::game_settings::{
 
 pub mod store_page;
 pub mod library_page;
-// pub mod downloads_page;
+pub mod downloads_page;
 
 use store_page::{StorePage, StorePageInput, StorePageOutput};
 use library_page::{LibraryPage, LibraryPageInput, LibraryPageOutput};
+use downloads_page::{DownloadsPage, DownloadsPageMsg};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -78,6 +79,7 @@ pub enum MainWindowMsg {
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
+    downloads_page: AsyncController<DownloadsPage>,
     game_settings_window: AsyncController<GameSettingsWindow>,
 
     window: Option<adw::ApplicationWindow>,
@@ -185,6 +187,17 @@ impl SimpleAsyncComponent for MainWindow {
                             set_title: Some("Library"),
                             set_name: Some("library"),
                             set_icon_name: Some("applications-games-symbolic")
+                        },
+
+                        add = &gtk::Box {
+                            set_vexpand: true,
+                            set_hexpand: true,
+
+                            model.downloads_page.widget(),
+                        } -> {
+                            set_title: Some("Downloads"),
+                            set_name: Some("downloads"),
+                            set_icon_name: Some("document-save-symbolic")
                         }
                     }
                 }
@@ -217,6 +230,10 @@ impl SimpleAsyncComponent for MainWindow {
                     LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout }
                 }),
+
+            downloads_page: DownloadsPage::builder()
+                .launch(())
+                .detach(),
 
             game_settings_window: GameSettingsWindow::builder()
                 .launch(())
