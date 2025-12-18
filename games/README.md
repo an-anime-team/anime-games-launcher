@@ -242,15 +242,15 @@ type SettingsEntry = {
 };
 
 type SettingsEntryReactivity =
-    // Do not refresh game status after changing this entry.
+    // Do not refresh game info after changing this entry.
     | 'none'
 
-    // Refresh game status after closing the settings window. This is the
+    // Refresh game info after closing the settings window. This is the
     // default value.
     | 'relaxed'
 
     // Reload whole settings layout immediately after changing this settings
-    // entry and refresh game status after closing it.
+    // entry and refresh game info after closing it.
     | 'release';
 
 type SettingsEntryVariant =

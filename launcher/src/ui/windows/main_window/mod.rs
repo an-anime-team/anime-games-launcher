@@ -27,7 +27,7 @@ use anyhow::Context;
 
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
-use agl_games::engine::{GameIntegration, GameSettingsGroup};
+use agl_games::engine::{GameVariant, GameIntegration, GameSettingsGroup};
 
 use crate::consts;
 use crate::config;
@@ -36,7 +36,8 @@ use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::windows::game_settings::{
     GameSettingsWindow,
-    GameSettingsWindowInput
+    GameSettingsWindowInput,
+    GameSettingsWindowOutput
 };
 
 pub mod store_page;
@@ -64,28 +65,12 @@ pub enum MainWindowMsg {
     ShowLibraryGameWithUrl(String),
 
     OpenGameSettingsWindow {
-        layout: Box<[GameSettingsGroup]>,
-        integration: Arc<GameIntegration>
-    }
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameSettingsGroup]>
+    },
 
-    // FinishLoading {
-    //     generation: GenerationManifest,
-    //     validator: AuthorityValidator,
-    //     local_validator: LocalValidator
-    // },
-
-    // AddGame {
-    //     url: String,
-    //     manifest: GameManifest
-    // },
-
-    // ToggleSearching,
-    // SetShowSearch(bool),
-    // SetShowBack(bool),
-    // GoBack,
-
-    // ActivateStorePage,
-    // ActivateLibraryPage
+    ReloadSelectedLibraryGameInfo
 }
 
 #[derive(Debug)]
@@ -200,21 +185,6 @@ impl SimpleAsyncComponent for MainWindow {
                             set_name: Some("library"),
                             set_icon_name: Some("applications-games-symbolic")
                         }
-
-                        // connect_visible_child_notify[sender] => move |stack| {
-                        //     if let Some(name) = stack.visible_child_name() {
-                        //         sender.input(MainWindowMsg::SetShowSearch(
-                        //             ["store", "library"].contains(&name.as_str())
-                        //         ));
-
-                        //         match name.as_str() {
-                        //             "store" => sender.input(MainWindowMsg::ActivateStorePage),
-                        //             "library" => sender.input(MainWindowMsg::ActivateLibraryPage),
-
-                        //             _ => ()
-                        //         }
-                        //     }
-                        // }
                     }
                 }
             }
@@ -243,13 +213,16 @@ impl SimpleAsyncComponent for MainWindow {
             library_page: LibraryPage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    LibraryPageOutput::OpenGameSettingsWindow { layout, integration }
-                        => MainWindowMsg::OpenGameSettingsWindow { layout, integration }
+                    LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
+                        => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout }
                 }),
 
             game_settings_window: GameSettingsWindow::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), |msg| match msg {
+                    GameSettingsWindowOutput::ReloadGameInfo
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                }),
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -543,11 +516,16 @@ impl SimpleAsyncComponent for MainWindow {
                 self.library_page.emit(LibraryPageInput::SelectGameWithUrl(url));
             }
 
-            MainWindowMsg::OpenGameSettingsWindow { layout, integration } => {
+            MainWindowMsg::OpenGameSettingsWindow {
+                variant,
+                integration,
+                layout
+            } => {
                 if let Some(window) = &self.window {
                     self.game_settings_window.emit(GameSettingsWindowInput::SetGame {
-                        layout,
-                        integration
+                        variant,
+                        integration,
+                        layout
                     });
 
                     self.game_settings_window.widget()
@@ -555,66 +533,9 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            // MainWindowMsg::FinishLoading { generation, validator, local_validator } => {
-            //     if let Some(library_page) = self.library_page.as_ref() {
-            //         library_page.emit(LibraryPageInput::SpawnLuauEngine {
-            //             generation,
-            //             validator,
-            //             local_validator
-            //         });
-            //     }
-
-            //     self.is_loading = false;
-            // }
-
-            // MainWindowMsg::AddGame { url, manifest } => {
-            //     let manifest = Arc::new(manifest);
-
-            //     self.games.insert(url.clone(), manifest.clone());
-
-            //     self.store_page.emit(StorePageInput::AddGame {
-            //         url,
-            //         manifest: manifest.clone()
-            //     });
-            // }
-
-            // MainWindowMsg::ToggleSearching => {
-            //     self.store_page.emit(StorePageInput::ToggleSearching);
-
-            //     self.searching = !self.searching;
-            // }
-
-            // MainWindowMsg::SetShowSearch(state) => {
-            //     self.show_search = state;
-            // }
-
-            // MainWindowMsg::SetShowBack(state) => {
-            //     self.show_back = state;
-            // }
-
-            // MainWindowMsg::GoBack => {
-            //     self.show_back = false;
-
-            //     // Navigate back only on the visible page
-            //     if let Some(name) = self.view_stack.visible_child_name() {
-            //         match name.as_str() {
-            //             "store"   => self.store_page.emit(StorePageInput::HideGamePage),
-            //             // "library" => self.library_page.emit(LibraryPageInput::ToggleDownloadsPage),
-
-            //             _ => ()
-            //         }
-            //     }
-            // }
-
-            // MainWindowMsg::ActivateStorePage => {
-            //     self.store_page.emit(StorePageInput::Activate);
-            // }
-
-            // MainWindowMsg::ActivateLibraryPage => {
-            //     if let Some(library_page) = self.library_page.as_ref() {
-            //         library_page.emit(LibraryPageInput::Activate);
-            //     }
-            // }
+            MainWindowMsg::ReloadSelectedLibraryGameInfo => {
+                self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo);
+            }
         }
     }
 }

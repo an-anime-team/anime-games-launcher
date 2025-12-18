@@ -23,8 +23,8 @@ use adw::prelude::*;
 
 use agl_games::manifest::GameManifest;
 use agl_games::engine::{
-    GameIntegration,
     GameVariant,
+    GameIntegration,
     InstallationStatus,
     GameLaunchInfo,
     GameLaunchStatus,
@@ -53,25 +53,6 @@ pub enum GameLibraryDetailsInput {
 
     OpenGameSettingsWindow
 
-    // /// Set metadata for the games library details page.
-    // /// This is used to render game title, pictures and other information.
-    // UpdateGameMetadata {
-    //     manifest: Arc<GameManifest>,
-    //     listener: UnboundedSender<SyncGameCommand>,
-    //     edition: Option<GameEdition>
-    // },
-
-    // /// Request game status from the integration module for the given edition.
-    // UpdateCurrentGameInfo(Option<GameEdition>),
-
-    // /// Use already fetched game status to update it once again.
-    // ///
-    // /// This method used the same game edition which was used the last time.
-    // ReloadCurrentGameInfo,
-
-    // SetGameInfo(GameLibraryDetailsInfo),
-    // SetIsLoading(bool),
-
     // EmitLaunchGame,
     // EmitKillGame,
     // EmitInstallDiff,
@@ -85,8 +66,9 @@ pub enum GameLibraryDetailsInput {
 #[derive(Debug, Clone)]
 pub enum GameLibraryDetailsOutput {
     OpenGameSettingsWindow {
-        layout: Box<[GameSettingsGroup]>,
-        integration: Arc<GameIntegration>
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameSettingsGroup]>
     }
 }
 
@@ -94,7 +76,6 @@ pub enum GameLibraryDetailsOutput {
 pub struct GameLibraryDetails {
     card: AsyncController<CardComponent>,
     background: AsyncController<LazyPictureComponent>,
-    // settings_window: AsyncController<GameSettingsWindow>,
 
     game_title: Option<String>,
     game_developer: Option<String>,
@@ -310,15 +291,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 .launch(LazyPictureComponent::default())
                 .detach(),
 
-            // settings_window: GameSettingsWindow::builder()
-            //     .launch(parent)
-            //     .forward(sender.input_sender(), |msg| {
-            //         match msg {
-            //             GameSettingsWindowOutput::ReloadSettingsWindow => GameLibraryDetailsInput::EmitOpenSettingsWindow,
-            //             GameSettingsWindowOutput::ReloadGameStatus => GameLibraryDetailsInput::ReloadCurrentGameInfo
-            //         }
-            //     }),
-
             game_title: None,
             game_developer: None,
             game_publisher: None,
@@ -440,179 +412,17 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::OpenGameSettingsWindow => {
-                if let Some(layout) = &self.game_settings_layout
+                if let Some(variant) = &self.game_variant
                     && let Some(integration) = &self.game_integration
+                    && let Some(layout) = &self.game_settings_layout
                 {
                     let _ = sender.output(GameLibraryDetailsOutput::OpenGameSettingsWindow {
-                        layout: layout.clone(),
-                        integration: integration.clone()
+                        variant: variant.clone(),
+                        integration: integration.clone(),
+                        layout: layout.clone()
                     });
                 }
             }
-
-            // GameLibraryDetailsInput::UpdateGameMetadata { manifest, listener, edition } => {
-            //     let config = config::get();
-
-            //     let lang = config.general.language.parse::<LanguageIdentifier>();
-
-            //     let title = match &lang {
-            //         Ok(lang) => manifest.game.title.translate(lang),
-            //         Err(_) => manifest.game.title.default_translation()
-            //     };
-
-            //     let developer = match &lang {
-            //         Ok(lang) => manifest.game.developer.translate(lang),
-            //         Err(_) => manifest.game.developer.default_translation()
-            //     };
-
-            //     let publisher = match &lang {
-            //         Ok(lang) => manifest.game.publisher.translate(lang),
-            //         Err(_) => manifest.game.publisher.default_translation()
-            //     };
-
-            //     self.listener = Some(listener.clone());
-
-            //     self.game_metadata = Some(GameLibraryDetailsMetadata {
-            //         title: title.to_string(),
-            //         developer: developer.to_string(),
-            //         publisher: publisher.to_string()
-            //     });
-
-            //     self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
-
-            //     // Little trolling. I think you can sorry me.
-            //     let date = time::OffsetDateTime::now_utc();
-
-            //     let image = if date.month() == time::Month::April && date.day() == 1 {
-            //         tracing::info!("");
-            //         tracing::info!("");
-            //         tracing::info!("Happy April Fools!");
-            //         tracing::info!("");
-            //         tracing::info!("I hope you have a great day today ＜( ￣︿￣)");
-            //         tracing::info!("");
-            //         tracing::info!("");
-
-            //         ImagePath::resource("images/april-fools.jpg")
-            //     } else {
-            //         ImagePath::lazy_load(&manifest.game.images.background)
-            //     };
-
-            //     self.background.emit(LazyPictureComponentMsg::SetImage(Some(image)));
-
-            //     sender.input(GameLibraryDetailsInput::UpdateCurrentGameInfo(edition));
-            // }
-
-            // GameLibraryDetailsInput::UpdateCurrentGameInfo(edition) => {
-            //     if let Some(listener) = self.listener.as_ref() {
-            //         sender.input(GameLibraryDetailsInput::SetIsLoading(true));
-
-            //         let variant = match &edition {
-            //             Some(edition) => GameVariant::from_edition(&edition.name),
-            //             None => GameVariant::default()
-            //         };
-
-            //         // Request game installation status update.
-            //         let game_installation_status = {
-            //             let listener = listener.clone();
-            //             let variant = variant.clone();
-
-            //             tokio::spawn(async move {
-            //                 let (send, recv) = tokio::sync::oneshot::channel();
-
-            //                 if let Err(err) = listener.send(SyncGameCommand::GetStatus { variant, listener: send }) {
-            //                     tracing::error!(?err, "Failed to request game installation status");
-
-            //                     return None;
-            //                 }
-
-            //                 match recv.await {
-            //                     Ok(Ok(status)) => return Some(status),
-
-            //                     Ok(Err(err)) => tracing::error!(?err, "Failed to request game installation status"),
-            //                     Err(err) => tracing::error!(?err, "Failed to request game installation status")
-            //                 }
-
-            //                 None
-            //             })
-            //         };
-
-            //         // Request game launching info update.
-            //         let game_launch_info = {
-            //             let listener = listener.clone();
-            //             let variant = variant.clone();
-
-            //             tokio::spawn(async move {
-            //                 let (send, recv) = tokio::sync::oneshot::channel();
-
-            //                 if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo { variant, listener: send }) {
-            //                     tracing::error!(?err, "Failed to request game launch info");
-
-            //                     return None;
-            //                 }
-
-            //                 match recv.await {
-            //                     Ok(Ok(info)) => return Some(info),
-
-            //                     Ok(Err(err)) => tracing::error!(?err, "Failed to request game launch info"),
-            //                     Err(err) => tracing::error!(?err, "Failed to request game launch info")
-            //                 }
-
-            //                 None
-            //             })
-            //         };
-
-            //         // Request game settings layout info update.
-            //         let game_settings_layout = {
-            //             let listener = listener.clone();
-            //             let variant = variant.clone();
-
-            //             tokio::spawn(async move {
-            //                 let (send, recv) = tokio::sync::oneshot::channel();
-
-            //                 if let Err(err) = listener.send(SyncGameCommand::GetSettingsLayout { variant, listener: send }) {
-            //                     tracing::error!(?err, "Failed to request game settings layout");
-
-            //                     return None;
-            //                 }
-
-            //                 match recv.await {
-            //                     Ok(Ok(layout)) => return layout,
-
-            //                     Ok(Err(err)) => tracing::error!(?err, "Failed to request game settings layout"),
-            //                     Err(err) => tracing::error!(?err, "Failed to request game settings layout")
-            //                 }
-
-            //                 None
-            //             })
-            //         };
-
-            //         tokio::spawn(async move {
-            //             let (install_status, launch_info, settings_layout) = tokio::join!(
-            //                 game_installation_status,
-            //                 game_launch_info,
-            //                 game_settings_layout
-            //             );
-
-            //             sender.input(GameLibraryDetailsInput::SetGameInfo(GameLibraryDetailsInfo {
-            //                 edition,
-            //                 install_status: install_status.ok().flatten(),
-            //                 launch_info: launch_info.ok().flatten(),
-            //                 settings_layout: settings_layout.ok().flatten()
-            //             }));
-
-            //             sender.input(GameLibraryDetailsInput::SetIsLoading(false));
-            //         });
-            //     }
-            // }
-
-            // GameLibraryDetailsInput::ReloadCurrentGameInfo => {
-            //     let edition = self.game_info.as_ref().and_then(|info| info.edition.clone());
-
-            //     sender.input(GameLibraryDetailsInput::UpdateCurrentGameInfo(edition));
-            // }
-
-            // GameLibraryDetailsInput::SetIsLoading(is_loading) => self.is_loading = is_loading,
-            // GameLibraryDetailsInput::SetGameInfo(info) => self.game_info = Some(info),
 
             // GameLibraryDetailsInput::EmitLaunchGame => {
             //     if self.running_game.is_some() {
@@ -703,36 +513,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             //             sender.input(GameLibraryDetailsInput::ReloadCurrentGameInfo);
             //         });
             //     }
-            // }
-
-            // GameLibraryDetailsInput::EmitOpenSettingsWindow => {
-            //     if let Some(listener) = self.listener.as_ref() {
-            //         let Some(layout) = self.game_info.as_ref().and_then(|info| info.settings_layout.clone()) else {
-            //             return;
-            //         };
-
-            //         let sender = sender.clone();
-            //         let listener = listener.clone();
-
-            //         let config = config::get();
-
-            //         let language = config.general.language.parse::<LanguageIdentifier>().ok();
-
-            //         // Don't mind it.
-            //         gtk::glib::spawn_future(async move {
-            //             sender.input(GameLibraryDetailsInput::SendSettingsWindowMsg(GameSettingsWindowInput::RenderLayout {
-            //                 layout,
-            //                 language,
-            //                 sender: listener
-            //             }));
-
-            //             sender.input(GameLibraryDetailsInput::SendSettingsWindowMsg(GameSettingsWindowInput::EmitPresent));
-            //         });
-            //     }
-            // }
-
-            // GameLibraryDetailsInput::SendSettingsWindowMsg(msg) => {
-            //     self.settings_window.emit(msg);
             // }
         }
     }

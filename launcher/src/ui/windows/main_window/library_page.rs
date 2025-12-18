@@ -24,7 +24,7 @@ use adw::prelude::*;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
-use agl_games::engine::{GameIntegration, GameSettingsGroup};
+use agl_games::engine::{GameVariant, GameIntegration, GameSettingsGroup};
 
 use crate::config;
 use crate::games::GameLock;
@@ -51,66 +51,15 @@ pub enum LibraryPageInput {
 
     CollapseGamesExceptIndex(DynamicIndex),
 
-    // SpawnLuauEngine {
-    //     generation: GenerationManifest,
-    //     validator: AuthorityValidator,
-    //     local_validator: LocalValidator
-    // },
-
-    // AddGameFromGeneration {
-    //     url: String,
-    //     manifest: GameManifest,
-    //     listener: UnboundedSender<SyncGameCommand>
-    // },
-
-    // Activate,
-
-    // GameRowSelected(usize),
-    // HideOtherGamesEditions(DynamicIndex),
-
-    // ShowGameDetails {
-    //     game: DynamicIndex,
-    //     variant: Option<DynamicIndex>
-    // },
-
-    // Call(Box<dyn FnOnce(&mut LibraryPage) + Send>)
+    UpdateSelectedGameInfo
 }
-
-// impl std::fmt::Debug for LibraryPageInput {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             LibraryPageInput::SpawnLuauEngine { .. } => f.debug_struct("SpawnLuauEngine")
-//                 .finish(),
-
-//             LibraryPageInput::AddGameFromGeneration { url, .. } => f.debug_struct("AddGameFromGeneration")
-//                 .field("url", url)
-//                 .finish(),
-
-//             LibraryPageInput::Activate => f.write_str("Activate"),
-
-//             LibraryPageInput::GameRowSelected(idx) => f.debug_tuple("GameRowSelected")
-//                 .field(idx)
-//                 .finish(),
-
-//             LibraryPageInput::HideOtherGamesEditions(idx) => f.debug_tuple("HideOtherGamesEditions")
-//                 .field(idx)
-//                 .finish(),
-
-//             LibraryPageInput::ShowGameDetails { game, variant } => f.debug_struct("ShowGameDetails")
-//                 .field("game", game)
-//                 .field("variant", variant)
-//                 .finish(),
-
-//             LibraryPageInput::Call(_) => f.write_str("Call(..)")
-//         }
-//     }
-// }
 
 #[derive(Debug, Clone)]
 pub enum LibraryPageOutput {
     OpenGameSettingsWindow {
-        layout: Box<[GameSettingsGroup]>,
-        integration: Arc<GameIntegration>
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameSettingsGroup]>
     }
 }
 
@@ -205,8 +154,8 @@ impl SimpleAsyncComponent for LibraryPage {
             game_details: GameLibraryDetails::builder()
                 .launch(())
                 .forward(sender.output_sender(), |msg| match msg {
-                    GameLibraryDetailsOutput::OpenGameSettingsWindow { layout, integration }
-                        => LibraryPageOutput::OpenGameSettingsWindow { layout, integration }
+                    GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
+                        => LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                 }),
 
             // download_manager: DownloadManagerWindow::builder()
@@ -418,6 +367,10 @@ impl SimpleAsyncComponent for LibraryPage {
 
             LibraryPageInput::CollapseGamesExceptIndex(index) => {
                 self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
+            }
+
+            LibraryPageInput::UpdateSelectedGameInfo => {
+                self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo);
             }
 
             // LibraryPageInput::SpawnLuauEngine { generation, validator, local_validator } => {

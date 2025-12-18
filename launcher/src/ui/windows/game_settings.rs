@@ -24,11 +24,12 @@ use adw::prelude::*;
 use unic_langid::LanguageIdentifier;
 
 use agl_games::engine::{
+    GameVariant,
     GameIntegration,
-    GameSettingsGroup,
     GameSettingsEntry,
     GameSettingsEntryFormat,
-    GameSettingsEntryReactivity
+    GameSettingsEntryReactivity,
+    GameSettingsGroup
 };
 
 use crate::config;
@@ -231,8 +232,9 @@ fn render_entry(
 #[derive(Debug)]
 pub enum GameSettingsWindowInput {
     SetGame {
-        layout: Box<[GameSettingsGroup]>,
-        integration: Arc<GameIntegration>
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameSettingsGroup]>
     },
 
     SetBoolProperty {
@@ -245,20 +247,23 @@ pub enum GameSettingsWindowInput {
         name: String,
         value: String,
         reactivity: GameSettingsEntryReactivity
-    }
+    },
+
+    UpdateCurrentGameLayout
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameSettingsWindowOutput {
-    ReloadSettingsWindow,
-    ReloadGameStatus
+    ReloadGameInfo
 }
 
 #[derive(Debug, Clone)]
 pub struct GameSettingsWindow {
     window: Option<adw::PreferencesDialog>,
     pages: Vec<adw::PreferencesPage>,
-    integration: Option<Arc<GameIntegration>>
+
+    game_variant: Option<GameVariant>,
+    game_integration: Option<Arc<GameIntegration>>
 }
 
 #[relm4::component(pub, async)]
@@ -286,7 +291,9 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         let mut model = Self {
             window: None,
             pages: Vec::with_capacity(1),
-            integration: None
+
+            game_variant: None,
+            game_integration: None
         };
 
         let widgets = view_output!();
@@ -307,12 +314,13 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         ) {
             match reactivity {
                 GameSettingsEntryReactivity::Relaxed => {
-                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameStatus);
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo);
                 }
 
                 GameSettingsEntryReactivity::Release => {
-                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameStatus);
-                    let _ = sender.output(GameSettingsWindowOutput::ReloadSettingsWindow);
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo);
+
+                    sender.input(GameSettingsWindowInput::UpdateCurrentGameLayout);
                 }
 
                 _ => ()
@@ -321,8 +329,9 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
         match msg {
             GameSettingsWindowInput::SetGame {
-                layout,
-                integration
+                variant,
+                integration,
+                layout
             } => {
                 if let Some(window) = self.window.clone() {
                     let lang = config::get().language().ok();
@@ -388,7 +397,8 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                         }
                     }
 
-                    self.integration = Some(integration);
+                    self.game_variant = Some(variant);
+                    self.game_integration = Some(integration);
                 }
             }
 
@@ -397,7 +407,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 value,
                 reactivity
             } => {
-                if let Some(integration) = &self.integration {
+                if let Some(integration) = &self.game_integration {
                     if let Err(err) = integration.set_property(name, value) {
                         tracing::error!(?err, "failed to set game property value");
 
@@ -415,7 +425,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 value,
                 reactivity
             } => {
-                if let Some(integration) = &self.integration {
+                if let Some(integration) = &self.game_integration {
                     if let Err(err) = integration.set_property(name, value) {
                         tracing::error!(?err, "failed to set game property value");
 
@@ -425,6 +435,34 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                     }
 
                     handle_reactivity(&reactivity, sender);
+                }
+            }
+
+            GameSettingsWindowInput::UpdateCurrentGameLayout => {
+                if let Some(variant) = &self.game_variant &&
+                    let Some(integration) = &self.game_integration
+                {
+                    match integration.get_settings_layout(variant) {
+                        Ok(Some(layout)) => {
+                            sender.input(GameSettingsWindowInput::SetGame {
+                                variant: variant.clone(),
+                                integration: integration.clone(),
+                                layout
+                            });
+                        }
+
+                        Ok(None) => {
+                            if let Some(window) = &self.window {
+                                window.close();
+                            }
+                        }
+
+                        Err(err) => {
+                            tracing::error!(?err, "failed to update game settings layout");
+
+                            dialogs::error("Failed to update game settings layout", err.to_string());
+                        }
+                    }
                 }
             }
         }
