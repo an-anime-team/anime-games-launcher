@@ -49,23 +49,27 @@ pub struct Config {
     /// `general.network.proxy.url`
     pub general_network_proxy_url: Option<String>,
 
-    /// Duration of the images cache in seconds. If `0` is set then no
-    /// cache is used. Default is `28800` (8 hours).
+    /// Duration of the images cache in seconds. If `0` is set then no cache is
+    /// used. Default is `28800` (8 hours).
     ///
     /// `cache.images.duration`
     pub cache_images_duration: Duration,
 
-    /// Duration of the game registries cache in seconds. If `0` is set
-    /// then no cache is used. Default is `28800` (8 hours).
+    /// Duration of the game registries cache in seconds. If `0` is set then no
+    /// cache is used. Default is `57600` (16 hours).
     ///
     /// `cache.game_registries.duration`
     pub cache_game_registries_duration: Duration,
 
     /// Duration of the game manifests cache in seconds. If `0` is set then no
-    /// cache is used. Default is `28800` (8 hours).
+    /// cache is used. Default is `86400` (24 hours).
     ///
     /// `cache.game_manifests.duration`
     pub cache_game_manifests_duration: Duration,
+
+    /// Duration of the game packages cache in seconds. If `0` is set then no
+    /// cache is used. Default is `28800` (8 hours).
+    pub cache_game_packages_duration: Duration,
 
     /// Proxy mode: `http`, `https` or `all`.
     ///
@@ -124,6 +128,7 @@ impl Default for Config {
             cache_images_duration: Duration::from_hours(8),
             cache_game_registries_duration: Duration::from_hours(16),
             cache_game_manifests_duration: Duration::from_hours(24),
+            cache_game_packages_duration: Duration::from_hours(8),
 
             packages_resources_path: DATA_FOLDER.join("packages").join("resources"),
             packages_modules_path: DATA_FOLDER.join("packages").join("modules"),
@@ -159,6 +164,9 @@ impl Config {
 
             [cache.game_manifests]
             duration = (self.cache_game_manifests_duration.as_secs())
+
+            [cache.game_packages]
+            duration = (self.cache_game_packages_duration.as_secs())
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
@@ -249,6 +257,14 @@ impl Config {
                 // `cache.game_manifests.duration`
                 if let Some(duration) = game_manifests.get("duration").and_then(Toml::as_integer) {
                     config.cache_game_manifests_duration = Duration::from_secs(duration as u64);
+                }
+            }
+
+            // `cache.game_packages.*`
+            if let Some(game_packages) = cache.get("game_packages") {
+                // `cache.game_packages.duration`
+                if let Some(duration) = game_packages.get("duration").and_then(Toml::as_integer) {
+                    config.cache_game_packages_duration = Duration::from_secs(duration as u64);
                 }
             }
         }

@@ -26,6 +26,7 @@ use serde_json::Value as Json;
 use anyhow::Context;
 
 use agl_core::network::downloader::{Downloader, DownloadOptions};
+use agl_packages::storage::Storage;
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::engine::{GameVariant, GameIntegration, GameSettingsGroup};
 
@@ -422,6 +423,9 @@ impl SimpleAsyncComponent for MainWindow {
                 Some(String::from("Loading added games"))
             ));
 
+            let storage = Storage::open(&config::startup().packages_resources_path)
+                .context("failed to open packages storage")?;
+
             for entry in config::startup().games_path.read_dir()? {
                 let entry = entry?;
 
@@ -433,8 +437,42 @@ impl SimpleAsyncComponent for MainWindow {
                 let lock = std::fs::read(entry.path())?;
                 let lock = serde_json::from_slice::<Json>(&lock)?;
 
-                let lock = GameLock::from_json(&lock)
+                let mut lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
+
+                let title = match config::startup().language() {
+                    Ok(lang) => lock.manifest.game.title.translate(&lang),
+                    Err(_)   => lock.manifest.game.title.default_translation()
+                };
+
+                sender.input(MainWindowMsg::SetLoadingStatus(
+                    Some(format!("Loading {title} game package"))
+                ));
+
+                let is_expired = cache::is_expired(
+                    entry.path(),
+                    config::startup().cache_game_packages_duration
+                )?;
+
+                if is_expired {
+                    tracing::trace!(
+                        path = ?entry.path(),
+                        ?title,
+                        "updating added game package lock, cache is expired"
+                    );
+
+                    sender.input(MainWindowMsg::SetLoadingStatus(
+                        Some(format!("Updating {title} game package"))
+                    ));
+
+                    lock = GameLock::download(&lock.url, &storage).await
+                        .context("failed to update game package lock")?;
+
+                    std::fs::write(
+                        entry.path(),
+                        serde_json::to_vec_pretty(&lock.to_json())?
+                    )?;
+                }
 
                 sender.input(MainWindowMsg::AddLibraryPageGame(lock));
             }
