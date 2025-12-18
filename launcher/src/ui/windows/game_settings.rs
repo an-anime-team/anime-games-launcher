@@ -16,17 +16,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use tokio::sync::mpsc::UnboundedSender;
 use unic_langid::LanguageIdentifier;
 
 use agl_games::engine::{
+    GameIntegration,
     GameSettingsGroup,
     GameSettingsEntry,
-    GameSettingsEntryFormat
+    GameSettingsEntryFormat,
+    GameSettingsEntryReactivity
 };
+
+use crate::ui::dialogs;
 
 enum ParentWidget<'widget> {
     Group(&'widget adw::PreferencesGroup),
@@ -70,7 +75,7 @@ fn render_entry(
 
             widget.set_active(*value);
 
-            if let Some(name) = entry.name() {
+            if let Some(name) = entry.name().cloned() {
                 let reactivity = entry.reactivity()
                     .copied()
                     .unwrap_or_default();
@@ -108,14 +113,14 @@ fn render_entry(
                 widget.set_tooltip(description);
             }
 
-            widget.set_text(&value);
+            widget.set_text(value);
 
-            if let Some(name) = entry.name() {
+            if let Some(name) = entry.name().cloned() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
+
                 widget.connect_apply(move |widget| {
-                    let reactivity = entry.reactivity()
-                        .copied()
-                        .unwrap_or_default();
-
                     listener.emit(GameSettingsWindowInput::SetStringProperty {
                         name: name.clone(),
                         value: widget.text().to_string(),
@@ -166,15 +171,17 @@ fn render_entry(
             widget.set_model(Some(&model));
             widget.set_selected(selected_index as u32);
 
-            if let Some(name) = entry.name() {
+            if let Some(name) = entry.name().cloned() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
+
+                let values = values.clone();
+
                 widget.connect_selected_notify(move |widget| {
                     let selected = widget.selected();
 
                     if let Some((key, _)) = values.get(selected as usize) {
-                        let reactivity = entry.reactivity()
-                            .copied()
-                            .unwrap_or_default();
-
                         listener.emit(GameSettingsWindowInput::SetStringProperty {
                             name: name.clone(),
                             value: key.to_owned(),
@@ -222,12 +229,10 @@ fn render_entry(
 
 #[derive(Debug)]
 pub enum GameSettingsWindowInput {
-    EmitPresent,
-
-    RenderLayout {
+    SetGame {
         layout: Vec<GameSettingsGroup>,
         language: Option<LanguageIdentifier>,
-        sender: UnboundedSender<SyncGameCommand>
+        integration: Arc<GameIntegration>
     },
 
     SetBoolProperty {
@@ -252,20 +257,19 @@ pub enum GameSettingsWindowOutput {
 #[derive(Debug, Clone)]
 pub struct GameSettingsWindow {
     window: Option<adw::PreferencesDialog>,
-    parent: adw::ApplicationWindow,
-    sender: Option<UnboundedSender<SyncGameCommand>>,
-    pages: Vec<adw::PreferencesPage>
+    pages: Vec<adw::PreferencesPage>,
+    integration: Option<Arc<GameIntegration>>
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for GameSettingsWindow {
-    type Init = adw::ApplicationWindow;
+    type Init = ();
     type Input = GameSettingsWindowInput;
     type Output = GameSettingsWindowOutput;
 
     view! {
         #[root]
-        adw::PreferencesDialog {
+        _window = adw::PreferencesDialog {
             set_title: "Settings",
 
             set_content_width: 800,
@@ -274,23 +278,33 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         }
     }
 
-    async fn init(parent: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+    async fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        _sender: AsyncComponentSender<Self>
+    ) -> AsyncComponentParts<Self> {
         let mut model = Self {
             window: None,
-            parent,
-            sender: None,
-            pages: Vec::with_capacity(1)
+            pages: Vec::with_capacity(1),
+            integration: None
         };
 
         let widgets = view_output!();
 
-        model.window = Some(widgets.window.clone());
+        model.window = Some(widgets._window.clone());
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
-        fn handle_reactivity(reactivity: GameSettingsEntryReactivity, sender: AsyncComponentSender<GameSettingsWindow>) {
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        sender: AsyncComponentSender<Self>
+    ) {
+        fn handle_reactivity(
+            reactivity: &GameSettingsEntryReactivity,
+            sender: AsyncComponentSender<GameSettingsWindow>
+        ) {
             match reactivity {
                 GameSettingsEntryReactivity::Relaxed => {
                     let _ = sender.output(GameSettingsWindowOutput::ReloadGameStatus);
@@ -306,21 +320,19 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         }
 
         match msg {
-            GameSettingsWindowInput::EmitPresent => {
-                if let Some(window) = self.window.as_ref() {
-                    window.present(Some(&self.parent));
-                }
-            }
-
-            GameSettingsWindowInput::RenderLayout { layout, language, sender: server_sender } => {
-                self.sender = Some(server_sender);
-
+            GameSettingsWindowInput::SetGame {
+                layout,
+                language,
+                integration
+            } => {
                 if let Some(window) = self.window.clone() {
                     let pages = self.pages.drain(..).collect::<Vec<_>>();
 
                     let page_widget = gtk::glib::spawn_future_local(async move {
                         for page in pages {
                             window.remove(&page);
+
+                            drop(page);
                         }
 
                         let page_widget = adw::PreferencesPage::new();
@@ -365,38 +377,53 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
                     match page_widget {
                         Ok(page_widget) => self.pages.push(page_widget),
-                        Err(err) => tracing::error!(?err, "Failed to render game settings page")
+
+                        Err(err) => {
+                            tracing::error!(?err, "failed to render game settings");
+
+                            dialogs::error("Failed to render game settings", err.to_string());
+
+                            return;
+                        }
                     }
+
+                    self.integration = Some(integration);
                 }
             }
 
-            GameSettingsWindowInput::SetBoolProperty { name, value, reactivity } => {
-                if let Some(server_sender) = self.sender.as_ref() {
-                    let result = server_sender.send(SyncGameCommand::SetBoolProperty {
-                        name,
-                        value
-                    });
+            GameSettingsWindowInput::SetBoolProperty {
+                name,
+                value,
+                reactivity
+            } => {
+                if let Some(integration) = &self.integration {
+                    if let Err(err) = integration.set_property(name, value) {
+                        tracing::error!(?err, "failed to set game property value");
 
-                    if let Err(err) = result {
-                        tracing::error!(?err, "Failed to set game property value");
+                        dialogs::error("Failed to set game property value", err.to_string());
+
+                        return;
                     }
 
-                    handle_reactivity(reactivity, sender);
+                    handle_reactivity(&reactivity, sender);
                 }
             }
 
-            GameSettingsWindowInput::SetStringProperty { name, value, reactivity } => {
-                if let Some(server_sender) = self.sender.as_ref() {
-                    let result = server_sender.send(SyncGameCommand::SetStringProperty {
-                        name,
-                        value
-                    });
+            GameSettingsWindowInput::SetStringProperty {
+                name,
+                value,
+                reactivity
+            } => {
+                if let Some(integration) = &self.integration {
+                    if let Err(err) = integration.set_property(name, value) {
+                        tracing::error!(?err, "failed to set game property value");
 
-                    if let Err(err) = result {
-                        tracing::error!(?err, "Failed to set game property value");
+                        dialogs::error("Failed to set game property value", err.to_string());
+
+                        return;
                     }
 
-                    handle_reactivity(reactivity, sender);
+                    handle_reactivity(&reactivity, sender);
                 }
             }
         }

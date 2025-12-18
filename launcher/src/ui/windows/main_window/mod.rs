@@ -98,7 +98,7 @@ impl SimpleAsyncComponent for MainWindow {
 
     view! {
         #[root]
-        window = adw::ApplicationWindow {
+        _window = adw::ApplicationWindow {
             set_title: Some("Anime Games Launcher"),
             set_size_request: (1200, 800),
 
@@ -161,12 +161,12 @@ impl SimpleAsyncComponent for MainWindow {
                         set_title_widget = &adw::ViewSwitcher {
                             set_policy: adw::ViewSwitcherPolicy::Wide,
 
-                            set_stack: Some(view_stack)
+                            set_stack: Some(_view_stack)
                         }
                     },
 
                     #[local_ref]
-                    view_stack -> adw::ViewStack {
+                    _view_stack -> adw::ViewStack {
                         add = &gtk::Box {
                             set_vexpand: true,
                             set_hexpand: true,
@@ -240,20 +240,12 @@ impl SimpleAsyncComponent for MainWindow {
             show_back_button: false
         };
 
-        let view_stack = &model.view_stack;
+        // Named like this to supress relm4 view macro warning.
+        let _view_stack = &model.view_stack;
 
         let widgets = view_output!();
 
-        // let library_page = LibraryPage::builder()
-        //     .launch(widgets.window.clone())
-        //     .forward(sender.input_sender(), |msg| match msg {
-        //         LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
-        //     });
-
-        // widgets.library_page_box.append(library_page.widget());
-
-        model.window = Some(widgets.window.clone());
-        // model.library_page = Some(library_page);
+        model.window = Some(widgets._window.clone());
 
         let task = tokio::spawn(async move {
             // Create default folders.
