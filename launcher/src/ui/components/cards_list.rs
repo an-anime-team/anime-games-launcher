@@ -24,9 +24,14 @@ use super::card::CardComponent;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CardsListInit {
+    /// Card image path.
     pub image: ImagePath,
+
+    /// Card title.
     pub title: String,
-    pub variants: Option<Vec<String>>
+
+    /// Variants titles.
+    pub variants: Option<Box<[String]>>
 }
 
 impl CardsListInit {

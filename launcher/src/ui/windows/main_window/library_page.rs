@@ -24,9 +24,11 @@ use adw::prelude::*;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
-use agl_games::engine::{GameVariant, GameIntegration, GameSettingsGroup};
+use agl_games::engine::{
+    GameEdition, GameVariant, GameIntegration, GameSettingsGroup
+};
 
-use crate::config;
+use crate::{config, consts};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
@@ -36,6 +38,14 @@ use crate::ui::components::cards_list::{
 use crate::ui::components::game_library_details::{
     GameLibraryDetails, GameLibraryDetailsInput, GameLibraryDetailsOutput
 };
+
+#[derive(Debug, Clone)]
+struct GameInfo {
+    pub lock: GameLock,
+    pub integration: Arc<GameIntegration>,
+    pub editions: Option<Box<[GameEdition]>>,
+    pub card_index: DynamicIndex
+}
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,7 +84,7 @@ pub struct LibraryPage {
     storage: Storage,
     runtime: Runtime,
 
-    games: Vec<(GameLock, Arc<GameIntegration>, DynamicIndex)>
+    games: Vec<GameInfo>
 }
 
 impl std::fmt::Debug for LibraryPage {
@@ -202,9 +212,10 @@ impl SimpleAsyncComponent for LibraryPage {
                 );
 
                 let config = config::get();
+                let lang = config.language();
 
-                let title = match config.language() {
-                    Ok(lang) => game_lock.manifest.game.title.translate(&lang),
+                let title = match &lang {
+                    Ok(lang) => game_lock.manifest.game.title.translate(lang),
                     Err(_) => game_lock.manifest.game.title.default_translation()
                 };
 
@@ -330,20 +341,56 @@ impl SimpleAsyncComponent for LibraryPage {
                     }
                 };
 
+                let editions = match game_integration.game_editions(*consts::CURRENT_PLATFORM) {
+                    Ok(editions) => editions,
+
+                    Err(err) => {
+                        tracing::error!(
+                            ?err,
+                            url = game_lock.url,
+                            title = game_lock.manifest.game.title.default_translation(),
+                            "failed to request game integration editions"
+                        );
+
+                        dialogs::error(
+                            format!("Failed to build {title} game integration"),
+                            err.to_string()
+                        );
+
+                        return;
+                    }
+                };
+
                 let index = self.cards_list.guard().push_back(CardsListInit {
                     image: ImagePath::LazyLoad(game_lock.manifest.game.images.poster.clone()),
                     title: title.to_string(),
-                    variants: None
+                    variants: editions.as_ref()
+                        .map(|variants| {
+                            variants.iter()
+                                .map(|variant| {
+                                    match &lang {
+                                        Ok(lang) => variant.title.translate(lang),
+                                        Err(_)   => variant.title.default_translation()
+                                    }
+                                })
+                                .map(String::from)
+                                .collect::<Box<[String]>>()
+                        })
                 });
 
-                self.games.push((game_lock, game_integration, index));
+                self.games.push(GameInfo {
+                    lock: game_lock,
+                    integration: game_integration,
+                    editions,
+                    card_index: index
+                });
             }
 
             LibraryPageInput::SelectGameWithUrl(url) => {
-                for (game, _, index) in &self.games {
-                    if game.url == url {
+                for game_info in &self.games {
+                    if game_info.lock.url == url {
                         sender.input(LibraryPageInput::SelectGameWithIndex {
-                            game: index.current_index(),
+                            game: game_info.card_index.current_index(),
                             variant: None
                         });
 
@@ -352,15 +399,21 @@ impl SimpleAsyncComponent for LibraryPage {
                 }
             }
 
-            LibraryPageInput::SelectGameWithIndex { game, variant: _ } => {
-                let game = self.games.iter()
-                    .find(|(_, _, index)| index.current_index() == game);
+            LibraryPageInput::SelectGameWithIndex { game, variant } => {
+                let game_info = self.games.iter()
+                    .find(|game_info| game_info.card_index.current_index() == game);
 
-                if let Some((game, integration, _)) = game {
+                if let Some(game_info) = game_info {
+                    let edition = variant.and_then(|variant| {
+                        game_info.editions.as_ref()
+                            .and_then(|editions| editions.get(variant))
+                            .map(|edition| edition.name.clone())
+                    });
+
                     self.game_details.emit(GameLibraryDetailsInput::SetGame {
-                        manifest: game.manifest.clone(),
-                        edition: None,
-                        integration: integration.clone()
+                        manifest: game_info.lock.manifest.clone(),
+                        edition,
+                        integration: game_info.integration.clone()
                     });
                 }
             }
