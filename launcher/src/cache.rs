@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::Context;
@@ -31,10 +31,13 @@ pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {
     CACHE_FOLDER.join(Hash::from_bytes(key.as_ref()).to_base32())
 }
 
-/// Check if a file with provided cache key is expired. Return `Ok(true)`
-/// if such file doesn't exist.
-pub fn is_expired(key: impl AsRef<[u8]>, ttl: Duration) -> anyhow::Result<bool> {
-    let path = get_path(key);
+/// Check if a file with provided path is expired. Return `Ok(true)` if such
+/// file doesn't exist.
+pub fn is_expired(
+    path: impl AsRef<Path>,
+    ttl: Duration
+) -> anyhow::Result<bool> {
+    let path = path.as_ref();
 
     if !path.exists() {
         return Ok(true);

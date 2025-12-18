@@ -103,7 +103,7 @@ impl GameLock {
         let manifest_path = cache::get_path(&manifest_url);
 
         let is_expired = cache::is_expired(
-            &manifest_url,
+            &manifest_path,
             config.cache_game_manifests_duration
         )?;
 

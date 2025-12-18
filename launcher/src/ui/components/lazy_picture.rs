@@ -126,7 +126,7 @@ impl SimpleAsyncComponent for LazyPictureComponent {
                     let cache_path = cache::get_path(url);
 
                     let is_expired = cache::is_expired(
-                        url,
+                        &cache_path,
                         config::startup().cache_images_duration
                     ).unwrap_or(true);
 

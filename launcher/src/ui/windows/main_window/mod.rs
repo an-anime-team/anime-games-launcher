@@ -294,7 +294,12 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this registry is expired - request the registry
                 // value again.
-                if cache::is_expired(url, config::startup().cache_game_registries_duration)? {
+                let is_expired = cache::is_expired(
+                    &cache_path,
+                    config::startup().cache_game_registries_duration
+                )?;
+
+                if is_expired {
                     tracing::trace!(?url, ?cache_path, "game registry cache is expired");
 
                     let task = downloader.download_with_options(
@@ -370,7 +375,12 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this game manifest is expired - request the
                 // manifest again.
-                if cache::is_expired(&url, config::startup().cache_game_manifests_duration)? {
+                let is_expired = cache::is_expired(
+                    &cache_path,
+                    config::startup().cache_game_manifests_duration
+                )?;
+
+                if is_expired {
                     tracing::trace!(?url, ?cache_path, "game manifest cache is expired");
 
                     let task = downloader.download_with_options(
@@ -419,8 +429,6 @@ impl SimpleAsyncComponent for MainWindow {
                     path = ?entry.path(),
                     "loading added game package lock"
                 );
-
-                // TODO: update the lock before loading it.
 
                 let lock = std::fs::read(entry.path())?;
                 let lock = serde_json::from_slice::<Json>(&lock)?;
