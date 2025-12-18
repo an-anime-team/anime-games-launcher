@@ -169,6 +169,13 @@ impl FromStr for Platform {
     }
 }
 
+impl AsRef<Platform> for Platform {
+    #[inline(always)]
+    fn as_ref(&self) -> &Platform {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
