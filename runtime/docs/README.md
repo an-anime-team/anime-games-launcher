@@ -75,6 +75,22 @@ the user's system. By default such APIs are not available to modules.
 
 There's currently no standard way to enable such APIs (TBD).
 
+## Backward compatibility
+
+There's no promise to keep backward compatibility with old runtime versions,
+although some effort will definitely be made to minimize the changes. To support
+both old and new runtime versions your luau modules should use `versions` table
+provided by the runtime:
+
+| Field              | Meaning                                              |
+| ------------------ | ---------------------------------------------------- |
+| `versions.core`    | Version of the Anime Games Launcher core library.    |
+| `versions.runtime` | Version of the Anime Games Launcher runtime library. |
+
+For each runtime change some migration guide will be provided. It's also
+recommended to implement some abstract polyfill libraries which would simplify
+migration process.
+
 ## Available APIs
 
 List of all available APIs:
