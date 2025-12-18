@@ -139,7 +139,7 @@ type GameDiff = {
     title: LocalizableString;
 
     // Diff description (what this diff is supposed to do).
-    description: LocalizableString;
+    description?: LocalizableString;
 
     // Actions pipeline (set of actions needed to execute to finish the diff).
     pipeline: PipelineAction[];
@@ -150,7 +150,7 @@ type PipelineAction = {
     title: LocalizableString;
 
     // Description of the pipeline action (what this action does).
-    description: LocalizableString;
+    description?: LocalizableString;
 
     // Optional function executed before running the main one. If it returns
     // `true`, then the main `perform` function is called next. Otherwise, if
