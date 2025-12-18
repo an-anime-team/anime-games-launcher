@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
 use std::collections::HashMap;
 
 use adw::prelude::*;
@@ -26,19 +27,24 @@ use anyhow::Context;
 
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
+use agl_games::engine::{GameIntegration, GameSettingsGroup};
 
 use crate::consts;
 use crate::config;
 use crate::cache;
 use crate::games::GameLock;
-use crate::ui::dialogs::critical_error;
+use crate::ui::dialogs;
+use crate::ui::windows::game_settings::{
+    GameSettingsWindow,
+    GameSettingsWindowInput
+};
 
 pub mod store_page;
 pub mod library_page;
 // pub mod downloads_page;
 
 use store_page::{StorePage, StorePageInput, StorePageOutput};
-use library_page::{LibraryPage, LibraryPageInput};
+use library_page::{LibraryPage, LibraryPageInput, LibraryPageOutput};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -56,6 +62,11 @@ pub enum MainWindowMsg {
     GoBackButtonClicked,
 
     ShowLibraryGameWithUrl(String),
+
+    OpenGameSettingsWindow {
+        layout: Box<[GameSettingsGroup]>,
+        integration: Arc<GameIntegration>
+    }
 
     // FinishLoading {
     //     generation: GenerationManifest,
@@ -81,6 +92,7 @@ pub enum MainWindowMsg {
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
+    game_settings_window: AsyncController<GameSettingsWindow>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
@@ -229,6 +241,13 @@ impl SimpleAsyncComponent for MainWindow {
                 }),
 
             library_page: LibraryPage::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    LibraryPageOutput::OpenGameSettingsWindow { layout, integration }
+                        => MainWindowMsg::OpenGameSettingsWindow { layout, integration }
+                }),
+
+            game_settings_window: GameSettingsWindow::builder()
                 .launch(())
                 .detach(),
 
@@ -479,13 +498,13 @@ impl SimpleAsyncComponent for MainWindow {
                 Ok(Err(err)) => {
                     tracing::error!(?err, "failed to execute startup task");
 
-                    critical_error("failed to execute startup task", err);
+                    dialogs::critical_error("failed to execute startup task", err);
                 }
 
                 Err(err) => {
                     tracing::error!(?err, "failed to execute startup task");
 
-                    critical_error("failed to execute startup task", err);
+                    dialogs::critical_error("failed to execute startup task", err);
                 }
             }
         });
@@ -522,6 +541,18 @@ impl SimpleAsyncComponent for MainWindow {
                 self.view_stack.set_visible_child_name("library");
 
                 self.library_page.emit(LibraryPageInput::SelectGameWithUrl(url));
+            }
+
+            MainWindowMsg::OpenGameSettingsWindow { layout, integration } => {
+                if let Some(window) = &self.window {
+                    self.game_settings_window.emit(GameSettingsWindowInput::SetGame {
+                        layout,
+                        integration
+                    });
+
+                    self.game_settings_window.widget()
+                        .present(Some(window));
+                }
             }
 
             // MainWindowMsg::FinishLoading { generation, validator, local_validator } => {

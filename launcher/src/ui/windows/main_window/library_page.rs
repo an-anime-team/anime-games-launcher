@@ -24,17 +24,17 @@ use adw::prelude::*;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
-use agl_games::engine::GameIntegration;
+use agl_games::engine::{GameIntegration, GameSettingsGroup};
 
 use crate::config;
 use crate::games::GameLock;
-use crate::ui::dialogs::error;
+use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
 use crate::ui::components::cards_list::{
     CardsList, CardsListInit, CardsListInput, CardsListOutput
 };
 use crate::ui::components::game_library_details::{
-    GameLibraryDetails, GameLibraryDetailsMsg
+    GameLibraryDetails, GameLibraryDetailsInput, GameLibraryDetailsOutput
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -106,9 +106,12 @@ pub enum LibraryPageInput {
 //     }
 // }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub enum LibraryPageOutput {
-    // SetShowBack(bool)
+    OpenGameSettingsWindow {
+        layout: Box<[GameSettingsGroup]>,
+        integration: Arc<GameIntegration>
+    }
 }
 
 pub struct LibraryPage {
@@ -201,7 +204,10 @@ impl SimpleAsyncComponent for LibraryPage {
 
             game_details: GameLibraryDetails::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.output_sender(), |msg| match msg {
+                    GameLibraryDetailsOutput::OpenGameSettingsWindow { layout, integration }
+                        => LibraryPageOutput::OpenGameSettingsWindow { layout, integration }
+                }),
 
             // download_manager: DownloadManagerWindow::builder()
             //     .launch(())
@@ -267,7 +273,7 @@ impl SimpleAsyncComponent for LibraryPage {
                         "failed to load game package"
                     );
 
-                    error(
+                    dialogs::error(
                         format!("Failed to load {title} game package"),
                         err.to_string()
                     );
@@ -299,7 +305,7 @@ impl SimpleAsyncComponent for LibraryPage {
                         "failed to find game integration module in package lock"
                     );
 
-                    error(
+                    dialogs::error(
                         "Failed to find game integration module in package lock",
                         format!("Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken")
                     );
@@ -326,7 +332,7 @@ impl SimpleAsyncComponent for LibraryPage {
                             "failed to read game integration from the runtime"
                         );
 
-                        error(
+                        dialogs::error(
                             format!("Failed to read {title} game integration from the runtime"),
                             err.to_string()
                         );
@@ -341,7 +347,7 @@ impl SimpleAsyncComponent for LibraryPage {
                             "game integration module is missing in the runtime"
                         );
 
-                        error(
+                        dialogs::error(
                             "Game integration module is missing in the runtime",
                             format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime")
                         );
@@ -366,7 +372,7 @@ impl SimpleAsyncComponent for LibraryPage {
                             "failed to build game integration"
                         );
 
-                        error(
+                        dialogs::error(
                             format!("Failed to build {title} game integration"),
                             err.to_string()
                         );
@@ -402,7 +408,7 @@ impl SimpleAsyncComponent for LibraryPage {
                     .find(|(_, _, index)| index.current_index() == game);
 
                 if let Some((game, integration, _)) = game {
-                    self.game_details.emit(GameLibraryDetailsMsg::SetGame {
+                    self.game_details.emit(GameLibraryDetailsInput::SetGame {
                         manifest: game.manifest.clone(),
                         edition: None,
                         integration: integration.clone()

@@ -31,6 +31,7 @@ use agl_games::engine::{
     GameSettingsEntryReactivity
 };
 
+use crate::config;
 use crate::ui::dialogs;
 
 enum ParentWidget<'widget> {
@@ -230,8 +231,7 @@ fn render_entry(
 #[derive(Debug)]
 pub enum GameSettingsWindowInput {
     SetGame {
-        layout: Vec<GameSettingsGroup>,
-        language: Option<LanguageIdentifier>,
+        layout: Box<[GameSettingsGroup]>,
         integration: Arc<GameIntegration>
     },
 
@@ -322,10 +322,11 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         match msg {
             GameSettingsWindowInput::SetGame {
                 layout,
-                language,
                 integration
             } => {
                 if let Some(window) = self.window.clone() {
+                    let lang = config::get().language().ok();
+
                     let pages = self.pages.drain(..).collect::<Vec<_>>();
 
                     let page_widget = gtk::glib::spawn_future_local(async move {
@@ -343,7 +344,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                             let group_widget = adw::PreferencesGroup::new();
 
                             if let Some(title) = group.title() {
-                                let title = match language.as_ref() {
+                                let title = match lang.as_ref() {
                                     Some(lang) => title.translate(lang),
                                     None => title.default_translation()
                                 };
@@ -352,7 +353,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                             }
 
                             if let Some(description) = group.description() {
-                                let description = match language.as_ref() {
+                                let description = match lang.as_ref() {
                                     Some(lang) => description.translate(lang),
                                     None => description.default_translation()
                                 };
@@ -366,7 +367,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                                 render_entry(
                                     ParentWidget::Group(&group_widget),
                                     entry,
-                                    language.as_ref(),
+                                    lang.as_ref(),
                                     sender.input_sender().clone()
                                 );
                             }
