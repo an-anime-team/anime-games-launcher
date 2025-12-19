@@ -386,6 +386,8 @@ impl SimpleAsyncComponent for DownloadsPage {
                                 fraction: 1.0
                             });
                         }
+
+                        sender.input(DownloadsPageMsg::UpdateSchedule);
                     });
                 }
             }
