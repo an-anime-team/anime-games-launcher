@@ -25,7 +25,11 @@ use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::engine::{
-    GameEdition, GameVariant, GameIntegration, GameSettingsGroup
+    GameEdition,
+    GameVariant,
+    GameIntegration,
+    ActionsPipeline,
+    GameSettingsGroup
 };
 
 use crate::{config, consts};
@@ -66,6 +70,12 @@ pub enum LibraryPageInput {
 
 #[derive(Debug, Clone)]
 pub enum LibraryPageOutput {
+    ScheduleGameActionsPipeline {
+        game_index: usize,
+        game_title: String,
+        actions_pipeline: Arc<ActionsPipeline>
+    },
+
     OpenGameSettingsWindow {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
@@ -164,6 +174,9 @@ impl SimpleAsyncComponent for LibraryPage {
             game_details: GameLibraryDetails::builder()
                 .launch(())
                 .forward(sender.output_sender(), |msg| match msg {
+                    GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
+                        => LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
+
                     GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                 }),
@@ -413,7 +426,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     self.game_details.emit(GameLibraryDetailsInput::SetGame {
                         manifest: game_info.lock.manifest.clone(),
                         edition,
-                        integration: game_info.integration.clone()
+                        integration: game_info.integration.clone(),
+                        index: game
                     });
                 }
             }

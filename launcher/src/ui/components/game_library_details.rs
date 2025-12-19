@@ -46,11 +46,13 @@ pub enum GameLibraryDetailsInput {
     SetGame {
         manifest: GameManifest,
         edition: Option<String>,
-        integration: Arc<GameIntegration>
+        integration: Arc<GameIntegration>,
+        index: usize
     },
 
     UpdateGameInfo,
 
+    ScheduleGameActionsPipeline,
     OpenGameSettingsWindow
 
     // EmitLaunchGame,
@@ -65,6 +67,12 @@ pub enum GameLibraryDetailsInput {
 
 #[derive(Debug, Clone)]
 pub enum GameLibraryDetailsOutput {
+    ScheduleGameActionsPipeline {
+        game_index: usize,
+        game_title: String,
+        actions_pipeline: Arc<ActionsPipeline>
+    },
+
     OpenGameSettingsWindow {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
@@ -77,6 +85,8 @@ pub struct GameLibraryDetails {
     card: AsyncController<CardComponent>,
     background: AsyncController<LazyPictureComponent>,
 
+    game_index: usize,
+
     game_title: Option<String>,
     game_developer: Option<String>,
     game_publisher: Option<String>,
@@ -85,9 +95,10 @@ pub struct GameLibraryDetails {
     game_variant: Option<GameVariant>,
 
     game_launch_info: Option<GameLaunchInfo>,
-    game_actions_pipeline: Option<ActionsPipeline>,
+    game_actions_pipeline: Option<Arc<ActionsPipeline>>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>,
 
+    // is_game_scheduled: bool,
     // running_game: Option<Child>
 }
 
@@ -247,7 +258,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                     }),
                             },
 
-                            // connect_clicked => GameLibraryDetailsInput::EmitInstallDiff
+                            connect_clicked => GameLibraryDetailsInput::ScheduleGameActionsPipeline
                         },
 
                         gtk::Button {
@@ -283,6 +294,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 .launch(LazyPictureComponent::default())
                 .detach(),
 
+            game_index: 0,
+
             game_title: None,
             game_developer: None,
             game_publisher: None,
@@ -311,7 +324,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsInput::SetGame {
                 manifest,
                 edition,
-                integration
+                integration,
+                index
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::LazyLoad(manifest.game.images.poster.clone())
@@ -347,6 +361,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     None => manifest.game.publisher.default_translation()
                 };
 
+                self.game_index = index;
+
                 self.game_title = Some(title.to_string());
                 self.game_developer = Some(developer.to_string());
                 self.game_publisher = Some(publisher.to_string());
@@ -378,7 +394,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     }
 
                     match integration.get_actions_pipeline(variant) {
-                        Ok(pipeline) => self.game_actions_pipeline = pipeline,
+                        Ok(pipeline) => self.game_actions_pipeline = pipeline.map(Arc::from),
 
                         Err(err) => {
                             self.game_actions_pipeline = None;
@@ -400,6 +416,18 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             dialogs::error("Failed to request game settings layout", err.to_string());
                         }
                     }
+                }
+            }
+
+            GameLibraryDetailsInput::ScheduleGameActionsPipeline => {
+                if let Some(game_title) = &self.game_title
+                    && let Some(actions_pipeline) = &self.game_actions_pipeline
+                {
+                    sender.output(GameLibraryDetailsOutput::ScheduleGameActionsPipeline {
+                        game_index: self.game_index,
+                        game_title: game_title.clone(),
+                        actions_pipeline: actions_pipeline.clone()
+                    });
                 }
             }
 

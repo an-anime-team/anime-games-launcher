@@ -28,7 +28,9 @@ use anyhow::Context;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_packages::storage::Storage;
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
-use agl_games::engine::{GameVariant, GameIntegration, GameSettingsGroup};
+use agl_games::engine::{
+    GameVariant, GameIntegration, ActionsPipeline, GameSettingsGroup
+};
 
 use crate::consts;
 use crate::config;
@@ -65,6 +67,12 @@ pub enum MainWindowMsg {
     GoBackButtonClicked,
 
     ShowLibraryGameWithUrl(String),
+
+    ScheduleGameActionsPipeline {
+        game_index: usize,
+        game_title: String,
+        actions_pipeline: Arc<ActionsPipeline>
+    },
 
     OpenGameSettingsWindow {
         variant: GameVariant,
@@ -227,6 +235,9 @@ impl SimpleAsyncComponent for MainWindow {
             library_page: LibraryPage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
+                    LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
+                        => MainWindowMsg::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
+
                     LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout }
                 }),
@@ -577,6 +588,18 @@ impl SimpleAsyncComponent for MainWindow {
                 self.view_stack.set_visible_child_name("library");
 
                 self.library_page.emit(LibraryPageInput::SelectGameWithUrl(url));
+            }
+
+            MainWindowMsg::ScheduleGameActionsPipeline {
+                game_index,
+                game_title,
+                actions_pipeline
+            } => {
+                self.downloads_page.emit(DownloadsPageMsg::ScheduleGameActionsPipeline {
+                    game_index,
+                    game_title,
+                    actions_pipeline
+                });
             }
 
             MainWindowMsg::OpenGameSettingsWindow {

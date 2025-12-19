@@ -16,12 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
 use std::collections::VecDeque;
 
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use agl_games::engine::ActionsPipeline;
+
 use crate::consts;
+use crate::config;
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -41,7 +45,11 @@ pub struct DownloadsPage {
 
 #[derive(Debug, Clone)]
 pub enum DownloadsPageMsg {
-
+    ScheduleGameActionsPipeline {
+        game_index: usize,
+        game_title: String,
+        actions_pipeline: Arc<ActionsPipeline>
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -173,7 +181,35 @@ impl SimpleAsyncComponent for DownloadsPage {
         _sender: AsyncComponentSender<Self>
     ) {
         match msg {
+            DownloadsPageMsg::ScheduleGameActionsPipeline {
+                game_index,
+                game_title,
+                actions_pipeline
+            } => {
+                let lang = config::get().language();
 
+                let pipeline_title = match &lang {
+                    Ok(lang) => actions_pipeline.title().translate(lang),
+                    Err(_)   => actions_pipeline.title().default_translation()
+                };
+
+                let pipeline_description = actions_pipeline.description()
+                    .map(|description| {
+                        match &lang {
+                            Ok(lang) => description.translate(lang),
+                            Err(_)   => description.default_translation()
+                        }
+                    })
+                    .map(String::from);
+
+                dbg!(&game_title);
+
+                self.scheduled_pipelines.push_back(PipelineInfo {
+                    game_title,
+                    pipeline_title: pipeline_title.to_string(),
+                    pipeline_description
+                });
+            }
         }
     }
 }
