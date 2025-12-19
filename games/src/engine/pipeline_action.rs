@@ -73,14 +73,16 @@ impl PipelineAction {
     /// skipped.
     pub fn before(
         &self,
-        progress: impl Fn(ProgressReport) -> bool + Send + 'static
+        progress: impl Fn(ProgressReport) + Send + 'static
     ) -> Result<Option<bool>, LuaError> {
         let Some(before) = &self.before else {
             return Ok(None);
         };
 
         let progress = self.lua.create_function(move |_, report: LuaTable| {
-            Ok(progress(ProgressReport::from_lua(&report)?))
+            progress(ProgressReport::from_lua(&report)?);
+
+            Ok(())
         })?;
 
         before.call::<bool>(progress).map(Some)
