@@ -139,8 +139,11 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                model.scheduled_pipelines_factory.widget() {
-                    set_title: "Schedule"
+                model.scheduled_pipelines_factory.widget().clone() -> adw::PreferencesGroup {
+                    set_title: "Schedule",
+
+                    #[watch]
+                    set_visible: !model.scheduled_pipelines.is_empty()
                 }
             }
         }
