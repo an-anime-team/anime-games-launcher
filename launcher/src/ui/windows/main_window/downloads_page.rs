@@ -27,6 +27,7 @@ use agl_games::engine::ActionsPipeline;
 use crate::consts;
 use crate::config;
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
+use crate::ui::components::game_actions_schedule::GameActionsScheduleFactory;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct PipelineInfo {
@@ -38,6 +39,7 @@ struct PipelineInfo {
 #[derive(Debug)]
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
+    actions_schedule: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
 
     current_pipeline: Option<PipelineInfo>,
     scheduled_pipelines: VecDeque<PipelineInfo>
@@ -126,26 +128,8 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                adw::PreferencesGroup {
-                    set_title: "Schedule",
-
-                    adw::ActionRow {
-                        set_title: "Update game",
-
-                        add_suffix = &gtk::Label {
-                            set_label: "Honkai: Star Rail"
-                        },
-
-                        add_suffix = &gtk::Button {
-                            set_valign: gtk::Align::Center,
-
-                            add_css_class: "flat",
-
-                            adw::ButtonContent {
-                                set_icon_name: "window-close-symbolic"
-                            }
-                        }
-                    }
+                model.actions_schedule.widget() {
+                    set_title: "Schedule"
                 }
             }
         }
@@ -164,6 +148,10 @@ impl SimpleAsyncComponent for DownloadsPage {
                     window_size: 60,
                     color: (1.0, 0.0, 0.0)
                 })
+                .detach(),
+
+            actions_schedule: AsyncFactoryVecDeque::builder()
+                .launch_default()
                 .detach(),
 
             current_pipeline: None,
@@ -203,6 +191,11 @@ impl SimpleAsyncComponent for DownloadsPage {
                     .map(String::from);
 
                 dbg!(&game_title);
+
+                self.actions_schedule.guard().push_back(GameActionsScheduleFactory {
+                    game_title: game_title.clone(),
+                    pipeline_title: pipeline_title.to_string()
+                });
 
                 self.scheduled_pipelines.push_back(PipelineInfo {
                     game_title,

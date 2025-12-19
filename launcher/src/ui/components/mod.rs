@@ -21,9 +21,11 @@ pub mod card;
 pub mod picture_carousel;
 pub mod cards_list;
 pub mod cards_grid;
-pub mod graph;
 
+pub mod graph;
 pub mod game_tags;
 pub mod maintainers_row;
+pub mod game_actions_schedule;
+
 pub mod game_store_details;
 pub mod game_library_details;
