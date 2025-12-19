@@ -86,10 +86,6 @@ pub enum LibraryPageOutput {
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameLibraryDetails>,
-    // download_manager: AsyncController<DownloadManagerWindow>,
-
-    // main_window: Option<adw::ApplicationWindow>,
-    // toast_overlay: Option<adw::ToastOverlay>,
 
     storage: Storage,
     runtime: Runtime,
@@ -439,122 +435,6 @@ impl SimpleAsyncComponent for LibraryPage {
             LibraryPageInput::UpdateSelectedGameInfo => {
                 self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo);
             }
-
-            // LibraryPageInput::SpawnLuauEngine { generation, validator, local_validator } => {
-            //     self.games.clear();
-            //     self.cards_list.guard().clear();
-
-            //     let download_manager = self.download_manager.sender().to_owned();
-
-            //     // TODO: we don't do this now, but in future this event could be called
-            //     //       multiple times, so we would need to kill unused threads.
-            //     std::thread::spawn(move || {
-            //         if let Err(err) = serve_generation(sender, download_manager, generation, validator, local_validator) {
-            //             tracing::error!(?err, "Failed to serve generation");
-            //         }
-            //     });
-            // }
-
-            // LibraryPageInput::AddGameFromGeneration { url: _, manifest, listener } => {
-            //     let config = config::get();
-
-            //     let lang = config.general.language.parse::<LanguageIdentifier>();
-
-            //     let (send, recv) = tokio::sync::oneshot::channel();
-
-            //     // TODO: better errors handling
-            //     if let Err(err) = listener.send(SyncGameCommand::GetEditions { listener: send }) {
-            //         tracing::error!(?err, "Failed to request game editions");
-
-            //         return;
-            //     }
-
-            //     // TODO: build Arc-s here
-            //     let editions = match recv.await {
-            //         Ok(Ok(editions)) => editions,
-
-            //         Ok(Err(err)) => {
-            //             tracing::error!(?err, "Failed to request game editions");
-
-            //             return;
-            //         }
-
-            //         Err(err) => {
-            //             tracing::error!(?err, "Failed to request game editions");
-
-            //             return;
-            //         }
-            //     };
-
-            //     self.cards_list.guard().push_back(CardsListInit {
-            //         image: ImagePath::LazyLoad(manifest.game.images.poster.clone()),
-
-            //         title: match &lang {
-            //             Ok(lang) => manifest.game.title.translate(lang).to_string(),
-            //             Err(_) => manifest.game.title.default_translation().to_string()
-            //         },
-
-            //         variants: editions.as_ref().map(|editions| {
-            //             editions.iter()
-            //                 .map(|edition| {
-            //                     match &lang {
-            //                         Ok(lang) => edition.title.translate(lang).to_string(),
-            //                         Err(_) => edition.title.default_translation().to_string()
-            //                     }
-            //                 })
-            //                 .collect::<Vec<_>>()
-            //         })
-            //     });
-
-            //     self.games.push(GameInfo {
-            //         manifest: Arc::new(manifest),
-            //         editions,
-            //         listener
-            //     });
-            // }
-
-            // LibraryPageInput::GameRowSelected(index) => {
-            //     self.cards_list.send(index, CardsListInput::EmitClick);
-            // }
-
-            // LibraryPageInput::HideOtherGamesEditions(index) => {
-            //     self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
-            // }
-
-            // LibraryPageInput::ShowGameDetails { game, variant } => {
-            //     // FIXME: don't update details page if it's already open for the given game.
-
-            //     self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
-
-            //     // TODO: proper errors handling
-            //     let Some(game) = self.games.get(game.current_index()) else {
-            //         tracing::error!(
-            //             game = game.current_index(),
-            //             variant = variant.map(|variant| variant.current_index()),
-            //             "Failed to read game info"
-            //         );
-
-            //         return;
-            //     };
-
-            //     let edition = match (&variant, &game.editions) {
-            //         (_, None) => None,
-            //         (Some(variant), Some(editions)) => editions.get(variant.current_index()),
-            //         (None, Some(editions)) => editions.first()
-            //     };
-
-            //     self.game_details.emit(GameLibraryDetailsMsg::UpdateGameMetadata {
-            //         manifest: game.manifest.clone(),
-            //         listener: game.listener.clone(),
-            //         edition: edition.cloned()
-            //     });
-            // }
-
-            // LibraryPageInput::Activate => {
-            //     // Update back button visibility when switching pages
-            // }
-
-            // LibraryPageInput::Call(callback) => callback(self)
         }
     }
 }

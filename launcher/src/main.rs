@@ -44,11 +44,13 @@ async fn main() -> anyhow::Result<()> {
     human_panic::setup_panic!(human_panic::metadata!());
 
     // Prepare stdout logger.
-    let stdout = tracing_subscriber::fmt::layer()
+    let stdout_log = tracing_subscriber::fmt::layer()
         // .pretty()
         .with_filter({
             filter_fn(|metadata| {
                 metadata.target().starts_with("anime_games_launcher")
+                    || metadata.target().starts_with("agl_runtime")
+                    || metadata.target().starts_with("agl_games")
             })
         })
         .with_filter({
@@ -74,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
         .with_filter({
             filter_fn(|metadata| {
                 metadata.target().starts_with("anime_games_launcher")
+                    || metadata.target().starts_with("agl_")
             })
         });
 
@@ -89,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Setup loggers.
     tracing_subscriber::registry()
-        .with(stdout)
+        .with(stdout_log)
         .with(debug_log)
         .with(trace_log)
         .init();
