@@ -24,7 +24,10 @@ use adw::prelude::*;
 use relm4::prelude::*;
 use relm4::abstractions::DrawHandler;
 
-const OFFSET: f64 = 10.0;
+use agl_core::export::tasks::tokio;
+
+const OFFSET: f64 = 8.0;
+const UPDATE_INTERVAL: Duration = Duration::from_millis(150);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GraphInit {
@@ -119,14 +122,18 @@ impl Graph {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GraphMsg {
-    SetColor((f64, f64, f64)),
+    SetColor {
+        red: f64,
+        green: f64,
+        blue: f64
+    },
     AddPoint(u64),
     Clear
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GraphUpdateMsg;
 
 #[relm4::component(pub, async)]
@@ -142,7 +149,7 @@ impl AsyncComponent for Graph {
             add_css_class: "card",
 
             #[local_ref]
-            area -> gtk::DrawingArea {
+            _area -> gtk::DrawingArea {
                 set_content_width: model.width,
                 set_content_height: model.height,
             }
@@ -167,16 +174,15 @@ impl AsyncComponent for Graph {
             handler: DrawHandler::new(),
         };
 
-        let area = model.handler.drawing_area();
+        let _area = model.handler.drawing_area();
+
         let widgets = view_output!();
 
-        // update every 20ms
-        sender.command(|out, shutdown| {
+        sender.command(|sender, shutdown| {
             shutdown
                 .register(async move {
-                    loop {
-                        std::thread::sleep(Duration::from_millis(20));
-                        out.send(GraphUpdateMsg).unwrap();
+                    while sender.send(GraphUpdateMsg).is_ok() {
+                        tokio::time::sleep(UPDATE_INTERVAL).await;
                     }
                 })
                 .drop_on_shutdown()
@@ -187,7 +193,7 @@ impl AsyncComponent for Graph {
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>, _root: &Self::Root) {
         match msg {
-            GraphMsg::SetColor(color) => self.color = color,
+            GraphMsg::SetColor { red, green, blue } => self.color = (red, green, blue),
 
             GraphMsg::AddPoint(point) => {
                 self.points.pop_back();
@@ -209,20 +215,16 @@ impl AsyncComponent for Graph {
                 self.mean_point = 0;
             }
         }
-
-        if let Err(err) = self.draw() {
-            tracing::error!(?err, "failed to draw graph");
-        }
     }
-    
+
     async fn update_cmd(
-        &mut self, 
-        _msg: Self::CommandOutput, 
-        _sender: AsyncComponentSender<Self>, 
-        _root: &Self::Root) 
-    {
+        &mut self,
+        _msg: Self::CommandOutput,
+        _sender: AsyncComponentSender<Self>,
+        _root: &Self::Root
+    ) {
         if let Err(err) = self.draw() {
             tracing::error!(?err, "failed to draw graph on update tick");
         }
-    } 
+    }
 }
