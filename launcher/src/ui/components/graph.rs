@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::VecDeque;
+use std::time::Duration;
 
 use adw::prelude::*;
 
@@ -125,20 +126,25 @@ pub enum GraphMsg {
     Clear
 }
 
+#[derive(Debug)]
+pub struct GraphUpdateMsg;
+
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for Graph {
+impl AsyncComponent for Graph {
     type Init = GraphInit;
     type Input = GraphMsg;
     type Output = ();
+    type CommandOutput = GraphUpdateMsg;
 
     view! {
         #[root]
         gtk::Box {
             add_css_class: "card",
 
-            gtk::DrawingArea {
+            #[local_ref]
+            area -> gtk::DrawingArea {
                 set_content_width: model.width,
-                set_content_height: model.height
+                set_content_height: model.height,
             }
         }
     }
@@ -146,7 +152,7 @@ impl SimpleAsyncComponent for Graph {
     async fn init(
         init: Self::Init,
         root: Self::Root,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let model = Graph {
             width: init.width,
@@ -158,19 +164,28 @@ impl SimpleAsyncComponent for Graph {
             mean_point: 0,
 
             points: VecDeque::from_iter(vec![0; init.window_size]),
-            handler: DrawHandler::new()
+            handler: DrawHandler::new(),
         };
 
+        let area = model.handler.drawing_area();
         let widgets = view_output!();
+
+        // update every 20ms
+        sender.command(|out, shutdown| {
+            shutdown
+                .register(async move {
+                    loop {
+                        std::thread::sleep(Duration::from_millis(20));
+                        out.send(GraphUpdateMsg).unwrap();
+                    }
+                })
+                .drop_on_shutdown()
+        });
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(
-        &mut self,
-        msg: Self::Input,
-        _sender: AsyncComponentSender<Self>
-    ) {
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>, _root: &Self::Root) {
         match msg {
             GraphMsg::SetColor(color) => self.color = color,
 
@@ -199,4 +214,15 @@ impl SimpleAsyncComponent for Graph {
             tracing::error!(?err, "failed to draw graph");
         }
     }
+    
+    async fn update_cmd(
+        &mut self, 
+        _msg: Self::CommandOutput, 
+        _sender: AsyncComponentSender<Self>, 
+        _root: &Self::Root) 
+    {
+        if let Err(err) = self.draw() {
+            tracing::error!(?err, "failed to draw graph on update tick");
+        }
+    } 
 }
