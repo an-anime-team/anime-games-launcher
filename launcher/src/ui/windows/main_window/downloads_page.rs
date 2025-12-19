@@ -22,12 +22,16 @@ use std::collections::VecDeque;
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use agl_core::tasks;
 use agl_games::engine::ActionsPipeline;
 
 use crate::consts;
 use crate::config;
-use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
-use crate::ui::components::game_actions_pipeline::GameActionsPipelineFactory;
+use crate::ui::dialogs;
+use crate::ui::components::graph::{Graph, GraphInit};
+use crate::ui::components::game_actions_pipeline::{
+    GameActionsPipelineFactory, GameActionsPipelineFactoryMsg
+};
 use crate::ui::components::game_actions_schedule::GameActionsScheduleFactory;
 
 #[derive(Debug, Clone)]
@@ -64,7 +68,13 @@ pub enum DownloadsPageMsg {
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    UpdateSchedule
+    UpdateSchedule,
+
+    SetCurrentPipelineActionProgress {
+        action_number: usize,
+        text: String,
+        fraction: f64
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -180,14 +190,14 @@ impl SimpleAsyncComponent for DownloadsPage {
 
                 let pipeline_title = match &lang {
                     Ok(lang) => actions_pipeline.title().translate(lang),
-                    Err(_)   => actions_pipeline.title().default_translation()
+                    Err(_) => actions_pipeline.title().default_translation()
                 };
 
                 let pipeline_description = actions_pipeline.description()
                     .map(|description| {
                         match &lang {
                             Ok(lang) => description.translate(lang),
-                            Err(_)   => description.default_translation()
+                            Err(_) => description.default_translation()
                         }
                     })
                     .map(String::from);
@@ -223,23 +233,144 @@ impl SimpleAsyncComponent for DownloadsPage {
                         pipeline_description: pipeline_info.pipeline_description
                     });
 
-                    let lang = config::get().language();
+                    let lang = config::get().language().ok();
 
                     let mut guard = self.current_pipeline_factory.guard();
+                    let mut actions = Vec::new();
+
+                    guard.clear();
 
                     for action in pipeline_info.pipeline.actions() {
                         let title = match &lang {
-                            Ok(lang) => action.title().translate(lang),
-                            Err(_)   => action.title().default_translation()
+                            Some(lang) => action.title().translate(lang),
+                            None => action.title().default_translation()
                         };
 
-                        guard.push_back(GameActionsPipelineFactory {
+                        let index = guard.push_back(GameActionsPipelineFactory {
                             title: title.to_string(),
                             progress_fraction: 0.0,
                             progress_text: String::new()
                         });
+
+                        actions.push((action.clone(), index));
                     }
+
+                    tasks::spawn_blocking(move || {
+                        for (action, index) in actions {
+                            let result = {
+                                let lang = lang.clone();
+                                let action_number = index.current_index();
+                                let sender = sender.clone();
+
+                                action.before(move |progress| {
+                                    let fraction = progress.fraction();
+
+                                    let text = progress.format().ok()
+                                        .flatten()
+                                        .map(|text| {
+                                            let text = match &lang {
+                                                Some(lang) => text.translate(lang),
+                                                None => text.default_translation()
+                                            };
+
+                                            text.to_string()
+                                        })
+                                        .unwrap_or_else(|| {
+                                            format!("{:.2}%", fraction * 100.0)
+                                        });
+
+                                    sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                                        action_number,
+                                        text,
+                                        fraction
+                                    });
+                                })
+                            };
+
+                            match result {
+                                Ok(Some(true)) | Ok(None) => {
+                                    let lang = lang.clone();
+                                    let action_number = index.current_index();
+                                    let sender = sender.clone();
+
+                                    let result = action.perform(move |progress| {
+                                        let fraction = progress.fraction();
+
+                                        let text = progress.format().ok()
+                                            .flatten()
+                                            .map(|text| {
+                                                let text = match &lang {
+                                                    Some(lang) => text.translate(lang),
+                                                    None => text.default_translation()
+                                                };
+
+                                                text.to_string()
+                                            })
+                                            .unwrap_or_else(|| {
+                                                format!("{:.2}%", fraction * 100.0)
+                                            });
+
+                                        sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                                            action_number,
+                                            text,
+                                            fraction
+                                        });
+                                    });
+
+                                    match result {
+                                        Ok(true) => (),
+
+                                        Ok(false) => {
+                                            tracing::error!("pipeline action returned error response");
+
+                                            dialogs::error(
+                                                "Actions pipeline failed",
+                                                "One of the pipeline actions returned false"
+                                            );
+
+                                            break;
+                                        }
+
+                                        Err(err) => {
+                                            tracing::error!(?err, "failed to perform pipeline action");
+
+                                            dialogs::error("Failed to perform pipeline action", err.to_string());
+
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                Ok(Some(false)) => (),
+
+                                Err(err) => {
+                                    tracing::error!(?err, "failed to perform pipeline action");
+
+                                    dialogs::error("Failed to perform pipeline action", err.to_string());
+
+                                    break;
+                                }
+                            }
+
+                            sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                                action_number: index.current_index(),
+                                text: String::new(),
+                                fraction: 1.0
+                            });
+                        }
+                    });
                 }
+            }
+
+            DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                action_number,
+                text,
+                fraction
+            } => {
+                self.current_pipeline_factory.send(
+                    action_number,
+                    GameActionsPipelineFactoryMsg::SetProgress { text, fraction }
+                );
             }
         }
     }

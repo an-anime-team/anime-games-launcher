@@ -17,20 +17,27 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use adw::prelude::*;
-
 use relm4::prelude::*;
+
+#[derive(Debug)]
+pub enum GameActionsPipelineFactoryMsg {
+    SetProgress {
+        text: String,
+        fraction: f64
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GameActionsPipelineFactory {
     pub title: String,
-    pub progress_fraction: f64,
-    pub progress_text: String
+    pub progress_text: String,
+    pub progress_fraction: f64
 }
 
 #[relm4::factory(pub, async)]
 impl AsyncFactoryComponent for GameActionsPipelineFactory {
     type Init = Self;
-    type Input = ();
+    type Input = GameActionsPipelineFactoryMsg;
     type Output = ();
     type CommandOutput = ();
     type ParentWidget = adw::PreferencesGroup;
@@ -73,13 +80,16 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
         init
     }
 
-    // async fn update(
-    //     &mut self,
-    //     msg: Self::Input,
-    //     _sender: AsyncFactorySender<Self>
-    // ) {
-    //     match msg {
-
-    //     }
-    // }
+    async fn update(
+        &mut self,
+        msg: Self::Input,
+        _sender: AsyncFactorySender<Self>
+    ) {
+        match msg {
+            GameActionsPipelineFactoryMsg::SetProgress { text, fraction } => {
+                self.progress_text = text;
+                self.progress_fraction = fraction;
+            }
+        }
+    }
 }

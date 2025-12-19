@@ -423,7 +423,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 if let Some(game_title) = &self.game_title
                     && let Some(actions_pipeline) = &self.game_actions_pipeline
                 {
-                    sender.output(GameLibraryDetailsOutput::ScheduleGameActionsPipeline {
+                    let _ = sender.output(GameLibraryDetailsOutput::ScheduleGameActionsPipeline {
                         game_index: self.game_index,
                         game_title: game_title.clone(),
                         actions_pipeline: actions_pipeline.clone()
