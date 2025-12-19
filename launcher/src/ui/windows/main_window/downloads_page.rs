@@ -25,18 +25,17 @@ use crate::utils;
 // };
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 
+struct PipelineInfo {
+    pub game_title: String,
+    pub pipeline_title: String,
+    pub pipeline_description: Option<String>
+}
+
 #[derive(Debug)]
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
-    // active: AsyncController<DownloadsRow>,
-    // scheduled: AsyncFactoryVecDeque<DownloadsRowFactory>,
-    // state: DownloadsAppState,
 
-    // Graph
-    // graph_speed: u64,
-    // graph_avg_speed: u64,
-    // graph_total: u64,
-    // graph_elapsed: u64
+
 }
 
 #[derive(Debug, Clone)]

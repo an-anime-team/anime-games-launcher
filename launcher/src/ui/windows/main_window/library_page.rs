@@ -341,7 +341,7 @@ impl SimpleAsyncComponent for LibraryPage {
                     }
                 };
 
-                let editions = match game_integration.game_editions(*consts::CURRENT_PLATFORM) {
+                let editions = match game_integration.get_editions(&consts::CURRENT_PLATFORM) {
                     Ok(editions) => editions,
 
                     Err(err) => {

@@ -25,7 +25,7 @@ use agl_games::manifest::GameManifest;
 use agl_games::engine::{
     GameVariant,
     GameIntegration,
-    InstallationStatus,
+    ActionsPipeline,
     GameLaunchInfo,
     GameLaunchStatus,
     GameSettingsGroup
@@ -84,8 +84,8 @@ pub struct GameLibraryDetails {
     game_integration: Option<Arc<GameIntegration>>,
     game_variant: Option<GameVariant>,
 
-    game_installation_status: Option<InstallationStatus>,
     game_launch_info: Option<GameLaunchInfo>,
+    game_actions_pipeline: Option<ActionsPipeline>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>,
 
     // running_game: Option<Child>
@@ -147,37 +147,20 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                         set_spacing: 12,
 
-                        // Play button.
+                        // Launch game button.
                         gtk::Button {
+                            #[watch]
+                            set_visible: model.game_launch_info.is_some(),
+
                             #[watch]
                             set_css_classes?: model.game_launch_info.as_ref()
                                 .map(|info| {
                                     match info.status {
-                                        GameLaunchStatus::Normal   => &["pill", "suggested-action"],
-                                        GameLaunchStatus::Warning  => &["pill", "warning-action"],
-                                        GameLaunchStatus::Danger   => &["pill", "destructive-action"],
-                                        GameLaunchStatus::Disabled => &["pill", ""]
+                                        GameLaunchStatus::Normal  => &["pill", "suggested-action"],
+                                        GameLaunchStatus::Warning => &["pill", "warning-action"],
+                                        GameLaunchStatus::Danger  => &["pill", "destructive-action"]
                                     }
                                 }),
-
-                            #[watch]
-                            set_visible: {
-                                #[allow(clippy::let_and_return)]
-                                let game_installed = model.game_installation_status.as_ref()
-                                    .map(|install_status| {
-                                        [
-                                            InstallationStatus::Installed,
-                                            InstallationStatus::UpdateAvailable
-                                        ].contains(install_status)
-                                    }).unwrap_or(false);
-
-                                // model.running_game.is_none() &&
-                                game_installed
-                            },
-
-                            #[watch]
-                            set_sensitive?: model.game_launch_info.as_ref()
-                                .map(|info| info.status != GameLaunchStatus::Disabled),
 
                             #[watch]
                             set_tooltip?: model.game_launch_info.as_ref()
@@ -221,38 +204,47 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         //     connect_clicked => GameLibraryDetailsInput::EmitKillGame
                         // },
 
-                        // Update / Install (execute diff) button.
+                        // Execute actions pipeline button.
                         gtk::Button {
                             #[watch]
-                            set_css_classes?: model.game_installation_status.as_ref()
-                                .map(|status| {
-                                    if status == &InstallationStatus::UpdateAvailable {
-                                        &["pill", ""]
-                                    } else {
-                                        &["pill", "suggested-action"]
-                                    }
-                                }),
+                            set_visible: model.game_actions_pipeline.is_some(),
 
+                            // If game can be launched AND pipeline is available
+                            // then make pipeline button grey, otherwise - blue.
                             #[watch]
-                            set_visible: model.game_installation_status.as_ref()
-                                .map(|status| status != &InstallationStatus::Installed)
-                                .unwrap_or(false), // false because install_status can be None so we're not ready yet
+                            set_css_classes: if model.game_launch_info.is_some() {
+                                &["pill"]
+                            } else {
+                                &["pill", "suggested-action"]
+                            },
 
                             adw::ButtonContent {
                                 set_icon_name: "document-save-symbolic",
 
                                 #[watch]
-                                set_label: {
-                                    let not_installed = model.game_installation_status.as_ref()
-                                        .map(|status| status == &InstallationStatus::NotInstalled)
-                                        .unwrap_or(true);
+                                set_label?: model.game_actions_pipeline.as_ref()
+                                    .map(|pipeline| {
+                                        // FIXME: IO-heavy thing (there's around 6 update calls each time)
+                                        let config = config::get();
 
-                                    if not_installed {
-                                        "Install"
-                                    } else {
-                                        "Update"
-                                    }
-                                }
+                                        match config.language() {
+                                            Ok(lang) => pipeline.title().translate(&lang),
+                                            Err(_) => pipeline.title().default_translation()
+                                        }
+                                    }),
+
+                                #[watch]
+                                set_tooltip?: model.game_actions_pipeline.as_ref()
+                                    .and_then(|pipeline| pipeline.description())
+                                    .map(|description| {
+                                        // FIXME: IO-heavy thing (there's around 6 update calls each time)
+                                        let config = config::get();
+
+                                        match config.language() {
+                                            Ok(lang) => description.translate(&lang),
+                                            Err(_) => description.default_translation()
+                                        }
+                                    }),
                             },
 
                             // connect_clicked => GameLibraryDetailsInput::EmitInstallDiff
@@ -298,8 +290,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             game_integration: None,
             game_variant: None,
 
-            game_installation_status: None,
             game_launch_info: None,
+            game_actions_pipeline: None,
             game_settings_layout: None,
 
             // running_game: None
@@ -373,20 +365,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 if let Some(integration) = &self.game_integration
                     && let Some(variant) = &self.game_variant
                 {
-                    match integration.game_status(variant) {
-                        Ok(status) => self.game_installation_status = Some(status),
-
-                        Err(err) => {
-                            self.game_installation_status = None;
-
-                            tracing::error!(?err, "failed to request game installation status");
-
-                            dialogs::error("Failed to request game installation status", err.to_string());
-                        }
-                    }
-
-                    match integration.game_launch_info(variant) {
-                        Ok(info) => self.game_launch_info = Some(info),
+                    match integration.get_launch_info(variant) {
+                        Ok(launch_info) => self.game_launch_info = launch_info,
 
                         Err(err) => {
                             self.game_launch_info = None;
@@ -394,6 +374,18 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             tracing::error!(?err, "failed to request game launch info");
 
                             dialogs::error("Failed to request game launch info", err.to_string());
+                        }
+                    }
+
+                    match integration.get_actions_pipeline(variant) {
+                        Ok(pipeline) => self.game_actions_pipeline = pipeline,
+
+                        Err(err) => {
+                            self.game_actions_pipeline = None;
+
+                            tracing::error!(?err, "failed to request game actions pipeline");
+
+                            dialogs::error("Failed to request game actions pipeline", err.to_string());
                         }
                     }
 
