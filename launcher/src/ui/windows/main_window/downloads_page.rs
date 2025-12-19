@@ -16,15 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::VecDeque;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use crate::utils;
-// use crate::ui::components::downloads_row::{
-//     DownloadsRow, DownloadsRowFactory, DownloadsRowFactoryOutput, DownloadsRowInit,
-// };
+use crate::consts;
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct PipelineInfo {
     pub game_title: String,
     pub pipeline_title: String,
@@ -35,7 +35,8 @@ struct PipelineInfo {
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
 
-
+    current_pipeline: Option<PipelineInfo>,
+    scheduled_pipelines: VecDeque<PipelineInfo>
 }
 
 #[derive(Debug, Clone)]
@@ -51,154 +52,94 @@ impl SimpleAsyncComponent for DownloadsPage {
 
     view! {
         #[root]
-        adw::PreferencesPage {
-            adw::PreferencesGroup {
-                adw::Clamp {
-                    set_hexpand: true,
+        gtk::Box {
+            set_vexpand: true,
+            set_hexpand: true,
 
-                    model.graph.widget() {
-                        set_halign: gtk::Align::Center
-                    }
-                }
+            set_orientation: gtk::Orientation::Vertical,
+
+            adw::StatusPage {
+                set_vexpand: true,
+                set_hexpand: true,
+
+                set_icon_name: Some(consts::APP_ID),
+
+                set_title: "No actions scheduled",
+
+                #[watch]
+                set_visible: model.current_pipeline.is_none() && model.scheduled_pipelines.is_empty()
             },
 
-            adw::PreferencesGroup {
-                set_title: "Update game",
+            adw::PreferencesPage {
+                #[watch]
+                set_visible: model.current_pipeline.is_some() || !model.scheduled_pipelines.is_empty(),
 
-                #[wrap(Some)]
-                set_header_suffix = &gtk::Label {
-                    set_label: "Genshin Impact"
-                },
+                adw::PreferencesGroup {
+                    adw::Clamp {
+                        set_hexpand: true,
 
-                adw::ActionRow {
-                    set_title: "Download",
-
-                    add_suffix = &gtk::Image {
-                        set_icon_name: Some("emblem-ok-symbolic")
+                        model.graph.widget() {
+                            set_halign: gtk::Align::Center
+                        }
                     }
                 },
 
-                adw::ActionRow {
-                    set_title: "Extract",
-
-                    add_suffix = &gtk::ProgressBar {
-                        set_valign: gtk::Align::Center,
-
-                        set_show_text: true,
-
-                        set_text: Some("13 MB/s"),
-                        set_fraction: 0.65
-                    }
-                },
-
-                adw::ActionRow {
-                    set_title: "Verify"
-                }
-            },
-
-            adw::PreferencesGroup {
-                set_title: "Schedule",
-
-                adw::ActionRow {
+                adw::PreferencesGroup {
                     set_title: "Update game",
 
-                    add_suffix = &gtk::Label {
-                        set_label: "Honkai: Star Rail"
+                    #[wrap(Some)]
+                    set_header_suffix = &gtk::Label {
+                        set_label: "Genshin Impact"
                     },
 
-                    add_suffix = &gtk::Button {
-                        set_valign: gtk::Align::Center,
+                    adw::ActionRow {
+                        set_title: "Download",
 
-                        add_css_class: "flat",
+                        add_suffix = &gtk::Image {
+                            set_icon_name: Some("emblem-ok-symbolic")
+                        }
+                    },
 
-                        adw::ButtonContent {
-                            set_icon_name: "window-close-symbolic"
+                    adw::ActionRow {
+                        set_title: "Extract",
+
+                        add_suffix = &gtk::ProgressBar {
+                            set_valign: gtk::Align::Center,
+
+                            set_show_text: true,
+
+                            set_text: Some("13 MB/s"),
+                            set_fraction: 0.65
+                        }
+                    },
+
+                    adw::ActionRow {
+                        set_title: "Verify"
+                    }
+                },
+
+                adw::PreferencesGroup {
+                    set_title: "Schedule",
+
+                    adw::ActionRow {
+                        set_title: "Update game",
+
+                        add_suffix = &gtk::Label {
+                            set_label: "Honkai: Star Rail"
+                        },
+
+                        add_suffix = &gtk::Button {
+                            set_valign: gtk::Align::Center,
+
+                            add_css_class: "flat",
+
+                            adw::ButtonContent {
+                                set_icon_name: "window-close-symbolic"
+                            }
                         }
                     }
                 }
-            },
-
-            // adw::PreferencesGroup {
-            //     #[watch]
-            //     set_visible: match model.state {
-            //         DownloadsAppState::None => false,
-            //         _ => true,
-            //     },
-
-            //     #[watch]
-            //     set_title: match model.state {
-            //         DownloadsAppState::None => "",
-            //         DownloadsAppState::Downloading => "Downloading",
-            //         DownloadsAppState::Extracting => "Extracting",
-            //         DownloadsAppState::StreamUnpacking => "Stream unpacking",
-            //         DownloadsAppState::Verifying => "Verifying",
-            //     },
-
-            //     gtk::Box {
-            //         set_orientation: gtk::Orientation::Horizontal,
-            //         set_spacing: 16,
-
-            //         adw::PreferencesGroup {
-            //             adw::ActionRow {
-            //                 set_title: "Current speed",
-
-            //                 #[watch]
-            //                 set_subtitle: &format!("{}/s", pretty_bytes(model.speed).0),
-            //             }
-            //         },
-
-            //         adw::PreferencesGroup {
-            //             adw::ActionRow {
-            //                 set_title: "Average speed",
-
-            //                 #[watch]
-            //                 set_subtitle: &format!("{}/s", pretty_bytes(model.avg_speed).0),
-            //             }
-            //         },
-
-            //         adw::PreferencesGroup {
-            //             adw::ActionRow {
-            //                 set_title: "Time elapsed",
-
-            //                 #[watch]
-            //                 set_subtitle: &pretty_seconds(model.elapsed),
-            //             }
-            //         },
-
-            //         adw::PreferencesGroup {
-            //             adw::ActionRow {
-            //                 set_title: "Current ETA",
-            //                 set_subtitle: "amogus",
-            //             }
-            //         },
-
-            //         adw::PreferencesGroup {
-            //             adw::ActionRow {
-            //                 #[watch]
-            //                 set_title: match model.state {
-            //                     DownloadsAppState::None => "",
-            //                     DownloadsAppState::Downloading => "Total download",
-            //                     DownloadsAppState::Extracting => "Total extracted",
-            //                     DownloadsAppState::StreamUnpacking => "Total unpacked",
-            //                     DownloadsAppState::Verifying => "Total verified",
-            //                 },
-
-            //                 #[watch]
-            //                 set_subtitle: &pretty_bytes(model.total).0.to_string(),
-            //             }
-            //         },
-            //     }
-            // },
-
-            // adw::PreferencesGroup {
-            //     set_title: "Active",
-
-            //     model.active.widget(),
-            // },
-
-            // model.scheduled.widget() {
-            //     set_title: "Scheduled",
-            // },
+            }
         }
     }
 
@@ -215,7 +156,10 @@ impl SimpleAsyncComponent for DownloadsPage {
                     window_size: 60,
                     color: (1.0, 0.0, 0.0)
                 })
-                .detach()
+                .detach(),
+
+            current_pipeline: None,
+            scheduled_pipelines: VecDeque::new()
         };
 
         let widgets = view_output!();
