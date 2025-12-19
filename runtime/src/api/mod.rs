@@ -247,6 +247,12 @@ impl Api {
         env.raw_set("clone", self.clone.clone())?;
         env.raw_set("dbg", self.dbg.clone())?;
 
+        // Some default lua functions.
+        env.raw_set("table", self.lua.globals().get::<LuaValue>("table")?)?;
+        env.raw_set("string", self.lua.globals().get::<LuaValue>("string")?)?;
+        env.raw_set("math", self.lua.globals().get::<LuaValue>("math")?)?;
+        env.raw_set("coroutine", self.lua.globals().get::<LuaValue>("coroutine")?)?;
+
         // String API.
         if context.scope.allow_string_api {
             env.raw_set("str", self.string_api.create_env()?)?;
