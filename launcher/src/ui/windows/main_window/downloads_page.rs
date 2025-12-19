@@ -64,6 +64,7 @@ pub enum DownloadsPageMsg {
     },
 
     RemoveScheduledPipeline(DynamicIndex),
+    RemoveCurrentPipeline,
 
     UpdateSchedule,
 
@@ -242,6 +243,11 @@ impl SimpleAsyncComponent for DownloadsPage {
                 self.scheduled_pipelines.remove(index);
             }
 
+            DownloadsPageMsg::RemoveCurrentPipeline => {
+                self.current_pipeline_factory.guard().clear();
+                self.current_pipeline = None;
+            }
+
             DownloadsPageMsg::UpdateSchedule => {
                 if self.current_pipeline.is_none()
                     && let Some(pipeline_info) = self.scheduled_pipelines.pop_front()
@@ -403,6 +409,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                             });
                         }
 
+                        sender.input(DownloadsPageMsg::RemoveCurrentPipeline);
                         sender.input(DownloadsPageMsg::UpdateSchedule);
                     });
                 }
