@@ -128,20 +128,31 @@ type GameVariant = {
     edition?: string;
 };
 
-type GameStatus =
-    | 'installed'
-    | 'update-available'
-    | 'update-required'
-    | 'not-installed';
+type GameLaunchInfo = {
+    // Game launching status.
+    status: 'normal' | 'warning' | 'danger';
 
-type GameDiff = {
-    // Diff title.
+    // A text displayed on the game launching button.
+    hint?: LocalizableString;
+
+    // Path to the game binary.
+    binary: string;
+
+    // Args passed to the binary.
+    args: string[];
+
+    // Table of environment variables.
+    env: { [key: string]: string };
+};
+
+type ActionsPipeline = {
+    // Actions pipeline title.
     title: LocalizableString;
 
-    // Diff description (what this diff is supposed to do).
+    // Actions pipeline description (what this pipeline is supposed to do).
     description?: LocalizableString;
 
-    // Actions pipeline (set of actions needed to execute to finish the diff).
+    // Actions of the pipeline.
     pipeline: PipelineAction[];
 };
 
@@ -183,34 +194,10 @@ type ProgressReport = {
         // Total progress.
         total: number;
 
-        // Optional function to format current progress value.
+        // Optional function to format current progress value, e.g. `13 MB/s`.
         format?: (): LocalizableString;
     };
 };
-
-type GameLaunchInfo = {
-    // Game launching status.
-    status: GameLaunchStatus;
-
-    // Reason behind selected launch status. E.g. it can explain why the game
-    // cannot be launched.
-    reason?: LocalizableString;
-
-    // Path to the game binary.
-    binary: string;
-
-    // Args passed to the binary.
-    args: string[];
-
-    // Table of environment variables.
-    env: { [key: string]: string };
-};
-
-type GameLaunchStatus =
-    | 'normal'
-    | 'warning'
-    | 'danger'
-    | 'disabled';
 
 type SettingsGroup = {
     // Title of the settings group.
@@ -287,15 +274,13 @@ type GameIntegration = {
         // Get list of available game editions for the provided platform.
         get_editions?: (platform: string): GameEdition[];
 
-        // Get game installation status.
-        get_status: (variant: GameVariant): GameStatus;
+        // Get game launching info if it's available. Return `null` if game
+        // cannot be launched.
+        get_launch_info: (variant: GameVariant): GameLaunchInfo | null;
 
-        // Get game installation diff or `nil` if there's no diff to install or
-        // update the game.
-        get_diff: (variant: GameVariant): GameDiff?;
-
-        // Get game launch info.
-        get_launch_info: (variant: GameVariant): GameLaunchInfo;
+        // Get game actions pipeline if they're available. Return `null` if game
+        // doesn't have any pipeline actions.
+        get_actions_pipeline: (variant: GameVariant): ActionsPipeline | null;
     };
 
     settings?: {

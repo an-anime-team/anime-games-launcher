@@ -32,7 +32,7 @@ pub struct GameSettingsGroup {
 impl GameSettingsGroup {
     pub fn from_lua(value: &LuaTable) -> Result<Self, LuaError> {
         Ok(Self {
-            title: value.get::<LuaValue>("title")
+            title: value.raw_get::<LuaValue>("title")
                 .map(|title| -> Result<Option<LocalizableString>, LuaError> {
                     if title.is_nil() || title.is_null() {
                         Ok(None)
@@ -42,7 +42,7 @@ impl GameSettingsGroup {
                 })
                 .unwrap_or(Ok(None))?,
 
-            description: value.get::<LuaValue>("description")
+            description: value.raw_get::<LuaValue>("description")
                 .map(|desc| -> Result<Option<LocalizableString>, LuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
@@ -52,7 +52,7 @@ impl GameSettingsGroup {
                 })
                 .unwrap_or(Ok(None))?,
 
-            entries: value.get::<Vec<LuaTable>>("entries")?
+            entries: value.raw_get::<Vec<LuaTable>>("entries")?
                 .iter()
                 .map(GameSettingsEntry::from_lua)
                 .collect::<Result<Box<[_]>, LuaError>>()?

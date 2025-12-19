@@ -28,19 +28,16 @@ use crate::localizable_string::LocalizableString;
 pub enum GameLaunchStatus {
     #[default]
     Normal,
-
     Warning,
-    Danger,
-    Disabled
+    Danger
 }
 
 impl std::fmt::Display for GameLaunchStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Normal   => f.write_str("normal"),
-            Self::Warning  => f.write_str("warning"),
-            Self::Danger   => f.write_str("danger"),
-            Self::Disabled => f.write_str("disabled")
+            Self::Normal  => f.write_str("normal"),
+            Self::Warning => f.write_str("warning"),
+            Self::Danger  => f.write_str("danger")
         }
     }
 }
@@ -50,10 +47,9 @@ impl FromStr for GameLaunchStatus {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "normal" | "default"   => Ok(Self::Normal),
-            "warning" | "warn"     => Ok(Self::Warning),
-            "danger" | "dangerous" => Ok(Self::Danger),
-            "disabled" | "disable" => Ok(Self::Disabled),
+            "normal"  | "default"   => Ok(Self::Normal),
+            "warning" | "warn"      => Ok(Self::Warning),
+            "danger"  | "dangerous" => Ok(Self::Danger),
 
             _ => Err(())
         }
@@ -81,7 +77,7 @@ pub struct GameLaunchInfo {
 impl Default for GameLaunchInfo {
     fn default() -> Self {
         Self {
-            status: GameLaunchStatus::Disabled,
+            status: GameLaunchStatus::default(),
             hint: None,
             binary: PathBuf::new(),
             args: None,
@@ -94,12 +90,13 @@ impl GameLaunchInfo {
     pub fn to_lua(&self, lua: &Lua) -> Result<LuaTable, LuaError> {
         let table = lua.create_table_with_capacity(0, 5)?;
 
-        table.set("status", lua.create_string(self.status.to_string())?)?;
-        table.set("binary", lua.create_string(self.binary.to_string_lossy().to_string())?)?;
+        table.raw_set("status", lua.create_string(self.status.to_string())?)?;
 
         if let Some(hint) = &self.hint {
-            table.set("hint", hint.to_lua(lua)?)?;
+            table.raw_set("hint", hint.to_lua(lua)?)?;
         }
+
+        table.raw_set("binary", lua.create_string(self.binary.to_string_lossy().to_string())?)?;
 
         if let Some(args) = &self.args {
             let lua_args = lua.create_table_with_capacity(args.len(), 0)?;
@@ -108,17 +105,17 @@ impl GameLaunchInfo {
                 lua_args.push(lua.create_string(arg)?)?;
             }
 
-            table.set("args", lua_args)?;
+            table.raw_set("args", lua_args)?;
         }
 
         if let Some(env) = &self.env {
             let lua_env = lua.create_table_with_capacity(0, env.len())?;
 
             for (k, v) in env {
-                lua_env.set(lua.create_string(k)?, lua.create_string(v)?)?;
+                lua_env.raw_set(lua.create_string(k)?, lua.create_string(v)?)?;
             }
 
-            table.set("env", lua_env)?;
+            table.raw_set("env", lua_env)?;
         }
 
         Ok(table)

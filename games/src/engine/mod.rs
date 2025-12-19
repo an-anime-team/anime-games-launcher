@@ -16,15 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::str::FromStr;
-
 use mlua::prelude::*;
 
 mod game_edition;
 mod game_variant;
 mod game_launch_info;
-mod installation_status;
-mod installation_diff;
+mod actions_pipeline;
 mod pipeline_action;
 mod progress_report;
 mod game_settings;
@@ -32,8 +29,7 @@ mod game_settings;
 pub use game_edition::*;
 pub use game_variant::*;
 pub use game_launch_info::*;
-pub use installation_status::*;
-pub use installation_diff::*;
+pub use actions_pipeline::*;
 pub use pipeline_action::*;
 pub use progress_report::*;
 pub use game_settings::*;
@@ -45,9 +41,8 @@ pub struct GameIntegration {
     lua: Lua,
 
     game_get_editions: Option<LuaFunction>,
-    game_get_status: LuaFunction,
-    game_get_diff: LuaFunction,
     game_get_launch_info: LuaFunction,
+    game_get_actions_pipeline: LuaFunction,
 
     settings_get_property: Option<LuaFunction>,
     settings_set_property: Option<LuaFunction>,
@@ -69,28 +64,35 @@ impl GameIntegration {
             lua,
 
             game_get_editions: game.get("get_editions").ok(),
-            game_get_status: game.get("get_status")?,
-            game_get_diff: game.get("get_diff")?,
             game_get_launch_info: game.get("get_launch_info")?,
+            game_get_actions_pipeline: game.get("get_actions_pipeline")?,
 
-            settings_get_property: settings.as_ref().map(|settings| settings.get("get_property")).transpose()?,
-            settings_set_property: settings.as_ref().map(|settings| settings.get("set_property")).transpose()?,
-            settings_get_layout: settings.as_ref().map(|settings| settings.get("get_layout")).transpose()?
+            settings_get_property: settings.as_ref()
+                .map(|settings| settings.get("get_property"))
+                .transpose()?,
+
+            settings_set_property: settings.as_ref()
+                .map(|settings| settings.get("set_property"))
+                .transpose()?,
+
+            settings_get_layout: settings.as_ref()
+                .map(|settings| settings.get("get_layout"))
+                .transpose()?
         })
     }
 
-    /// Get list of available game editions.
+    /// Try to get list of available game editions.
     ///
     /// Return `Ok(None)` if integration module doesn't provide any editions.
-    pub fn game_editions(
+    pub fn get_editions(
         &self,
-        platform: impl AsRef<Platform>
+        platform: &Platform
     ) -> Result<Option<Box<[GameEdition]>>, LuaError> {
         let Some(get_editions) = &self.game_get_editions else {
             return Ok(None);
         };
 
-        get_editions.call::<Option<Vec<LuaTable>>>(platform.as_ref().to_string())
+        get_editions.call::<Option<Vec<LuaTable>>>(platform.to_string())
             .and_then(|editions| {
                 editions.map(|editions| {
                     editions.iter()
@@ -100,47 +102,30 @@ impl GameIntegration {
             })
     }
 
-    /// Get status of the game installation.
-    pub fn game_status(
+    /// Try to get params used to launch the game.
+    pub fn get_launch_info(
         &self,
-        variant: impl AsRef<GameVariant>
-    ) -> Result<InstallationStatus, LuaError> {
-        let variant = variant.as_ref()
-            .to_lua(&self.lua)?;
-
-        self.game_get_status.call::<String>(variant)
-            .and_then(|status| {
-                InstallationStatus::from_str(&status)
-                    .map_err(|_| LuaError::external("invalid game installation status"))
-            })
-    }
-
-    /// Get installation diff.
-    pub fn game_diff(
-        &self,
-        variant: impl AsRef<GameVariant>
-    ) -> Result<Option<InstallationDiff>, LuaError> {
-        let variant = variant.as_ref()
-            .to_lua(&self.lua)?;
-
-        self.game_get_diff.call::<Option<LuaTable>>(variant)
-            .and_then(|diff| {
-                diff.map(|diff| {
-                    InstallationDiff::from_lua(self.lua.clone(), &diff)
-                }).transpose()
-            })
-    }
-
-    /// Get params used to launch the game.
-    pub fn game_launch_info(
-        &self,
-        variant: impl AsRef<GameVariant>
+        variant: &GameVariant
     ) -> Result<GameLaunchInfo, LuaError> {
-        let variant = variant.as_ref()
-            .to_lua(&self.lua)?;
+        let variant = variant.to_lua(&self.lua)?;
 
         self.game_get_launch_info.call::<LuaTable>(variant)
             .and_then(|info| GameLaunchInfo::from_lua(&info))
+    }
+
+    /// Try to get game actions pipeline.
+    pub fn get_actions_pipeline(
+        &self,
+        variant: &GameVariant
+    ) -> Result<Option<ActionsPipeline>, LuaError> {
+        let variant = variant.to_lua(&self.lua)?;
+
+        self.game_get_actions_pipeline.call::<Option<LuaTable>>(variant)
+            .and_then(|pipeline| {
+                pipeline.map(|pipeline| {
+                    ActionsPipeline::from_lua(self.lua.clone(), &pipeline)
+                }).transpose()
+            })
     }
 
     /// Get settings param from the game integration module.
@@ -178,13 +163,13 @@ impl GameIntegration {
     /// Return `Ok(None)` if settings are not specified.
     pub fn get_settings_layout(
         &self,
-        variant: impl AsRef<GameVariant>
+        variant: &GameVariant
     ) -> Result<Option<Box<[GameSettingsGroup]>>, LuaError> {
         let Some(get_layout) = &self.settings_get_layout else {
             return Ok(None);
         };
 
-        get_layout.call::<Vec<LuaTable>>(variant.as_ref().to_lua(&self.lua)?)
+        get_layout.call::<Vec<LuaTable>>(variant.to_lua(&self.lua)?)
             .and_then(|groups| {
                 groups.iter()
                     .map(GameSettingsGroup::from_lua)
