@@ -27,6 +27,7 @@ use agl_games::engine::ActionsPipeline;
 use crate::consts;
 use crate::config;
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
+use crate::ui::components::game_actions_pipeline::GameActionsPipelineFactory;
 use crate::ui::components::game_actions_schedule::GameActionsScheduleFactory;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -39,6 +40,7 @@ struct PipelineInfo {
 #[derive(Debug)]
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
+    actions_pipeline: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
     actions_schedule: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
 
     current_pipeline: Option<PipelineInfo>,
@@ -85,6 +87,9 @@ impl SimpleAsyncComponent for DownloadsPage {
                 set_visible: model.current_pipeline.is_some() || !model.scheduled_pipelines.is_empty(),
 
                 adw::PreferencesGroup {
+                    #[watch]
+                    set_visible: model.current_pipeline.is_some(),
+
                     adw::Clamp {
                         set_hexpand: true,
 
@@ -94,37 +99,19 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                adw::PreferencesGroup {
-                    set_title: "Update game",
+                model.actions_pipeline.widget().clone() -> adw::PreferencesGroup {
+                    #[watch]
+                    set_visible: model.current_pipeline.is_some(),
+
+                    #[watch]
+                    set_title?: model.current_pipeline.as_ref()
+                        .map(|info| info.pipeline_title.as_str()),
 
                     #[wrap(Some)]
                     set_header_suffix = &gtk::Label {
-                        set_label: "Genshin Impact"
-                    },
-
-                    adw::ActionRow {
-                        set_title: "Download",
-
-                        add_suffix = &gtk::Image {
-                            set_icon_name: Some("emblem-ok-symbolic")
-                        }
-                    },
-
-                    adw::ActionRow {
-                        set_title: "Extract",
-
-                        add_suffix = &gtk::ProgressBar {
-                            set_valign: gtk::Align::Center,
-
-                            set_show_text: true,
-
-                            set_text: Some("13 MB/s"),
-                            set_fraction: 0.65
-                        }
-                    },
-
-                    adw::ActionRow {
-                        set_title: "Verify"
+                        #[watch]
+                        set_label?: model.current_pipeline.as_ref()
+                            .map(|info| info.game_title.as_str())
                     }
                 },
 
@@ -148,6 +135,10 @@ impl SimpleAsyncComponent for DownloadsPage {
                     window_size: 60,
                     color: (1.0, 0.0, 0.0)
                 })
+                .detach(),
+
+            actions_pipeline: AsyncFactoryVecDeque::builder()
+                .launch_default()
                 .detach(),
 
             actions_schedule: AsyncFactoryVecDeque::builder()
