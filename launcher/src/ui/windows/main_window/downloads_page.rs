@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::collections::VecDeque;
 
 use adw::prelude::*;
@@ -28,7 +29,7 @@ use agl_games::engine::ActionsPipeline;
 use crate::consts;
 use crate::config;
 use crate::ui::dialogs;
-use crate::ui::components::graph::{Graph, GraphInit};
+use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 use crate::ui::components::game_actions_pipeline::{
     GameActionsPipelineFactory, GameActionsPipelineFactoryMsg
 };
@@ -74,7 +75,9 @@ pub enum DownloadsPageMsg {
         action_number: usize,
         text: String,
         fraction: f64
-    }
+    },
+
+    AddGraphPoint(u64)
 }
 
 #[relm4::component(pub, async)]
@@ -262,6 +265,8 @@ impl SimpleAsyncComponent for DownloadsPage {
                                 let action_number = index.current_index();
                                 let sender = sender.clone();
 
+                                let last_current = AtomicU64::new(0);
+
                                 action.before(move |progress| {
                                     let fraction = progress.fraction();
 
@@ -279,6 +284,15 @@ impl SimpleAsyncComponent for DownloadsPage {
                                             format!("{:.2}%", fraction * 100.0)
                                         });
 
+                                    // TODO: percent change per second
+                                    let diff = progress.current()
+                                        .checked_sub(last_current.load(Ordering::Relaxed))
+                                        .unwrap_or_default();
+
+                                    last_current.store(progress.current(), Ordering::Relaxed);
+
+                                    sender.input(DownloadsPageMsg::AddGraphPoint(diff));
+
                                     sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
                                         action_number,
                                         text,
@@ -292,6 +306,8 @@ impl SimpleAsyncComponent for DownloadsPage {
                                     let lang = lang.clone();
                                     let action_number = index.current_index();
                                     let sender = sender.clone();
+
+                                    let last_current = AtomicU64::new(0);
 
                                     let result = action.perform(move |progress| {
                                         let fraction = progress.fraction();
@@ -309,6 +325,15 @@ impl SimpleAsyncComponent for DownloadsPage {
                                             .unwrap_or_else(|| {
                                                 format!("{:.2}%", fraction * 100.0)
                                             });
+
+                                        // TODO: percent change per second
+                                        let diff = progress.current()
+                                            .checked_sub(last_current.load(Ordering::Relaxed))
+                                            .unwrap_or_default();
+
+                                        last_current.store(progress.current(), Ordering::Relaxed);
+
+                                        sender.input(DownloadsPageMsg::AddGraphPoint(diff));
 
                                         sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
                                             action_number,
@@ -371,6 +396,10 @@ impl SimpleAsyncComponent for DownloadsPage {
                     action_number,
                     GameActionsPipelineFactoryMsg::SetProgress { text, fraction }
                 );
+            }
+
+            DownloadsPageMsg::AddGraphPoint(point) => {
+                self.graph.emit(GraphMsg::AddPoint(point));
             }
         }
     }
