@@ -175,7 +175,7 @@ impl SimpleAsyncComponent for MainWindow {
                         } -> {
                             set_title: Some("Store"),
                             set_name: Some("store"),
-                            set_icon_name: Some("folder-download-symbolic")
+                            set_icon_name: Some("shopping-cart-symbolic")
                         },
 
                         add = &gtk::Box {

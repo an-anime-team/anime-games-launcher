@@ -44,6 +44,7 @@
         <file preprocess="xml-stripblanks" alias="system-users-symbolic.svg">images/icons/system-users-symbolic.svg</file>
         <file preprocess="xml-stripblanks" alias="mail-unread-symbolic.svg">images/icons/mail-unread-symbolic.svg</file>
         <file preprocess="xml-stripblanks" alias="input-gaming-symbolic.svg">images/icons/input-gaming-symbolic.svg</file>
+        <file preprocess="xml-stripblanks" alias="shopping-cart-symbolic.svg">images/icons/shopping-cart-symbolic.svg</file>
 
         <!-- Additional icons icons -->
 
