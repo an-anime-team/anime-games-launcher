@@ -49,8 +49,8 @@ impl PipelineAction {
                 })
                 .unwrap_or(Ok(None))?,
 
-            before: table.get::<LuaFunction>("before").ok(),
-            perform: table.get("perform")?
+            before: table.get::<Option<LuaFunction>>("before").ok().flatten(),
+            perform: table.get::<LuaFunction>("perform")?
         })
     }
 

@@ -40,9 +40,9 @@ pub fn spawn<T: Send + 'static>(
 /// Spawn blocking function in the shared tokio runtime.
 #[inline(always)]
 pub fn spawn_blocking<T: Send + 'static>(
-    future: impl FnOnce() -> T + Send + 'static
+    func: impl FnOnce() -> T + Send + 'static
 ) -> JoinHandle<T> {
-    RUNTIME.spawn_blocking(future)
+    RUNTIME.spawn_blocking(func)
 }
 
 /// Block current thread to execute the future.

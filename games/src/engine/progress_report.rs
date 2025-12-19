@@ -47,12 +47,10 @@ impl ProgressReport {
     }
 
     pub fn from_lua(value: &LuaTable) -> Result<Self, LuaError> {
-        let progress = value.get::<LuaTable>("progress")?;
-
         Ok(Self {
-            current: progress.get("current")?,
-            total: progress.get("total")?,
-            format: progress.get::<LuaFunction>("format").ok()
+            current: value.get("current")?,
+            total: value.get("total")?,
+            format: value.get::<LuaFunction>("format").ok()
         })
     }
 
