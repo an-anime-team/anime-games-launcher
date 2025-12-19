@@ -17,7 +17,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
-use std::collections::VecDeque;
 
 use adw::prelude::*;
 use relm4::prelude::*;
@@ -40,11 +39,11 @@ struct PipelineInfo {
 #[derive(Debug)]
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
-    actions_pipeline: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
-    actions_schedule: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
+    current_pipeline_actions: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
+    scheduled_pipelines: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
 
     current_pipeline: Option<PipelineInfo>,
-    scheduled_pipelines: VecDeque<PipelineInfo>
+    // scheduled_pipelines: VecDeque<PipelineInfo>
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +52,9 @@ pub enum DownloadsPageMsg {
         game_index: usize,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
-    }
+    },
+
+    UpdateSchedule
 }
 
 #[relm4::component(pub, async)]
@@ -99,7 +100,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                model.actions_pipeline.widget().clone() -> adw::PreferencesGroup {
+                model.current_pipeline_actions.widget().clone() -> adw::PreferencesGroup {
                     #[watch]
                     set_visible: model.current_pipeline.is_some(),
 
@@ -115,7 +116,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                model.actions_schedule.widget() {
+                model.scheduled_pipelines.widget() {
                     set_title: "Schedule"
                 }
             }
@@ -137,16 +138,15 @@ impl SimpleAsyncComponent for DownloadsPage {
                 })
                 .detach(),
 
-            actions_pipeline: AsyncFactoryVecDeque::builder()
+            current_pipeline_actions: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .detach(),
 
-            actions_schedule: AsyncFactoryVecDeque::builder()
+            scheduled_pipelines: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .detach(),
 
-            current_pipeline: None,
-            scheduled_pipelines: VecDeque::new()
+            current_pipeline: None
         };
 
         let widgets = view_output!();
@@ -157,7 +157,7 @@ impl SimpleAsyncComponent for DownloadsPage {
     async fn update(
         &mut self,
         msg: Self::Input,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) {
         match msg {
             DownloadsPageMsg::ScheduleGameActionsPipeline {
@@ -181,18 +181,51 @@ impl SimpleAsyncComponent for DownloadsPage {
                     })
                     .map(String::from);
 
-                dbg!(&game_title);
-
-                self.actions_schedule.guard().push_back(GameActionsScheduleFactory {
+                self.scheduled_pipelines.guard().push_back(GameActionsScheduleFactory {
                     game_title: game_title.clone(),
-                    pipeline_title: pipeline_title.to_string()
+                    pipeline_title: pipeline_title.to_string(),
+                    pipeline_description,
+                    pipeline: actions_pipeline
                 });
 
-                self.scheduled_pipelines.push_back(PipelineInfo {
-                    game_title,
-                    pipeline_title: pipeline_title.to_string(),
-                    pipeline_description
-                });
+                // self.scheduled_pipelines.push_back(PipelineInfo {
+                //     game_title,
+                //     pipeline_title: pipeline_title.to_string(),
+                //     pipeline_description
+                // });
+
+                sender.input(DownloadsPageMsg::UpdateSchedule);
+            }
+
+            DownloadsPageMsg::UpdateSchedule => {
+                if self.current_pipeline.is_none()
+                    && let Some(pipeline_info) = self.scheduled_pipelines.guard().pop_front()
+                {
+                    dbg!(123);
+
+                    self.current_pipeline = Some(PipelineInfo {
+                        game_title: pipeline_info.game_title,
+                        pipeline_title: pipeline_info.pipeline_title,
+                        pipeline_description: pipeline_info.pipeline_description
+                    });
+
+                    let lang = config::get().language();
+
+                    let mut guard = self.current_pipeline_actions.guard();
+
+                    for action in pipeline_info.pipeline.actions() {
+                        let title = match &lang {
+                            Ok(lang) => action.title().translate(lang),
+                            Err(_)   => action.title().default_translation()
+                        };
+
+                        guard.push_back(GameActionsPipelineFactory {
+                            title: title.to_string(),
+                            progress_fraction: 0.0,
+                            progress_text: String::new()
+                        });
+                    }
+                }
             }
         }
     }

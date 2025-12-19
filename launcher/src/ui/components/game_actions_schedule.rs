@@ -16,14 +16,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use adw::prelude::*;
+use std::sync::Arc;
 
+use adw::prelude::*;
 use relm4::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+use agl_games::engine::ActionsPipeline;
+
+#[derive(Debug, Clone)]
 pub struct GameActionsScheduleFactory {
     pub game_title: String,
-    pub pipeline_title: String
+    pub pipeline_title: String,
+    pub pipeline_description: Option<String>,
+    pub pipeline: Arc<ActionsPipeline>
 }
 
 #[relm4::factory(pub, async)]

@@ -68,7 +68,7 @@ impl ActionsPipeline {
 
     /// List of actions which will be executed to apply the pipeline.
     #[inline(always)]
-    pub const fn pipeline(&self) -> &[PipelineAction] {
+    pub const fn actions(&self) -> &[PipelineAction] {
         &self.pipeline
     }
 }
