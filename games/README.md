@@ -180,23 +180,14 @@ type PipelineAction = {
 };
 
 type ProgressReport = {
-    // Optional title of the progress status.
-    title?: LocalizableString;
+    // Current progress.
+    current: number;
 
-    // Optional description (subtitle) of the progress status.
-    description?: LocalizableString;
+    // Total progress.
+    total: number;
 
-    // Progress info.
-    progress: {
-        // Current progress.
-        current: number;
-
-        // Total progress.
-        total: number;
-
-        // Optional function to format current progress value, e.g. `13 MB/s`.
-        format?: (): LocalizableString;
-    };
+    // Optional function to format current progress value, e.g. `13 MB/s`.
+    format?: (): LocalizableString;
 };
 
 type SettingsGroup = {
