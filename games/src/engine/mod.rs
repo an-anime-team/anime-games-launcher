@@ -106,11 +106,15 @@ impl GameIntegration {
     pub fn get_launch_info(
         &self,
         variant: &GameVariant
-    ) -> Result<GameLaunchInfo, LuaError> {
+    ) -> Result<Option<GameLaunchInfo>, LuaError> {
         let variant = variant.to_lua(&self.lua)?;
 
-        self.game_get_launch_info.call::<LuaTable>(variant)
-            .and_then(|info| GameLaunchInfo::from_lua(&info))
+        self.game_get_launch_info.call::<Option<LuaTable>>(variant)
+            .and_then(|pipeline| {
+                pipeline.map(|pipeline| {
+                    GameLaunchInfo::from_lua(&pipeline)
+                }).transpose()
+            })
     }
 
     /// Try to get game actions pipeline.
