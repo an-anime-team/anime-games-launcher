@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
+use std::collections::VecDeque;
 
 use adw::prelude::*;
 use relm4::prelude::*;
@@ -29,8 +30,17 @@ use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 use crate::ui::components::game_actions_pipeline::GameActionsPipelineFactory;
 use crate::ui::components::game_actions_schedule::GameActionsScheduleFactory;
 
+#[derive(Debug, Clone)]
+struct ScheduledPipelineInfo {
+    pub game_title: String,
+    pub pipeline_title: String,
+    pub pipeline_description: Option<String>,
+    pub pipeline: Arc<ActionsPipeline>,
+    pub index: DynamicIndex
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct PipelineInfo {
+struct CurrentPipelineInfo {
     pub game_title: String,
     pub pipeline_title: String,
     pub pipeline_description: Option<String>
@@ -39,11 +49,11 @@ struct PipelineInfo {
 #[derive(Debug)]
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
-    current_pipeline_actions: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
-    scheduled_pipelines: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
+    current_pipeline_factory: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
+    scheduled_pipelines_factory: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
 
-    current_pipeline: Option<PipelineInfo>,
-    // scheduled_pipelines: VecDeque<PipelineInfo>
+    current_pipeline: Option<CurrentPipelineInfo>,
+    scheduled_pipelines: VecDeque<ScheduledPipelineInfo>
 }
 
 #[derive(Debug, Clone)]
@@ -100,7 +110,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                model.current_pipeline_actions.widget().clone() -> adw::PreferencesGroup {
+                model.current_pipeline_factory.widget().clone() -> adw::PreferencesGroup {
                     #[watch]
                     set_visible: model.current_pipeline.is_some(),
 
@@ -116,7 +126,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     }
                 },
 
-                model.scheduled_pipelines.widget() {
+                model.scheduled_pipelines_factory.widget() {
                     set_title: "Schedule"
                 }
             }
@@ -138,15 +148,16 @@ impl SimpleAsyncComponent for DownloadsPage {
                 })
                 .detach(),
 
-            current_pipeline_actions: AsyncFactoryVecDeque::builder()
+            current_pipeline_factory: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .detach(),
 
-            scheduled_pipelines: AsyncFactoryVecDeque::builder()
+            scheduled_pipelines_factory: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .detach(),
 
-            current_pipeline: None
+            current_pipeline: None,
+            scheduled_pipelines: VecDeque::new()
         };
 
         let widgets = view_output!();
@@ -181,29 +192,32 @@ impl SimpleAsyncComponent for DownloadsPage {
                     })
                     .map(String::from);
 
-                self.scheduled_pipelines.guard().push_back(GameActionsScheduleFactory {
-                    game_title: game_title.clone(),
+                let index = self.scheduled_pipelines_factory.guard()
+                    .push_back(GameActionsScheduleFactory {
+                        game_title: game_title.clone(),
+                        pipeline_title: pipeline_title.to_string(),
+                        pipeline_description: pipeline_description.clone()
+                    });
+
+                self.scheduled_pipelines.push_back(ScheduledPipelineInfo {
+                    game_title,
                     pipeline_title: pipeline_title.to_string(),
                     pipeline_description,
-                    pipeline: actions_pipeline
+                    pipeline: actions_pipeline,
+                    index
                 });
-
-                // self.scheduled_pipelines.push_back(PipelineInfo {
-                //     game_title,
-                //     pipeline_title: pipeline_title.to_string(),
-                //     pipeline_description
-                // });
 
                 sender.input(DownloadsPageMsg::UpdateSchedule);
             }
 
             DownloadsPageMsg::UpdateSchedule => {
                 if self.current_pipeline.is_none()
-                    && let Some(pipeline_info) = self.scheduled_pipelines.guard().pop_front()
+                    && let Some(pipeline_info) = self.scheduled_pipelines.pop_front()
                 {
-                    dbg!(123);
+                    self.scheduled_pipelines_factory.guard()
+                        .remove(pipeline_info.index.current_index());
 
-                    self.current_pipeline = Some(PipelineInfo {
+                    self.current_pipeline = Some(CurrentPipelineInfo {
                         game_title: pipeline_info.game_title,
                         pipeline_title: pipeline_info.pipeline_title,
                         pipeline_description: pipeline_info.pipeline_description
@@ -211,7 +225,7 @@ impl SimpleAsyncComponent for DownloadsPage {
 
                     let lang = config::get().language();
 
-                    let mut guard = self.current_pipeline_actions.guard();
+                    let mut guard = self.current_pipeline_factory.guard();
 
                     for action in pipeline_info.pipeline.actions() {
                         let title = match &lang {
