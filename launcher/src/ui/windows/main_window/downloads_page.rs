@@ -33,7 +33,18 @@ use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 use crate::ui::components::game_actions_pipeline::{
     GameActionsPipelineFactory, GameActionsPipelineFactoryMsg
 };
-use crate::ui::components::game_actions_schedule::GameActionsScheduleFactory;
+use crate::ui::components::game_actions_schedule::{
+    GameActionsScheduleFactory,
+    GameActionsScheduleFactoryInit,
+    GameActionsScheduleFactoryOutput
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct CurrentPipelineInfo {
+    pub game_title: String,
+    pub pipeline_title: String,
+    pub pipeline_description: Option<String>
+}
 
 #[derive(Debug, Clone)]
 struct ScheduledPipelineInfo {
@@ -44,23 +55,6 @@ struct ScheduledPipelineInfo {
     pub index: DynamicIndex
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct CurrentPipelineInfo {
-    pub game_title: String,
-    pub pipeline_title: String,
-    pub pipeline_description: Option<String>
-}
-
-#[derive(Debug)]
-pub struct DownloadsPage {
-    graph: AsyncController<Graph>,
-    current_pipeline_factory: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
-    scheduled_pipelines_factory: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
-
-    current_pipeline: Option<CurrentPipelineInfo>,
-    scheduled_pipelines: VecDeque<ScheduledPipelineInfo>
-}
-
 #[derive(Debug, Clone)]
 pub enum DownloadsPageMsg {
     ScheduleGameActionsPipeline {
@@ -68,6 +62,8 @@ pub enum DownloadsPageMsg {
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
+
+    RemoveScheduledPipeline(DynamicIndex),
 
     UpdateSchedule,
 
@@ -78,6 +74,16 @@ pub enum DownloadsPageMsg {
     },
 
     AddGraphPoint(u64)
+}
+
+#[derive(Debug)]
+pub struct DownloadsPage {
+    graph: AsyncController<Graph>,
+    current_pipeline_factory: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
+    scheduled_pipelines_factory: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
+
+    current_pipeline: Option<CurrentPipelineInfo>,
+    scheduled_pipelines: VecDeque<ScheduledPipelineInfo>
 }
 
 #[relm4::component(pub, async)]
@@ -152,7 +158,7 @@ impl SimpleAsyncComponent for DownloadsPage {
     async fn init(
         _init: Self::Init,
         root: Self::Root,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             graph: Graph::builder()
@@ -170,7 +176,10 @@ impl SimpleAsyncComponent for DownloadsPage {
 
             scheduled_pipelines_factory: AsyncFactoryVecDeque::builder()
                 .launch_default()
-                .detach(),
+                .forward(sender.input_sender(), |msg| match msg {
+                    GameActionsScheduleFactoryOutput::Remove(index)
+                        => DownloadsPageMsg::RemoveScheduledPipeline(index)
+                }),
 
             current_pipeline: None,
             scheduled_pipelines: VecDeque::new()
@@ -209,7 +218,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     .map(String::from);
 
                 let index = self.scheduled_pipelines_factory.guard()
-                    .push_back(GameActionsScheduleFactory {
+                    .push_back(GameActionsScheduleFactoryInit {
                         game_title: game_title.clone(),
                         pipeline_title: pipeline_title.to_string(),
                         pipeline_description: pipeline_description.clone()
@@ -224,6 +233,13 @@ impl SimpleAsyncComponent for DownloadsPage {
                 });
 
                 sender.input(DownloadsPageMsg::UpdateSchedule);
+            }
+
+            DownloadsPageMsg::RemoveScheduledPipeline(index) => {
+                let index = index.current_index();
+
+                self.scheduled_pipelines_factory.guard().remove(index);
+                self.scheduled_pipelines.remove(index);
             }
 
             DownloadsPageMsg::UpdateSchedule => {
