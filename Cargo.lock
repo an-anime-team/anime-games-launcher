@@ -132,7 +132,6 @@ dependencies = [
  "relm4",
  "serde_json",
  "time",
- "tokio",
  "toml",
  "tracing",
  "tracing-subscriber",

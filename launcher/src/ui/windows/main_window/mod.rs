@@ -25,6 +25,7 @@ use relm4::prelude::*;
 use serde_json::Value as Json;
 use anyhow::Context;
 
+use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_packages::storage::Storage;
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
@@ -268,7 +269,7 @@ impl SimpleAsyncComponent for MainWindow {
 
         model.window = Some(widgets._window.clone());
 
-        let task = tokio::spawn(async move {
+        let task = tasks::spawn(async move {
             // Create default folders.
 
             tracing::debug!("creating default folders");
@@ -538,7 +539,7 @@ impl SimpleAsyncComponent for MainWindow {
         });
 
         // Handle error from the above task.
-        tokio::spawn(async move {
+        tasks::spawn(async move {
             match task.await {
                 Ok(Ok(())) => (),
 

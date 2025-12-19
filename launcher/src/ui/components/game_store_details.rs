@@ -19,6 +19,7 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use agl_core::tasks;
 use agl_packages::storage::Storage;
 use agl_games::manifest::GameManifest;
 
@@ -382,7 +383,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 {
                     let url = self.manifest_url.clone();
 
-                    tokio::spawn(async move {
+                    tasks::spawn(async move {
                         tracing::debug!(?url, "download game package");
 
                         match GameLock::download(&url, &storage).await {
