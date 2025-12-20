@@ -329,27 +329,12 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                     });
                                 });
 
-                                match result {
-                                    Ok(true) => (),
+                                if let Err(err) = result {
+                                    tracing::error!(?err, "failed to perform pipeline action");
 
-                                    Ok(false) => {
-                                        tracing::error!("pipeline action returned error response");
+                                    dialogs::error("Failed to perform pipeline action", err.to_string());
 
-                                        dialogs::error(
-                                            "Actions pipeline failed",
-                                            "One of the pipeline actions returned false"
-                                        );
-
-                                        break;
-                                    }
-
-                                    Err(err) => {
-                                        tracing::error!(?err, "failed to perform pipeline action");
-
-                                        dialogs::error("Failed to perform pipeline action", err.to_string());
-
-                                        break;
-                                    }
+                                    break;
                                 }
                             }
 
