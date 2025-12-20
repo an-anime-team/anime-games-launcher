@@ -396,7 +396,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                 }
 
                 if let Some(window) = &self.window {
-                    window.close();
+                    window.force_close();
                 }
             }
         }
