@@ -43,6 +43,9 @@ use crate::ui::windows::game_settings::{
     GameSettingsWindowInput,
     GameSettingsWindowOutput
 };
+use crate::ui::windows::pipeline_actions::{
+    PipelineActionsWindow, PipelineActionsWindowMsg
+};
 
 pub mod store_page;
 pub mod library_page;
@@ -87,6 +90,7 @@ pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
     game_settings_window: AsyncController<GameSettingsWindow>,
+    pipeline_actions_window: AsyncController<PipelineActionsWindow>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
@@ -235,6 +239,10 @@ impl SimpleAsyncComponent for MainWindow {
                     GameSettingsWindowOutput::ReloadGameInfo
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
+
+            pipeline_actions_window: PipelineActionsWindow::builder()
+                .launch(())
+                .detach(),
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -578,11 +586,16 @@ impl SimpleAsyncComponent for MainWindow {
                 game_title,
                 actions_pipeline
             } => {
-                // self.downloads_page.emit(DownloadsPageInput::ScheduleGameActionsPipeline {
-                //     game_index,
-                //     game_title,
-                //     actions_pipeline
-                // });
+                if let Some(window) = &self.window {
+                    self.pipeline_actions_window.emit(PipelineActionsWindowMsg::SetActionsPipeline {
+                        game_index,
+                        game_title,
+                        actions_pipeline
+                    });
+
+                    self.pipeline_actions_window.widget()
+                        .present(Some(window));
+                }
             }
 
             MainWindowMsg::OpenGameSettingsWindow {

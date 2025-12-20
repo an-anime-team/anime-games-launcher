@@ -32,6 +32,7 @@ use agl_games::engine::{
     GameSettingsGroup
 };
 
+use crate::consts;
 use crate::config;
 use crate::ui::dialogs;
 
@@ -279,7 +280,9 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
             set_content_width: 800,
             set_content_height: 600,
-            set_search_enabled: true
+            set_search_enabled: true,
+
+            add_css_class?: consts::APP_DEBUG.then_some("devel")
         }
     }
 

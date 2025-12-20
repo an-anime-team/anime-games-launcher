@@ -18,7 +18,6 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::collections::VecDeque;
 
 use adw::prelude::*;
 use relm4::prelude::*;
@@ -33,134 +32,90 @@ use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 use crate::ui::components::game_actions_pipeline::{
     GameActionsPipelineFactory, GameActionsPipelineFactoryMsg
 };
-use crate::ui::components::game_actions_schedule::{
-    GameActionsScheduleFactory,
-    GameActionsScheduleFactoryInit,
-    GameActionsScheduleFactoryOutput
-};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct CurrentPipelineInfo {
-    pub game_index: usize,
-    pub game_title: String,
-    pub pipeline_title: String,
-    pub pipeline_description: Option<String>
-}
 
 #[derive(Debug, Clone)]
-struct ScheduledPipelineInfo {
-    pub game_index: usize,
-    pub game_title: String,
-    pub pipeline_title: String,
-    pub pipeline_description: Option<String>,
-    pub pipeline: Arc<ActionsPipeline>,
-    pub schedule_index: DynamicIndex
-}
-
-#[derive(Debug, Clone)]
-pub enum DownloadsPageInput {
-    ScheduleGameActionsPipeline {
+pub enum PipelineActionsWindowMsg {
+    SetActionsPipeline {
         game_index: usize,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    RemoveScheduledPipeline(DynamicIndex),
-    RemoveCurrentPipeline,
-
-    UpdateSchedule,
-
-    SetCurrentPipelineActionProgress {
+    SetProgress {
         action_number: usize,
         text: String,
         fraction: f64
     },
 
-    AddGraphPoint(u64)
-}
+    AddGraphPoint(u64),
 
-#[derive(Debug, Clone)]
-pub enum DownloadsPageOutput {
-    MarkLibraryGameScheduled {
-        game_index: usize,
-        is_scheduled: bool
-    }
+    Close
 }
 
 #[derive(Debug)]
-pub struct DownloadsPage {
+pub struct PipelineActionsWindow {
     graph: AsyncController<Graph>,
-    current_pipeline_factory: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
-    scheduled_pipelines_factory: AsyncFactoryVecDeque<GameActionsScheduleFactory>,
+    pipeline_actions: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
 
-    current_pipeline: Option<CurrentPipelineInfo>,
-    scheduled_pipelines: VecDeque<ScheduledPipelineInfo>
+    window: Option<adw::Dialog>,
+
+    game_index: Option<usize>,
+    game_title: Option<String>,
+
+    pipeline_title: Option<String>,
+    pipeline_description: Option<String>
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for DownloadsPage {
+impl SimpleAsyncComponent for PipelineActionsWindow {
     type Init = ();
-    type Input = DownloadsPageInput;
-    type Output = DownloadsPageOutput;
+    type Input = PipelineActionsWindowMsg;
+    type Output = ();
 
     view! {
         #[root]
-        gtk::Box {
-            set_vexpand: true,
-            set_hexpand: true,
+        _window = adw::Dialog {
+            set_size_request: (800, 600),
+            set_can_close: false,
 
-            set_orientation: gtk::Orientation::Vertical,
+            add_css_class?: consts::APP_DEBUG.then_some("devel"),
 
-            adw::StatusPage {
+            #[watch]
+            set_title?: &model.game_title,
+
+            #[wrap(Some)]
+            set_child = &gtk::Box {
                 set_vexpand: true,
                 set_hexpand: true,
 
-                set_icon_name: Some(consts::APP_ID),
+                set_orientation: gtk::Orientation::Vertical,
 
-                set_title: "No actions scheduled",
+                gtk::Label {
+                    set_margin_top: 16,
+                    set_margin_bottom: 16,
 
-                #[watch]
-                set_visible: model.current_pipeline.is_none() && model.scheduled_pipelines.is_empty()
-            },
-
-            adw::PreferencesPage {
-                #[watch]
-                set_visible: model.current_pipeline.is_some() || !model.scheduled_pipelines.is_empty(),
-
-                adw::PreferencesGroup {
                     #[watch]
-                    set_visible: model.current_pipeline.is_some(),
+                    set_label?: &model.game_title
+                },
 
-                    adw::Clamp {
-                        set_hexpand: true,
+                adw::PreferencesPage {
+                    adw::PreferencesGroup {
+                        adw::Clamp {
+                            set_hexpand: true,
 
-                        model.graph.widget() {
-                            set_halign: gtk::Align::Center
+                            model.graph.widget() {
+                                set_halign: gtk::Align::Center
+                            }
                         }
-                    }
-                },
+                    },
 
-                model.current_pipeline_factory.widget().clone() -> adw::PreferencesGroup {
-                    #[watch]
-                    set_visible: model.current_pipeline.is_some(),
-
-                    #[watch]
-                    set_title?: model.current_pipeline.as_ref()
-                        .map(|info| info.pipeline_title.as_str()),
-
-                    #[wrap(Some)]
-                    set_header_suffix = &gtk::Label {
+                    model.pipeline_actions.widget().clone() -> adw::PreferencesGroup {
                         #[watch]
-                        set_label?: model.current_pipeline.as_ref()
-                            .map(|info| info.game_title.as_str())
+                        set_title?: &model.pipeline_title,
+
+                        #[watch]
+                        set_description: model.pipeline_description.as_deref()
                     }
-                },
-
-                model.scheduled_pipelines_factory.widget().clone() -> adw::PreferencesGroup {
-                    set_title: "Schedule",
-
-                    #[watch]
-                    set_visible: !model.scheduled_pipelines.is_empty()
                 }
             }
         }
@@ -169,9 +124,9 @@ impl SimpleAsyncComponent for DownloadsPage {
     async fn init(
         _init: Self::Init,
         root: Self::Root,
-        sender: AsyncComponentSender<Self>
+        _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             graph: Graph::builder()
                 .launch(GraphInit {
                     width: 600,
@@ -181,22 +136,22 @@ impl SimpleAsyncComponent for DownloadsPage {
                 })
                 .detach(),
 
-            current_pipeline_factory: AsyncFactoryVecDeque::builder()
+            pipeline_actions: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .detach(),
 
-            scheduled_pipelines_factory: AsyncFactoryVecDeque::builder()
-                .launch_default()
-                .forward(sender.input_sender(), |msg| match msg {
-                    GameActionsScheduleFactoryOutput::Remove(index)
-                        => DownloadsPageInput::RemoveScheduledPipeline(index)
-                }),
+            window: None,
 
-            current_pipeline: None,
-            scheduled_pipelines: VecDeque::new()
+            game_index: None,
+            game_title: None,
+
+            pipeline_title: None,
+            pipeline_description: None
         };
 
         let widgets = view_output!();
+
+        model.window = Some(widgets._window.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -207,123 +162,107 @@ impl SimpleAsyncComponent for DownloadsPage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            DownloadsPageInput::ScheduleGameActionsPipeline {
+            PipelineActionsWindowMsg::SetActionsPipeline {
                 game_index,
                 game_title,
                 actions_pipeline
             } => {
-                let lang = config::get().language();
+                let lang = config::get().language().ok();
 
                 let pipeline_title = match &lang {
-                    Ok(lang) => actions_pipeline.title().translate(lang),
-                    Err(_) => actions_pipeline.title().default_translation()
+                    Some(lang) => actions_pipeline.title().translate(lang),
+                    None => actions_pipeline.title().default_translation()
                 };
 
                 let pipeline_description = actions_pipeline.description()
                     .map(|description| {
                         match &lang {
-                            Ok(lang) => description.translate(lang),
-                            Err(_) => description.default_translation()
+                            Some(lang) => description.translate(lang),
+                            None => description.default_translation()
                         }
                     })
                     .map(String::from);
 
-                let schedule_index = self.scheduled_pipelines_factory.guard()
-                    .push_back(GameActionsScheduleFactoryInit {
-                        game_title: game_title.clone(),
-                        pipeline_title: pipeline_title.to_string(),
-                        pipeline_description: pipeline_description.clone()
+                self.game_index = Some(game_index);
+                self.game_title = Some(game_title);
+
+                self.pipeline_title = Some(pipeline_title.to_string());
+                self.pipeline_description = pipeline_description;
+
+                let mut guard = self.pipeline_actions.guard();
+                let mut actions = Vec::new();
+
+                guard.clear();
+
+                for action in actions_pipeline.actions() {
+                    let title = match &lang {
+                        Some(lang) => action.title().translate(lang),
+                        None => action.title().default_translation()
+                    };
+
+                    let index = guard.push_back(GameActionsPipelineFactory {
+                        title: title.to_string(),
+                        progress_fraction: 0.0,
+                        progress_text: String::new()
                     });
 
-                self.scheduled_pipelines.push_back(ScheduledPipelineInfo {
-                    game_index,
-                    game_title,
-                    pipeline_title: pipeline_title.to_string(),
-                    pipeline_description,
-                    pipeline: actions_pipeline,
-                    schedule_index
-                });
-
-                let _ = sender.output(DownloadsPageOutput::MarkLibraryGameScheduled {
-                    game_index,
-                    is_scheduled: true
-                });
-
-                sender.input(DownloadsPageInput::UpdateSchedule);
-            }
-
-            DownloadsPageInput::RemoveScheduledPipeline(index) => {
-                let index = index.current_index();
-
-                self.scheduled_pipelines_factory.guard().remove(index);
-
-                if let Some(pipeline) = self.scheduled_pipelines.remove(index) {
-                    let _ = sender.output(DownloadsPageOutput::MarkLibraryGameScheduled {
-                        game_index: pipeline.game_index,
-                        is_scheduled: false
-                    });
+                    actions.push((action.clone(), index));
                 }
-            }
 
-            DownloadsPageInput::RemoveCurrentPipeline => {
-                self.current_pipeline_factory.guard().clear();
+                drop(guard);
 
-                if let Some(pipeline) = self.current_pipeline.take() {
-                    let _ = sender.output(DownloadsPageOutput::MarkLibraryGameScheduled {
-                        game_index: pipeline.game_index,
-                        is_scheduled: false
-                    });
-                }
-            }
+                tasks::spawn_blocking(move || {
+                    for (action, index) in actions {
+                        let result = {
+                            let lang = lang.clone();
+                            let action_number = index.current_index();
+                            let sender = sender.clone();
 
-            DownloadsPageInput::UpdateSchedule => {
-                if self.current_pipeline.is_none()
-                    && let Some(pipeline_info) = self.scheduled_pipelines.pop_front()
-                {
-                    self.scheduled_pipelines_factory.guard()
-                        .remove(pipeline_info.schedule_index.current_index());
+                            let last_current = AtomicU64::new(0);
 
-                    self.current_pipeline = Some(CurrentPipelineInfo {
-                        game_index: pipeline_info.game_index,
-                        game_title: pipeline_info.game_title,
-                        pipeline_title: pipeline_info.pipeline_title,
-                        pipeline_description: pipeline_info.pipeline_description
-                    });
+                            action.before(move |progress| {
+                                let fraction = progress.fraction();
 
-                    let lang = config::get().language().ok();
+                                let text = progress.format().ok()
+                                    .flatten()
+                                    .map(|text| {
+                                        let text = match &lang {
+                                            Some(lang) => text.translate(lang),
+                                            None => text.default_translation()
+                                        };
 
-                    let mut guard = self.current_pipeline_factory.guard();
-                    let mut actions = Vec::new();
+                                        text.to_string()
+                                    })
+                                    .unwrap_or_else(|| {
+                                        format!("{:.2}%", fraction * 100.0)
+                                    });
 
-                    guard.clear();
+                                // TODO: percent change per second
+                                let diff = progress.current()
+                                    .checked_sub(last_current.load(Ordering::Relaxed))
+                                    .unwrap_or_default();
 
-                    for action in pipeline_info.pipeline.actions() {
-                        let title = match &lang {
-                            Some(lang) => action.title().translate(lang),
-                            None => action.title().default_translation()
+                                last_current.store(progress.current(), Ordering::Relaxed);
+
+                                sender.input(PipelineActionsWindowMsg::AddGraphPoint(diff));
+
+                                sender.input(PipelineActionsWindowMsg::SetProgress {
+                                    action_number,
+                                    text,
+                                    fraction
+                                });
+                            })
                         };
 
-                        let index = guard.push_back(GameActionsPipelineFactory {
-                            title: title.to_string(),
-                            progress_fraction: 0.0,
-                            progress_text: String::new()
-                        });
-
-                        actions.push((action.clone(), index));
-                    }
-
-                    drop(guard);
-
-                    tasks::spawn_blocking(move || {
-                        for (action, index) in actions {
-                            let result = {
+                        match result {
+                            Ok(Some(true)) | Ok(None) => {
                                 let lang = lang.clone();
                                 let action_number = index.current_index();
                                 let sender = sender.clone();
 
                                 let last_current = AtomicU64::new(0);
 
-                                action.before(move |progress| {
+                                let result = action.perform(move |progress| {
                                     let fraction = progress.fraction();
 
                                     let text = progress.format().ok()
@@ -347,118 +286,78 @@ impl SimpleAsyncComponent for DownloadsPage {
 
                                     last_current.store(progress.current(), Ordering::Relaxed);
 
-                                    sender.input(DownloadsPageInput::AddGraphPoint(diff));
+                                    sender.input(PipelineActionsWindowMsg::AddGraphPoint(diff));
 
-                                    sender.input(DownloadsPageInput::SetCurrentPipelineActionProgress {
+                                    sender.input(PipelineActionsWindowMsg::SetProgress {
                                         action_number,
                                         text,
                                         fraction
                                     });
-                                })
-                            };
+                                });
 
-                            match result {
-                                Ok(Some(true)) | Ok(None) => {
-                                    let lang = lang.clone();
-                                    let action_number = index.current_index();
-                                    let sender = sender.clone();
+                                match result {
+                                    Ok(true) => (),
 
-                                    let last_current = AtomicU64::new(0);
+                                    Ok(false) => {
+                                        tracing::error!("pipeline action returned error response");
 
-                                    let result = action.perform(move |progress| {
-                                        let fraction = progress.fraction();
+                                        dialogs::error(
+                                            "Actions pipeline failed",
+                                            "One of the pipeline actions returned false"
+                                        );
 
-                                        let text = progress.format().ok()
-                                            .flatten()
-                                            .map(|text| {
-                                                let text = match &lang {
-                                                    Some(lang) => text.translate(lang),
-                                                    None => text.default_translation()
-                                                };
-
-                                                text.to_string()
-                                            })
-                                            .unwrap_or_else(|| {
-                                                format!("{:.2}%", fraction * 100.0)
-                                            });
-
-                                        // TODO: percent change per second
-                                        let diff = progress.current()
-                                            .checked_sub(last_current.load(Ordering::Relaxed))
-                                            .unwrap_or_default();
-
-                                        last_current.store(progress.current(), Ordering::Relaxed);
-
-                                        sender.input(DownloadsPageInput::AddGraphPoint(diff));
-
-                                        sender.input(DownloadsPageInput::SetCurrentPipelineActionProgress {
-                                            action_number,
-                                            text,
-                                            fraction
-                                        });
-                                    });
-
-                                    match result {
-                                        Ok(true) => (),
-
-                                        Ok(false) => {
-                                            tracing::error!("pipeline action returned error response");
-
-                                            dialogs::error(
-                                                "Actions pipeline failed",
-                                                "One of the pipeline actions returned false"
-                                            );
-
-                                            break;
-                                        }
-
-                                        Err(err) => {
-                                            tracing::error!(?err, "failed to perform pipeline action");
-
-                                            dialogs::error("Failed to perform pipeline action", err.to_string());
-
-                                            break;
-                                        }
+                                        break;
                                     }
-                                }
 
-                                Ok(Some(false)) => (),
+                                    Err(err) => {
+                                        tracing::error!(?err, "failed to perform pipeline action");
 
-                                Err(err) => {
-                                    tracing::error!(?err, "failed to perform pipeline action");
+                                        dialogs::error("Failed to perform pipeline action", err.to_string());
 
-                                    dialogs::error("Failed to perform pipeline action", err.to_string());
-
-                                    break;
+                                        break;
+                                    }
                                 }
                             }
 
-                            sender.input(DownloadsPageInput::SetCurrentPipelineActionProgress {
-                                action_number: index.current_index(),
-                                text: String::new(),
-                                fraction: 1.0
-                            });
+                            Ok(Some(false)) => (),
+
+                            Err(err) => {
+                                tracing::error!(?err, "failed to perform pipeline action");
+
+                                dialogs::error("Failed to perform pipeline action", err.to_string());
+
+                                break;
+                            }
                         }
 
-                        sender.input(DownloadsPageInput::RemoveCurrentPipeline);
-                        sender.input(DownloadsPageInput::UpdateSchedule);
-                    });
-                }
+                        sender.input(PipelineActionsWindowMsg::SetProgress {
+                            action_number: index.current_index(),
+                            text: String::new(),
+                            fraction: 1.0
+                        });
+                    }
+                });
             }
 
-            DownloadsPageInput::SetCurrentPipelineActionProgress {
+            PipelineActionsWindowMsg::SetProgress {
                 action_number,
                 text,
                 fraction
             } => {
-                self.current_pipeline_factory.send(
+                self.pipeline_actions.send(
                     action_number,
                     GameActionsPipelineFactoryMsg::SetProgress { text, fraction }
                 );
             }
 
-            DownloadsPageInput::AddGraphPoint(point) => {
+            PipelineActionsWindowMsg::AddGraphPoint(point) => {
                 self.graph.emit(GraphMsg::AddPoint(point));
+            }
+
+            PipelineActionsWindowMsg::Close => {
+                if let Some(window) = &self.window {
+                    window.close();
+                }
             }
         }
     }

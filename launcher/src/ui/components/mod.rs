@@ -26,7 +26,6 @@ pub mod graph;
 pub mod game_tags;
 pub mod maintainers_row;
 pub mod game_actions_pipeline;
-pub mod game_actions_schedule;
 
 pub mod game_store_details;
 pub mod game_library_details;
