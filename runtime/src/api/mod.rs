@@ -248,6 +248,24 @@ impl Api {
         env.raw_set("dbg", self.dbg.clone())?;
 
         // Some default lua functions.
+        env.raw_set("print", self.lua.globals().get::<LuaFunction>("print")?)?;
+
+        env.raw_set("pairs", self.lua.globals().get::<LuaFunction>("pairs")?)?;
+        env.raw_set("ipairs", self.lua.globals().get::<LuaFunction>("ipairs")?)?;
+        env.raw_set("next", self.lua.globals().get::<LuaFunction>("next")?)?;
+
+        env.raw_set("assert", self.lua.globals().get::<LuaFunction>("assert")?)?;
+        env.raw_set("error", self.lua.globals().get::<LuaFunction>("error")?)?;
+        env.raw_set("pcall", self.lua.globals().get::<LuaFunction>("pcall")?)?;
+        env.raw_set("xpcall", self.lua.globals().get::<LuaFunction>("xpcall")?)?;
+
+        env.raw_set("tonumber", self.lua.globals().get::<LuaFunction>("tonumber")?)?;
+        env.raw_set("tostring", self.lua.globals().get::<LuaFunction>("tostring")?)?;
+        env.raw_set("type", self.lua.globals().get::<LuaFunction>("type")?)?;
+
+        env.raw_set("getmetatable", self.lua.globals().get::<LuaFunction>("getmetatable")?)?;
+        env.raw_set("setmetatable", self.lua.globals().get::<LuaFunction>("setmetatable")?)?;
+
         env.raw_set("table", self.lua.globals().get::<LuaValue>("table")?)?;
         env.raw_set("string", self.lua.globals().get::<LuaValue>("string")?)?;
         env.raw_set("math", self.lua.globals().get::<LuaValue>("math")?)?;
