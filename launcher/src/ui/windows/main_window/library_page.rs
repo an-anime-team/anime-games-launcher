@@ -211,6 +211,13 @@ impl SimpleAsyncComponent for LibraryPage {
             running_game: None
         };
 
+        // Set runtime memory limit.
+        if config::startup().runtime_memory_limit > 0 {
+            model.runtime.lua()
+                .set_memory_limit(config::startup().runtime_memory_limit)
+                .expect("failed to set packages runtime memory limit");
+        }
+
         model.cards_list.widget().connect_row_selected(|_, row| {
             if let Some(row) = row {
                 row.emit_activate();

@@ -106,6 +106,13 @@ pub struct Config {
     /// `packages.temporary.path`
     pub packages_temporary_path: PathBuf,
 
+    /// Maximal amount of memory in bytes allowed to be consumed by packages
+    /// runtime (lua engine). If `0` is set then no limit is applied. Default is
+    ///  `1073741824` (1 GiB).
+    ///
+    /// `runtime.memory_limit`
+    pub runtime_memory_limit: usize,
+
     /// URLs of the game registry files.
     ///
     /// `games.registries`
@@ -134,6 +141,8 @@ impl Default for Config {
             packages_modules_path: DATA_FOLDER.join("packages").join("modules"),
             packages_persistent_path: DATA_FOLDER.join("packages").join("persistent"),
             packages_temporary_path: DATA_FOLDER.join("packages").join("temporary"),
+
+            runtime_memory_limit: 1024 * 1024 * 1024,
 
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/games/registry.json")
@@ -179,6 +188,9 @@ impl Config {
 
             [packages.temporary]
             path = (self.packages_temporary_path.to_string_lossy())
+
+            [runtime]
+            memory_limit = (self.runtime_memory_limit)
 
             [games]
             registries = (self.games_registries.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -301,6 +313,14 @@ impl Config {
                 if let Some(path) = temporary.get("path").and_then(Toml::as_str) {
                     config.packages_temporary_path = PathBuf::from(path);
                 }
+            }
+        }
+
+        // `runtime.*`
+        if let Some(runtime) = value.get("runtime") {
+            // `runtime.memory_limit`
+            if let Some(memory_limit) = runtime.get("memory_limit").and_then(Toml::as_integer) {
+                config.runtime_memory_limit = memory_limit as usize;
             }
         }
 
