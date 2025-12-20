@@ -21,7 +21,9 @@ use std::collections::HashMap;
 use std::process::Command;
 
 use adw::prelude::*;
+
 use relm4::prelude::*;
+use relm4::actions::*;
 
 use serde_json::Value as Json;
 use anyhow::Context;
@@ -43,6 +45,7 @@ use crate::config;
 use crate::cache;
 use crate::games::GameLock;
 use crate::ui::dialogs;
+use crate::ui::windows::about::AboutWindow;
 use crate::ui::windows::game_settings::{
     GameSettingsWindow,
     GameSettingsWindowInput,
@@ -61,9 +64,20 @@ pub mod library_page;
 use store_page::{StorePage, StorePageInput, StorePageOutput};
 use library_page::{LibraryPage, LibraryPageInput, LibraryPageOutput};
 
+relm4::new_action_group!(WindowActionGroup, "win");
+
+// relm4::new_stateless_action!(LauncherFolder, WindowActionGroup, "launcher_folder");
+// relm4::new_stateless_action!(GameFolder, WindowActionGroup, "game_folder");
+// relm4::new_stateless_action!(ConfigFile, WindowActionGroup, "config_file");
+// relm4::new_stateless_action!(DebugFile, WindowActionGroup, "debug_file");
+
+relm4::new_stateless_action!(About, WindowActionGroup, "about");
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MainWindowMsg {
+    OpenAboutWindow,
+
     SetLoadingStatus(Option<String>),
 
     AddStorePageGame {
@@ -100,6 +114,7 @@ pub enum MainWindowMsg {
 
 #[derive(Debug)]
 pub struct MainWindow {
+    about_window: AsyncController<AboutWindow>,
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
     game_settings_window: AsyncController<GameSettingsWindow>,
@@ -119,6 +134,14 @@ impl SimpleAsyncComponent for MainWindow {
     type Init = ();
     type Input = MainWindowMsg;
     type Output = ();
+
+    menu! {
+        main_menu: {
+            section! {
+                "About" => About
+            }
+        }
+    }
 
     view! {
         #[root]
@@ -171,6 +194,11 @@ impl SimpleAsyncComponent for MainWindow {
                             connect_clicked => MainWindowMsg::GoBackButtonClicked
                         },
 
+                        pack_end = &gtk::MenuButton {
+                            set_icon_name: "open-menu-symbolic",
+                            set_menu_model: Some(&main_menu)
+                        },
+
                         #[wrap(Some)]
                         set_title_widget = &adw::ViewSwitcher {
                             set_policy: adw::ViewSwitcherPolicy::Wide,
@@ -214,6 +242,10 @@ impl SimpleAsyncComponent for MainWindow {
         sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let mut model = Self {
+            about_window: AboutWindow::builder()
+                .launch(())
+                .detach(),
+
             store_page: StorePage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
@@ -273,6 +305,23 @@ impl SimpleAsyncComponent for MainWindow {
 
         model.window = Some(widgets._window.clone());
 
+        // Connect hamburger menu buttons.
+        let mut group = RelmActionGroup::<WindowActionGroup>::new();
+
+        {
+            let sender = sender.clone();
+
+            group.add_action::<About>(RelmAction::new_stateless(move |_| {
+                sender.input(MainWindowMsg::OpenAboutWindow);
+            }));
+        }
+
+        widgets._window.insert_action_group(
+            "win",
+            Some(&group.into_action_group())
+        );
+
+        // Spawn startup task.
         let task = tasks::spawn(async move {
             // Create default folders.
 
@@ -570,6 +619,12 @@ impl SimpleAsyncComponent for MainWindow {
         _sender: AsyncComponentSender<Self>
     ) {
         match message {
+            MainWindowMsg::OpenAboutWindow => {
+                if let Some(window) = &self.window {
+                    self.about_window.widget().present(Some(window));
+                }
+            }
+
             MainWindowMsg::SetLoadingStatus(status) => self.loading_status = status,
 
             MainWindowMsg::AddStorePageGame { manifest_url, manifest } => {
