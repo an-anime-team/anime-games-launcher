@@ -442,15 +442,28 @@ impl Runtime {
         }
 
         // Load modules.
-        for hash in modules_table.keys() {
+        for (hash, inputs) in modules_table.iter() {
             let module_key = get_resource_key(hash.to_base32(), "module");
 
-            let module = Module {
+            let mut module = Module {
                 path: storage.resource_path(hash),
-
-                // TODO: update sandbox_allowed_paths
                 scope: ModuleScope::default()
             };
+
+            // Add package inputs as allowed paths to the output module of the
+            // same package.
+            for resource_key in inputs.values() {
+                // TODO: avoid reading lua values here...
+                if let Ok(Some(resource_value)) = self.get_value::<LuaTable>(resource_key) {
+                    let format = resource_value.raw_get::<String>("format")?;
+
+                    if format == "file" || format == "archive" {
+                        let resource_path = resource_value.raw_get::<PathBuf>("value")?;
+
+                        module.scope.sandbox_allowed_paths.push(resource_path);
+                    }
+                }
+            }
 
             self.load_module(module_key.clone(), module, paths.clone())?;
 
