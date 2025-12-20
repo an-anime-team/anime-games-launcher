@@ -249,7 +249,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     is_scheduled: true
                 });
 
-                // sender.input(DownloadsPageInput::UpdateSchedule);
+                sender.input(DownloadsPageInput::UpdateSchedule);
             }
 
             DownloadsPageInput::RemoveScheduledPipeline(index) => {
@@ -311,6 +311,8 @@ impl SimpleAsyncComponent for DownloadsPage {
 
                         actions.push((action.clone(), index));
                     }
+
+                    drop(guard);
 
                     tasks::spawn_blocking(move || {
                         for (action, index) in actions {

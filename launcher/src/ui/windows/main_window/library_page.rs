@@ -460,13 +460,8 @@ impl SimpleAsyncComponent for LibraryPage {
                 if let Some(game_info) = game_info {
                     game_info.is_scheduled = is_scheduled;
 
-                    // FIXME: update only if this game is currently selected.
-                    //        technically it should always be selected though...
-                    self.game_details.emit(GameLibraryDetailsInput::SetGame {
-                        manifest: game_info.lock.manifest.clone(),
-                        edition: None,
-                        integration: game_info.integration.clone(),
-                        index: game_index,
+                    self.game_details.emit(GameLibraryDetailsInput::MarkGameScheduled {
+                        game_index,
                         is_scheduled
                     });
                 }

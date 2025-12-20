@@ -1,5 +1,23 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// anime-games-launcher
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 /// Generate pretty time output from given seconds.
-/// 
+///
 /// ```
 /// assert_eq!(pretty_seconds(1),    "00:00:01");
 /// assert_eq!(pretty_seconds(60),   "00:01:00");
@@ -38,10 +56,10 @@ pub fn pretty_seconds(mut seconds: u64) -> String {
 /// Generate pretty size output.
 /// Second tuple value should be used for further
 /// translation.
-/// 
+///
 /// ```
 /// let pretty = pretty_bytes(123456);
-/// 
+///
 /// assert_eq!(pretty.0, 1234.56);
 /// assert_eq!(pretty.1, "kb");
 /// ```
@@ -68,10 +86,10 @@ pub fn pretty_bytes(bytes: u64) -> (f64, &'static str) {
 /// Generate pretty frequency output.
 /// Second tuple value should be used for further
 /// translation.
-/// 
+///
 /// ```
 /// let pretty = pretty_frequency(123456);
-/// 
+///
 /// assert_eq!(pretty.0, 1234.56);
 /// assert_eq!(pretty.1, "khz");
 /// ```

@@ -55,6 +55,11 @@ pub enum GameLibraryDetailsInput {
 
     ScheduleGameActionsPipeline,
 
+    MarkGameScheduled {
+        game_index: usize,
+        is_scheduled: bool
+    },
+
     OpenDownloadsPage,
     OpenGameSettingsWindow
 }
@@ -443,6 +448,15 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         game_title: game_title.clone(),
                         actions_pipeline: actions_pipeline.clone()
                     });
+                }
+            }
+
+            GameLibraryDetailsInput::MarkGameScheduled {
+                game_index,
+                is_scheduled
+            } => {
+                if self.game_index == game_index {
+                    self.is_game_scheduled = is_scheduled;
                 }
             }
 
