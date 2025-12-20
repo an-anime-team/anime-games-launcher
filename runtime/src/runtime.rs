@@ -450,6 +450,10 @@ impl Runtime {
                 scope: ModuleScope::default()
             };
 
+            // FIXME: temporary allow this API while there's no other way to
+            //        enable it.
+            module.scope.allow_process_api = true;
+
             // Add package inputs as allowed paths to the output module of the
             // same package.
             for resource_key in inputs.values() {
