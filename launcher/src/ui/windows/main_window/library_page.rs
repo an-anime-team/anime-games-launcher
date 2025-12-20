@@ -17,7 +17,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
-use std::process::{Command, Child};
 
 use relm4::prelude::*;
 use adw::prelude::*;
@@ -82,7 +81,7 @@ pub enum LibraryPageInput {
     },
 
     LaunchGame {
-        game_index: usize,
+        game_title: String,
         game_launch_info: GameLaunchInfo
     }
 }
@@ -99,6 +98,11 @@ pub enum LibraryPageOutput {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
         layout: Box<[GameSettingsGroup]>
+    },
+
+    LaunchGame {
+        game_title: String,
+        game_launch_info: GameLaunchInfo
     }
 }
 
@@ -109,8 +113,7 @@ pub struct LibraryPage {
     storage: Storage,
     runtime: Runtime,
 
-    games: Vec<GameInfo>,
-    running_game: Option<Child>
+    games: Vec<GameInfo>
 }
 
 impl std::fmt::Debug for LibraryPage {
@@ -197,8 +200,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => LibraryPageInput::OpenGameSettingsWindow { variant, integration, layout },
 
-                    GameLibraryDetailsOutput::LaunchGame { game_index, game_launch_info }
-                        => LibraryPageInput::LaunchGame { game_index, game_launch_info }
+                    GameLibraryDetailsOutput::LaunchGame { game_title, game_launch_info }
+                        => LibraryPageInput::LaunchGame { game_title, game_launch_info }
                 }),
 
             storage: Storage::open(&config::startup().packages_resources_path)
@@ -207,8 +210,7 @@ impl SimpleAsyncComponent for LibraryPage {
             runtime: Runtime::new()
                 .expect("failed to initialize packages runtime"),
 
-            games: Vec::new(),
-            running_game: None
+            games: Vec::new()
         };
 
         // Set runtime memory limit.
@@ -482,36 +484,11 @@ impl SimpleAsyncComponent for LibraryPage {
                 });
             }
 
-            LibraryPageInput::LaunchGame { game_index: _, game_launch_info } => {
-                if self.running_game.is_some() {
-                    tracing::warn!("you're not allowed to launch multiple games");
-
-                    return;
-                }
-
-                let mut command = &mut Command::new(&game_launch_info.binary);
-
-                if let Some(args) = &game_launch_info.args {
-                    command = command.args(args);
-                }
-
-                if let Some(env) = &game_launch_info.env {
-                    command = command.envs(env);
-                }
-
-                // TODO: pipe stdout/stderr to a log file.
-
-                tracing::info!(?command, "launching game");
-
-                match command.spawn() {
-                    Ok(child) => {
-                        self.running_game = Some(child);
-
-                        // sender.input(GameLibraryDetailsInput::ScheduleRunningGameStatusCheck);
-                    }
-
-                    Err(err) => tracing::error!(?err, "failed to launch game")
-                }
+            LibraryPageInput::LaunchGame { game_title, game_launch_info } => {
+                let _ = sender.output(LibraryPageOutput::LaunchGame {
+                    game_title,
+                    game_launch_info
+                });
             }
         }
     }

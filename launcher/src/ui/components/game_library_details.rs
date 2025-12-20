@@ -71,7 +71,7 @@ pub enum GameLibraryDetailsOutput {
     },
 
     LaunchGame {
-        game_index: usize,
+        game_title: String,
         game_launch_info: GameLaunchInfo
     }
 }
@@ -436,9 +436,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::LaunchGame => {
-                if let Some(info) = &self.game_launch_info {
+                if let Some(game_title) = &self.game_title
+                    && let Some(info) = &self.game_launch_info
+                {
                     let _ = sender.output(GameLibraryDetailsOutput::LaunchGame {
-                        game_index: self.game_index,
+                        game_title: game_title.clone(),
                         game_launch_info: info.clone()
                     });
                 }

@@ -18,6 +18,7 @@
 
 use std::sync::Arc;
 use std::collections::HashMap;
+use std::process::Command;
 
 use adw::prelude::*;
 use relm4::prelude::*;
@@ -30,7 +31,11 @@ use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_packages::storage::Storage;
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::engine::{
-    GameVariant, GameIntegration, ActionsPipeline, GameSettingsGroup
+    GameVariant,
+    GameIntegration,
+    ActionsPipeline,
+    GameLaunchInfo,
+    GameSettingsGroup
 };
 
 use crate::consts;
@@ -48,6 +53,7 @@ use crate::ui::windows::pipeline_actions::{
     PipelineActionsWindowInput,
     PipelineActionsWindowOutput
 };
+use crate::ui::windows::game_running::{GameRunningWindow, GameRunningWindowMsg};
 
 pub mod store_page;
 pub mod library_page;
@@ -84,6 +90,11 @@ pub enum MainWindowMsg {
         layout: Box<[GameSettingsGroup]>
     },
 
+    LaunchGame {
+        game_title: String,
+        game_launch_info: GameLaunchInfo
+    },
+
     ReloadSelectedLibraryGameInfo
 }
 
@@ -93,6 +104,7 @@ pub struct MainWindow {
     library_page: AsyncController<LibraryPage>,
     game_settings_window: AsyncController<GameSettingsWindow>,
     pipeline_actions_window: AsyncController<PipelineActionsWindow>,
+    game_running_window: AsyncController<GameRunningWindow>,
 
     window: Option<adw::ApplicationWindow>,
     view_stack: adw::ViewStack,
@@ -149,16 +161,6 @@ impl SimpleAsyncComponent for MainWindow {
                     set_visible: model.loading_status.is_none(),
 
                     adw::HeaderBar {
-                        // pack_start = &gtk::Button {
-                        //     set_icon_name: "loupe-symbolic",
-                        //     add_css_class: "flat",
-
-                        //     #[watch]
-                        //     set_visible: model.show_search && !model.show_back,
-
-                        //     connect_clicked => MainWindowMsg::ToggleSearching
-                        // },
-
                         pack_start = &gtk::Button {
                             set_icon_name: "go-previous-symbolic",
                             add_css_class: "flat",
@@ -232,7 +234,10 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
 
                     LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
-                        => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout }
+                        => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout },
+
+                    LibraryPageOutput::LaunchGame { game_title, game_launch_info }
+                        => MainWindowMsg::LaunchGame { game_title, game_launch_info }
                 }),
 
             game_settings_window: GameSettingsWindow::builder()
@@ -248,6 +253,10 @@ impl SimpleAsyncComponent for MainWindow {
                     PipelineActionsWindowOutput::UpdateGameInfo(_)
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
+
+            game_running_window: GameRunningWindow::builder()
+                .launch(())
+                .detach(),
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -617,6 +626,38 @@ impl SimpleAsyncComponent for MainWindow {
 
                     self.game_settings_window.widget()
                         .present(Some(window));
+                }
+            }
+
+            MainWindowMsg::LaunchGame { game_title, game_launch_info } => {
+                if let Some(window) = &self.window {
+                    let mut command = &mut Command::new(&game_launch_info.binary);
+
+                    if let Some(args) = &game_launch_info.args {
+                        command = command.args(args);
+                    }
+
+                    if let Some(env) = &game_launch_info.env {
+                        command = command.envs(env);
+                    }
+
+                    // TODO: pipe stdout/stderr to a log file.
+
+                    tracing::info!(?command, "launching game");
+
+                    match command.spawn() {
+                        Ok(child) => {
+                            self.game_running_window.emit(GameRunningWindowMsg::SetChild {
+                                game_title,
+                                child
+                            });
+
+                            self.game_running_window.widget()
+                                .present(Some(window));
+                        }
+
+                        Err(err) => tracing::error!(?err, "failed to launch game")
+                    }
                 }
             }
 
