@@ -96,13 +96,13 @@ impl PipelineAction {
     pub fn perform(
         &self,
         progress: impl Fn(ProgressReport) + Send + 'static
-    ) -> Result<bool, LuaError> {
+    ) -> Result<(), LuaError> {
         let progress = self.lua.create_function(move |_, report: LuaTable| {
             progress(ProgressReport::from_lua(&report)?);
 
             Ok(())
         })?;
 
-        self.perform.call::<bool>(progress)
+        self.perform.call(progress)
     }
 }

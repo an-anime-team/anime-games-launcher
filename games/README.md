@@ -172,11 +172,8 @@ type PipelineAction = {
     // before running the main function that downloads the files.
     before?: (updater: ProgressReport): boolean;
 
-    // The main pipeline action function. If it returns `true`, then execution
-    // of the following actions will be continued. Otherwise, if `false` is
-    // returned, then the pipeline will be stopped and action will be marked as
-    // failed.
-    perform: (updater: ProgressReport): boolean;
+    // The main pipeline action function. Executed after the `before`.
+    perform: (updater: ProgressReport);
 };
 
 type ProgressReport = {
