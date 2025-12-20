@@ -47,20 +47,13 @@ pub enum GameLibraryDetailsInput {
         manifest: GameManifest,
         edition: Option<String>,
         integration: Arc<GameIntegration>,
-        index: usize,
-        is_scheduled: bool
+        index: usize
     },
 
     UpdateGameInfo,
 
     ScheduleGameActionsPipeline,
 
-    MarkGameScheduled {
-        game_index: usize,
-        is_scheduled: bool
-    },
-
-    OpenDownloadsPage,
     OpenGameSettingsWindow
 }
 
@@ -71,8 +64,6 @@ pub enum GameLibraryDetailsOutput {
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
-
-    OpenDownloadsPage,
 
     OpenGameSettingsWindow {
         variant: GameVariant,
@@ -99,7 +90,6 @@ pub struct GameLibraryDetails {
     game_actions_pipeline: Option<Arc<ActionsPipeline>>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>,
 
-    is_game_scheduled: bool
     // running_game: Option<Child>
 }
 
@@ -162,7 +152,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         // Launch game button.
                         gtk::Button {
                             #[watch]
-                            set_visible: model.game_launch_info.is_some() && !model.is_game_scheduled,
+                            set_visible: model.game_launch_info.is_some(),
 
                             #[watch]
                             set_css_classes?: model.game_launch_info.as_ref()
@@ -219,7 +209,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         // Execute actions pipeline button.
                         gtk::Button {
                             #[watch]
-                            set_visible: model.game_actions_pipeline.is_some() && !model.is_game_scheduled,
+                            set_visible: model.game_actions_pipeline.is_some(),
 
                             // If game can be launched AND pipeline is available
                             // then make pipeline button grey, otherwise - blue.
@@ -266,7 +256,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             add_css_class: "pill",
 
                             #[watch]
-                            set_visible: model.game_settings_layout.is_some() && !model.is_game_scheduled,
+                            set_visible: model.game_settings_layout.is_some(),
 
                             adw::ButtonContent {
                                 set_icon_name: "settings-symbolic",
@@ -274,22 +264,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             },
 
                             connect_clicked => GameLibraryDetailsInput::OpenGameSettingsWindow
-                        },
-
-                        gtk::Button {
-                            add_css_class: "pill",
-
-                            #[watch]
-                            set_visible: model.is_game_scheduled,
-
-                            adw::ButtonContent {
-                                set_icon_name: "document-save-symbolic",
-                                set_label: "Go to downloads",
-                                set_tooltip: "Game actions pipeline is scheduled in downloads page"
-                            },
-
-                            connect_clicked => GameLibraryDetailsInput::OpenDownloadsPage
-                        },
+                        }
                     }
                 }
             }
@@ -323,7 +298,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             game_actions_pipeline: None,
             game_settings_layout: None,
 
-            is_game_scheduled: false
             // running_game: None
         };
 
@@ -342,8 +316,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 manifest,
                 edition,
                 integration,
-                index,
-                is_scheduled
+                index
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::LazyLoad(manifest.game.images.poster.clone())
@@ -384,8 +357,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 self.game_title = Some(title.to_string());
                 self.game_developer = Some(developer.to_string());
                 self.game_publisher = Some(publisher.to_string());
-
-                self.is_game_scheduled = is_scheduled;
 
                 self.game_integration = Some(integration);
 
@@ -449,19 +420,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         actions_pipeline: actions_pipeline.clone()
                     });
                 }
-            }
-
-            GameLibraryDetailsInput::MarkGameScheduled {
-                game_index,
-                is_scheduled
-            } => {
-                if self.game_index == game_index {
-                    self.is_game_scheduled = is_scheduled;
-                }
-            }
-
-            GameLibraryDetailsInput::OpenDownloadsPage => {
-                let _ = sender.output(GameLibraryDetailsOutput::OpenDownloadsPage);
             }
 
             GameLibraryDetailsInput::OpenGameSettingsWindow => {

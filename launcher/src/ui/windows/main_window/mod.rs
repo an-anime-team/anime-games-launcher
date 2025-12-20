@@ -46,11 +46,9 @@ use crate::ui::windows::game_settings::{
 
 pub mod store_page;
 pub mod library_page;
-pub mod downloads_page;
 
 use store_page::{StorePage, StorePageInput, StorePageOutput};
 use library_page::{LibraryPage, LibraryPageInput, LibraryPageOutput};
-use downloads_page::{DownloadsPage, DownloadsPageInput, DownloadsPageOutput};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -75,27 +73,19 @@ pub enum MainWindowMsg {
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    OpenDownloadsPage,
-
     OpenGameSettingsWindow {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
         layout: Box<[GameSettingsGroup]>
     },
 
-    ReloadSelectedLibraryGameInfo,
-
-    MarkLibraryGameScheduled {
-        game_index: usize,
-        is_scheduled: bool
-    }
+    ReloadSelectedLibraryGameInfo
 }
 
 #[derive(Debug)]
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
-    downloads_page: AsyncController<DownloadsPage>,
     game_settings_window: AsyncController<GameSettingsWindow>,
 
     window: Option<adw::ApplicationWindow>,
@@ -203,17 +193,6 @@ impl SimpleAsyncComponent for MainWindow {
                             set_title: Some("Library"),
                             set_name: Some("library"),
                             set_icon_name: Some("applications-games-symbolic")
-                        },
-
-                        add = &gtk::Box {
-                            set_vexpand: true,
-                            set_hexpand: true,
-
-                            model.downloads_page.widget(),
-                        } -> {
-                            set_title: Some("Downloads"),
-                            set_name: Some("downloads"),
-                            set_icon_name: Some("document-save-symbolic")
                         }
                     }
                 }
@@ -246,18 +225,8 @@ impl SimpleAsyncComponent for MainWindow {
                     LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
                         => MainWindowMsg::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
 
-                    LibraryPageOutput::OpenDownloadsPage
-                        => MainWindowMsg::OpenDownloadsPage,
-
                     LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout }
-                }),
-
-            downloads_page: DownloadsPage::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    DownloadsPageOutput::MarkLibraryGameScheduled { game_index, is_scheduled }
-                        => MainWindowMsg::MarkLibraryGameScheduled { game_index, is_scheduled }
                 }),
 
             game_settings_window: GameSettingsWindow::builder()
@@ -609,15 +578,11 @@ impl SimpleAsyncComponent for MainWindow {
                 game_title,
                 actions_pipeline
             } => {
-                self.downloads_page.emit(DownloadsPageInput::ScheduleGameActionsPipeline {
-                    game_index,
-                    game_title,
-                    actions_pipeline
-                });
-            }
-
-            MainWindowMsg::OpenDownloadsPage => {
-                self.view_stack.set_visible_child_name("downloads");
+                // self.downloads_page.emit(DownloadsPageInput::ScheduleGameActionsPipeline {
+                //     game_index,
+                //     game_title,
+                //     actions_pipeline
+                // });
             }
 
             MainWindowMsg::OpenGameSettingsWindow {
@@ -639,16 +604,6 @@ impl SimpleAsyncComponent for MainWindow {
 
             MainWindowMsg::ReloadSelectedLibraryGameInfo => {
                 self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo);
-            }
-
-            MainWindowMsg::MarkLibraryGameScheduled {
-                game_index,
-                is_scheduled
-            } => {
-                self.library_page.emit(LibraryPageInput::MarkGameScheduled {
-                    game_index,
-                    is_scheduled
-                });
             }
         }
     }

@@ -48,8 +48,7 @@ struct GameInfo {
     pub lock: GameLock,
     pub integration: Arc<GameIntegration>,
     pub editions: Option<Box<[GameEdition]>>,
-    pub card_index: DynamicIndex,
-    pub is_scheduled: bool
+    pub card_index: DynamicIndex
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -66,12 +65,7 @@ pub enum LibraryPageInput {
 
     CollapseGamesExceptIndex(DynamicIndex),
 
-    UpdateSelectedGameInfo,
-
-    MarkGameScheduled {
-        game_index: usize,
-        is_scheduled: bool
-    }
+    UpdateSelectedGameInfo
 }
 
 #[derive(Debug, Clone)]
@@ -81,8 +75,6 @@ pub enum LibraryPageOutput {
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
-
-    OpenDownloadsPage,
 
     OpenGameSettingsWindow {
         variant: GameVariant,
@@ -181,9 +173,6 @@ impl SimpleAsyncComponent for LibraryPage {
                 .forward(sender.output_sender(), |msg| match msg {
                     GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
                         => LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
-
-                    GameLibraryDetailsOutput::OpenDownloadsPage
-                        => LibraryPageOutput::OpenDownloadsPage,
 
                     GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
@@ -403,8 +392,7 @@ impl SimpleAsyncComponent for LibraryPage {
                     lock: game_lock,
                     integration: game_integration,
                     editions,
-                    card_index: index,
-                    is_scheduled: false
+                    card_index: index
                 });
             }
 
@@ -436,8 +424,7 @@ impl SimpleAsyncComponent for LibraryPage {
                         manifest: game_info.lock.manifest.clone(),
                         edition,
                         integration: game_info.integration.clone(),
-                        index: game,
-                        is_scheduled: game_info.is_scheduled
+                        index: game
                     });
                 }
             }
@@ -448,25 +435,6 @@ impl SimpleAsyncComponent for LibraryPage {
 
             LibraryPageInput::UpdateSelectedGameInfo => {
                 self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo);
-            }
-
-            LibraryPageInput::MarkGameScheduled {
-                game_index,
-                is_scheduled
-            } => {
-                let game_info = self.games.iter_mut()
-                    .find(|game_info| game_info.card_index.current_index() == game_index);
-
-                if let Some(game_info) = game_info {
-                    game_info.is_scheduled = is_scheduled;
-
-                    self.cards_list.send(game_index, CardsListInput::SetDisabled(is_scheduled));
-
-                    self.game_details.emit(GameLibraryDetailsInput::MarkGameScheduled {
-                        game_index,
-                        is_scheduled
-                    });
-                }
             }
         }
     }
