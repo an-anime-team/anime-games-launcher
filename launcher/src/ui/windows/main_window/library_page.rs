@@ -460,6 +460,8 @@ impl SimpleAsyncComponent for LibraryPage {
                 if let Some(game_info) = game_info {
                     game_info.is_scheduled = is_scheduled;
 
+                    self.cards_list.send(game_index, CardsListInput::SetDisabled(is_scheduled));
+
                     self.game_details.emit(GameLibraryDetailsInput::MarkGameScheduled {
                         game_index,
                         is_scheduled

@@ -53,7 +53,8 @@ pub enum CardsListInput {
     EmitClick,
     ShowVariants,
     HideVariants,
-    HideVariantsExcept(DynamicIndex)
+    HideVariantsExcept(DynamicIndex),
+    SetDisabled(bool)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,7 +76,8 @@ pub struct CardsList {
     index: DynamicIndex,
 
     has_variants: bool,
-    show_variants: bool
+    show_variants: bool,
+    is_disabled: bool
 }
 
 #[relm4::factory(pub, async)]
@@ -89,6 +91,12 @@ impl AsyncFactoryComponent for CardsList {
     view! {
         #[root]
         gtk::ListBoxRow {
+            #[watch]
+            set_sensitive: !self.is_disabled,
+
+            #[watch]
+            set_activatable: !self.is_disabled,
+
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 
@@ -119,8 +127,6 @@ impl AsyncFactoryComponent for CardsList {
                 }
             },
 
-            set_activatable: true,
-
             connect_activate => CardsListInput::EmitClick
         }
     }
@@ -144,7 +150,8 @@ impl AsyncFactoryComponent for CardsList {
             index: index.to_owned(),
 
             has_variants: false,
-            show_variants: false
+            show_variants: false,
+            is_disabled: false
         };
 
         if let Some(variants) = init.variants {
@@ -210,6 +217,8 @@ impl AsyncFactoryComponent for CardsList {
                     self.show_variants = false;
                 }
             }
+
+            CardsListInput::SetDisabled(is_disabled) => self.is_disabled = is_disabled
         }
     }
 }
