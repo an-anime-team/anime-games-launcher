@@ -17,13 +17,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::process::Child;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use agl_core::tasks;
+use agl_core::export::tasks::tokio;
+
 use crate::consts;
 use crate::utils;
+
+const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(Debug)]
 pub enum GameRunningWindowMsg {
@@ -32,6 +37,7 @@ pub enum GameRunningWindowMsg {
         child: Child
     },
 
+    Update,
     Kill,
     Close
 }
@@ -43,7 +49,10 @@ pub struct GameRunningWindow {
     game_title: Option<String>,
 
     child: Option<Child>,
-    running_since: Option<Instant>
+
+    running_since: Option<Instant>,
+    running_time: Option<String>,
+    running_handle: Option<tasks::JoinHandle<()>>
 }
 
 #[relm4::component(pub, async)]
@@ -55,7 +64,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
     view! {
         #[root]
         _window = adw::Dialog {
-            set_size_request: (400, 180),
+            set_size_request: (400, 260),
             set_can_close: false,
 
             add_css_class?: consts::APP_DEBUG.then_some("devel"),
@@ -81,15 +90,26 @@ impl SimpleAsyncComponent for GameRunningWindow {
                 adw::PreferencesPage {
                     adw::PreferencesGroup {
                         adw::ActionRow {
+                            set_title: "Game process",
+
+                            add_suffix = &gtk::Label {
+                                set_selectable: true,
+
+                                #[watch]
+                                set_label: model.child.as_ref()
+                                    .map(|child| child.id().to_string())
+                                    .as_deref()
+                                    .unwrap_or_default()
+                            }
+                        },
+
+                        adw::ActionRow {
                             set_title: "Running for",
 
                             add_suffix = &gtk::Label {
                                 #[watch]
-                                set_label?: model.running_since.as_ref()
-                                    .map(|instant| {
-                                        utils::pretty_seconds(instant.elapsed().as_secs())
-                                    })
-                                    .as_deref()
+                                set_label: model.running_time.as_deref()
+                                    .unwrap_or_default()
                             }
                         }
                     },
@@ -125,7 +145,9 @@ impl SimpleAsyncComponent for GameRunningWindow {
             window: None,
             game_title: None,
             child: None,
-            running_since: None
+            running_since: None,
+            running_time: None,
+            running_handle: None
         };
 
         let widgets = view_output!();
@@ -146,15 +168,43 @@ impl SimpleAsyncComponent for GameRunningWindow {
                 self.child = Some(child);
 
                 self.running_since = Some(Instant::now());
+
+                self.running_handle = Some(tasks::spawn(async move {
+                    loop {
+                        sender.input(GameRunningWindowMsg::Update);
+
+                        tokio::time::sleep(UPDATE_INTERVAL).await;
+                    }
+                }));
+            }
+
+            GameRunningWindowMsg::Update => {
+                if let Some(running_since) = &self.running_since {
+                    let running_time = running_since.elapsed().as_secs();
+
+                    self.running_time = Some(utils::pretty_seconds(running_time));
+                }
+
+                if let Some(child) = &mut self.child
+                    && matches!(child.try_wait(), Ok(Some(_)))
+                {
+                    sender.input(GameRunningWindowMsg::Kill);
+                }
             }
 
             GameRunningWindowMsg::Kill => {
+                self.running_since = None;
+                self.running_time = None;
+
+                #[allow(clippy::collapsible_if)]
                 if let Some(mut child) = self.child.take() {
                     if let Err(err) = child.kill() {
                         tracing::error!(?err, "failed to kill running game process");
                     }
+                }
 
-                    self.running_since = None;
+                if let Some(handle) = self.running_handle.take() {
+                    handle.abort();
                 }
 
                 sender.input(GameRunningWindowMsg::Close);
