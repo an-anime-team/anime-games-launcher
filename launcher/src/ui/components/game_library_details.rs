@@ -51,10 +51,9 @@ pub enum GameLibraryDetailsInput {
     },
 
     UpdateGameInfo,
-
     ScheduleGameActionsPipeline,
-
-    OpenGameSettingsWindow
+    OpenGameSettingsWindow,
+    LaunchGame
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +68,11 @@ pub enum GameLibraryDetailsOutput {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
         layout: Box<[GameSettingsGroup]>
+    },
+
+    LaunchGame {
+        game_index: usize,
+        game_launch_info: GameLaunchInfo
     }
 }
 
@@ -88,9 +92,7 @@ pub struct GameLibraryDetails {
 
     game_launch_info: Option<GameLaunchInfo>,
     game_actions_pipeline: Option<Arc<ActionsPipeline>>,
-    game_settings_layout: Option<Box<[GameSettingsGroup]>>,
-
-    // running_game: Option<Child>
+    game_settings_layout: Option<Box<[GameSettingsGroup]>>
 }
 
 #[relm4::component(pub, async)]
@@ -186,7 +188,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 set_label: "Play"
                             },
 
-                            // connect_clicked => GameLibraryDetailsInput::EmitLaunchGame
+                            connect_clicked => GameLibraryDetailsInput::LaunchGame
                         },
 
                         // // Kill game button.
@@ -296,9 +298,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             game_launch_info: None,
             game_actions_pipeline: None,
-            game_settings_layout: None,
-
-            // running_game: None
+            game_settings_layout: None
         };
 
         let widgets = view_output!();
@@ -435,39 +435,14 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 }
             }
 
-            // GameLibraryDetailsInput::EmitLaunchGame => {
-            //     if self.running_game.is_some() {
-            //         tracing::warn!("You're not allowed to launch multiple games currently");
-
-            //         return;
-            //     }
-
-            //     if let Some(launch_info) = self.game_info.as_ref().and_then(|info| info.launch_info.as_ref()) {
-            //         let mut command = &mut Command::new(&launch_info.binary);
-
-            //         if let Some(args) = &launch_info.args {
-            //             command = command.args(args);
-            //         }
-
-            //         if let Some(env) = &launch_info.env {
-            //             command = command.envs(env);
-            //         }
-
-            //         // TODO: pipe stdout/stderr to a log file.
-
-            //         tracing::info!(?command, "Launching game");
-
-            //         match command.spawn() {
-            //             Ok(child) => {
-            //                 self.running_game = Some(child);
-
-            //                 sender.input(GameLibraryDetailsInput::ScheduleRunningGameStatusCheck);
-            //             }
-
-            //             Err(err) => tracing::error!(?err, "Failed to launch game")
-            //         }
-            //     }
-            // }
+            GameLibraryDetailsInput::LaunchGame => {
+                if let Some(info) = &self.game_launch_info {
+                    let _ = sender.output(GameLibraryDetailsOutput::LaunchGame {
+                        game_index: self.game_index,
+                        game_launch_info: info.clone()
+                    });
+                }
+            }
 
             // GameLibraryDetailsInput::EmitKillGame => {
             //     if let Some(child) = &mut self.running_game {

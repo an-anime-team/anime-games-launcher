@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
+use std::process::{Command, Child};
 
 use relm4::prelude::*;
 use adw::prelude::*;
@@ -28,6 +29,7 @@ use agl_games::engine::{
     GameEdition,
     GameVariant,
     GameIntegration,
+    GameLaunchInfo,
     ActionsPipeline,
     GameSettingsGroup
 };
@@ -65,7 +67,24 @@ pub enum LibraryPageInput {
 
     CollapseGamesExceptIndex(DynamicIndex),
 
-    UpdateSelectedGameInfo
+    UpdateSelectedGameInfo,
+
+    ScheduleGameActionsPipeline {
+        game_index: usize,
+        game_title: String,
+        actions_pipeline: Arc<ActionsPipeline>
+    },
+
+    OpenGameSettingsWindow {
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameSettingsGroup]>
+    },
+
+    LaunchGame {
+        game_index: usize,
+        game_launch_info: GameLaunchInfo
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +109,8 @@ pub struct LibraryPage {
     storage: Storage,
     runtime: Runtime,
 
-    games: Vec<GameInfo>
+    games: Vec<GameInfo>,
+    running_game: Option<Child>
 }
 
 impl std::fmt::Debug for LibraryPage {
@@ -170,20 +190,16 @@ impl SimpleAsyncComponent for LibraryPage {
 
             game_details: GameLibraryDetails::builder()
                 .launch(())
-                .forward(sender.output_sender(), |msg| match msg {
+                .forward(sender.input_sender(), |msg| match msg {
                     GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
-                        => LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
+                        => LibraryPageInput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
 
                     GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
-                        => LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
+                        => LibraryPageInput::OpenGameSettingsWindow { variant, integration, layout },
+
+                    GameLibraryDetailsOutput::LaunchGame { game_index, game_launch_info }
+                        => LibraryPageInput::LaunchGame { game_index, game_launch_info }
                 }),
-
-            // download_manager: DownloadManagerWindow::builder()
-            //     .launch(())
-            //     .detach(),
-
-            // main_window: None,
-            // toast_overlay: None,
 
             storage: Storage::open(&config::startup().packages_resources_path)
                 .expect("failed to open packages storage"),
@@ -191,7 +207,8 @@ impl SimpleAsyncComponent for LibraryPage {
             runtime: Runtime::new()
                 .expect("failed to initialize packages runtime"),
 
-            games: Vec::new()
+            games: Vec::new(),
+            running_game: None
         };
 
         model.cards_list.widget().connect_row_selected(|_, row| {
@@ -201,9 +218,6 @@ impl SimpleAsyncComponent for LibraryPage {
         });
 
         let widgets = view_output!();
-
-        // model.main_window = Some(parent);
-        // model.toast_overlay = Some(widgets.toast_overlay.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -435,6 +449,62 @@ impl SimpleAsyncComponent for LibraryPage {
 
             LibraryPageInput::UpdateSelectedGameInfo => {
                 self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo);
+            }
+
+            LibraryPageInput::ScheduleGameActionsPipeline {
+                game_index,
+                game_title,
+                actions_pipeline
+            } => {
+                let _ = sender.output(LibraryPageOutput::ScheduleGameActionsPipeline {
+                    game_index,
+                    game_title,
+                    actions_pipeline
+                });
+            }
+
+            LibraryPageInput::OpenGameSettingsWindow {
+                variant,
+                integration,
+                layout
+            } => {
+                let _ = sender.output(LibraryPageOutput::OpenGameSettingsWindow {
+                    variant,
+                    integration,
+                    layout
+                });
+            }
+
+            LibraryPageInput::LaunchGame { game_index: _, game_launch_info } => {
+                if self.running_game.is_some() {
+                    tracing::warn!("you're not allowed to launch multiple games");
+
+                    return;
+                }
+
+                let mut command = &mut Command::new(&game_launch_info.binary);
+
+                if let Some(args) = &game_launch_info.args {
+                    command = command.args(args);
+                }
+
+                if let Some(env) = &game_launch_info.env {
+                    command = command.envs(env);
+                }
+
+                // TODO: pipe stdout/stderr to a log file.
+
+                tracing::info!(?command, "launching game");
+
+                match command.spawn() {
+                    Ok(child) => {
+                        self.running_game = Some(child);
+
+                        // sender.input(GameLibraryDetailsInput::ScheduleRunningGameStatusCheck);
+                    }
+
+                    Err(err) => tracing::error!(?err, "failed to launch game")
+                }
             }
         }
     }
