@@ -191,23 +191,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             connect_clicked => GameLibraryDetailsInput::LaunchGame
                         },
 
-                        // // Kill game button.
-                        // gtk::Button {
-                        //     add_css_class: "pill",
-                        //     add_css_class: "destructive-action",
-
-                        //     #[watch]
-                        //     set_visible: model.running_game.is_some(),
-
-                        //     adw::ButtonContent {
-                        //         set_icon_name: "violence-symbolic",
-
-                        //         set_label: "Kill game"
-                        //     },
-
-                        //     connect_clicked => GameLibraryDetailsInput::EmitKillGame
-                        // },
-
                         // Execute actions pipeline button.
                         gtk::Button {
                             #[watch]
@@ -445,16 +428,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     });
                 }
             }
-
-            // GameLibraryDetailsInput::EmitKillGame => {
-            //     if let Some(child) = &mut self.running_game {
-            //         match child.kill() {
-            //             Ok(_) => self.running_game = None,
-
-            //             Err(err) => tracing::error!(?err, "Failed to kill the game")
-            //         }
-            //     }
-            // }
         }
     }
 }
