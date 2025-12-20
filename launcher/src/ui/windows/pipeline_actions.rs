@@ -135,13 +135,20 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
+        let accent_color = adw::StyleManager::default()
+            .accent_color_rgba();
+
         let mut model = Self {
             graph: Graph::builder()
                 .launch(GraphInit {
                     width: 600,
                     height: 180,
                     window_size: 60,
-                    color: (1.0, 0.0, 0.0)
+                    color: (
+                        accent_color.red() as f64,
+                        accent_color.green() as f64,
+                        accent_color.blue() as f64
+                    )
                 })
                 .detach(),
 
