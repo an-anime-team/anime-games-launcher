@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-beta1] - 20.12.2025
+
+🚀 Complete rework of the app
+
 ## [2.0.0-alpha2] - 23.04.2025
 
 ### Added
@@ -71,7 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-alpha1...next
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-beta1...next
+[2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-alpha2...2.0.0-beta1
+[2.0.0-alpha2]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-alpha1...2.0.0-alpha2
 [2.0.0-alpha1]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.2...2.0.0-alpha1
 [1.0.2]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.0...1.0.1
