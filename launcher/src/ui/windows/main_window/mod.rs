@@ -44,7 +44,9 @@ use crate::ui::windows::game_settings::{
     GameSettingsWindowOutput
 };
 use crate::ui::windows::pipeline_actions::{
-    PipelineActionsWindow, PipelineActionsWindowMsg
+    PipelineActionsWindow,
+    PipelineActionsWindowInput,
+    PipelineActionsWindowOutput
 };
 
 pub mod store_page;
@@ -242,7 +244,10 @@ impl SimpleAsyncComponent for MainWindow {
 
             pipeline_actions_window: PipelineActionsWindow::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), |msg| match msg {
+                    PipelineActionsWindowOutput::UpdateGameInfo(_)
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                }),
 
             window: None,
             view_stack: adw::ViewStack::new(),
@@ -587,7 +592,7 @@ impl SimpleAsyncComponent for MainWindow {
                 actions_pipeline
             } => {
                 if let Some(window) = &self.window {
-                    self.pipeline_actions_window.emit(PipelineActionsWindowMsg::SetActionsPipeline {
+                    self.pipeline_actions_window.emit(PipelineActionsWindowInput::SetActionsPipeline {
                         game_index,
                         game_title,
                         actions_pipeline

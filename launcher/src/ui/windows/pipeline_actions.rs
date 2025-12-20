@@ -17,7 +17,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::cell::Cell;
+use std::time::{Instant, Duration};
 
 use adw::prelude::*;
 use relm4::prelude::*;
@@ -33,8 +34,11 @@ use crate::ui::components::game_actions_pipeline::{
     GameActionsPipelineFactory, GameActionsPipelineFactoryMsg
 };
 
+const GRAPH_DIFF_INTERVAL: Duration = Duration::from_millis(200);
+const GRAPH_DIFF_PRECISION: f64 = 1_000_000.0;
+
 #[derive(Debug, Clone)]
-pub enum PipelineActionsWindowMsg {
+pub enum PipelineActionsWindowInput {
     SetActionsPipeline {
         game_index: usize,
         game_title: String,
@@ -49,7 +53,12 @@ pub enum PipelineActionsWindowMsg {
 
     AddGraphPoint(u64),
 
-    Close
+    EmitClose
+}
+
+#[derive(Debug, Clone)]
+pub enum PipelineActionsWindowOutput {
+    UpdateGameInfo(usize)
 }
 
 #[derive(Debug)]
@@ -69,8 +78,8 @@ pub struct PipelineActionsWindow {
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for PipelineActionsWindow {
     type Init = ();
-    type Input = PipelineActionsWindowMsg;
-    type Output = ();
+    type Input = PipelineActionsWindowInput;
+    type Output = PipelineActionsWindowOutput;
 
     view! {
         #[root]
@@ -162,7 +171,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            PipelineActionsWindowMsg::SetActionsPipeline {
+            PipelineActionsWindowInput::SetActionsPipeline {
                 game_index,
                 game_title,
                 actions_pipeline
@@ -218,7 +227,10 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                             let action_number = index.current_index();
                             let sender = sender.clone();
 
-                            let last_current = AtomicU64::new(0);
+                            let last_update = Cell::new((
+                                Instant::now(),
+                                0.0
+                            ));
 
                             action.before(move |progress| {
                                 let fraction = progress.fraction();
@@ -237,16 +249,22 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                         format!("{:.2}%", fraction * 100.0)
                                     });
 
-                                // TODO: percent change per second
-                                let diff = progress.current()
-                                    .checked_sub(last_current.load(Ordering::Relaxed))
-                                    .unwrap_or_default();
+                                let (instant, last_fraction) = last_update.get();
 
-                                last_current.store(progress.current(), Ordering::Relaxed);
+                                if instant.elapsed() > GRAPH_DIFF_INTERVAL {
+                                    let curr_fraction = progress.fraction();
 
-                                sender.input(PipelineActionsWindowMsg::AddGraphPoint(diff));
+                                    sender.input(PipelineActionsWindowInput::AddGraphPoint(
+                                        ((curr_fraction - last_fraction) * GRAPH_DIFF_PRECISION) as u64
+                                    ));
 
-                                sender.input(PipelineActionsWindowMsg::SetProgress {
+                                    last_update.set((
+                                        Instant::now(),
+                                        curr_fraction
+                                    ));
+                                }
+
+                                sender.input(PipelineActionsWindowInput::SetProgress {
                                     action_number,
                                     text,
                                     fraction
@@ -260,7 +278,10 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                 let action_number = index.current_index();
                                 let sender = sender.clone();
 
-                                let last_current = AtomicU64::new(0);
+                                let last_update = Cell::new((
+                                    Instant::now(),
+                                    0.0
+                                ));
 
                                 let result = action.perform(move |progress| {
                                     let fraction = progress.fraction();
@@ -279,16 +300,22 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                             format!("{:.2}%", fraction * 100.0)
                                         });
 
-                                    // TODO: percent change per second
-                                    let diff = progress.current()
-                                        .checked_sub(last_current.load(Ordering::Relaxed))
-                                        .unwrap_or_default();
+                                    let (instant, last_fraction) = last_update.get();
 
-                                    last_current.store(progress.current(), Ordering::Relaxed);
+                                    if instant.elapsed() > GRAPH_DIFF_INTERVAL {
+                                        let curr_fraction = progress.fraction();
 
-                                    sender.input(PipelineActionsWindowMsg::AddGraphPoint(diff));
+                                        sender.input(PipelineActionsWindowInput::AddGraphPoint(
+                                            ((curr_fraction - last_fraction) * GRAPH_DIFF_PRECISION) as u64
+                                        ));
 
-                                    sender.input(PipelineActionsWindowMsg::SetProgress {
+                                        last_update.set((
+                                            Instant::now(),
+                                            curr_fraction
+                                        ));
+                                    }
+
+                                    sender.input(PipelineActionsWindowInput::SetProgress {
                                         action_number,
                                         text,
                                         fraction
@@ -330,16 +357,18 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                             }
                         }
 
-                        sender.input(PipelineActionsWindowMsg::SetProgress {
+                        sender.input(PipelineActionsWindowInput::SetProgress {
                             action_number: index.current_index(),
                             text: String::new(),
                             fraction: 1.0
                         });
                     }
+
+                    sender.input(PipelineActionsWindowInput::EmitClose);
                 });
             }
 
-            PipelineActionsWindowMsg::SetProgress {
+            PipelineActionsWindowInput::SetProgress {
                 action_number,
                 text,
                 fraction
@@ -350,11 +379,15 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                 );
             }
 
-            PipelineActionsWindowMsg::AddGraphPoint(point) => {
+            PipelineActionsWindowInput::AddGraphPoint(point) => {
                 self.graph.emit(GraphMsg::AddPoint(point));
             }
 
-            PipelineActionsWindowMsg::Close => {
+            PipelineActionsWindowInput::EmitClose => {
+                if let Some(index) = self.game_index {
+                    let _ = sender.output(PipelineActionsWindowOutput::UpdateGameInfo(index));
+                }
+
                 if let Some(window) = &self.window {
                     window.close();
                 }
