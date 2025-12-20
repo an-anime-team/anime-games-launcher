@@ -126,7 +126,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                 set_spacing: 8,
 
                                 gtk::Label {
-                                    set_align: gtk::Align::Start,
+                                    set_halign: gtk::Align::Start,
 
                                     add_css_class: "title-4",
 
@@ -134,9 +134,13 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                 },
 
                                 gtk::Label {
-                                    set_align: gtk::Align::Start,
+                                    set_hexpand: true,
 
                                     set_wrap: true,
+                                    set_selectable: true,
+
+                                    set_halign: gtk::Align::Fill,
+                                    set_justify: gtk::Justification::Fill,
 
                                     #[watch]
                                     set_text: &model.description
@@ -190,6 +194,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     add_css_class: "dim-label",
 
+                                    set_selectable: true,
+
                                     #[watch]
                                     set_text: &format!("Developer: {}", model.developer)
                                 },
@@ -198,6 +204,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     set_align: gtk::Align::Start,
 
                                     add_css_class: "dim-label",
+
+                                    set_selectable: true,
 
                                     #[watch]
                                     set_text: &format!("Publisher: {}", model.publisher)
