@@ -41,6 +41,7 @@ use crate::ui::components::game_actions_schedule::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct CurrentPipelineInfo {
+    pub game_index: usize,
     pub game_title: String,
     pub pipeline_title: String,
     pub pipeline_description: Option<String>
@@ -48,15 +49,16 @@ struct CurrentPipelineInfo {
 
 #[derive(Debug, Clone)]
 struct ScheduledPipelineInfo {
+    pub game_index: usize,
     pub game_title: String,
     pub pipeline_title: String,
     pub pipeline_description: Option<String>,
     pub pipeline: Arc<ActionsPipeline>,
-    pub index: DynamicIndex
+    pub schedule_index: DynamicIndex
 }
 
 #[derive(Debug, Clone)]
-pub enum DownloadsPageMsg {
+pub enum DownloadsPageInput {
     ScheduleGameActionsPipeline {
         game_index: usize,
         game_title: String,
@@ -77,6 +79,14 @@ pub enum DownloadsPageMsg {
     AddGraphPoint(u64)
 }
 
+#[derive(Debug, Clone)]
+pub enum DownloadsPageOutput {
+    MarkLibraryGameScheduled {
+        game_index: usize,
+        is_scheduled: bool
+    }
+}
+
 #[derive(Debug)]
 pub struct DownloadsPage {
     graph: AsyncController<Graph>,
@@ -90,8 +100,8 @@ pub struct DownloadsPage {
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for DownloadsPage {
     type Init = ();
-    type Input = DownloadsPageMsg;
-    type Output = ();
+    type Input = DownloadsPageInput;
+    type Output = DownloadsPageOutput;
 
     view! {
         #[root]
@@ -179,7 +189,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                 .launch_default()
                 .forward(sender.input_sender(), |msg| match msg {
                     GameActionsScheduleFactoryOutput::Remove(index)
-                        => DownloadsPageMsg::RemoveScheduledPipeline(index)
+                        => DownloadsPageInput::RemoveScheduledPipeline(index)
                 }),
 
             current_pipeline: None,
@@ -197,7 +207,7 @@ impl SimpleAsyncComponent for DownloadsPage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            DownloadsPageMsg::ScheduleGameActionsPipeline {
+            DownloadsPageInput::ScheduleGameActionsPipeline {
                 game_index,
                 game_title,
                 actions_pipeline
@@ -218,7 +228,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                     })
                     .map(String::from);
 
-                let index = self.scheduled_pipelines_factory.guard()
+                let schedule_index = self.scheduled_pipelines_factory.guard()
                     .push_back(GameActionsScheduleFactoryInit {
                         game_title: game_title.clone(),
                         pipeline_title: pipeline_title.to_string(),
@@ -226,36 +236,55 @@ impl SimpleAsyncComponent for DownloadsPage {
                     });
 
                 self.scheduled_pipelines.push_back(ScheduledPipelineInfo {
+                    game_index,
                     game_title,
                     pipeline_title: pipeline_title.to_string(),
                     pipeline_description,
                     pipeline: actions_pipeline,
-                    index
+                    schedule_index
                 });
 
-                sender.input(DownloadsPageMsg::UpdateSchedule);
+                let _ = sender.output(DownloadsPageOutput::MarkLibraryGameScheduled {
+                    game_index,
+                    is_scheduled: true
+                });
+
+                // sender.input(DownloadsPageInput::UpdateSchedule);
             }
 
-            DownloadsPageMsg::RemoveScheduledPipeline(index) => {
+            DownloadsPageInput::RemoveScheduledPipeline(index) => {
                 let index = index.current_index();
 
                 self.scheduled_pipelines_factory.guard().remove(index);
-                self.scheduled_pipelines.remove(index);
+
+                if let Some(pipeline) = self.scheduled_pipelines.remove(index) {
+                    let _ = sender.output(DownloadsPageOutput::MarkLibraryGameScheduled {
+                        game_index: pipeline.game_index,
+                        is_scheduled: false
+                    });
+                }
             }
 
-            DownloadsPageMsg::RemoveCurrentPipeline => {
+            DownloadsPageInput::RemoveCurrentPipeline => {
                 self.current_pipeline_factory.guard().clear();
-                self.current_pipeline = None;
+
+                if let Some(pipeline) = self.current_pipeline.take() {
+                    let _ = sender.output(DownloadsPageOutput::MarkLibraryGameScheduled {
+                        game_index: pipeline.game_index,
+                        is_scheduled: false
+                    });
+                }
             }
 
-            DownloadsPageMsg::UpdateSchedule => {
+            DownloadsPageInput::UpdateSchedule => {
                 if self.current_pipeline.is_none()
                     && let Some(pipeline_info) = self.scheduled_pipelines.pop_front()
                 {
                     self.scheduled_pipelines_factory.guard()
-                        .remove(pipeline_info.index.current_index());
+                        .remove(pipeline_info.schedule_index.current_index());
 
                     self.current_pipeline = Some(CurrentPipelineInfo {
+                        game_index: pipeline_info.game_index,
                         game_title: pipeline_info.game_title,
                         pipeline_title: pipeline_info.pipeline_title,
                         pipeline_description: pipeline_info.pipeline_description
@@ -316,9 +345,9 @@ impl SimpleAsyncComponent for DownloadsPage {
 
                                     last_current.store(progress.current(), Ordering::Relaxed);
 
-                                    sender.input(DownloadsPageMsg::AddGraphPoint(diff));
+                                    sender.input(DownloadsPageInput::AddGraphPoint(diff));
 
-                                    sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                                    sender.input(DownloadsPageInput::SetCurrentPipelineActionProgress {
                                         action_number,
                                         text,
                                         fraction
@@ -358,9 +387,9 @@ impl SimpleAsyncComponent for DownloadsPage {
 
                                         last_current.store(progress.current(), Ordering::Relaxed);
 
-                                        sender.input(DownloadsPageMsg::AddGraphPoint(diff));
+                                        sender.input(DownloadsPageInput::AddGraphPoint(diff));
 
-                                        sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                                        sender.input(DownloadsPageInput::SetCurrentPipelineActionProgress {
                                             action_number,
                                             text,
                                             fraction
@@ -402,20 +431,20 @@ impl SimpleAsyncComponent for DownloadsPage {
                                 }
                             }
 
-                            sender.input(DownloadsPageMsg::SetCurrentPipelineActionProgress {
+                            sender.input(DownloadsPageInput::SetCurrentPipelineActionProgress {
                                 action_number: index.current_index(),
                                 text: String::new(),
                                 fraction: 1.0
                             });
                         }
 
-                        sender.input(DownloadsPageMsg::RemoveCurrentPipeline);
-                        sender.input(DownloadsPageMsg::UpdateSchedule);
+                        sender.input(DownloadsPageInput::RemoveCurrentPipeline);
+                        sender.input(DownloadsPageInput::UpdateSchedule);
                     });
                 }
             }
 
-            DownloadsPageMsg::SetCurrentPipelineActionProgress {
+            DownloadsPageInput::SetCurrentPipelineActionProgress {
                 action_number,
                 text,
                 fraction
@@ -426,7 +455,7 @@ impl SimpleAsyncComponent for DownloadsPage {
                 );
             }
 
-            DownloadsPageMsg::AddGraphPoint(point) => {
+            DownloadsPageInput::AddGraphPoint(point) => {
                 self.graph.emit(GraphMsg::AddPoint(point));
             }
         }

@@ -50,7 +50,7 @@ pub mod downloads_page;
 
 use store_page::{StorePage, StorePageInput, StorePageOutput};
 use library_page::{LibraryPage, LibraryPageInput, LibraryPageOutput};
-use downloads_page::{DownloadsPage, DownloadsPageMsg};
+use downloads_page::{DownloadsPage, DownloadsPageInput, DownloadsPageOutput};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -75,13 +75,20 @@ pub enum MainWindowMsg {
         actions_pipeline: Arc<ActionsPipeline>
     },
 
+    OpenDownloadsPage,
+
     OpenGameSettingsWindow {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
         layout: Box<[GameSettingsGroup]>
     },
 
-    ReloadSelectedLibraryGameInfo
+    ReloadSelectedLibraryGameInfo,
+
+    MarkLibraryGameScheduled {
+        game_index: usize,
+        is_scheduled: bool
+    }
 }
 
 #[derive(Debug)]
@@ -239,13 +246,19 @@ impl SimpleAsyncComponent for MainWindow {
                     LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
                         => MainWindowMsg::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
 
+                    LibraryPageOutput::OpenDownloadsPage
+                        => MainWindowMsg::OpenDownloadsPage,
+
                     LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout }
                 }),
 
             downloads_page: DownloadsPage::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), |msg| match msg {
+                    DownloadsPageOutput::MarkLibraryGameScheduled { game_index, is_scheduled }
+                        => MainWindowMsg::MarkLibraryGameScheduled { game_index, is_scheduled }
+                }),
 
             game_settings_window: GameSettingsWindow::builder()
                 .launch(())
@@ -596,11 +609,15 @@ impl SimpleAsyncComponent for MainWindow {
                 game_title,
                 actions_pipeline
             } => {
-                self.downloads_page.emit(DownloadsPageMsg::ScheduleGameActionsPipeline {
+                self.downloads_page.emit(DownloadsPageInput::ScheduleGameActionsPipeline {
                     game_index,
                     game_title,
                     actions_pipeline
                 });
+            }
+
+            MainWindowMsg::OpenDownloadsPage => {
+                self.view_stack.set_visible_child_name("downloads");
             }
 
             MainWindowMsg::OpenGameSettingsWindow {
@@ -622,6 +639,16 @@ impl SimpleAsyncComponent for MainWindow {
 
             MainWindowMsg::ReloadSelectedLibraryGameInfo => {
                 self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo);
+            }
+
+            MainWindowMsg::MarkLibraryGameScheduled {
+                game_index,
+                is_scheduled
+            } => {
+                self.library_page.emit(LibraryPageInput::MarkGameScheduled {
+                    game_index,
+                    is_scheduled
+                });
             }
         }
     }

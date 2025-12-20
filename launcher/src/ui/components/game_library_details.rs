@@ -47,22 +47,16 @@ pub enum GameLibraryDetailsInput {
         manifest: GameManifest,
         edition: Option<String>,
         integration: Arc<GameIntegration>,
-        index: usize
+        index: usize,
+        is_scheduled: bool
     },
 
     UpdateGameInfo,
 
     ScheduleGameActionsPipeline,
+
+    OpenDownloadsPage,
     OpenGameSettingsWindow
-
-    // EmitLaunchGame,
-    // EmitKillGame,
-    // EmitInstallDiff,
-    // EmitOpenSettingsWindow,
-
-    // ScheduleRunningGameStatusCheck,
-
-    // SendSettingsWindowMsg(GameSettingsWindowInput)
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +66,8 @@ pub enum GameLibraryDetailsOutput {
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
+
+    OpenDownloadsPage,
 
     OpenGameSettingsWindow {
         variant: GameVariant,
@@ -98,7 +94,7 @@ pub struct GameLibraryDetails {
     game_actions_pipeline: Option<Arc<ActionsPipeline>>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>,
 
-    // is_game_scheduled: bool,
+    is_game_scheduled: bool
     // running_game: Option<Child>
 }
 
@@ -161,7 +157,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         // Launch game button.
                         gtk::Button {
                             #[watch]
-                            set_visible: model.game_launch_info.is_some(),
+                            set_visible: model.game_launch_info.is_some() && !model.is_game_scheduled,
 
                             #[watch]
                             set_css_classes?: model.game_launch_info.as_ref()
@@ -218,7 +214,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         // Execute actions pipeline button.
                         gtk::Button {
                             #[watch]
-                            set_visible: model.game_actions_pipeline.is_some(),
+                            set_visible: model.game_actions_pipeline.is_some() && !model.is_game_scheduled,
 
                             // If game can be launched AND pipeline is available
                             // then make pipeline button grey, otherwise - blue.
@@ -265,7 +261,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             add_css_class: "pill",
 
                             #[watch]
-                            set_visible: model.game_settings_layout.is_some(),
+                            set_visible: model.game_settings_layout.is_some() && !model.is_game_scheduled,
 
                             adw::ButtonContent {
                                 set_icon_name: "settings-symbolic",
@@ -273,7 +269,22 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             },
 
                             connect_clicked => GameLibraryDetailsInput::OpenGameSettingsWindow
-                        }
+                        },
+
+                        gtk::Button {
+                            add_css_class: "pill",
+
+                            #[watch]
+                            set_visible: model.is_game_scheduled,
+
+                            adw::ButtonContent {
+                                set_icon_name: "document-save-symbolic",
+                                set_label: "Go to downloads",
+                                set_tooltip: "Game actions pipeline is scheduled in downloads page"
+                            },
+
+                            connect_clicked => GameLibraryDetailsInput::OpenDownloadsPage
+                        },
                     }
                 }
             }
@@ -307,6 +318,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             game_actions_pipeline: None,
             game_settings_layout: None,
 
+            is_game_scheduled: false
             // running_game: None
         };
 
@@ -325,7 +337,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 manifest,
                 edition,
                 integration,
-                index
+                index,
+                is_scheduled
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::LazyLoad(manifest.game.images.poster.clone())
@@ -366,6 +379,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 self.game_title = Some(title.to_string());
                 self.game_developer = Some(developer.to_string());
                 self.game_publisher = Some(publisher.to_string());
+
+                self.is_game_scheduled = is_scheduled;
 
                 self.game_integration = Some(integration);
 
@@ -431,6 +446,10 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 }
             }
 
+            GameLibraryDetailsInput::OpenDownloadsPage => {
+                let _ = sender.output(GameLibraryDetailsOutput::OpenDownloadsPage);
+            }
+
             GameLibraryDetailsInput::OpenGameSettingsWindow => {
                 if let Some(variant) = &self.game_variant
                     && let Some(integration) = &self.game_integration
@@ -485,53 +504,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             //             Err(err) => tracing::error!(?err, "Failed to kill the game")
             //         }
-            //     }
-            // }
-
-            // GameLibraryDetailsInput::ScheduleRunningGameStatusCheck => {
-            //     if let Some(child) = &mut self.running_game {
-            //         match child.try_wait() {
-            //             Ok(Some(_)) => self.running_game = None,
-
-            //             Ok(None) => {
-            //                 tokio::spawn(async move {
-            //                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-            //                     sender.input(GameLibraryDetailsInput::ScheduleRunningGameStatusCheck)
-            //                 });
-            //             }
-
-            //             Err(err) => tracing::error!(?err, "Failed to check running game status")
-            //         }
-            //     }
-            // }
-
-            // GameLibraryDetailsInput::EmitInstallDiff => {
-            //     if let Some(listener) = self.listener.as_ref() {
-            //         let (send, recv) = tokio::sync::oneshot::channel();
-
-            //         let variant = match self.game_info.as_ref().and_then(|info| info.edition.as_ref()) {
-            //             Some(edition) => GameVariant::from_edition(&edition.name),
-            //             None => GameVariant::default()
-            //         };
-
-            //         let result = listener.send(SyncGameCommand::StartDiffPipeline {
-            //             variant,
-            //             listener: send
-            //         });
-
-            //         if let Err(err) = result {
-            //             tracing::error!(?err, "Failed to request diff pipeline execution");
-
-            //             return;
-            //         }
-
-            //         // Await pipeline execution finish and reload the game's status.
-            //         tokio::spawn(async move {
-            //             let _ = recv.await;
-
-            //             sender.input(GameLibraryDetailsInput::ReloadCurrentGameInfo);
-            //         });
             //     }
             // }
         }
