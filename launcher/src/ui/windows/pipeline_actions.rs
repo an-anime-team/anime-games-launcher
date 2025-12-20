@@ -51,6 +51,11 @@ pub enum PipelineActionsWindowInput {
         fraction: f64
     },
 
+    SetFinished {
+        action_number: usize,
+        is_finished: bool
+    },
+
     AddGraphPoint(u64),
 
     EmitClose
@@ -219,7 +224,8 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                     let index = guard.push_back(GameActionsPipelineFactory {
                         title: title.to_string(),
                         progress_fraction: 0.0,
-                        progress_text: String::new()
+                        progress_text: String::new(),
+                        is_finished: false
                     });
 
                     actions.push((action.clone(), index));
@@ -354,6 +360,11 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                             text: String::new(),
                             fraction: 1.0
                         });
+
+                        sender.input(PipelineActionsWindowInput::SetFinished {
+                            action_number: index.current_index(),
+                            is_finished: true
+                        });
                     }
 
                     sender.input(PipelineActionsWindowInput::EmitClose);
@@ -368,6 +379,16 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                 self.pipeline_actions.send(
                     action_number,
                     GameActionsPipelineFactoryMsg::SetProgress { text, fraction }
+                );
+            }
+
+            PipelineActionsWindowInput::SetFinished {
+                action_number,
+                is_finished
+            } => {
+                self.pipeline_actions.send(
+                    action_number,
+                    GameActionsPipelineFactoryMsg::SetFinished(is_finished)
                 );
             }
 

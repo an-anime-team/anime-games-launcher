@@ -24,14 +24,17 @@ pub enum GameActionsPipelineFactoryMsg {
     SetProgress {
         text: String,
         fraction: f64
-    }
+    },
+
+    SetFinished(bool)
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GameActionsPipelineFactory {
     pub title: String,
     pub progress_text: String,
-    pub progress_fraction: f64
+    pub progress_fraction: f64,
+    pub is_finished: bool
 }
 
 #[relm4::factory(pub, async)]
@@ -53,7 +56,7 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
                 set_show_text: true,
 
                 #[watch]
-                set_visible: self.progress_fraction > 0.0 && self.progress_fraction < 1.0,
+                set_visible: !self.is_finished && self.progress_fraction > 0.0,
 
                 #[watch]
                 set_text: Some(&self.progress_text),
@@ -64,7 +67,7 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
 
             add_suffix = &gtk::Image {
                 #[watch]
-                set_visible: self.progress_fraction == 1.0,
+                set_visible: self.is_finished,
 
                 set_icon_name: Some("emblem-ok-symbolic")
             }
@@ -89,6 +92,10 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
             GameActionsPipelineFactoryMsg::SetProgress { text, fraction } => {
                 self.progress_text = text;
                 self.progress_fraction = fraction;
+            }
+
+            GameActionsPipelineFactoryMsg::SetFinished(is_finished) => {
+                self.is_finished = is_finished;
             }
         }
     }
