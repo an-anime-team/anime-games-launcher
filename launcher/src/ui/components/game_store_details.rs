@@ -101,6 +101,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                         add_css_class: "title-1",
 
+                        set_selectable: true,
+
                         #[watch]
                         set_label: &model.title
                     },

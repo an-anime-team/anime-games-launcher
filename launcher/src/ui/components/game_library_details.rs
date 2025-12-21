@@ -138,6 +138,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                         add_css_class: "title-1",
 
+                        set_selectable: true,
+
                         #[watch]
                         set_label?: model.game_title.as_deref()
                     },
