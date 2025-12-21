@@ -56,7 +56,7 @@ pub struct ModuleScope {
     /// allowed files and folders.
     ///
     /// Default: `true`.
-    pub allow_fs_api: bool,
+    pub allow_filesystem_api: bool,
 
     /// Allow module to access network API.
     ///
@@ -103,6 +103,14 @@ pub struct ModuleScope {
     /// Default: `true`.
     pub allow_sqlite_api: bool,
 
+    /// Allow module to access portal API.
+    ///
+    /// This API allows module to send system/application-level notifications
+    /// and open file/folder dialogs which can escape the filesystem sandbox.
+    ///
+    /// Default: `true`.
+    pub allow_portal_api: bool,
+
     /// Allow module to access process API.
     ///
     /// This API allows module to spawn and control new processes on the host
@@ -134,13 +142,14 @@ impl Default for ModuleScope {
         Self {
             allow_string_api: true,
             allow_path_api: true,
-            allow_fs_api: true,
+            allow_filesystem_api: true,
             allow_network_api: true,
             allow_downloader_api: true,
             allow_archive_api: true,
             allow_hash_api: true,
             allow_compression_api: true,
             allow_sqlite_api: true,
+            allow_portal_api: true,
             allow_process_api: false,
             sandbox_read_paths: vec![],
             sandbox_write_paths: vec![]
@@ -154,13 +163,14 @@ impl ModuleScope {
             "api": {
                 "string": self.allow_string_api,
                 "path": self.allow_path_api,
-                "fs": self.allow_fs_api,
+                "filesystem": self.allow_filesystem_api,
                 "network": self.allow_network_api,
                 "downloader": self.allow_downloader_api,
                 "archive": self.allow_archive_api,
                 "hash": self.allow_hash_api,
                 "compression": self.allow_compression_api,
                 "sqlite": self.allow_sqlite_api,
+                "portal": self.allow_portal_api,
                 "process": self.allow_process_api
             },
             "sandbox": {
@@ -173,7 +183,7 @@ impl ModuleScope {
     pub fn from_json(value: &Json) -> Self {
         let mut scope = Self::default();
 
-        if let Some(api) = value.get("api").or_else(|| value.get("allow_api")) {
+        if let Some(api) = value.get("api") {
             if let Some(allow) = api.get("string").and_then(Json::as_bool) {
                 scope.allow_string_api = allow;
             }
@@ -182,8 +192,8 @@ impl ModuleScope {
                 scope.allow_path_api = allow;
             }
 
-            if let Some(allow) = api.get("fs").and_then(Json::as_bool) {
-                scope.allow_fs_api = allow;
+            if let Some(allow) = api.get("filesystem").and_then(Json::as_bool) {
+                scope.allow_filesystem_api = allow;
             }
 
             if let Some(allow) = api.get("network").and_then(Json::as_bool) {
@@ -208,6 +218,10 @@ impl ModuleScope {
 
             if let Some(allow) = api.get("sqlite").and_then(Json::as_bool) {
                 scope.allow_sqlite_api = allow;
+            }
+
+            if let Some(allow) = api.get("portal").and_then(Json::as_bool) {
+                scope.allow_portal_api = allow;
             }
 
             if let Some(allow) = api.get("process").and_then(Json::as_bool) {

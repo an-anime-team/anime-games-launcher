@@ -23,6 +23,7 @@ use mlua::prelude::*;
 use agl_core::export::tasks::tokio;
 use agl_core::export::network::reqwest;
 use agl_core::network::downloader::Downloader;
+use agl_locale::LocalizableString;
 
 #[cfg(feature = "packages-support")]
 use agl_packages::storage::Storage;
@@ -31,6 +32,7 @@ use agl_packages::storage::Storage;
 use crate::allow_list::AllowList;
 
 use crate::module::{Module, ModuleScope};
+use crate::api::ApiOptions;
 use crate::runtime::{Runtime, RuntimeError, ModulePaths};
 
 #[cfg(feature = "packages-support")]
@@ -51,9 +53,24 @@ fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
     Ok(path)
 }
 
+fn get_runtime() -> Result<Runtime, RuntimeError> {
+    fn translate(str: LocalizableString) -> String {
+        str.default_translation().to_string()
+    }
+
+    Runtime::new(ApiOptions {
+        lua: Lua::new(),
+        client: reqwest::Client::new(),
+        show_toast: Box::new(|_| {}),
+        show_notification: Box::new(|_| {}),
+        show_dialog: Box::new(|_| None),
+        translate
+    })
+}
+
 #[test]
 fn simple_module() -> Result<(), RuntimeError> {
-    let runtime = Runtime::new(reqwest::Client::new())?;
+    let runtime = get_runtime()?;
 
     let module = Module {
         path: PathBuf::from("tests/simple_module/module.luau"),
@@ -96,7 +113,7 @@ async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
         format!("{TESTS_DIR_URL}/simple_package/package.json")
     ]).await?;
 
-    let runtime = Runtime::new(reqwest::Client::new())?;
+    let runtime = get_runtime()?;
 
     let paths = ModulePaths {
         temp_folder: std::env::temp_dir(),
@@ -130,7 +147,7 @@ async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
         format!("{TESTS_DIR_URL}/dependency_module/package.json")
     ]).await?;
 
-    let runtime = Runtime::new(reqwest::Client::new())?;
+    let runtime = get_runtime()?;
 
     let paths = ModulePaths {
         temp_folder: std::env::temp_dir(),
@@ -168,7 +185,7 @@ async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         format!("{TESTS_DIR_URL}/nested_package/package_2.json")
     ]).await?;
 
-    let runtime = Runtime::new(reqwest::Client::new())?;
+    let runtime = get_runtime()?;
 
     let paths = ModulePaths {
         temp_folder: std::env::temp_dir(),

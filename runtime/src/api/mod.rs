@@ -24,17 +24,17 @@ use mlua::prelude::*;
 
 // TODO: add tests.
 
-mod string_api;
-mod path_api;
-mod filesystem_api;
-mod network_api;
-mod downloader_api;
-mod archive_api;
-mod hash_api;
-mod compression_api;
-mod sqlite_api;
-// mod portals_api;
-mod process_api;
+pub mod string_api;
+pub mod path_api;
+pub mod filesystem_api;
+pub mod network_api;
+pub mod downloader_api;
+pub mod archive_api;
+pub mod hash_api;
+pub mod compression_api;
+pub mod sqlite_api;
+pub mod portal_api;
+pub mod process_api;
 
 use crate::module::ModuleScope;
 
@@ -159,6 +159,26 @@ impl Context {
 
 type LuaFunctionBuilder = Box<dyn Fn(&Lua, &Context) -> Result<LuaFunction, LuaError>>;
 
+pub struct ApiOptions {
+    /// Lua engine.
+    pub lua: Lua,
+
+    /// Client used by the network API.
+    pub client: reqwest::Client,
+
+    /// Callback used to display a toast message.
+    pub show_toast: Box<dyn Fn(portal_api::ToastOptions) + Send>,
+
+    /// Callback used to display a system notification.
+    pub show_notification: Box<dyn Fn(portal_api::NotificationOptions) + Send>,
+
+    /// Callback used to display a dialog.
+    pub show_dialog: Box<dyn Fn(portal_api::DialogOptions) -> Option<String> + Send>,
+
+    /// Callback used to translate localizable string.
+    pub translate: fn(agl_locale::LocalizableString) -> String
+}
+
 /// Luau modules standard library builder.
 pub struct Api {
     lua: Lua,
@@ -175,15 +195,25 @@ pub struct Api {
     hash_api: hash_api::HashApi,
     compression_api: compression_api::CompressionApi,
     sqlite_api: sqlite_api::SqliteApi,
-    // portals_api: PortalsAPI,
+    portal_api: portal_api::PortalApi,
     process_api: process_api::ProcessApi
 }
 
 impl Api {
     /// Create new standard library builder.
-    pub fn new(lua: Lua, client: reqwest::Client) -> Result<Self, LuaError> {
+    pub fn new(options: ApiOptions) -> Result<Self, LuaError> {
+        let filesystem_api = filesystem_api::FilesystemApi::new(options.lua.clone())?;
+
+        let portal_api = portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
+            show_toast: options.show_toast,
+            show_notification: options.show_notification,
+            show_dialog: options.show_dialog,
+            translate: options.translate,
+            file_handles: filesystem_api.file_handles().clone()
+        })?;
+
         Ok(Self {
-            clone: lua.create_function(|lua, value: LuaValue| {
+            clone: options.lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
                     match value {
                         LuaValue::String(string) => {
@@ -216,7 +246,7 @@ impl Api {
                 clone_value(lua, value)
             })?,
 
-            dbg: lua.create_function(|_, values: LuaVariadic<LuaValue>| {
+            dbg: options.lua.create_function(|_, values: LuaVariadic<LuaValue>| {
                 for value in values {
                     #[cfg(feature = "tracing")]
                     tracing::debug!("{value:#?}");
@@ -228,25 +258,19 @@ impl Api {
                 Ok(())
             })?,
 
-            string_api: string_api::StringApi::new(lua.clone())?,
-            path_api: path_api::PathApi::new(lua.clone())?,
-            filesystem_api: filesystem_api::FilesystemApi::new(lua.clone())?,
-            network_api: network_api::NetworkApi::new(lua.clone(), client)?,
-            downloader_api: downloader_api::DownloaderApi::new(lua.clone())?,
-            archive_api: archive_api::ArchiveApi::new(lua.clone())?,
-            hash_api: hash_api::HashApi::new(lua.clone())?,
-            compression_api: compression_api::CompressionApi::new(lua.clone())?,
-            // sync_api: sync_api::SyncApi::new(lua.clone())?,
-            sqlite_api: sqlite_api::SqliteApi::new(lua.clone())?,
-            // portals_api: PortalsAPI::new(lua.clone(), PortalsAPIOptions {
-            //     show_toast: options.show_toast,
-            //     show_notification: options.show_notification,
-            //     show_dialog: options.show_dialog,
-            //     file_handles: filesystem_api.file_handles()
-            // })?,
-            process_api: process_api::ProcessApi::new(lua.clone())?,
+            string_api: string_api::StringApi::new(options.lua.clone())?,
+            path_api: path_api::PathApi::new(options.lua.clone())?,
+            filesystem_api,
+            network_api: network_api::NetworkApi::new(options.lua.clone(), options.client)?,
+            downloader_api: downloader_api::DownloaderApi::new(options.lua.clone())?,
+            archive_api: archive_api::ArchiveApi::new(options.lua.clone())?,
+            hash_api: hash_api::HashApi::new(options.lua.clone())?,
+            compression_api: compression_api::CompressionApi::new(options.lua.clone())?,
+            sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
+            portal_api,
+            process_api: process_api::ProcessApi::new(options.lua.clone())?,
 
-            lua
+            lua: options.lua
         })
     }
 
@@ -307,7 +331,7 @@ impl Api {
         }
 
         // Filesystem API.
-        if context.scope.allow_fs_api {
+        if context.scope.allow_filesystem_api {
             env.raw_set("fs", self.filesystem_api.create_env(context)?)?;
         }
 
@@ -339,6 +363,11 @@ impl Api {
         // Sqlite API.
         if context.scope.allow_sqlite_api {
             env.raw_set("sqlite", self.sqlite_api.create_env(context)?)?;
+        }
+
+        // Portal API.
+        if context.scope.allow_portal_api {
+            env.raw_set("portal", self.portal_api.create_env()?)?;
         }
 
         // Process API.

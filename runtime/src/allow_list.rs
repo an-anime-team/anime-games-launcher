@@ -68,13 +68,14 @@ impl AllowList {
 
         entry.allow_string_api      |= scope.allow_string_api;
         entry.allow_path_api        |= scope.allow_path_api;
-        entry.allow_fs_api          |= scope.allow_fs_api;
+        entry.allow_filesystem_api  |= scope.allow_filesystem_api;
         entry.allow_network_api     |= scope.allow_network_api;
         entry.allow_downloader_api  |= scope.allow_downloader_api;
         entry.allow_archive_api     |= scope.allow_archive_api;
         entry.allow_hash_api        |= scope.allow_hash_api;
         entry.allow_compression_api |= scope.allow_compression_api;
         entry.allow_sqlite_api      |= scope.allow_sqlite_api;
+        entry.allow_portal_api      |= scope.allow_portal_api;
         entry.allow_process_api     |= scope.allow_process_api;
 
         entry.sandbox_read_paths.extend(scope.sandbox_read_paths);

@@ -30,9 +30,11 @@ use anyhow::Context;
 
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
+use agl_locale::LocalizableString;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
+use agl_runtime::api::ApiOptions;
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::engine::{
@@ -271,6 +273,14 @@ impl SimpleAsyncComponent for MainWindow {
     ) -> AsyncComponentParts<Self> {
         let config = config::startup();
 
+        let lua = Lua::new();
+
+        // Set runtime memory limit.
+        if config.runtime_memory_limit > 0 {
+            lua.set_memory_limit(config.runtime_memory_limit)
+                .expect("failed to set packages runtime memory limit");
+        }
+
         let client = config.client_builder()
             .and_then(|client| {
                 client.build()
@@ -281,15 +291,65 @@ impl SimpleAsyncComponent for MainWindow {
         let storage = Storage::open(&config.packages_resources_path)
             .expect("failed to open packages storage");
 
-        let runtime = Runtime::new(client)
-            .expect("failed to initialize packages runtime");
+        fn translate(str: LocalizableString) -> String {
+            let config = config::get();
 
-        // Set runtime memory limit.
-        if config.runtime_memory_limit > 0 {
-            runtime.lua()
-                .set_memory_limit(config.runtime_memory_limit)
-                .expect("failed to set packages runtime memory limit");
+            let str = match config.language() {
+                Ok(lang) => str.translate(&lang),
+                Err(_) => str.default_translation()
+            };
+
+            str.to_string()
         }
+
+        let runtime = Runtime::new(ApiOptions {
+            lua,
+            client,
+            translate,
+
+            show_toast: Box::new(|options| {
+                tracing::debug!(?options, "portal API requested to show toast");
+            }),
+
+            show_notification: Box::new(|options| {
+                tracing::debug!(?options, "portal API requested to show notification");
+
+                let lang = config::get().language();
+
+                let title = match &lang {
+                    Ok(lang) => options.title.translate(lang),
+                    Err(_) => options.title.default_translation()
+                };
+
+                let mut notification = notify_rust::Notification::new();
+                let mut notification = notification.summary(title);
+
+                if let Some(message) = options.message {
+                    let message = match &lang {
+                        Ok(lang) => message.translate(lang),
+                        Err(_) => message.default_translation()
+                    };
+
+                    notification = notification.body(message);
+                }
+
+                if let Some(icon) = options.icon {
+                    notification = notification.icon(&icon);
+                }
+
+                if let Err(err) = notification.show() {
+                    tracing::error!(?err, "failed to show system notification");
+
+                    dialogs::error("Failed to show system notification", err.to_string());
+                }
+            }),
+
+            show_dialog: Box::new(|options| {
+                tracing::debug!(?options, "portal API requested to show dialog");
+
+                None
+            })
+        }).expect("failed to initialize packages runtime");
 
         let mut model = Self {
             about_window: AboutWindow::builder()

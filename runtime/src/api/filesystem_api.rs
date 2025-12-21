@@ -33,6 +33,7 @@ pub const IO_BUF_SIZE: usize = 16384; // 16 KiB read/write in-RAM cache
 
 pub struct FilesystemApi {
     lua: Lua,
+    file_handles: Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>>,
 
     fs_exists: LuaFunctionBuilder,
     fs_metadata: LuaFunctionBuilder,
@@ -771,8 +772,16 @@ impl FilesystemApi {
                 })
             }),
 
-            lua
+            lua,
+            file_handles
         })
+    }
+
+    #[inline(always)]
+    pub const fn file_handles(
+        &self
+    ) -> &Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>> {
+        &self.file_handles
     }
 
     /// Create new lua table with API functions.

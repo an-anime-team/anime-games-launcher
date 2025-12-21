@@ -20,8 +20,6 @@ use std::path::PathBuf;
 
 use mlua::prelude::*;
 
-use agl_core::export::network::reqwest;
-
 #[cfg(feature = "packages-support")]
 use agl_packages::{
     hash::Hash,
@@ -34,7 +32,7 @@ use agl_packages::{
 use crate::allow_list::AllowList;
 
 use crate::module::{Module, ModuleScope};
-use crate::api::{Api, Context};
+use crate::api::{Api, ApiOptions, Context};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeError {
@@ -91,30 +89,27 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    /// Create new luau engine with provided reqwest client.
-    pub fn new(client: reqwest::Client) -> Result<Self, RuntimeError> {
-        // Create luau engine.
-        let lua = Lua::new();
-
+    /// Create new luau engine with provided API options.
+    pub fn new(options: ApiOptions) -> Result<Self, RuntimeError> {
         // Prepare tables and create a registry key to be able to access them
         // from the rust side.
-        let engine_table = lua.create_table_with_capacity(0, 2)?;
+        let engine_table = options.lua.create_table_with_capacity(0, 2)?;
 
-        let values_table = lua.create_table()?;
-        let refs_table = lua.create_table()?;
+        let values_table = options.lua.create_table()?;
+        let refs_table = options.lua.create_table()?;
 
         engine_table.raw_set("values", values_table.clone())?; // [value_key] => [value]
         engine_table.raw_set("refs", refs_table.clone())?;     // [value_key] => { [name] => [value_key] }
 
-        lua.set_named_registry_value("engine", engine_table)?;
+        options.lua.set_named_registry_value("engine", engine_table)?;
 
         // Enable JIT and sandbox for modules execution.
-        lua.enable_jit(true);
-        lua.sandbox(true)?;
+        options.lua.enable_jit(true);
+        options.lua.sandbox(true)?;
 
         Ok(Self {
-            lua: lua.clone(),
-            api: Api::new(lua, client)?
+            lua: options.lua.clone(),
+            api: Api::new(options)?
         })
     }
 
