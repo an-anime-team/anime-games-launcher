@@ -262,6 +262,7 @@ impl Api {
         env.raw_set("tonumber", self.lua.globals().get::<LuaFunction>("tonumber")?)?;
         env.raw_set("tostring", self.lua.globals().get::<LuaFunction>("tostring")?)?;
         env.raw_set("type", self.lua.globals().get::<LuaFunction>("type")?)?;
+        env.raw_set("typeof", self.lua.globals().get::<LuaFunction>("typeof")?)?;
 
         env.raw_set("getmetatable", self.lua.globals().get::<LuaFunction>("getmetatable")?)?;
         env.raw_set("setmetatable", self.lua.globals().get::<LuaFunction>("setmetatable")?)?;
