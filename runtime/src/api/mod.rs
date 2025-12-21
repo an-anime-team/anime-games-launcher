@@ -266,6 +266,8 @@ impl Api {
 
         env.raw_set("getmetatable", self.lua.globals().get::<LuaFunction>("getmetatable")?)?;
         env.raw_set("setmetatable", self.lua.globals().get::<LuaFunction>("setmetatable")?)?;
+        env.raw_set("rawget", self.lua.globals().get::<LuaFunction>("rawget")?)?;
+        env.raw_set("rawset", self.lua.globals().get::<LuaFunction>("rawset")?)?;
 
         env.raw_set("table", self.lua.globals().get::<LuaValue>("table")?)?;
         env.raw_set("string", self.lua.globals().get::<LuaValue>("string")?)?;
