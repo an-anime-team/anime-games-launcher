@@ -1,4 +1,4 @@
-# Archives API
+# Archive API
 
 Most of resources in the internet are transfered in form of archives.
 This module allows you to extract their content.

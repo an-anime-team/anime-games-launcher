@@ -16,7 +16,8 @@ implements some of the most common compression algorithms.
 
 ## Supported compression algorithms
 
-Following table contains list of `CompressionAlgorithm` enum values.
+Following table contains list of `CompressionAlgorithm` enum values. Supported 
+compression algorithms are provided by the `agl-core` library.
 
 | Algorithm  | URL                                |
 | ---------- | ---------------------------------- |

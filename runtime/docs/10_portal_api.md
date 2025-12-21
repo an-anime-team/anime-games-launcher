@@ -112,11 +112,11 @@ type DialogButton = {
 
 ## `portals.open_file([options: OpenFileOptions]) -> OpenFileDetails | OpenFileDetails[] | null`
 
-Open system file selection dialog. Block current thread until a file is selected,
-returning either `nil` if no file selected or information about selected file
-and its filesystem API handle, or list of such information if `multiple = true`.
-Handles allow you to interact with the files directly using filesystem API.
-Files opened this way are allowed to escape the sandbox.
+Open system file selection dialog. Block current thread until a file is 
+selected, returning either `nil` if no file selected or information about
+selected file and its filesystem API handle, or list of such information if 
+`multiple = true`. Handles allow you to interact with the files directly using 
+filesystem API. Files opened this way are allowed to escape the sandbox.
 
 ```ts
 type OpenFileOptions = {
