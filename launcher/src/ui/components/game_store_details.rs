@@ -28,7 +28,7 @@ use crate::games::GameLock;
 use crate::ui::dialogs;
 
 use super::lazy_picture::ImagePath;
-use super::card::{CardComponent, CardComponentInput};
+use super::card::{CardComponent, CardComponentInput, CardSize};
 use super::picture_carousel::{PictureCarousel, PictureCarouselMsg};
 use super::game_tags::GameTagFactory;
 use super::maintainers_row::MaintainersRowFactory;
@@ -86,11 +86,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
     view! {
         #[root]
-        adw::ClampScrollable {
-            set_maximum_size: 900,
-            set_margin_all: 32,
+        gtk::ScrolledWindow {
+            adw::Clamp {
+                set_maximum_size: 900,
+                set_margin_all: 32,
 
-            gtk::ScrolledWindow {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_halign: gtk::Align::Center,
@@ -212,23 +212,34 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                 }
                             },
 
-                            gtk::ScrolledWindow {
-                                set_propagate_natural_height: true,
+                            adw::Clamp {
+                                set_maximum_size: CardSize::Large.width(),
 
                                 gtk::Box {
                                     set_orientation: gtk::Orientation::Vertical,
-                                    set_spacing: 16,
 
-                                    model.tags.widget() {
-                                        set_selection_mode: gtk::SelectionMode::None
+                                    set_spacing: 16,
+                                    set_vexpand: true,
+
+                                    adw::PreferencesGroup {
+                                        set_vexpand: true,
+
+                                        #[watch]
+                                        set_visible: !model.tags.is_empty(),
+
+                                        model.tags.widget() {
+                                            set_halign: gtk::Align::Start,
+                                            set_selection_mode: gtk::SelectionMode::None
+                                        }
                                     },
 
                                     adw::PreferencesGroup {
-                                        set_margin_start: 4,
-                                        set_margin_end: 4,
-                                        set_margin_bottom: 4,
+                                        set_vexpand: true,
 
                                         set_title: "Package",
+
+                                        #[watch]
+                                        set_visible: !model.maintainers.is_empty(),
 
                                         model.maintainers.widget() {
                                             set_title: "Maintainers"
@@ -342,6 +353,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                 // Set game package maintainers.
                 let mut guard = self.maintainers.guard();
+
+                guard.clear();
 
                 for maintainer in &manifest.maintainers {
                     let maintainer = match &lang {
