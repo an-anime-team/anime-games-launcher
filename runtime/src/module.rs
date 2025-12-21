@@ -151,7 +151,7 @@ impl Default for ModuleScope {
 impl ModuleScope {
     pub fn to_json(&self) -> Json {
         json!({
-            "allow_api": {
+            "api": {
                 "string": self.allow_string_api,
                 "path": self.allow_path_api,
                 "fs": self.allow_fs_api,
@@ -173,44 +173,44 @@ impl ModuleScope {
     pub fn from_json(value: &Json) -> Self {
         let mut scope = Self::default();
 
-        if let Some(allow_api) = value.get("allow_api") {
-            if let Some(allow) = allow_api.get("string").and_then(Json::as_bool) {
+        if let Some(api) = value.get("api").or_else(|| value.get("allow_api")) {
+            if let Some(allow) = api.get("string").and_then(Json::as_bool) {
                 scope.allow_string_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("path").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("path").and_then(Json::as_bool) {
                 scope.allow_path_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("fs").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("fs").and_then(Json::as_bool) {
                 scope.allow_fs_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("network").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("network").and_then(Json::as_bool) {
                 scope.allow_network_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("downloader").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("downloader").and_then(Json::as_bool) {
                 scope.allow_downloader_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("archive").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("archive").and_then(Json::as_bool) {
                 scope.allow_archive_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("hash").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("hash").and_then(Json::as_bool) {
                 scope.allow_hash_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("compression").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("compression").and_then(Json::as_bool) {
                 scope.allow_compression_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("sqlite").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("sqlite").and_then(Json::as_bool) {
                 scope.allow_sqlite_api = allow;
             }
 
-            if let Some(allow) = allow_api.get("process").and_then(Json::as_bool) {
+            if let Some(allow) = api.get("process").and_then(Json::as_bool) {
                 scope.allow_process_api = allow;
             }
         }
