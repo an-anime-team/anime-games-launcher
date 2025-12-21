@@ -131,7 +131,13 @@ impl GameLaunchInfo {
                 .unwrap_or_else(|_| Ok(GameLaunchStatus::default()))?,
 
             hint: value.get::<LuaValue>("hint")
-                .map(|hint| LocalizableString::from_lua(&hint).map(Some))
+                .map(|hint| {
+                    if hint.is_null() || hint.is_nil() {
+                        Ok(None)
+                    } else {
+                        LocalizableString::from_lua(&hint).map(Some)
+                    }
+                })
                 .unwrap_or(Ok(None))?,
 
             binary: value.get::<LuaString>("binary")
