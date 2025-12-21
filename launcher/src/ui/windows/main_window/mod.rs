@@ -35,6 +35,9 @@ use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
 use agl_runtime::api::ApiOptions;
+use agl_runtime::api::portal_api::{
+    ToastOptions, NotificationOptions, DialogOptions
+};
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::engine::{
@@ -94,6 +97,10 @@ pub enum MainWindowMsg {
 
     AddLibraryPageGame(GameLock),
 
+    ShowToast(ToastOptions),
+    ShowNotification(NotificationOptions),
+    ShowDialog(DialogOptions),
+
     SetShowBackButton(bool),
     GoBackButtonClicked,
 
@@ -128,6 +135,7 @@ pub struct MainWindow {
     game_running_window: AsyncController<GameRunningWindow>,
 
     window: Option<adw::ApplicationWindow>,
+    toast_overlay: adw::ToastOverlay,
     view_stack: adw::ViewStack,
 
     loading_status: Option<String>,
@@ -149,6 +157,7 @@ impl std::fmt::Debug for MainWindow {
             .field("pipeline_actions_window", &self.pipeline_actions_window)
             .field("game_running_window", &self.game_running_window)
             .field("window", &self.window)
+            .field("toast_overlay", &self.toast_overlay)
             .field("view_stack", &self.view_stack)
             .field("loading_status", &self.loading_status)
             .field("show_back_button", &self.show_back_button)
@@ -181,84 +190,87 @@ impl SimpleAsyncComponent for MainWindow {
 
             add_css_class?: consts::APP_DEBUG.then_some("devel"),
 
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-
+            #[local_ref]
+            _toast_overlay -> adw::ToastOverlay {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
 
-                    #[watch]
-                    set_visible: model.loading_status.is_some(),
-
-                    adw::HeaderBar {
-                        add_css_class: "flat"
-                    },
-
-                    adw::StatusPage {
-                        set_vexpand: true,
-                        set_hexpand: true,
-
-                        set_icon_name: Some(consts::APP_ID),
-
-                        set_title: "Loading",
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
 
                         #[watch]
-                        set_description: model.loading_status.as_deref()
-                    }
-                },
+                        set_visible: model.loading_status.is_some(),
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
+                        adw::HeaderBar {
+                            add_css_class: "flat"
+                        },
 
-                    #[watch]
-                    set_visible: model.loading_status.is_none(),
+                        adw::StatusPage {
+                            set_vexpand: true,
+                            set_hexpand: true,
 
-                    adw::HeaderBar {
-                        pack_start = &gtk::Button {
-                            set_icon_name: "go-previous-symbolic",
-                            add_css_class: "flat",
+                            set_icon_name: Some(consts::APP_ID),
+
+                            set_title: "Loading",
 
                             #[watch]
-                            set_visible: model.show_back_button,
-
-                            connect_clicked => MainWindowMsg::GoBackButtonClicked
-                        },
-
-                        pack_end = &gtk::MenuButton {
-                            set_icon_name: "open-menu-symbolic",
-                            set_menu_model: Some(&main_menu)
-                        },
-
-                        #[wrap(Some)]
-                        set_title_widget = &adw::ViewSwitcher {
-                            set_policy: adw::ViewSwitcherPolicy::Wide,
-
-                            set_stack: Some(_view_stack)
+                            set_description: model.loading_status.as_deref()
                         }
                     },
 
-                    #[local_ref]
-                    _view_stack -> adw::ViewStack {
-                        add = &gtk::Box {
-                            set_vexpand: true,
-                            set_hexpand: true,
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
 
-                            model.store_page.widget(),
-                        } -> {
-                            set_title: Some("Store"),
-                            set_name: Some("store"),
-                            set_icon_name: Some("shopping-cart-symbolic")
+                        #[watch]
+                        set_visible: model.loading_status.is_none(),
+
+                        adw::HeaderBar {
+                            pack_start = &gtk::Button {
+                                set_icon_name: "go-previous-symbolic",
+                                add_css_class: "flat",
+
+                                #[watch]
+                                set_visible: model.show_back_button,
+
+                                connect_clicked => MainWindowMsg::GoBackButtonClicked
+                            },
+
+                            pack_end = &gtk::MenuButton {
+                                set_icon_name: "open-menu-symbolic",
+                                set_menu_model: Some(&main_menu)
+                            },
+
+                            #[wrap(Some)]
+                            set_title_widget = &adw::ViewSwitcher {
+                                set_policy: adw::ViewSwitcherPolicy::Wide,
+
+                                set_stack: Some(_view_stack)
+                            }
                         },
 
-                        add = &gtk::Box {
-                            set_vexpand: true,
-                            set_hexpand: true,
+                        #[local_ref]
+                        _view_stack -> adw::ViewStack {
+                            add = &gtk::Box {
+                                set_vexpand: true,
+                                set_hexpand: true,
 
-                            model.library_page.widget(),
-                        } -> {
-                            set_title: Some("Library"),
-                            set_name: Some("library"),
-                            set_icon_name: Some("applications-games-symbolic")
+                                model.store_page.widget(),
+                            } -> {
+                                set_title: Some("Store"),
+                                set_name: Some("store"),
+                                set_icon_name: Some("shopping-cart-symbolic")
+                            },
+
+                            add = &gtk::Box {
+                                set_vexpand: true,
+                                set_hexpand: true,
+
+                                model.library_page.widget(),
+                            } -> {
+                                set_title: Some("Library"),
+                                set_name: Some("library"),
+                                set_icon_name: Some("applications-games-symbolic")
+                            }
                         }
                     }
                 }
@@ -307,48 +319,32 @@ impl SimpleAsyncComponent for MainWindow {
             client,
             translate,
 
-            show_toast: Box::new(|options| {
-                tracing::debug!(?options, "portal API requested to show toast");
-            }),
+            show_toast: {
+                let sender = sender.clone();
 
-            show_notification: Box::new(|options| {
-                tracing::debug!(?options, "portal API requested to show notification");
+                Box::new(move |options| {
+                    sender.input(MainWindowMsg::ShowToast(options));
+                })
+            },
 
-                let lang = config::get().language();
+            show_notification: {
+                let sender = sender.clone();
 
-                let title = match &lang {
-                    Ok(lang) => options.title.translate(lang),
-                    Err(_) => options.title.default_translation()
-                };
+                Box::new(move |options| {
+                    sender.input(MainWindowMsg::ShowNotification(options));
+                })
+            },
 
-                let mut notification = notify_rust::Notification::new();
-                let mut notification = notification.summary(title);
+            show_dialog: {
+                let sender = sender.clone();
 
-                if let Some(message) = options.message {
-                    let message = match &lang {
-                        Ok(lang) => message.translate(lang),
-                        Err(_) => message.default_translation()
-                    };
+                Box::new(move |options| {
+                    sender.input(MainWindowMsg::ShowDialog(options));
 
-                    notification = notification.body(message);
-                }
-
-                if let Some(icon) = options.icon {
-                    notification = notification.icon(&icon);
-                }
-
-                if let Err(err) = notification.show() {
-                    tracing::error!(?err, "failed to show system notification");
-
-                    dialogs::error("Failed to show system notification", err.to_string());
-                }
-            }),
-
-            show_dialog: Box::new(|options| {
-                tracing::debug!(?options, "portal API requested to show dialog");
-
-                None
-            })
+                    // FIXME
+                    None
+                })
+            },
         }).expect("failed to initialize packages runtime");
 
         let mut model = Self {
@@ -401,6 +397,7 @@ impl SimpleAsyncComponent for MainWindow {
                 .detach(),
 
             window: None,
+            toast_overlay: adw::ToastOverlay::new(),
             view_stack: adw::ViewStack::new(),
 
             loading_status: Some(String::new()),
@@ -413,6 +410,7 @@ impl SimpleAsyncComponent for MainWindow {
         };
 
         // Named like this to supress relm4 view macro warning.
+        let _toast_overlay = &model.toast_overlay;
         let _view_stack = &model.view_stack;
 
         let widgets = view_output!();
@@ -971,6 +969,76 @@ impl SimpleAsyncComponent for MainWindow {
                     package: game,
                     integration: game_integration
                 });
+            }
+
+            MainWindowMsg::ShowToast(options) => {
+                let lang = config::get().language();
+
+                let title = match &options {
+                    ToastOptions::Simple(title) => title,
+                    ToastOptions::Activatable { message, .. } => message
+                };
+
+                let title = match &lang {
+                    Ok(lang) => title.translate(lang),
+                    Err(_) => title.default_translation()
+                };
+
+                let toast = adw::Toast::new(title);
+
+                if let ToastOptions::Activatable { label, callback, .. } = options {
+                    let label = match &lang {
+                        Ok(lang) => label.translate(lang),
+                        Err(_) => label.default_translation()
+                    };
+
+                    toast.set_button_label(Some(label));
+
+                    toast.connect_button_clicked(move |_| {
+                        if let Err(err) = callback.call::<()>(()) {
+                            tracing::error!(?err, "failed to execute toast action");
+
+                            dialogs::error("Failed to execute toast action", err.to_string());
+                        }
+                    });
+                }
+
+                self.toast_overlay.add_toast(toast);
+            }
+
+            MainWindowMsg::ShowNotification(options) => {
+                let lang = config::get().language();
+
+                let title = match &lang {
+                    Ok(lang) => options.title.translate(lang),
+                    Err(_) => options.title.default_translation()
+                };
+
+                let mut notification = notify_rust::Notification::new();
+                let mut notification = notification.summary(title);
+
+                if let Some(message) = options.message {
+                    let message = match &lang {
+                        Ok(lang) => message.translate(lang),
+                        Err(_) => message.default_translation()
+                    };
+
+                    notification = notification.body(message);
+                }
+
+                if let Some(icon) = options.icon {
+                    notification = notification.icon(&icon);
+                }
+
+                if let Err(err) = notification.show() {
+                    tracing::error!(?err, "failed to show system notification");
+
+                    dialogs::error("Failed to show system notification", err.to_string());
+                }
+            }
+
+            MainWindowMsg::ShowDialog(_options) => {
+
             }
 
             MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,
