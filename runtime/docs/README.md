@@ -95,14 +95,15 @@ migration process.
 
 List of all available APIs:
 
-| Name       | Prefix       | Description                                    |
-| ---------- | ------------ | ---------------------------------------------- |
-| Strings    | `str`        | String conversions and data serialization.     |
-| Paths      | `path`       | Paths construction and resolution.             |
-| Filesystem | `fs`         | Sandboxed filesystem manipulations.            |
-| Network    | `net`        | Perform HTTP requests.                         |
-| Downloader | `downloader` | HTTP files downloader.                         |
-| Archives   | `archive`    | Archives extraction.                           |
-| Hashes     | `hash`       | Hash values calculation.                       |
-| SQLite     | `sqlite`     | SQLite databases management.                   |
-| Process    | `process`    | Binaries execution.                            |
+| Name           | Prefix       | Description                                    |
+| -------------- | ------------ | ---------------------------------------------- |
+| String API     | `str`        | String conversions and data serialization.     |
+| Path API       | `path`       | Paths construction and resolution.             |
+| Filesystem API | `fs`         | Sandboxed filesystem manipulations.            |
+| Network API    | `net`        | Perform HTTP requests.                         |
+| Downloader API | `downloader` | HTTP files downloader.                         |
+| Archive API    | `archive`    | Archives extraction.                           |
+| Hash API       | `hash`       | Hash values calculation.                       |
+| SQLite API     | `sqlite`     | SQLite databases management.                   |
+| Portal API     | `portal`     | Sandboxed application and system interactions. |
+| Process API    | `process`    | Binaries execution.                            |

@@ -1,4 +1,4 @@
-# Paths API
+# Path API
 
 Filesystem paths are sandboxed by design. Each module can access special
 sandboxed folders to store its state there. This module provides functions to
