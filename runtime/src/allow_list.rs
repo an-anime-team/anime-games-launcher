@@ -48,6 +48,18 @@ impl AllowList {
         Some(Self(scopes))
     }
 
+    #[inline]
+    pub const fn scopes(&self) -> &HashMap<Hash, ModuleScope> {
+        &self.0
+    }
+
+    /// Merge current allow list with provided one.
+    pub fn merge_with(&mut self, another_list: Self) {
+        for (hash, scope) in another_list.0 {
+            self.add_module_scope(hash, scope);
+        }
+    }
+
     /// Add module scope to the allow list, merging it with existing one if it
     /// is available.
     pub fn add_module_scope(&mut self, hash: Hash, scope: ModuleScope) {

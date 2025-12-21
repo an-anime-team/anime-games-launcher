@@ -31,6 +31,9 @@ use anyhow::Context;
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_packages::storage::Storage;
+use agl_runtime::mlua::prelude::*;
+use agl_runtime::allow_list::AllowList;
+use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::engine::{
     GameVariant,
@@ -80,6 +83,8 @@ pub enum MainWindowMsg {
 
     SetLoadingStatus(Option<String>),
 
+    AddAllowList(AllowList),
+
     AddStorePageGame {
         manifest_url: String,
         manifest: GameManifest
@@ -112,7 +117,6 @@ pub enum MainWindowMsg {
     ReloadSelectedLibraryGameInfo
 }
 
-#[derive(Debug)]
 pub struct MainWindow {
     about_window: AsyncController<AboutWindow>,
     store_page: AsyncController<StorePage>,
@@ -126,7 +130,31 @@ pub struct MainWindow {
 
     loading_status: Option<String>,
 
-    show_back_button: bool
+    show_back_button: bool,
+
+    storage: Storage,
+    runtime: Runtime,
+    allow_list: AllowList
+}
+
+impl std::fmt::Debug for MainWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LibraryPage")
+            .field("about_window", &self.about_window)
+            .field("store_page", &self.store_page)
+            .field("library_page", &self.library_page)
+            .field("game_settings_window", &self.game_settings_window)
+            .field("pipeline_actions_window", &self.pipeline_actions_window)
+            .field("game_running_window", &self.game_running_window)
+            .field("window", &self.window)
+            .field("view_stack", &self.view_stack)
+            .field("loading_status", &self.loading_status)
+            .field("show_back_button", &self.show_back_button)
+            .field("storage", &self.storage)
+            .field("runtime", &"Runtime")
+            .field("allow_list", &self.allow_list)
+            .finish()
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -241,6 +269,28 @@ impl SimpleAsyncComponent for MainWindow {
         root: Self::Root,
         sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
+        let config = config::startup();
+
+        let client = config.client_builder()
+            .and_then(|client| {
+                client.build()
+                    .map_err(|err| anyhow::anyhow!(err))
+            })
+            .expect("failed to build network client");
+
+        let storage = Storage::open(&config.packages_resources_path)
+            .expect("failed to open packages storage");
+
+        let runtime = Runtime::new(client)
+            .expect("failed to initialize packages runtime");
+
+        // Set runtime memory limit.
+        if config.runtime_memory_limit > 0 {
+            runtime.lua()
+                .set_memory_limit(config.runtime_memory_limit)
+                .expect("failed to set packages runtime memory limit");
+        }
+
         let mut model = Self {
             about_window: AboutWindow::builder()
                 .launch(())
@@ -295,7 +345,11 @@ impl SimpleAsyncComponent for MainWindow {
 
             loading_status: Some(String::new()),
 
-            show_back_button: false
+            show_back_button: false,
+
+            storage,
+            runtime,
+            allow_list: AllowList::default()
         };
 
         // Named like this to supress relm4 view macro warning.
@@ -345,16 +399,8 @@ impl SimpleAsyncComponent for MainWindow {
             // Do it after creating all the folders, including the config one.
             config::set(config::startup())?;
 
-            // Fetch game registries.
-
-            tracing::debug!(
-                registries = ?config::startup().games_registries,
-                "fetching game registries"
-            );
-
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Fetching game registries"))
-            ));
+            let config = config::startup();
+            let lang = config.language();
 
             // Create network client from config file.
             let client = config::startup()
@@ -366,11 +412,95 @@ impl SimpleAsyncComponent for MainWindow {
             // Prepare downloader and files cache.
             let downloader = Downloader::from_client(client);
 
-            let mut tasks = Vec::with_capacity(config::startup().games_registries.len());
+            // Fetch packages allow lists.
+
+            tracing::debug!(
+                registries = ?config.games_registries,
+                "fetching allow lists"
+            );
+
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Fetching allow lists"))
+            ));
+
+            let mut tasks = Vec::with_capacity(config.packages_allow_lists.len());
+            let mut paths = Vec::with_capacity(tasks.capacity());
+
+            // Either fetch package allow list or use cached one.
+            for url in &config.packages_allow_lists {
+                let cache_path = cache::get_path(url);
+
+                tracing::trace!(?url, ?cache_path, "fetching packages allow list");
+
+                // If cache for this allow list is expired - request the list
+                // again.
+                let is_expired = cache::is_expired(
+                    &cache_path,
+                    config.cache_packages_allow_lists_duration
+                )?;
+
+                if is_expired {
+                    tracing::trace!(?url, ?cache_path, "packages allow list cache is expired");
+
+                    let task = downloader.download_with_options(
+                        url,
+                        &cache_path,
+                        DownloadOptions {
+                            continue_download: false,
+                            on_update: None,
+                            on_finish: None
+                        }
+                    );
+
+                    tasks.push((url, cache_path.clone(), task));
+                }
+
+                paths.push(cache_path);
+            }
+
+            // Wait for all the allow lists to be downloaded.
+            for (url, path, task) in tasks {
+                tracing::trace!(?url, ?path, "awaiting packages allow list downloading");
+
+                let result = task.wait().await
+                    .context("failed to await packages allow list fetching");
+
+                if let Err(err) = result {
+                    // Remove half-downloaded/broken file.
+                    let _ = std::fs::remove_file(path);
+
+                    return Err(err);
+                }
+            }
+
+            for path in paths {
+                tracing::trace!(?path, "reading packages allow list");
+
+                let allow_list = std::fs::read(path)?;
+                let allow_list = serde_json::from_slice::<Json>(&allow_list)?;
+
+                let allow_list = AllowList::from_json(&allow_list)
+                    .context("failed to deserialize packages allow list")?;
+
+                sender.input(MainWindowMsg::AddAllowList(allow_list));
+            }
+
+            // Fetch game registries.
+
+            tracing::debug!(
+                registries = ?config::startup().games_registries,
+                "fetching game registries"
+            );
+
+            sender.input(MainWindowMsg::SetLoadingStatus(
+                Some(String::from("Fetching game registries"))
+            ));
+
+            let mut tasks = Vec::with_capacity(config.games_registries.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
 
             // Either fetch game registry manifest or use cached one.
-            for url in &config::startup().games_registries {
+            for url in &config.games_registries {
                 let cache_path = cache::get_path(url);
 
                 tracing::trace!(?url, ?cache_path, "fetching game registry");
@@ -379,7 +509,7 @@ impl SimpleAsyncComponent for MainWindow {
                 // value again.
                 let is_expired = cache::is_expired(
                     &cache_path,
-                    config::startup().cache_game_registries_duration
+                    config.cache_game_registries_duration
                 )?;
 
                 if is_expired {
@@ -460,7 +590,7 @@ impl SimpleAsyncComponent for MainWindow {
                 // manifest again.
                 let is_expired = cache::is_expired(
                     &cache_path,
-                    config::startup().cache_game_manifests_duration
+                    config.cache_game_manifests_duration
                 )?;
 
                 if is_expired {
@@ -508,7 +638,7 @@ impl SimpleAsyncComponent for MainWindow {
             let storage = Storage::open(&config::startup().packages_resources_path)
                 .context("failed to open packages storage")?;
 
-            for entry in config::startup().games_path.read_dir()? {
+            for entry in config.games_path.read_dir()? {
                 let entry = entry?;
 
                 tracing::trace!(
@@ -522,8 +652,8 @@ impl SimpleAsyncComponent for MainWindow {
                 let mut lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
 
-                let title = match config::startup().language() {
-                    Ok(lang) => lock.manifest.game.title.translate(&lang),
+                let title = match &lang {
+                    Ok(lang) => lock.manifest.game.title.translate(lang),
                     Err(_)   => lock.manifest.game.title.default_translation()
                 };
 
@@ -533,7 +663,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 let is_expired = cache::is_expired(
                     entry.path(),
-                    config::startup().cache_game_packages_duration
+                    config.cache_game_packages_duration
                 )?;
 
                 if is_expired {
@@ -627,6 +757,10 @@ impl SimpleAsyncComponent for MainWindow {
 
             MainWindowMsg::SetLoadingStatus(status) => self.loading_status = status,
 
+            MainWindowMsg::AddAllowList(allow_list) => {
+                self.allow_list.merge_with(allow_list);
+            }
+
             MainWindowMsg::AddStorePageGame { manifest_url, manifest } => {
                 self.store_page.emit(StorePageInput::AddGame {
                     manifest_url,
@@ -635,7 +769,148 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::AddLibraryPageGame(game) => {
-                self.library_page.emit(LibraryPageInput::AddGame(game));
+                let config = config::get();
+
+                let lang = config.language();
+
+                let title = match &lang {
+                    Ok(lang) => game.manifest.game.title.translate(lang),
+                    Err(_) => game.manifest.game.title.default_translation()
+                };
+
+                let paths = ModulePaths {
+                    temp_folder: config.packages_temporary_path.clone(),
+                    modules_folder: config.packages_modules_path.clone(),
+                    persistent_folder: config.packages_persistent_path.clone()
+                };
+
+                let result = self.runtime.load_packages(
+                    &game.lock,
+                    &self.storage,
+                    &paths,
+                    &self.allow_list
+                );
+
+                if let Err(err) = result {
+                    tracing::error!(
+                        ?err,
+                        url = game.url,
+                        title = game.manifest.game.title.default_translation(),
+                        "failed to load game package"
+                    );
+
+                    dialogs::error(
+                        format!("Failed to load {title} game package"),
+                        err.to_string()
+                    );
+
+                    return;
+                }
+
+                fn find_module_key(lock: &GameLock) -> Option<String> {
+                    for hash in &lock.lock.root {
+                        #[allow(clippy::collapsible_if)]
+                        if let Some(package) = lock.lock.packages.get(hash) {
+                            if let Some(output) = package.outputs.get(&lock.manifest.package.output) {
+                                // TODO: can change in future. Better make some
+                                //       universal solution.
+                                let module_key = format!("{}#module", output.hash.to_base32());
+
+                                return Some(module_key);
+                            }
+                        }
+                    }
+
+                    None
+                }
+
+                let Some(module_key) = find_module_key(&game) else {
+                    tracing::error!(
+                        url = game.url,
+                        title = game.manifest.game.title.default_translation(),
+                        "failed to find game integration module in package lock"
+                    );
+
+                    dialogs::error(
+                        "Failed to find game integration module in package lock",
+                        format!("Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken")
+                    );
+
+                    return;
+                };
+
+                let game_integration = self.runtime.get_value::<LuaTable>(module_key)
+                    .transpose()
+                    .map(|game_integration| {
+                        game_integration.and_then(|game_integration| {
+                            game_integration.raw_get::<LuaTable>("value")
+                        })
+                    });
+
+                let game_integration = match game_integration {
+                    Some(Ok(game_integration)) => game_integration,
+
+                    Some(Err(err)) => {
+                        tracing::error!(
+                            ?err,
+                            url = game.url,
+                            title = game.manifest.game.title.default_translation(),
+                            "failed to read game integration from the runtime"
+                        );
+
+                        dialogs::error(
+                            format!("Failed to read {title} game integration from the runtime"),
+                            err.to_string()
+                        );
+
+                        return;
+                    }
+
+                    None => {
+                        tracing::error!(
+                            url = game.url,
+                            title = game.manifest.game.title.default_translation(),
+                            "game integration module is missing in the runtime"
+                        );
+
+                        dialogs::error(
+                            "Game integration module is missing in the runtime",
+                            format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime")
+                        );
+
+                        return;
+                    }
+                };
+
+                let game_integration = GameIntegration::from_lua(
+                    self.runtime.lua().clone(),
+                    &game_integration
+                );
+
+                let game_integration = match game_integration {
+                    Ok(game_integration) => Arc::new(game_integration),
+
+                    Err(err) => {
+                        tracing::error!(
+                            ?err,
+                            url = game.url,
+                            title = game.manifest.game.title.default_translation(),
+                            "failed to build game integration"
+                        );
+
+                        dialogs::error(
+                            format!("Failed to build {title} game integration"),
+                            err.to_string()
+                        );
+
+                        return;
+                    }
+                };
+
+                self.library_page.emit(LibraryPageInput::AddGame {
+                    package: game,
+                    integration: game_integration
+                });
             }
 
             MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,

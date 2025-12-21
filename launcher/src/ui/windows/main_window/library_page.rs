@@ -21,10 +21,6 @@ use std::sync::Arc;
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use agl_packages::storage::Storage;
-use agl_runtime::mlua::prelude::*;
-use agl_runtime::allow_list::AllowList;
-use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::engine::{
     GameEdition,
     GameVariant,
@@ -34,7 +30,7 @@ use agl_games::engine::{
     GameSettingsGroup
 };
 
-use crate::{config, consts};
+use crate::{consts, config};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
@@ -47,7 +43,7 @@ use crate::ui::components::game_library_details::{
 
 #[derive(Debug, Clone)]
 struct GameInfo {
-    pub lock: GameLock,
+    pub package: GameLock,
     pub integration: Arc<GameIntegration>,
     pub editions: Option<Box<[GameEdition]>>,
     pub card_index: DynamicIndex
@@ -56,7 +52,10 @@ struct GameInfo {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum LibraryPageInput {
-    AddGame(GameLock),
+    AddGame {
+        package: GameLock,
+        integration: Arc<GameIntegration>
+    },
 
     SelectGameWithUrl(String),
 
@@ -107,26 +106,12 @@ pub enum LibraryPageOutput {
     }
 }
 
+#[derive(Debug)]
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameLibraryDetails>,
 
-    storage: Storage,
-    runtime: Runtime,
-
     games: Vec<GameInfo>
-}
-
-impl std::fmt::Debug for LibraryPage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LibraryPage")
-            .field("cards_list", &self.cards_list)
-            .field("game_details", &self.game_details)
-            .field("storage", &self.storage)
-            .field("runtime", &"Runtime")
-            .field("games", &self.games)
-            .finish()
-    }
 }
 
 #[relm4::component(pub, async)]
@@ -177,14 +162,6 @@ impl SimpleAsyncComponent for LibraryPage {
         root: Self::Root,
         sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let client = config::startup()
-            .client_builder()
-            .and_then(|client| {
-                client.build()
-                    .map_err(|err| anyhow::anyhow!(err))
-            })
-            .expect("failed to build network client");
-
         let model = Self {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
@@ -213,21 +190,8 @@ impl SimpleAsyncComponent for LibraryPage {
                         => LibraryPageInput::LaunchGame { game_title, game_launch_info }
                 }),
 
-            storage: Storage::open(&config::startup().packages_resources_path)
-                .expect("failed to open packages storage"),
-
-            runtime: Runtime::new(client)
-                .expect("failed to initialize packages runtime"),
-
             games: Vec::new()
         };
-
-        // Set runtime memory limit.
-        if config::startup().runtime_memory_limit > 0 {
-            model.runtime.lua()
-                .set_memory_limit(config::startup().runtime_memory_limit)
-                .expect("failed to set packages runtime memory limit");
-        }
 
         model.cards_list.widget().connect_row_selected(|_, row| {
             if let Some(row) = row {
@@ -246,160 +210,28 @@ impl SimpleAsyncComponent for LibraryPage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            LibraryPageInput::AddGame(game_lock) => {
+            LibraryPageInput::AddGame { package, integration } => {
                 tracing::debug!(
-                    url = game_lock.url,
-                    title = game_lock.manifest.game.title.default_translation(),
+                    url = package.url,
+                    title = package.manifest.game.title.default_translation(),
                     "loading game package"
                 );
 
-                let config = config::get();
-                let lang = config.language();
+                let lang = config::get().language();
 
                 let title = match &lang {
-                    Ok(lang) => game_lock.manifest.game.title.translate(lang),
-                    Err(_) => game_lock.manifest.game.title.default_translation()
+                    Ok(lang) => package.manifest.game.title.translate(lang),
+                    Err(_) => package.manifest.game.title.default_translation()
                 };
 
-                let paths = ModulePaths {
-                    temp_folder: config.packages_temporary_path.clone(),
-                    modules_folder: config.packages_modules_path.clone(),
-                    persistent_folder: config.packages_persistent_path.clone()
-                };
-
-                let allow_list = AllowList::default();
-
-                let result = self.runtime.load_packages(
-                    &game_lock.lock,
-                    &self.storage,
-                    &paths,
-                    &allow_list
-                );
-
-                if let Err(err) = result {
-                    tracing::error!(
-                        ?err,
-                        url = game_lock.url,
-                        title = game_lock.manifest.game.title.default_translation(),
-                        "failed to load game package"
-                    );
-
-                    dialogs::error(
-                        format!("Failed to load {title} game package"),
-                        err.to_string()
-                    );
-
-                    return;
-                }
-
-                fn find_module_key(lock: &GameLock) -> Option<String> {
-                    for hash in &lock.lock.root {
-                        #[allow(clippy::collapsible_if)]
-                        if let Some(package) = lock.lock.packages.get(hash) {
-                            if let Some(output) = package.outputs.get(&lock.manifest.package.output) {
-                                // TODO: can change in future. Better make some
-                                //       universal solution.
-                                let module_key = format!("{}#module", output.hash.to_base32());
-
-                                return Some(module_key);
-                            }
-                        }
-                    }
-
-                    None
-                }
-
-                let Some(module_key) = find_module_key(&game_lock) else {
-                    tracing::error!(
-                        url = game_lock.url,
-                        title = game_lock.manifest.game.title.default_translation(),
-                        "failed to find game integration module in package lock"
-                    );
-
-                    dialogs::error(
-                        "Failed to find game integration module in package lock",
-                        format!("Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken")
-                    );
-
-                    return;
-                };
-
-                let game_integration = self.runtime.get_value::<LuaTable>(module_key)
-                    .transpose()
-                    .map(|game_integration| {
-                        game_integration.and_then(|game_integration| {
-                            game_integration.raw_get::<LuaTable>("value")
-                        })
-                    });
-
-                let game_integration = match game_integration {
-                    Some(Ok(game_integration)) => game_integration,
-
-                    Some(Err(err)) => {
-                        tracing::error!(
-                            ?err,
-                            url = game_lock.url,
-                            title = game_lock.manifest.game.title.default_translation(),
-                            "failed to read game integration from the runtime"
-                        );
-
-                        dialogs::error(
-                            format!("Failed to read {title} game integration from the runtime"),
-                            err.to_string()
-                        );
-
-                        return;
-                    }
-
-                    None => {
-                        tracing::error!(
-                            url = game_lock.url,
-                            title = game_lock.manifest.game.title.default_translation(),
-                            "game integration module is missing in the runtime"
-                        );
-
-                        dialogs::error(
-                            "Game integration module is missing in the runtime",
-                            format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime")
-                        );
-
-                        return;
-                    }
-                };
-
-                let game_integration = GameIntegration::from_lua(
-                    self.runtime.lua().clone(),
-                    &game_integration
-                );
-
-                let game_integration = match game_integration {
-                    Ok(game_integration) => Arc::new(game_integration),
-
-                    Err(err) => {
-                        tracing::error!(
-                            ?err,
-                            url = game_lock.url,
-                            title = game_lock.manifest.game.title.default_translation(),
-                            "failed to build game integration"
-                        );
-
-                        dialogs::error(
-                            format!("Failed to build {title} game integration"),
-                            err.to_string()
-                        );
-
-                        return;
-                    }
-                };
-
-                let editions = match game_integration.get_editions(&consts::CURRENT_PLATFORM) {
+                let editions = match integration.get_editions(&consts::CURRENT_PLATFORM) {
                     Ok(editions) => editions,
 
                     Err(err) => {
                         tracing::error!(
                             ?err,
-                            url = game_lock.url,
-                            title = game_lock.manifest.game.title.default_translation(),
+                            url = package.url,
+                            title = package.manifest.game.title.default_translation(),
                             "failed to request game integration editions"
                         );
 
@@ -412,8 +244,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     }
                 };
 
-                let index = self.cards_list.guard().push_back(CardsListInit {
-                    image: ImagePath::LazyLoad(game_lock.manifest.game.images.poster.clone()),
+                let card_index = self.cards_list.guard().push_back(CardsListInit {
+                    image: ImagePath::LazyLoad(package.manifest.game.images.poster.clone()),
                     title: title.to_string(),
                     variants: editions.as_ref()
                         .map(|variants| {
@@ -430,16 +262,16 @@ impl SimpleAsyncComponent for LibraryPage {
                 });
 
                 self.games.push(GameInfo {
-                    lock: game_lock,
-                    integration: game_integration,
+                    package,
+                    integration,
                     editions,
-                    card_index: index
+                    card_index
                 });
             }
 
             LibraryPageInput::SelectGameWithUrl(url) => {
                 for game_info in &self.games {
-                    if game_info.lock.url == url {
+                    if game_info.package.url == url {
                         sender.input(LibraryPageInput::SelectGameWithIndex {
                             game: game_info.card_index.current_index(),
                             variant: None
@@ -462,7 +294,7 @@ impl SimpleAsyncComponent for LibraryPage {
                     });
 
                     self.game_details.emit(GameLibraryDetailsInput::SetGame {
-                        manifest: game_info.lock.manifest.clone(),
+                        manifest: game_info.package.manifest.clone(),
                         edition,
                         integration: game_info.integration.clone(),
                         index: game

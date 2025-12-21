@@ -76,8 +76,8 @@ pub struct Config {
     /// Duration of the runtime packages allow lists cache in seconds. If `0` is
     /// set then no cache is used. Default is `28800` (8 hours).
     ///
-    /// `cache.allow_lists.duration`
-    pub cache_allow_lists_duration: Duration,
+    /// `cache.packages_allow_lists.duration`
+    pub cache_packages_allow_lists_duration: Duration,
 
     /// Proxy mode: `http`, `https` or `all`.
     ///
@@ -149,7 +149,7 @@ impl Default for Config {
             cache_game_registries_duration: Duration::from_hours(16),
             cache_game_manifests_duration: Duration::from_hours(24),
             cache_game_packages_duration: Duration::from_hours(8),
-            cache_allow_lists_duration: Duration::from_hours(8),
+            cache_packages_allow_lists_duration: Duration::from_hours(8),
 
             packages_allow_lists: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/packages/allow_list.json")
@@ -195,8 +195,8 @@ impl Config {
             [cache.game_packages]
             duration = (self.cache_game_packages_duration.as_secs())
 
-            [cache.allow_lists]
-            duration = (self.cache_allow_lists_duration.as_secs())
+            [cache.packages_allow_lists]
+            duration = (self.cache_packages_allow_lists_duration.as_secs())
 
             [packages]
             allow_lists = (self.packages_allow_lists.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -304,11 +304,11 @@ impl Config {
                 }
             }
 
-            // `cache.allow_lists.*`
-            if let Some(allow_lists) = cache.get("allow_lists") {
-                // `cache.allow_lists.duration`
-                if let Some(duration) = allow_lists.get("duration").and_then(Toml::as_integer) {
-                    config.cache_allow_lists_duration = Duration::from_secs(duration as u64);
+            // `cache.packages_allow_lists.*`
+            if let Some(packages_allow_lists) = cache.get("packages_allow_lists") {
+                // `cache.packages_allow_lists.duration`
+                if let Some(duration) = packages_allow_lists.get("duration").and_then(Toml::as_integer) {
+                    config.cache_packages_allow_lists_duration = Duration::from_secs(duration as u64);
                 }
             }
         }
