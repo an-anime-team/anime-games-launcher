@@ -23,6 +23,7 @@ use adw::prelude::*;
 
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
+use agl_runtime::allow_list::AllowList;
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::engine::{
     GameEdition,
@@ -176,6 +177,14 @@ impl SimpleAsyncComponent for LibraryPage {
         root: Self::Root,
         sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
+        let client = config::startup()
+            .client_builder()
+            .and_then(|client| {
+                client.build()
+                    .map_err(|err| anyhow::anyhow!(err))
+            })
+            .expect("failed to build network client");
+
         let model = Self {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
@@ -207,7 +216,7 @@ impl SimpleAsyncComponent for LibraryPage {
             storage: Storage::open(&config::startup().packages_resources_path)
                 .expect("failed to open packages storage"),
 
-            runtime: Runtime::new()
+            runtime: Runtime::new(client)
                 .expect("failed to initialize packages runtime"),
 
             games: Vec::new()
@@ -258,7 +267,16 @@ impl SimpleAsyncComponent for LibraryPage {
                     persistent_folder: config.packages_persistent_path.clone()
                 };
 
-                if let Err(err) = self.runtime.load_packages(&game_lock.lock, &self.storage, &paths) {
+                let allow_list = AllowList::default();
+
+                let result = self.runtime.load_packages(
+                    &game_lock.lock,
+                    &self.storage,
+                    &paths,
+                    &allow_list
+                );
+
+                if let Err(err) = result {
                     tracing::error!(
                         ?err,
                         url = game_lock.url,

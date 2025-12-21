@@ -20,6 +20,8 @@ use std::path::PathBuf;
 
 use mlua::prelude::*;
 
+use agl_core::export::network::reqwest;
+
 #[cfg(feature = "packages-support")]
 use agl_packages::{
     hash::Hash,
@@ -27,6 +29,9 @@ use agl_packages::{
     storage::Storage,
     lock::Lock
 };
+
+#[cfg(feature = "packages-support")]
+use crate::allow_list::AllowList;
 
 use crate::module::{Module, ModuleScope};
 use crate::api::{Api, Context};
@@ -86,8 +91,8 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    /// Create new luau engine.
-    pub fn new() -> Result<Self, RuntimeError> {
+    /// Create new luau engine with provided reqwest client.
+    pub fn new(client: reqwest::Client) -> Result<Self, RuntimeError> {
         // Create luau engine.
         let lua = Lua::new();
 
@@ -109,7 +114,7 @@ impl Runtime {
 
         Ok(Self {
             lua: lua.clone(),
-            api: Api::new(lua)?
+            api: Api::new(lua, client)?
         })
     }
 
@@ -301,7 +306,8 @@ impl Runtime {
         &self,
         lock: &Lock,
         storage: &Storage,
-        paths: &ModulePaths
+        paths: &ModulePaths,
+        allow_list: &AllowList
     ) -> Result<(), RuntimeError> {
         use std::collections::{VecDeque, HashSet, HashMap};
 
@@ -447,12 +453,10 @@ impl Runtime {
 
             let mut module = Module {
                 path: storage.resource_path(hash),
-                scope: ModuleScope::default()
+                scope: allow_list.get_module_scope(hash)
+                    .cloned()
+                    .unwrap_or_default()
             };
-
-            // FIXME: temporary allow this API while there's no other way to
-            //        enable it.
-            module.scope.allow_process_api = true;
 
             // Add package inputs as allowed paths to the output module of the
             // same package.

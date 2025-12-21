@@ -30,8 +30,8 @@ mod path_api;
 mod filesystem_api;
 mod network_api;
 mod downloader_api;
-mod archives_api;
-mod hashes_api;
+mod archive_api;
+mod hash_api;
 mod compression_api;
 // mod sync_api;
 mod sqlite_api;
@@ -173,10 +173,9 @@ pub struct Api {
     filesystem_api: filesystem_api::FilesystemApi,
     network_api: network_api::NetworkApi,
     downloader_api: downloader_api::DownloaderApi,
-    archives_api: archives_api::ArchivesApi,
-    hashes_api: hashes_api::HashesApi,
+    archive_api: archive_api::ArchiveApi,
+    hash_api: hash_api::HashApi,
     compression_api: compression_api::CompressionApi,
-    // sync_api: sync_api::SyncApi,
     sqlite_api: sqlite_api::SqliteApi,
     // portals_api: PortalsAPI,
     process_api: process_api::ProcessApi
@@ -184,7 +183,7 @@ pub struct Api {
 
 impl Api {
     /// Create new standard library builder.
-    pub fn new(lua: Lua) -> Result<Self, LuaError> {
+    pub fn new(lua: Lua, client: reqwest::Client) -> Result<Self, LuaError> {
         Ok(Self {
             clone: lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
@@ -234,10 +233,10 @@ impl Api {
             string_api: string_api::StringApi::new(lua.clone())?,
             path_api: path_api::PathApi::new(lua.clone())?,
             filesystem_api: filesystem_api::FilesystemApi::new(lua.clone())?,
-            network_api: network_api::NetworkApi::new(lua.clone(), reqwest::Client::new())?, // TODO: propagate proxy and timeout values
+            network_api: network_api::NetworkApi::new(lua.clone(), client)?,
             downloader_api: downloader_api::DownloaderApi::new(lua.clone())?,
-            archives_api: archives_api::ArchivesApi::new(lua.clone())?,
-            hashes_api: hashes_api::HashesApi::new(lua.clone())?,
+            archive_api: archive_api::ArchiveApi::new(lua.clone())?,
+            hash_api: hash_api::HashApi::new(lua.clone())?,
             compression_api: compression_api::CompressionApi::new(lua.clone())?,
             // sync_api: sync_api::SyncApi::new(lua.clone())?,
             sqlite_api: sqlite_api::SqliteApi::new(lua.clone())?,
@@ -310,7 +309,7 @@ impl Api {
         }
 
         // Filesystem API.
-        if context.scope.allow_basic_fs_api {
+        if context.scope.allow_fs_api {
             env.raw_set("fs", self.filesystem_api.create_env(context)?)?;
         }
 
@@ -324,14 +323,14 @@ impl Api {
             env.raw_set("downloader", self.downloader_api.create_env(context)?)?;
         }
 
-        // Archives API.
-        if context.scope.allow_archives_api {
-            env.raw_set("archive", self.archives_api.create_env(context)?)?;
+        // Archive API.
+        if context.scope.allow_archive_api {
+            env.raw_set("archive", self.archive_api.create_env(context)?)?;
         }
 
-        // Hashes API.
-        if context.scope.allow_hashes_api {
-            env.raw_set("hash", self.hashes_api.create_env(context)?)?;
+        // Hash API.
+        if context.scope.allow_hash_api {
+            env.raw_set("hash", self.hash_api.create_env(context)?)?;
         }
 
         // Compression API.

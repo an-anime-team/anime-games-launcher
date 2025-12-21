@@ -20,14 +20,15 @@ use std::path::PathBuf;
 
 use mlua::prelude::*;
 
-#[cfg(feature = "packages-support")]
 use agl_core::export::tasks::tokio;
-
-#[cfg(feature = "packages-support")]
+use agl_core::export::network::reqwest;
 use agl_core::network::downloader::Downloader;
 
 #[cfg(feature = "packages-support")]
 use agl_packages::storage::Storage;
+
+#[cfg(feature = "packages-support")]
+use crate::allow_list::AllowList;
 
 use crate::module::{Module, ModuleScope};
 use crate::runtime::{Runtime, RuntimeError, ModulePaths};
@@ -52,7 +53,7 @@ fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
 
 #[test]
 fn simple_module() -> Result<(), RuntimeError> {
-    let runtime = Runtime::new()?;
+    let runtime = Runtime::new(reqwest::Client::new())?;
 
     let module = Module {
         path: PathBuf::from("tests/simple_module/module.luau"),
@@ -95,7 +96,7 @@ async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
         format!("{TESTS_DIR_URL}/simple_package/package.json")
     ]).await?;
 
-    let runtime = Runtime::new()?;
+    let runtime = Runtime::new(reqwest::Client::new())?;
 
     let paths = ModulePaths {
         temp_folder: std::env::temp_dir(),
@@ -103,7 +104,9 @@ async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
         persistent_folder: std::env::temp_dir()
     };
 
-    runtime.load_packages(&lock, &storage, &paths)?;
+    let allow_list = AllowList::default();
+
+    runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
     // Find some better and standardized way for querying loaded modules.
     let Some(module) = runtime.get_value::<LuaTable>("p9ffktad8ns1g#module")? else {
@@ -127,7 +130,7 @@ async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
         format!("{TESTS_DIR_URL}/dependency_module/package.json")
     ]).await?;
 
-    let runtime = Runtime::new()?;
+    let runtime = Runtime::new(reqwest::Client::new())?;
 
     let paths = ModulePaths {
         temp_folder: std::env::temp_dir(),
@@ -135,7 +138,9 @@ async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
         persistent_folder: std::env::temp_dir()
     };
 
-    runtime.load_packages(&lock, &storage, &paths)?;
+    let allow_list = AllowList::default();
+
+    runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
     // Find some better and standardized way for querying loaded modules.
     let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
@@ -163,7 +168,7 @@ async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         format!("{TESTS_DIR_URL}/nested_package/package_2.json")
     ]).await?;
 
-    let runtime = Runtime::new()?;
+    let runtime = Runtime::new(reqwest::Client::new())?;
 
     let paths = ModulePaths {
         temp_folder: std::env::temp_dir(),
@@ -171,7 +176,9 @@ async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         persistent_folder: std::env::temp_dir()
     };
 
-    runtime.load_packages(&lock, &storage, &paths)?;
+    let allow_list = AllowList::default();
+
+    runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
     // Find some better and standardized way for querying loaded modules.
     let Some(module) = runtime.get_value::<LuaTable>("op5h5fuc7kqr4#module")? else {

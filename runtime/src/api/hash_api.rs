@@ -29,22 +29,22 @@ use mlua::prelude::*;
 use super::filesystem_api::IO_READ_CHUNK_LEN;
 use super::*;
 
-pub struct HashesApi {
+pub struct HashApi {
     lua: Lua,
 
-    hashes_hash: LuaFunction,
-    hashes_file_hash: LuaFunctionBuilder,
-    hashes_hasher: LuaFunction,
-    hashes_write: LuaFunction,
-    hashes_finalize: LuaFunction
+    hash_hash: LuaFunction,
+    hash_file_hash: LuaFunctionBuilder,
+    hash_hasher: LuaFunction,
+    hash_write: LuaFunction,
+    hash_finalize: LuaFunction
 }
 
-impl HashesApi {
+impl HashApi {
     pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let hasher_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            hashes_hash: lua.create_function(move |_, (algorithm, value): (LuaString, LuaValue)| {
+            hash_hash: lua.create_function(move |_, (algorithm, value): (LuaString, LuaValue)| {
                 let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                     .map_err(LuaError::external)?;
 
@@ -58,7 +58,7 @@ impl HashesApi {
                 Ok(hash)
             })?,
 
-            hashes_file_hash: {
+            hash_file_hash: {
                 Box::new(move |lua: &Lua, context: &Context| {
                     let context = context.to_owned();
 
@@ -102,7 +102,7 @@ impl HashesApi {
                 })
             },
 
-            hashes_hasher: {
+            hash_hasher: {
                 let hasher_handles = hasher_handles.clone();
 
                 lua.create_function(move |_, algorithm: LuaString| {
@@ -127,7 +127,7 @@ impl HashesApi {
                 })?
             },
 
-            hashes_write: {
+            hash_write: {
                 let hasher_handles = hasher_handles.clone();
 
                 lua.create_function(move |_, (handle, value): (i32, LuaValue)| {
@@ -145,7 +145,7 @@ impl HashesApi {
                 })?
             },
 
-            hashes_finalize: {
+            hash_finalize: {
                 let hasher_handles = hasher_handles.clone();
 
                 lua.create_function(move |_, handle: i32| {
@@ -168,11 +168,11 @@ impl HashesApi {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 5)?;
 
-        env.raw_set("hash", self.hashes_hash.clone())?;
-        env.raw_set("file_hash", (self.hashes_file_hash)(&self.lua, context)?)?;
-        env.raw_set("hasher", self.hashes_hasher.clone())?;
-        env.raw_set("write", self.hashes_write.clone())?;
-        env.raw_set("finalize", self.hashes_finalize.clone())?;
+        env.raw_set("hash", self.hash_hash.clone())?;
+        env.raw_set("file_hash", (self.hash_file_hash)(&self.lua, context)?)?;
+        env.raw_set("hasher", self.hash_hasher.clone())?;
+        env.raw_set("write", self.hash_write.clone())?;
+        env.raw_set("finalize", self.hash_finalize.clone())?;
 
         Ok(env)
     }
@@ -184,28 +184,28 @@ mod tests {
 
     #[test]
     fn hash() -> Result<(), LuaError> {
-        let api = HashesApi::new(Lua::new())?;
+        let api = HashApi::new(Lua::new())?;
 
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("seahash",  "Hello, World!"))?, &[46, 194, 87, 41, 102, 208, 6, 253]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("crc32",    "Hello, World!"))?, &[236, 74, 195, 208]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("crc32c",   "Hello, World!"))?, &[77, 85, 16, 104]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("xxh32",    "Hello, World!"))?, &[64, 7, 222, 80]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("xxh64",    "Hello, World!"))?, &[196, 154, 172, 248, 8, 15, 228, 127]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("xxh3-64",  "Hello, World!"))?, &[96, 65, 93, 95, 97, 102, 2, 170]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("xxh3-128", "Hello, World!"))?, &[83, 29, 242, 132, 68, 71, 221, 80, 119, 219, 3, 132, 44, 215, 83, 149]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("md5",      "Hello, World!"))?, &[101, 168, 226, 125, 136, 121, 40, 56, 49, 182, 100, 189, 139, 127, 10, 212]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("sha1",     "Hello, World!"))?, &[10, 10, 159, 42, 103, 114, 148, 37, 87, 171, 83, 85, 215, 106, 244, 66, 248, 246, 94, 1]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("sha2-224", "Hello, World!"))?, &[114, 162, 61, 250, 65, 27, 166, 253, 224, 29, 191, 171, 243, 176, 10, 112, 156, 147, 235, 242, 115, 220, 41, 226, 216, 178, 97, 255]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("sha2-256", "Hello, World!"))?, &[223, 253, 96, 33, 187, 43, 213, 176, 175, 103, 98, 144, 128, 158, 195, 165, 49, 145, 221, 129, 199, 247, 10, 75, 40, 104, 138, 54, 33, 130, 152, 111]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("sha2-384", "Hello, World!"))?, &[84, 133, 204, 155, 51, 101, 180, 48, 93, 251, 78, 131, 55, 224, 165, 152, 165, 116, 248, 36, 43, 241, 114, 137, 224, 221, 108, 32, 163, 205, 68, 160, 137, 222, 22, 171, 74, 179, 8, 246, 62, 68, 177, 23, 14, 181, 245, 21]);
-        assert_eq!(api.hashes_hash.call::<Vec<u8>>(("sha2-512", "Hello, World!"))?, &[55, 77, 121, 74, 149, 205, 207, 216, 179, 89, 147, 24, 95, 239, 155, 163, 104, 241, 96, 216, 218, 244, 50, 208, 139, 169, 241, 237, 30, 90, 190, 108, 198, 146, 145, 224, 250, 47, 224, 0, 106, 82, 87, 14, 241, 140, 25, 222, 244, 230, 23, 195, 60, 229, 46, 240, 166, 229, 251, 227, 24, 203, 3, 135]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("seahash",  "Hello, World!"))?, &[46, 194, 87, 41, 102, 208, 6, 253]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("crc32",    "Hello, World!"))?, &[236, 74, 195, 208]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("crc32c",   "Hello, World!"))?, &[77, 85, 16, 104]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("xxh32",    "Hello, World!"))?, &[64, 7, 222, 80]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("xxh64",    "Hello, World!"))?, &[196, 154, 172, 248, 8, 15, 228, 127]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("xxh3-64",  "Hello, World!"))?, &[96, 65, 93, 95, 97, 102, 2, 170]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("xxh3-128", "Hello, World!"))?, &[83, 29, 242, 132, 68, 71, 221, 80, 119, 219, 3, 132, 44, 215, 83, 149]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("md5",      "Hello, World!"))?, &[101, 168, 226, 125, 136, 121, 40, 56, 49, 182, 100, 189, 139, 127, 10, 212]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("sha1",     "Hello, World!"))?, &[10, 10, 159, 42, 103, 114, 148, 37, 87, 171, 83, 85, 215, 106, 244, 66, 248, 246, 94, 1]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("sha2-224", "Hello, World!"))?, &[114, 162, 61, 250, 65, 27, 166, 253, 224, 29, 191, 171, 243, 176, 10, 112, 156, 147, 235, 242, 115, 220, 41, 226, 216, 178, 97, 255]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("sha2-256", "Hello, World!"))?, &[223, 253, 96, 33, 187, 43, 213, 176, 175, 103, 98, 144, 128, 158, 195, 165, 49, 145, 221, 129, 199, 247, 10, 75, 40, 104, 138, 54, 33, 130, 152, 111]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("sha2-384", "Hello, World!"))?, &[84, 133, 204, 155, 51, 101, 180, 48, 93, 251, 78, 131, 55, 224, 165, 152, 165, 116, 248, 36, 43, 241, 114, 137, 224, 221, 108, 32, 163, 205, 68, 160, 137, 222, 22, 171, 74, 179, 8, 246, 62, 68, 177, 23, 14, 181, 245, 21]);
+        assert_eq!(api.hash_hash.call::<Vec<u8>>(("sha2-512", "Hello, World!"))?, &[55, 77, 121, 74, 149, 205, 207, 216, 179, 89, 147, 24, 95, 239, 155, 163, 104, 241, 96, 216, 218, 244, 50, 208, 139, 169, 241, 237, 30, 90, 190, 108, 198, 146, 145, 224, 250, 47, 224, 0, 106, 82, 87, 14, 241, 140, 25, 222, 244, 230, 23, 195, 60, 229, 46, 240, 166, 229, 251, 227, 24, 203, 3, 135]);
 
         Ok(())
     }
 
     #[test]
     fn hasher() -> Result<(), LuaError> {
-        let api = HashesApi::new(Lua::new())?;
+        let api = HashApi::new(Lua::new())?;
 
         let hashers = [
             ("seahash",  vec![46, 194, 87, 41, 102, 208, 6, 253]),
@@ -224,14 +224,14 @@ mod tests {
         ];
 
         for (name, hash) in hashers {
-            let hasher = api.hashes_hasher.call::<i32>(name)?;
+            let hasher = api.hash_hasher.call::<i32>(name)?;
 
-            api.hashes_write.call::<()>((hasher, "Hello"))?;
-            api.hashes_write.call::<()>((hasher, ", "))?;
-            api.hashes_write.call::<()>((hasher, "World"))?;
-            api.hashes_write.call::<()>((hasher, "!"))?;
+            api.hash_write.call::<()>((hasher, "Hello"))?;
+            api.hash_write.call::<()>((hasher, ", "))?;
+            api.hash_write.call::<()>((hasher, "World"))?;
+            api.hash_write.call::<()>((hasher, "!"))?;
 
-            assert_eq!(api.hashes_finalize.call::<Vec<u8>>(hasher)?, hash);
+            assert_eq!(api.hash_finalize.call::<Vec<u8>>(hasher)?, hash);
         }
 
         Ok(())

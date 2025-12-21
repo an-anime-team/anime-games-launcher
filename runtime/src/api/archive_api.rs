@@ -26,7 +26,7 @@ use mlua::prelude::*;
 
 use super::*;
 
-pub struct ArchivesApi {
+pub struct ArchiveApi {
     lua: Lua,
 
     archive_open: LuaFunctionBuilder,
@@ -35,7 +35,7 @@ pub struct ArchivesApi {
     archive_close: LuaFunction
 }
 
-impl ArchivesApi {
+impl ArchiveApi {
     pub fn new(lua: Lua) -> Result<Self, LuaError> {
         let archive_handles = Arc::new(Mutex::new(HashMap::new()));
 

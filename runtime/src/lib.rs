@@ -25,5 +25,8 @@ pub mod module;
 pub mod api;
 pub mod runtime;
 
+#[cfg(feature = "packages-support")]
+pub mod allow_list;
+
 #[cfg(test)]
 mod tests;
