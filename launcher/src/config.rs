@@ -69,12 +69,25 @@ pub struct Config {
 
     /// Duration of the game packages cache in seconds. If `0` is set then no
     /// cache is used. Default is `28800` (8 hours).
+    ///
+    /// `cache.game_packages.duration`
     pub cache_game_packages_duration: Duration,
+
+    /// Duration of the runtime packages allow lists cache in seconds. If `0` is
+    /// set then no cache is used. Default is `28800` (8 hours).
+    ///
+    /// `cache.allow_lists.duration`
+    pub cache_allow_lists_duration: Duration,
 
     /// Proxy mode: `http`, `https` or `all`.
     ///
     /// `general.network.proxy.mode`
     pub general_network_proxy_mode: Option<String>,
+
+    /// URLs to the modules allow lists files.
+    ///
+    /// `packages.allow_lists`
+    pub packages_allow_lists: Vec<String>,
 
     /// Path to the folder where package resources should be stored.
     ///
@@ -136,6 +149,11 @@ impl Default for Config {
             cache_game_registries_duration: Duration::from_hours(16),
             cache_game_manifests_duration: Duration::from_hours(24),
             cache_game_packages_duration: Duration::from_hours(8),
+            cache_allow_lists_duration: Duration::from_hours(8),
+
+            packages_allow_lists: vec![
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/packages/allow_list.json")
+            ],
 
             packages_resources_path: DATA_FOLDER.join("packages").join("resources"),
             packages_modules_path: DATA_FOLDER.join("packages").join("modules"),
@@ -176,6 +194,12 @@ impl Config {
 
             [cache.game_packages]
             duration = (self.cache_game_packages_duration.as_secs())
+
+            [cache.allow_lists]
+            duration = (self.cache_allow_lists_duration.as_secs())
+
+            [packages]
+            allow_lists = (self.packages_allow_lists.iter().map(|url| url.as_str()).collect::<Vec<_>>())
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
@@ -279,10 +303,26 @@ impl Config {
                     config.cache_game_packages_duration = Duration::from_secs(duration as u64);
                 }
             }
+
+            // `cache.allow_lists.*`
+            if let Some(allow_lists) = cache.get("allow_lists") {
+                // `cache.allow_lists.duration`
+                if let Some(duration) = allow_lists.get("duration").and_then(Toml::as_integer) {
+                    config.cache_allow_lists_duration = Duration::from_secs(duration as u64);
+                }
+            }
         }
 
         // `packages.*`
         if let Some(packages) = value.get("packages") {
+            // `packages.allow_lists`
+            if let Some(allow_lists) = packages.get("allow_lists").and_then(Toml::as_array) {
+                config.packages_allow_lists = allow_lists.iter()
+                    .flat_map(Toml::as_str)
+                    .map(String::from)
+                    .collect();
+            }
+
             // `packages.resources.*`
             if let Some(resources) = packages.get("resources") {
                 // `packages.resources.path`
