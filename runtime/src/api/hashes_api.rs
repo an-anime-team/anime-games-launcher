@@ -70,13 +70,13 @@ impl HashesApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = normalize_path(path)
+                        path = normalize_path(path, true)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.is_accessible(&path)? {
-                            return Err(LuaError::external("path is inaccessible"));
+                        if !context.can_read_path(&path)? {
+                            return Err(LuaError::external("no path read permissions"));
                         }
 
                         let mut file = File::open(path)?;

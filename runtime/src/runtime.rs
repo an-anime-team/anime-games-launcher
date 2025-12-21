@@ -464,7 +464,7 @@ impl Runtime {
                     if format == "file" || format == "archive" {
                         let resource_path = resource_value.raw_get::<PathBuf>("value")?;
 
-                        module.scope.sandbox_allowed_paths.push(resource_path);
+                        module.scope.sandbox_read_paths.push(resource_path);
                     }
                 }
             }

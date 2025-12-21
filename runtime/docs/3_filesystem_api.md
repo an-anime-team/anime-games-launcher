@@ -30,40 +30,45 @@ All the relative paths are resolved in the module folder.
 
 ## `fs.exists(path: string) -> boolean`
 
-Check if given filesystem path exists and accessible.
+Check if given filesystem path exists and can be read.
 
 ```luau
 if fs.exists("/tmp") then
-    print("Temp folder exists and can be accessed")
+    print("Temp folder exists and can be read")
 else
-    print("Temp folder doesn't exist or can't be accessed")
+    print("Temp folder doesn't exist or can't be read")
 end
 ```
 
 ## `fs.metadata(path: string) -> Metadata`
 
-Read metadata of the filesystem path (file, folder or a symlink).
+Read metadata of the filesystem path (file, directory or a symlink).
 
 ```ts
-type EntryType = 'file' | 'folder' | 'symlink';
+type EntryType = 'file' | 'directory' | 'symlink';
 
 type Metadata = {
     // UTC timestamp of the creation time.
-    created_at: number,
+    created_at: number;
 
     // UTC timestamp of the modification time.
-    modified_at: number,
+    modified_at: number;
 
-    // Length in bytes of the filesystem entry.
-    // For files it's equal to the file's size.
-    length: number,
+    // Length in bytes of the filesystem entry. For files it's equal to the 
+    // file's size. Currently symlink and directory lengths are undefined.
+    length: number;
 
-    // Is the given path accessible.
-    // Similar to `fs.exists`.
-    is_accessible: boolean,
+    // Filesystem entry permissions.
+    permissions: {
+        // Whether the path can be read.
+        read: boolean;
+
+        // Whether the path can be written to.
+        write: boolean;
+    };
 
     // Type of the filesystem entry.
-    type: EntryType
+    type: EntryType;
 };
 ```
 
@@ -114,23 +119,23 @@ Modules have limited amount of simultaniously open handles.
 type Options = {
     // Allow reading content from file.
     // Default: true.
-    read: boolean,
+    read: boolean;
 
     // Allow writing content to file.
     // Default: false.
-    write: boolean,
+    write: boolean;
 
     // Create file if it doesn't exist.
     // Default: false.
-    create: boolean,
+    create: boolean;
 
     // Clear file's content or create an empty one.
     // Default: false.
-    overwrite: boolean,
+    overwrite: boolean;
 
     // Append writes to the end of the existing file's content.
     // Default: false.
-    append: boolean
+    append: boolean;
 };
 ```
 
@@ -427,9 +432,9 @@ Read the given directory, returning list of its entries.
 
 ```ts
 type Entry = {
-    name: string,
-    path: string,
-    type: EntryType
+    name: string;
+    path: string;
+    type: EntryType;
 };
 ```
 

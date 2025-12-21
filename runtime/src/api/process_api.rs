@@ -54,7 +54,7 @@ impl ProcessApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
@@ -122,7 +122,7 @@ impl ProcessApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = normalize_path(path)
+                        path = normalize_path(path, true)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;

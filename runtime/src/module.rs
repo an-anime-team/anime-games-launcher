@@ -112,14 +112,19 @@ pub struct ModuleScope {
     /// Default: `false`.
     pub allow_process_api: bool,
 
-    // TODO: read_paths and write_paths instead of allowed_paths
-
     /// Paths allowed to be accessed for this module. When provided, the module
-    /// can use Filesystem and other APIs to read or write into provided files
-    /// or folders/subfolders.
+    /// can use filesystem and other APIs to read provided files or
+    /// folders/subfolders.
     ///
     /// Default: none.
-    pub sandbox_allowed_paths: Vec<PathBuf>
+    pub sandbox_read_paths: Vec<PathBuf>,
+
+    /// Paths allowed to be written and read by this module. When provided, the
+    /// module can use filesystem and other APIs to read and write provided
+    /// files or folders/subfolders.
+    ///
+    /// Default: none.
+    pub sandbox_write_paths: Vec<PathBuf>
 }
 
 impl Default for ModuleScope {
@@ -135,7 +140,8 @@ impl Default for ModuleScope {
             allow_compression_api: true,
             allow_sqlite_api: true,
             allow_process_api: false,
-            sandbox_allowed_paths: vec![]
+            sandbox_read_paths: vec![],
+            sandbox_write_paths: vec![]
         }
     }
 }

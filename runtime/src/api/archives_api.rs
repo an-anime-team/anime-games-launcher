@@ -52,13 +52,13 @@ impl ArchivesApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = normalize_path(path)
+                        path = normalize_path(path, true)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.is_accessible(&path)? {
-                            return Err(LuaError::external("path is inaccessible"));
+                        if !context.can_read_path(&path)? {
+                            return Err(LuaError::external("no path read permissions"));
                         }
 
                         // Parse the archive format.
@@ -135,13 +135,13 @@ impl ArchivesApi {
                             target = context.module_folder.join(target);
                         }
 
-                        target = normalize_path(target)
+                        target = normalize_path(target, true)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.is_accessible(&target)? {
-                            return Err(LuaError::external("target path is inaccessible"));
+                        if !context.can_write_path(&target)? {
+                            return Err(LuaError::external("no target path write permissions"));
                         }
 
                         // Start extracting the archive in a background thread depending on its format.

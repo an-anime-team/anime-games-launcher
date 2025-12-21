@@ -70,7 +70,7 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
@@ -79,7 +79,7 @@ impl FilesystemApi {
                         return Ok(false);
                     }
 
-                    context.is_accessible(&path)
+                    context.can_read_path(&path)
                         .map_err(LuaError::external)
                 })
             }),
@@ -92,7 +92,7 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, false)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
@@ -118,13 +118,19 @@ impl FilesystemApi {
                     })?;
 
                     result.raw_set("length", metadata.len())?;
-                    result.raw_set("is_accessible", context.is_accessible(path)?)?;
+
+                    let permissions = lua.create_table_with_capacity(0, 2)?;
+
+                    permissions.raw_set("read", context.can_read_path(&path)?)?;
+                    permissions.raw_set("write", context.can_write_path(&path)?)?;
+
+                    result.raw_set("permissions", permissions)?;
 
                     result.raw_set("type", {
                         if metadata.is_symlink() {
                             "symlink"
                         } else if metadata.is_dir() {
-                            "folder"
+                            "directory"
                         } else {
                             "file"
                         }
@@ -146,12 +152,12 @@ impl FilesystemApi {
                         target = context.module_folder.join(target);
                     }
 
-                    source = normalize_path(source)
+                    source = normalize_path(source, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize source path: {err}"))
                         })?;
 
-                    target = normalize_path(target)
+                    target = normalize_path(target, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize target path: {err}"))
                         })?;
@@ -161,8 +167,8 @@ impl FilesystemApi {
                         return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    if !context.is_accessible(&source)? {
-                        return Err(LuaError::external("source path is inaccessible"));
+                    if !context.can_read_path(&source)? {
+                        return Err(LuaError::external("no source path read permissions"));
                     }
 
                     // Throw an error if target path already exists or inaccessible.
@@ -170,8 +176,8 @@ impl FilesystemApi {
                         return Err(LuaError::external("target path already exists"));
                     }
 
-                    if !context.is_accessible(&target)? {
-                        return Err(LuaError::external("target path is inaccessible"));
+                    if !context.can_write_path(&target)? {
+                        return Err(LuaError::external("no target path write permissions"));
                     }
 
                     fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
@@ -223,12 +229,12 @@ impl FilesystemApi {
                         target = context.module_folder.join(target);
                     }
 
-                    source = normalize_path(source)
+                    source = normalize_path(source, false)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize source path: {err}"))
                         })?;
 
-                    target = normalize_path(target)
+                    target = normalize_path(target, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize target path: {err}"))
                         })?;
@@ -238,8 +244,8 @@ impl FilesystemApi {
                         return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    if !context.is_accessible(&source)? {
-                        return Err(LuaError::external("source path is inaccessible"));
+                    if !context.can_write_path(&source)? {
+                        return Err(LuaError::external("no source path write permissions"));
                     }
 
                     // Throw an error if target path already exists or inaccessible.
@@ -247,8 +253,8 @@ impl FilesystemApi {
                         return Err(LuaError::external("target path already exists"));
                     }
 
-                    if !context.is_accessible(&target)? {
-                        return Err(LuaError::external("target path is inaccessible"));
+                    if !context.can_write_path(&target)? {
+                        return Err(LuaError::external("no target path write permissions"));
                     }
 
                     fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
@@ -306,22 +312,19 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, false)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_write_path(&path)? {
+                        return Err(LuaError::external("no path write permissions"));
                     }
 
-                    // Symlinks are resolved so we don't need to check for them.
-                    if path.is_file() {
-                        std::fs::remove_file(path)?;
-                    }
-
-                    else if path.is_dir() {
+                    if path.is_dir() {
                         std::fs::remove_dir_all(path)?;
+                    } else {
+                        std::fs::remove_file(path)?;
                     }
 
                     Ok(())
@@ -340,16 +343,16 @@ impl FilesystemApi {
                             path = context.module_folder.join(path);
                         }
 
-                        path = normalize_path(path)
+                        path = normalize_path(path, true)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.is_accessible(&path)? {
-                            return Err(LuaError::external("path is inaccessible"));
-                        }
-
                         if let Some(parent) = path.parent() && !parent.is_dir() {
+                            if !context.can_write_path(parent)? {
+                                return Err(LuaError::external("no path write permissions"));
+                            }
+
                             std::fs::create_dir_all(parent)?;
                         }
 
@@ -365,6 +368,14 @@ impl FilesystemApi {
                             create    = options.get::<bool>("create").unwrap_or_default();
                             overwrite = options.get::<bool>("overwrite").unwrap_or_default();
                             append    = options.get::<bool>("append").unwrap_or_default();
+                        }
+
+                        if read && !context.can_read_path(&path)? {
+                            return Err(LuaError::external("no path read permissions"));
+                        }
+
+                        if (write || create || overwrite || append) && !context.can_write_path(&path)? {
+                            return Err(LuaError::external("no path write permissions"));
                         }
 
                         let file = File::options()
@@ -563,13 +574,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_write_path(&path)? {
+                        return Err(LuaError::external("no path write permissions"));
                     }
 
                     if let Some(parent) = path.parent() && !parent.is_dir() {
@@ -590,13 +601,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_read_path(&path)? {
+                        return Err(LuaError::external("no path read permissions"));
                     }
 
                     Ok(std::fs::read(path)?)
@@ -611,13 +622,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_write_path(&path)? {
+                        return Err(LuaError::external("no path write permissions"));
                     }
 
                     if let Some(parent) = path.parent() && !parent.is_dir() {
@@ -655,13 +666,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, false)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_write_path(&path)? {
+                        return Err(LuaError::external("no path write permissions"));
                     }
 
                     std::fs::remove_file(path)?;
@@ -678,13 +689,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_write_path(&path)? {
+                        return Err(LuaError::external("no path write permissions"));
                     }
 
                     std::fs::create_dir_all(path)?;
@@ -701,13 +712,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_read_path(&path)? {
+                        return Err(LuaError::external("no path read permissions"));
                     }
 
                     let entries = lua.create_table()?;
@@ -724,7 +735,7 @@ impl FilesystemApi {
                             if entry.path().is_symlink() {
                                 "symlink"
                             } else if entry.path().is_dir() {
-                                "folder"
+                                "directory"
                             } else {
                                 "file"
                             }
@@ -745,13 +756,13 @@ impl FilesystemApi {
                         path = context.module_folder.join(path);
                     }
 
-                    path = normalize_path(path)
+                    path = normalize_path(path, true)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.is_accessible(&path)? {
-                        return Err(LuaError::external("path is inaccessible"));
+                    if !context.can_write_path(&path)? {
+                        return Err(LuaError::external("no path write permissions"));
                     }
 
                     std::fs::remove_dir_all(path)?;

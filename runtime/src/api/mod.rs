@@ -78,12 +78,21 @@ pub fn bytes_to_lua_table(
 }
 
 /// Normalize path by resolving symbolic links.
-pub fn normalize_path(mut path: PathBuf) -> std::io::Result<PathBuf> {
-    while path.is_symlink() {
+pub fn normalize_path(
+    mut path: PathBuf,
+    resolve_symlinks: bool
+) -> std::io::Result<PathBuf> {
+    while resolve_symlinks && path.is_symlink() {
         path = path.read_link()?;
     }
 
     Ok(path.components().collect())
+}
+
+fn path_is_parent_of(parent: &Path, child: &Path) -> bool {
+    parent.components()
+        .zip(child.components())
+        .all(|(p, c)| p == c)
 }
 
 /// Luau module standard library builder context.
@@ -104,28 +113,44 @@ pub struct Context {
 }
 
 impl Context {
-    /// Check if a path is allowed to be accessed by the current module.
-    pub fn is_accessible(
+    /// Check if a path is allowed to be read by the current module.
+    pub fn can_read_path(
         &self,
-        path: impl Into<PathBuf>
+        path: &Path
     ) -> std::io::Result<bool> {
-        fn is_parent_of(parent: &Path, child: &Path) -> bool {
-            parent.components()
-                .zip(child.components())
-                .all(|(p, c)| p == c)
-        }
-
-        let path = normalize_path(path.into())?;
-
-        if is_parent_of(&self.temp_folder, &path)
-            || is_parent_of(&self.module_folder, &path)
-            || is_parent_of(&self.persistent_folder, &path)
+        if path_is_parent_of(&self.temp_folder, path)
+            || path_is_parent_of(&self.module_folder, path)
+            || path_is_parent_of(&self.persistent_folder, path)
         {
             return Ok(true);
         }
 
-        for allowed_path in &self.scope.sandbox_allowed_paths {
-            if is_parent_of(allowed_path, &path) {
+        let rw_paths = self.scope.sandbox_read_paths.iter()
+            .chain(self.scope.sandbox_write_paths.iter());
+
+        for allowed_path in rw_paths {
+            if path_is_parent_of(allowed_path, path) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Check if a path is allowed to be written by the current module.
+    pub fn can_write_path(
+        &self,
+        path: &Path
+    ) -> std::io::Result<bool> {
+        if path_is_parent_of(&self.temp_folder, path)
+            || path_is_parent_of(&self.module_folder, path)
+            || path_is_parent_of(&self.persistent_folder, path)
+        {
+            return Ok(true);
+        }
+
+        for allowed_path in &self.scope.sandbox_write_paths {
+            if path_is_parent_of(allowed_path, path) {
                 return Ok(true);
             }
         }

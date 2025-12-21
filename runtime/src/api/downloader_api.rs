@@ -87,13 +87,13 @@ impl DownloaderApi {
                             output_file = context.module_folder.join(output_file);
                         }
 
-                        output_file = normalize_path(output_file)
+                        output_file = normalize_path(output_file, true)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to normalize output file path: {err}"))
                             })?;
 
-                        if !context.is_accessible(&output_file)? {
-                            return Err(LuaError::external("path is inaccessible"));
+                        if !context.can_write_path(&output_file)? {
+                            return Err(LuaError::external("no output file path write permissions"));
                         }
 
                         if let Some(parent) = output_file.parent() && !parent.is_dir() {

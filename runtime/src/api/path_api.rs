@@ -78,7 +78,7 @@ pub struct PathApi {
     path_parent: LuaFunction,
     path_file_name: LuaFunction,
     path_exists: LuaFunctionBuilder,
-    path_accessible: LuaFunctionBuilder
+    path_permissions: LuaFunctionBuilder
 }
 
 impl PathApi {
@@ -290,8 +290,7 @@ impl PathApi {
                         path = context.module_folder.join(path);
                     }
 
-                    // TODO: is it needed here?
-                    path = normalize_path(path)
+                    path = normalize_path(path, false)
                         .map_err(|err| {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
@@ -300,16 +299,20 @@ impl PathApi {
                 })
             }),
 
-            path_accessible: Box::new(|lua: &Lua, context: &Context| {
+            path_permissions: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
 
-                    context.is_accessible(path)
-                        .map_err(LuaError::external)
+                    let result = lua.create_table_with_capacity(0, 2)?;
+
+                    result.raw_set("read", context.can_read_path(&path)?)?;
+                    result.raw_set("write", context.can_write_path(&path)?)?;
+
+                    Ok(result)
                 })
             }),
 
@@ -330,7 +333,7 @@ impl PathApi {
         env.raw_set("parent", self.path_parent.clone())?;
         env.raw_set("file_name", self.path_file_name.clone())?;
         env.raw_set("exists", (self.path_exists)(&self.lua, context)?)?;
-        env.raw_set("accessible", (self.path_accessible)(&self.lua, context)?)?;
+        env.raw_set("permissions", (self.path_permissions)(&self.lua, context)?)?;
 
         Ok(env)
     }

@@ -4,18 +4,18 @@ Filesystem paths are sandboxed by design. Each module can access special
 sandboxed folders to store its state there. This module provides functions to
 obtain these paths, as well as some utility functions to work with them.
 
-| Function           | Description                           |
-| ------------------ | ------------------------------------- |
-| `path.temp_dir`    | Get path to the temp directory.       |
-| `path.module_dir`  | Get path to the module directory.     |
-| `path.persist_dir` | Get path to the persistent directory. |
-| `path.normalize`   | Remove special path components.       |
-| `path.join`        | Create path from entries names.       |
-| `path.parts`       | Split path to the entries names.      |
-| `path.parent`      | Get path to the parent directory.     |
-| `path.file_name`   | Get last path entry name.             |
-| `path.exists`      | Check if given path exists.           |
-| `path.accessible`  | Check if given path is accessible.    |
+| Function           | Description                            |
+| ------------------ | -------------------------------------- |
+| `path.temp_dir`    | Get path to the temp directory.        |
+| `path.module_dir`  | Get path to the module directory.      |
+| `path.persist_dir` | Get path to the persistent directory.  |
+| `path.normalize`   | Remove special path components.        |
+| `path.join`        | Create path from entries names.        |
+| `path.parts`       | Split path to the entries names.       |
+| `path.parent`      | Get path to the parent directory.      |
+| `path.file_name`   | Get last path entry name.              |
+| `path.exists`      | Check if given path exists.            |
+| `path.permissions` | Get current module's path permissions. |
 
 ## `path.temp_dir() -> string`
 
@@ -150,11 +150,21 @@ print(path.exists(path.module_dir())) -- true
 print(path.exists("/home"))           -- true
 ```
 
-## `path.accessible(path: string) -> boolean`
+## `path.permissions(path: string) -> Permissions`
 
 Check if given path is accessible for the current module.
 
+```ts
+type Permissions = {
+    // Can read filesystem entry.
+    read: boolean;
+
+    // Can write to filesystem entry.
+    write: boolean;
+};
+```
+
 ```luau
-print(path.accessible(path.module_dir())) -- true
-print(path.accessible("/home"))           -- false
+print(path.permissions(path.module_dir()).write) -- true
+print(path.permissions("/home").write)           -- false
 ```
