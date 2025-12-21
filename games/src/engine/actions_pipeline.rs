@@ -18,7 +18,7 @@
 
 use mlua::prelude::*;
 
-use crate::localizable_string::LocalizableString;
+use agl_locale::LocalizableString;
 
 use super::PipelineAction;
 

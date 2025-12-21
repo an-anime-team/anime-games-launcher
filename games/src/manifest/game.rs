@@ -18,7 +18,7 @@
 
 use serde_json::{json, Value as Json};
 
-use crate::localizable_string::LocalizableString;
+use agl_locale::LocalizableString;
 
 use super::*;
 

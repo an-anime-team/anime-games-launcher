@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// agl-games
+// agl-locale
 // Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,12 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+pub use unic_langid;
+
+#[cfg(feature = "json")]
 use serde_json::{json, Value as Json};
+
+#[cfg(feature = "mlua")]
 use mlua::prelude::*;
 
 use unic_langid::LanguageIdentifier;
@@ -40,6 +45,7 @@ fn lang_code(lang: &LanguageIdentifier) -> String {
     }
 }
 
+/// A string variant which can contain translations for different languages.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalizableString {
     Raw(String),
@@ -106,6 +112,7 @@ impl LocalizableString {
 }
 
 impl LocalizableString {
+    #[cfg(feature = "json")]
     pub fn to_json(&self) -> Json {
         match self {
             LocalizableString::Raw(str) => json!(str),
@@ -120,6 +127,7 @@ impl LocalizableString {
         }
     }
 
+    #[cfg(feature = "json")]
     pub fn from_json(value: &Json) -> Option<Self> {
         if value.is_string() {
             let str = value.as_str()?
@@ -148,6 +156,7 @@ impl LocalizableString {
         None
     }
 
+    #[cfg(feature = "mlua")]
     pub fn to_lua(&self, lua: &Lua) -> Result<LuaValue, LuaError> {
         match self {
             Self::Raw(string) => Ok(LuaValue::String(lua.create_string(string)?)),
@@ -164,6 +173,7 @@ impl LocalizableString {
         }
     }
 
+    #[cfg(feature = "mlua")]
     pub fn from_lua(value: &LuaValue) -> Result<Self, LuaError> {
         if let Some(translations) = value.as_table().cloned() {
             let mut table = HashMap::new();

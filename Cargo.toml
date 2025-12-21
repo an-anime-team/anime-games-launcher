@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "core",
+    "locale",
     "packages",
     "runtime",
     "games",

@@ -20,6 +20,5 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod platform;
-pub mod localizable_string;
 pub mod manifest;
 pub mod engine;

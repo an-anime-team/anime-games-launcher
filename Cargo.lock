@@ -47,11 +47,21 @@ dependencies = [
 name = "agl-games"
 version = "0.1.0"
 dependencies = [
+ "agl-locale",
  "lazy_static",
  "mlua",
  "os_info",
  "serde_json",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "agl-locale"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "mlua",
+ "serde_json",
  "unic-langid",
 ]
 
@@ -79,6 +89,7 @@ dependencies = [
  "bufreaderwriter",
  "encoding_rs",
  "hex",
+ "lazy_static",
  "mlua",
  "rand",
  "rusqlite",
@@ -88,6 +99,7 @@ dependencies = [
  "thiserror 1.0.69",
  "toml",
  "tracing",
+ "unic-langid",
 ]
 
 [[package]]

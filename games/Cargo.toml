@@ -7,11 +7,12 @@ edition = "2024"
 publish = false
 
 [dependencies]
+agl-locale = { path = "../locale" }
+
 thiserror = "1.0"
 lazy_static = "1.5"
 serde_json = "1.0"
 
 os_info = "3.13"
-unic-langid = "0.9"
 
 mlua = { version = "0.10", features = ["luau-jit"] }

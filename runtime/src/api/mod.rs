@@ -21,7 +21,6 @@ use std::path::{Path, PathBuf};
 use agl_core::export::network::reqwest;
 
 use mlua::prelude::*;
-use mlua::Variadic;
 
 // TODO: add tests.
 
@@ -217,7 +216,7 @@ impl Api {
                 clone_value(lua, value)
             })?,
 
-            dbg: lua.create_function(|_, values: Variadic<LuaValue>| {
+            dbg: lua.create_function(|_, values: LuaVariadic<LuaValue>| {
                 for value in values {
                     #[cfg(feature = "tracing")]
                     tracing::debug!("{value:#?}");

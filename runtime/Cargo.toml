@@ -38,6 +38,8 @@ optional = true
 
 [dependencies]
 thiserror = "1.0"
+lazy_static = "1.5"
+unic-langid = "0.9"
 
 # Tracing
 tracing = { version = "0.1", optional = true }

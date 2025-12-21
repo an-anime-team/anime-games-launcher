@@ -20,7 +20,7 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use crate::localizable_string::LocalizableString;
+use agl_locale::LocalizableString;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameSettingsGroup {
