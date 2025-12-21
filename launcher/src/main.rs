@@ -23,8 +23,6 @@ use relm4::prelude::*;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::filter::*;
 
-use agl_core::export::tasks::tokio;
-
 pub mod consts;
 pub mod config;
 pub mod cache;
@@ -38,8 +36,7 @@ pub mod ui;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     // Setup custom panic handler.
     human_panic::setup_panic!(human_panic::metadata!());
 
