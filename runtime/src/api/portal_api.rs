@@ -261,7 +261,7 @@ pub struct PortalApi {
     portal_notify: LuaFunction,
     portal_dialog: LuaFunction,
     portal_open_file: LuaFunctionBuilder,
-    // portal_open_folder: LuaFunctionBuilder,
+    portal_open_folder: LuaFunctionBuilder,
     portal_save_file: LuaFunctionBuilder
 }
 
@@ -356,68 +356,71 @@ impl PortalApi {
                 })
             }),
 
-            // TODO: find some good way to temporary add write access to the
-            //       open folder and return back this method.
+            portal_open_folder: Box::new(move |lua, context| {
+                let module_scope = context.scope.clone();
 
-            // portal_open_folder: Box::new(move |lua, context| {
-            //     let (resource_hash, local_validator) = (context.resource_hash, context.local_validator.clone());
+                lua.create_function(move |lua, open_folder_options: Option<LuaTable>| {
+                    let mut dialog = rfd::FileDialog::new();
 
-            //     lua.create_function(move |lua, options: Option<LuaTable>| {
-            //         let mut dialog = rfd::FileDialog::new();
+                    let mut multiple = false;
 
-            //         let mut multiple = false;
+                    if let Some(open_folder_options) = open_folder_options {
+                        if let Some(title) = open_folder_options.get::<Option<LuaValue>>("title")? {
+                            let title = LocalizableString::from_lua(&title)?;
 
-            //         if let Some(options) = options {
-            //             if let Some(title) = options.get::<Option<LuaValue>>("title")? {
-            //                 let title = LocalizableString::from_lua(&title)?;
+                            dialog = dialog.set_title((options.translate)(title));
+                        }
 
-            //                 let config = config::get();
+                        if let Some(directory) = open_folder_options.get::<Option<String>>("directory")? {
+                            dialog = dialog.set_directory(PathBuf::from(directory));
+                        }
 
-            //                 let language = config.general.language.parse::<LanguageIdentifier>();
+                        multiple = open_folder_options.get::<bool>("multiple")
+                            .unwrap_or(false);
+                    }
 
-            //                 let title = match &language {
-            //                     Ok(language) => title.translate(language),
-            //                     Err(_) => title.default_translation()
-            //                 };
+                    #[allow(clippy::collapsible_else_if)]
+                    if multiple {
+                        if let Some(paths) = dialog.pick_folders() {
+                            let Ok(mut scope) = module_scope.write() else {
+                                return Err(LuaError::external("failed to lock module scope"));
+                            };
 
-            //                 dialog = dialog.set_title(title);
-            //             }
+                            let result = lua.create_table_with_capacity(paths.len(), 0)?;
 
-            //             if let Some(directory) = options.get::<Option<LuaString>>("directory")? {
-            //                 dialog = dialog.set_directory(PathBuf::from(directory.to_string_lossy()));
-            //             }
+                            for path in paths {
+                                scope.sandbox_write_paths.push(path.clone());
 
-            //             multiple = options.get::<bool>("multiple").unwrap_or(false);
-            //         }
+                                let path = path.to_string_lossy();
 
-            //         #[allow(clippy::collapsible_else_if)]
-            //         if multiple {
-            //             if let Some(folders) = dialog.pick_folders() {
-            //                 let result = lua.create_table_with_capacity(folders.len(), 0)?;
+                                result.raw_push(
+                                    lua.create_string(path.as_bytes())?
+                                )?;
+                            }
 
-            //                 for folder in folders {
-            //                     local_validator.allow_path(resource_hash, &folder)
-            //                         .map_err(LuaError::external)?;
+                            return Ok(LuaValue::Table(result));
+                        }
+                    }
 
-            //                     result.raw_push(lua.create_string(folder.as_os_str().as_bytes())?)?;
-            //                 }
+                    else {
+                        if let Some(path) = dialog.pick_folder() {
+                            let Ok(mut scope) = module_scope.write() else {
+                                return Err(LuaError::external("failed to lock module scope"));
+                            };
 
-            //                 return Ok(LuaValue::Table(result));
-            //             }
-            //         }
+                            scope.sandbox_write_paths.push(path.clone());
 
-            //         else {
-            //             if let Some(folder) = dialog.pick_folder() {
-            //                 local_validator.allow_path(resource_hash, &folder)
-            //                     .map_err(LuaError::external)?;
+                            let path = path.to_string_lossy();
 
-            //                 return Ok(LuaValue::String(lua.create_string(folder.as_os_str().as_bytes())?));
-            //             }
-            //         }
+                            return Ok(LuaValue::String(
+                                lua.create_string(path.as_bytes())?
+                            ));
+                        }
+                    }
 
-            //         Ok(LuaValue::Nil)
-            //     })
-            // }),
+                    Ok(LuaValue::Nil)
+                })
+            }),
 
             portal_save_file: Box::new(move |lua, context| {
                 let module_scope = context.scope.clone();
@@ -466,13 +469,13 @@ impl PortalApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 5)?;
+        let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("toast", self.portal_toast.clone())?;
         env.raw_set("notify", self.portal_notify.clone())?;
         env.raw_set("dialog", self.portal_dialog.clone())?;
         env.raw_set("open_file", (self.portal_open_file)(&self.lua, context)?)?;
-        // env.raw_set("open_folder", (self.portal_open_folder)(&self.lua, context)?)?;
+        env.raw_set("open_folder", (self.portal_open_folder)(&self.lua, context)?)?;
         env.raw_set("save_file", (self.portal_save_file)(&self.lua, context)?)?;
 
         Ok(env)

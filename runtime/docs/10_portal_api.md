@@ -156,8 +156,7 @@ Open a system folder selection dialog. Block current thread until a folder
 is selected, returning either `nil` if no folder selected, path to selected
 folder, or a list of paths to selected folders if `multiple = true`.
 
-Selected paths are temporary allowed to be read, but not modified (read-only
-access).
+Selected paths are temporary allowed to be written to (read-write access).
 
 ```ts
 type OpenFolderOptions = {
