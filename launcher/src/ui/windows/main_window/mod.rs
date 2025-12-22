@@ -712,7 +712,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 let title = match &lang {
                     Ok(lang) => lock.manifest.game.title.translate(lang),
-                    Err(_)   => lock.manifest.game.title.default_translation()
+                    Err(_) => lock.manifest.game.title.default_translation()
                 };
 
                 sender.input(MainWindowMsg::SetLoadingStatus(
@@ -735,8 +735,12 @@ impl SimpleAsyncComponent for MainWindow {
                         Some(format!("Updating {title} game package"))
                     ));
 
+                    let prev_scope = lock.scope;
+
                     lock = GameLock::download(&lock.url, &storage).await
                         .context("failed to update game package lock")?;
+
+                    lock.scope = prev_scope;
 
                     std::fs::write(
                         entry.path(),
