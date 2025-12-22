@@ -29,7 +29,7 @@ const ALPHABET: Alphabet = Alphabet::Rfc4648HexLower {
 };
 
 /// Standard `agl-packages` hash format type.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Hash(u64);
 
 impl Hash {
@@ -133,6 +133,12 @@ impl Hash {
 
                 Some(Self(u64::from_le_bytes(hash)))
             })
+    }
+}
+
+impl std::fmt::Debug for Hash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("\"{}\"", self.to_base32()))
     }
 }
 
