@@ -7,14 +7,14 @@ the user.
 
 | Function              | Description                                   |
 | --------------------- | --------------------------------------------- |
-| `portals.toast`       | Show in-app notification.                     |
-| `portals.notify`      | Show system notification.                     |
-| `portals.dialog`      | Show in-app modal dialog.                     |
-| `portals.open_file`   | Open system's default file choosing dialog.   |
-| `portals.open_folder` | Open system's default folder choosing dialog. |
-| `portals.save_file`   | Open system's default file saving dialog.     |
+| `portal.toast`       | Show in-app notification.                     |
+| `portal.notify`      | Show system notification.                     |
+| `portal.dialog`      | Show in-app modal dialog.                     |
+| `portal.open_file`   | Open system's default file choosing dialog.   |
+| `portal.open_folder` | Open system's default folder choosing dialog. |
+| `portal.save_file`   | Open system's default file saving dialog.     |
 
-## `portals.toast(options: ToastOptions)`
+## `portal.toast(options: ToastOptions)`
 
 Show small, optional notification to the user. This is a non-blocking function.
 
@@ -37,12 +37,12 @@ type ToastOptions = {
 ```
 
 ```luau
-portals.toast({
-    message = "Hello World!",
+portal.toast({
+    message = "Hello, World!",
     action = {
         label = "Click me",
         callback = function()
-            portals.toast({
+            portal.toast({
                 message = {
                     en = "Thanks",
                     ru = "Спасибо"
@@ -53,7 +53,7 @@ portals.toast({
 })
 ```
 
-## `portals.notify(options: NotifyOptions)`
+## `portal.notify(options: NotifyOptions)`
 
 Send in-system notification. This is a non-blocking function.
 
@@ -72,21 +72,21 @@ type NotifyOptions = {
 ```
 
 ```luau
-portals.notify({
+portal.notify({
     title = {
         en = "Simple notification",
         ru = "Простое уведомление"
     }
 })
 
-portals.notify({
+portal.notify({
     title = "Advanced notification",
     message = "Some text of your notification",
     icon = "violence-symbolic"
 })
 ```
 
-## `portals.dialog(options: DialogOptions) -> string`
+## `portal.dialog(options: DialogOptions) -> string`
 
 Show in-app modal dialog and block the current thread execution until the user
 selects an option within the dialog, returning name of selected button.
@@ -120,7 +120,7 @@ type DialogButton = {
 };
 ```
 
-## `portals.open_file([options: OpenFileOptions]) -> string | string[] | null`
+## `portal.open_file([options: OpenFileOptions]) -> string | string[] | null`
 
 Open system file selection dialog. Block current thread until a file is
 selected, returning either `nil` if no file selected, path to selected file,
@@ -143,7 +143,7 @@ type OpenFileOptions = {
 ```
 
 ```luau
-local file_path = portals.open_file({
+local file_path = portal.open_file({
     title = "Open file"
 })
 
@@ -155,7 +155,7 @@ if file_path then
 end
 ```
 
-## `portals.open_folder([options: OpenFolderOptions]) -> string | string[] | null`
+## `portal.open_folder([options: OpenFolderOptions]) -> string | string[] | null`
 
 Open a system folder selection dialog. Block current thread until a folder
 is selected, returning either `nil` if no folder selected, path to selected
@@ -177,7 +177,7 @@ type OpenFolderOptions = {
 ```
 
 ```luau
-local folder_path = portals.open_folder({
+local folder_path = portal.open_folder({
     title = "Open folder"
 })
 
@@ -189,7 +189,7 @@ if folder_path then
 end
 ```
 
-## `portals.save_file([options: SaveFileOptions]) -> string | null`
+## `portal.save_file([options: SaveFileOptions]) -> string | null`
 
 Open a system file saving dialog. Block current thread until a file is selected,
 returning either `nil` if no file selected or path to the selected file.
@@ -210,7 +210,7 @@ type SaveFileOptions = {
 ```
 
 ```luau
-local file_path = portals.save_file({
+local file_path = portal.save_file({
     title = "Save file",
     file_name = "amogus.txt"
 })
