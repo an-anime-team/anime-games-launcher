@@ -207,16 +207,6 @@ pub struct Api {
 impl Api {
     /// Create new standard library builder.
     pub fn new(options: ApiOptions) -> Result<Self, LuaError> {
-        let filesystem_api = filesystem_api::FilesystemApi::new(options.lua.clone())?;
-
-        let portal_api = portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
-            show_toast: options.show_toast,
-            show_notification: options.show_notification,
-            show_dialog: options.show_dialog,
-            translate: options.translate,
-            file_handles: filesystem_api.file_handles().clone()
-        })?;
-
         Ok(Self {
             clone: options.lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
@@ -265,14 +255,19 @@ impl Api {
 
             string_api: string_api::StringApi::new(options.lua.clone())?,
             path_api: path_api::PathApi::new(options.lua.clone())?,
-            filesystem_api,
+            filesystem_api: filesystem_api::FilesystemApi::new(options.lua.clone())?,
             network_api: network_api::NetworkApi::new(options.lua.clone(), options.client)?,
             downloader_api: downloader_api::DownloaderApi::new(options.lua.clone())?,
             archive_api: archive_api::ArchiveApi::new(options.lua.clone())?,
             hash_api: hash_api::HashApi::new(options.lua.clone())?,
             compression_api: compression_api::CompressionApi::new(options.lua.clone())?,
             sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
-            portal_api,
+            portal_api: portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
+                show_toast: options.show_toast,
+                show_notification: options.show_notification,
+                show_dialog: options.show_dialog,
+                translate: options.translate
+            })?,
             process_api: process_api::ProcessApi::new(options.lua.clone())?,
 
             lua: options.lua

@@ -1,4 +1,4 @@
-# Portals API
+# Portal API
 
 In some cases you'd want to interact with the user by showing them some
 notification, asking for a choice in a modal dialog, or request access to some
@@ -23,16 +23,16 @@ Toasts will be automatically hidden after some time.
 ```ts
 type ToastOptions = {
     // Toast text.
-    message: Localizable,
+    message: Localizable;
 
     // Optional field. Display a clickable button in the toast.
     action?: {
         // Text on the button.
-        label: Localizable,
+        label: Localizable;
 
         // Lua function which will be executed when user clicks the button.
-        callback: (): void
-    }
+        callback: (): void;
+    };
 };
 ```
 
@@ -60,14 +60,14 @@ Send in-system notification. This is a non-blocking function.
 ```ts
 type NotifyOptions = {
     // Text of the notification's title.
-    title: Localizable,
+    title: Localizable;
 
     // Text of the notification's body.
-    message?: Localizable,
+    message?: Localizable;
 
     // Notification icon. When unset the launcher's icon will be used.
     // Supports `file://` and freedesktop names.
-    icon?: string
+    icon?: string;
 };
 ```
 
@@ -93,122 +93,120 @@ selects an option within the dialog, returning name of selected button.
 
 ```ts
 type DialogOptions = {
-    title: Localizable,
-    message: Localizable,
-    buttons: DialogButton[]
+    title: Localizable;
+    message: Localizable;
+    buttons: DialogButton[];
 };
 
 type DialogButton = {
     // Name of the dialog button.
-    name: string,
+    name: string;
 
     // Text on the button.
-    label: Localizable,
+    label: Localizable;
 
     // Color of the button.
-    status?: 'normal' | 'suggested' | 'dangerous'
+    status?: 'normal' | 'suggested' | 'dangerous';
 };
 ```
 
-## `portals.open_file([options: OpenFileOptions]) -> OpenFileDetails | OpenFileDetails[] | null`
+## `portals.open_file([options: OpenFileOptions]) -> string | string[] | null`
 
-Open system file selection dialog. Block current thread until a file is 
-selected, returning either `nil` if no file selected or information about
-selected file and its filesystem API handle, or list of such information if 
-`multiple = true`. Handles allow you to interact with the files directly using 
-filesystem API. Files opened this way are allowed to escape the sandbox.
+Open system file selection dialog. Block current thread until a file is
+selected, returning either `nil` if no file selected, path to selected file,
+or list of paths if `multiple = true`.
+
+Selected paths are temporary allowed to be read, but not modified (read-only
+access).
 
 ```ts
 type OpenFileOptions = {
     // Title of the dialog.
-    title?: string,
+    title?: string;
 
     // Path to the directory open by default.
-    directory?: string,
+    directory?: string;
 
     // Allow selecting more than one file.
-    multiple?: boolean
-};
-
-type OpenFileDetails = {
-    path: string,
-    handle: number
+    multiple?: boolean;
 };
 ```
 
 ```luau
-local file = portals.open_file({
+local file_path = portals.open_file({
     title = "Open file"
 })
 
-if file then
-    print(`Open file {file.path}`)
-    print(str.from_bytes(fs.read(file.handle)))
+if file_path then
+    print(`Selected path: {file_path}`)
+
+    -- Selected path can be read
+    assert(path.permissions(file_path).read)
 end
 ```
 
 ## `portals.open_folder([options: OpenFolderOptions]) -> string | string[] | null`
 
 Open a system folder selection dialog. Block current thread until a folder
-is selected, returning either `nil` if no folder selected or path to selected
-folder / folders if `multiple = true`. Your module will get a permanent access
-to this folder(s) and can escape the sandbox to freely read or write there.
-Note that once your module is updated (its hash is changed) the access will
-disappear so you will need to use paths / filesystem API to verify that the
-access is still here and if you need to have it permanently it's better to
-implement a small script which will not be modified in future.
+is selected, returning either `nil` if no folder selected, path to selected
+folder, or a list of paths to selected folders if `multiple = true`.
+
+Selected paths are temporary allowed to be read, but not modified (read-only
+access).
 
 ```ts
 type OpenFolderOptions = {
     // Title of the dialog.
-    title?: string,
+    title?: string;
 
     // Path to the directory open by default.
-    directory?: string,
+    directory?: string;
 
     // Allow selecting more than one folder.
-    multiple?: boolean
+    multiple?: boolean;
 };
 ```
 
 ```luau
-local folder = portals.open_folder({
+local folder_path = portals.open_folder({
     title = "Open folder"
 })
 
-if folder then
-    fs.write_file(path.join(folder, "amogus.txt"), "sus")
+if folder_path then
+    print(`Selected path: {folder_path}`)
+
+    -- Selected path can be read
+    assert(path.permissions(folder_path).read)
 end
 ```
 
-## `portals.save_file([options: SaveFileOptions]) -> OpenFileDetails | null`
+## `portals.save_file([options: SaveFileOptions]) -> string | null`
 
 Open a system file saving dialog. Block current thread until a file is selected,
-returning either `nil` if no file selected or information about selected file
-and its filesystem API handle. Handles allow you to interact with the files
-directly using filesystem API. Files created this way are allowed to escape
-the sandbox.
+returning either `nil` if no file selected or path to the selected file.
+
+Selected path is temporary allowed to be written to (read-write access).
 
 ```ts
 type SaveFileOptions = {
     // Title of the dialog.
-    title?: string,
+    title?: string;
 
     // Path to the directory open by default.
-    directory?: string,
+    directory?: string;
 
     // Default name of the file to be saved as.
-    file_name?: string
+    file_name?: string;
 };
 ```
 
 ```luau
-local file = portals.save_file({
+local file_path = portals.save_file({
     title = "Save file",
     file_name = "amogus.txt"
 })
 
-if file then
-    fs.write(file.handle, str.to_bytes("amogus"))
+if file_path then
+    fs.write_file(file_path, "Hello, World!")
 end
 ```
