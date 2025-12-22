@@ -53,8 +53,10 @@ impl GameIntegration {
     /// Try to load game integration from provided lua engine and integration
     /// table.
     pub fn from_lua(lua: Lua, table: &LuaTable) -> Result<Self, LuaError> {
-        if table.get::<u32>("version")? != 1 {
-            return Err(LuaError::external("unsupported game integration version"));
+        if table.get::<u32>("format")? != 1
+            && table.get::<u32>("version")? != 1
+        {
+            return Err(LuaError::external("unsupported game integration format"));
         }
 
         let game = table.get::<LuaTable>("game")?;
