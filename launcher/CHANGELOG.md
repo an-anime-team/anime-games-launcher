@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-beta2] - 22.12.2025
+
+### Added
+
+- Added separate read and write permissions to sandboxed filesystem paths in
+  modules runtime
+- Added modules allow lists. Modules runtime tries to read module's scope from
+  it and falls back to default values
+- Add module scope to the game package lock. This scope will be applied to all
+  the modules used by the game integration (game-specific sandbox permissions)
+- Added portal API
+- Added logging for runtime modules loading
+
+### Fixed
+
+- Fixed layout of the games store details page
+- Provide most of default lua functions for runtime modules
+- Input resources of a package are now allowed to be read by output modules of
+  this package
+- Fixed panic message on application close
+- Fixed game launch info hint being `nil` when unset
+
+### Changed
+
+- Changed logging filters for stdout and `debug.log` file
+- Game integration pipeline actions now don't need to return any (boolean)
+  output from `perform` functions
+- Changed pipeline actions graph update rate to 0.5 seconds
+- In many manifests `format` is expected instead of `version`. For now `version`
+  is accepted as fallback field
+
 ## [2.0.0-beta1] - 20.12.2025
 
 🚀 Complete rework of the app
@@ -75,10 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-beta1...next
-[2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-alpha2...2.0.0-beta1
-[2.0.0-alpha2]: https://github.com/an-anime-team/anime-games-launcher/compare/2.0.0-alpha1...2.0.0-alpha2
-[2.0.0-alpha1]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.2...2.0.0-alpha1
-[1.0.2]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.1...1.0.2
-[1.0.1]: https://github.com/an-anime-team/anime-games-launcher/compare/1.0.0...1.0.1
-[1.0.0]: https://github.com/an-anime-team/anime-games-launcher/releases/tag/1.0.0
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...next
+[2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha2...v2.0.0-beta1
+[2.0.0-alpha2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha1...v2.0.0-alpha2
+[2.0.0-alpha1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.2...v2.0.0-alpha1
+[1.0.2]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/an-anime-team/anime-games-launcher/releases/tag/v1.0.0

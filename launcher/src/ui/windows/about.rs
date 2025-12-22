@@ -67,20 +67,37 @@ impl SimpleAsyncComponent for AboutWindow {
                 format!("cairo: {}", gtk::cairo::version_string())
             ].join("\n"),
 
-            // set_release_notes_version: &APP_VERSION,
-            // set_release_notes: &[
-            //     "<p>Added</p>",
+            set_release_notes_version: &APP_VERSION,
+            set_release_notes: &[
+                "<p>Added</p>",
 
-            //     "<ul>",
-            //         "<li>Added DXVK installation check for broken dxvk installations</li>",
-            //     "</ul>",
+                "<ul>",
+                    "<li>Added separate read and write permissions to sandboxed filesystem paths in modules runtime</li>",
+                    "<li>Added modules allow lists. Modules runtime tries to read module's scope from it and falls back to default values</li>",
+                    "<li>Add module scope to the game package lock. This scope will be applied to all the modules used by the game integration (game-specific sandbox permissions)</li>",
+                    "<li>Added portal API</li>",
+                    "<li>Added logging for runtime modules loading</li>",
+                "</ul>",
 
-            //     "<p>Fixed</p>",
+                "<p>Fixed</p>",
 
-            //     "<ul>",
-            //         "<li>Fixed FPS unlocker not working with some runners</li>",
-            //     "</ul>"
-            // ].join("\n")
+                "<ul>",
+                    "<li>Fixed layout of the games store details page</li>",
+                    "<li>Provide most of default lua functions for runtime modules</li>",
+                    "<li>Input resources of a package are now allowed to be read by output modules of this package</li>",
+                    "<li>Fixed panic message on application close</li>",
+                    "<li>Fixed game launch info hint being 'nil' when unset</li>",
+                "</ul>",
+
+                "<p>Changed</p>",
+
+                "<ul>",
+                    "<li>Changed logging filters for stdout and 'debug.log' file</li>",
+                    "<li>Game integration pipeline actions now don't need to return any (boolean) output from `perform` functions</li>",
+                    "<li>Changed pipeline actions graph update rate to 0.5 seconds</li>",
+                    "<li>In many manifests 'format' is expected instead of 'version'. For now 'version' is accepted as fallback field</li>",
+                "</ul>"
+            ].join("\n")
         }
     }
 
