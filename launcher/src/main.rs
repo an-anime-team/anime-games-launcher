@@ -45,9 +45,17 @@ fn main() -> anyhow::Result<()> {
         // .pretty()
         .with_filter({
             filter_fn(|metadata| {
-                metadata.target().starts_with("anime_games_launcher")
-                    || metadata.target().starts_with("agl_runtime")
+                if metadata.target().starts_with("anime_games_launcher") {
+                    return true;
+                }
+
+                if metadata.target().starts_with("agl_runtime")
                     || metadata.target().starts_with("agl_games")
+                {
+                    return metadata.level() != &tracing::Level::TRACE;
+                }
+
+                false
             })
         })
         .with_filter({
