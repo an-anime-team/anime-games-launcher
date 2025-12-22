@@ -120,7 +120,7 @@ impl NotificationOptions {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DialogOptions {
     pub title: LocalizableString,
     pub message: LocalizableString,
@@ -139,7 +139,10 @@ impl DialogOptions {
 
         options.raw_set("title", self.title.to_lua(lua)?)?;
         options.raw_set("message", self.message.to_lua(lua)?)?;
-        options.raw_set("buttons", buttons)?;
+
+        if !buttons.is_empty() {
+            options.raw_set("buttons", buttons)?;
+        }
 
         Ok(options)
     }
@@ -152,7 +155,7 @@ impl DialogOptions {
             message: value.get::<LuaValue>("message")
                 .and_then(|message| LocalizableString::from_lua(&message))?,
 
-            buttons: value.get::<LuaTable>("buttons")
+            buttons: value.get::<Option<LuaTable>>("buttons")?
                 .map(|raw_buttons| {
                     let mut buttons = Vec::with_capacity(raw_buttons.raw_len());
 
@@ -161,33 +164,32 @@ impl DialogOptions {
                     }
 
                     Ok::<_, LuaError>(buttons)
-                })??
+                })
+                .unwrap_or_else(|| Ok(vec![]))?
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DialogButton {
-    pub name: String,
     pub label: LocalizableString,
-    pub status: DialogButtonStatus
+    pub status: DialogButtonStatus,
+    pub callback: LuaFunction
 }
 
 impl DialogButton {
     pub fn to_lua(&self, lua: &Lua) -> Result<LuaTable, LuaError> {
         let result = lua.create_table_with_capacity(0, 3)?;
 
-        result.raw_set("name", self.name.as_str())?;
         result.raw_set("label", self.label.to_lua(lua)?)?;
         result.raw_set("status", self.status.to_string())?;
+        result.raw_set("callback", &self.callback)?;
 
         Ok(result)
     }
 
     pub fn from_lua(value: &LuaTable) -> Result<Self, LuaError> {
         Ok(Self {
-            name: value.get("name")?,
-
             label: value.get::<LuaValue>("label")
                 .and_then(|label| LocalizableString::from_lua(&label))?,
 
@@ -199,7 +201,9 @@ impl DialogButton {
 
                     DialogButtonStatus::from_str(&status)
                         .map_err(|_| LuaError::external("unsupported dialog button status"))
-                })?
+                })?,
+
+            callback: value.get("callback")?
         })
     }
 }

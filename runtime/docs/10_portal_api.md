@@ -93,20 +93,25 @@ selects an option within the dialog, returning name of selected button.
 
 ```ts
 type DialogOptions = {
+    // Dialog title.
     title: Localizable;
+
+    // Dialog message (body).
     message: Localizable;
-    buttons: DialogButton[];
+
+    // Optional list of dialog buttons.
+    buttons?: DialogButton[];
 };
 
 type DialogButton = {
-    // Name of the dialog button.
-    name: string;
-
     // Text on the button.
     label: Localizable;
 
     // Color of the button.
     status?: 'normal' | 'suggested' | 'dangerous';
+
+    // Lua function which will be executed when user clicks the button.
+    callback?: (): void;
 };
 ```
 
