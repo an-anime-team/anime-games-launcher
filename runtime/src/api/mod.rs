@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 
 use agl_core::export::network::reqwest;
 
@@ -94,7 +95,7 @@ fn path_is_parent_of(parent: &Path, child: &Path) -> bool {
 }
 
 /// Luau module standard library builder context.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct Context {
     /// Path to a temporary folder. It is always accessible for the module.
     pub temp_folder: PathBuf,
@@ -107,7 +108,7 @@ pub struct Context {
     pub persistent_folder: PathBuf,
 
     /// Module permissions scope.
-    pub scope: ModuleScope
+    pub scope: Arc<RwLock<ModuleScope>>
 }
 
 impl Context {
@@ -123,12 +124,14 @@ impl Context {
             return Ok(true);
         }
 
-        let rw_paths = self.scope.sandbox_read_paths.iter()
-            .chain(self.scope.sandbox_write_paths.iter());
+        if let Ok(scope) = self.scope.read() {
+            let rw_paths = scope.sandbox_read_paths.iter()
+                .chain(scope.sandbox_write_paths.iter());
 
-        for allowed_path in rw_paths {
-            if path_is_parent_of(allowed_path, path) {
-                return Ok(true);
+            for allowed_path in rw_paths {
+                if path_is_parent_of(allowed_path, path) {
+                    return Ok(true);
+                }
             }
         }
 
@@ -147,9 +150,11 @@ impl Context {
             return Ok(true);
         }
 
-        for allowed_path in &self.scope.sandbox_write_paths {
-            if path_is_parent_of(allowed_path, path) {
-                return Ok(true);
+        if let Ok(scope) = self.scope.read() {
+            for allowed_path in &scope.sandbox_write_paths {
+                if path_is_parent_of(allowed_path, path) {
+                    return Ok(true);
+                }
             }
         }
 
@@ -320,58 +325,62 @@ impl Api {
         env.raw_set("math", self.lua.globals().get::<LuaValue>("math")?)?;
         env.raw_set("coroutine", self.lua.globals().get::<LuaValue>("coroutine")?)?;
 
+        let Ok(scope) = context.scope.read() else {
+            return Err(LuaError::external("failed to lock module scope"));
+        };
+
         // String API.
-        if context.scope.allow_string_api {
+        if scope.allow_string_api {
             env.raw_set("str", self.string_api.create_env()?)?;
         }
 
         // Path API.
-        if context.scope.allow_path_api {
+        if scope.allow_path_api {
             env.raw_set("path", self.path_api.create_env(context)?)?;
         }
 
         // Filesystem API.
-        if context.scope.allow_filesystem_api {
+        if scope.allow_filesystem_api {
             env.raw_set("fs", self.filesystem_api.create_env(context)?)?;
         }
 
         // Network API.
-        if context.scope.allow_network_api {
+        if scope.allow_network_api {
             env.raw_set("net", self.network_api.create_env()?)?;
         }
 
         // Downloader API.
-        if context.scope.allow_downloader_api {
+        if scope.allow_downloader_api {
             env.raw_set("downloader", self.downloader_api.create_env(context)?)?;
         }
 
         // Archive API.
-        if context.scope.allow_archive_api {
+        if scope.allow_archive_api {
             env.raw_set("archive", self.archive_api.create_env(context)?)?;
         }
 
         // Hash API.
-        if context.scope.allow_hash_api {
+        if scope.allow_hash_api {
             env.raw_set("hash", self.hash_api.create_env(context)?)?;
         }
 
         // Compression API.
-        if context.scope.allow_compression_api {
+        if scope.allow_compression_api {
             env.raw_set("compression", self.compression_api.create_env()?)?;
         }
 
         // Sqlite API.
-        if context.scope.allow_sqlite_api {
+        if scope.allow_sqlite_api {
             env.raw_set("sqlite", self.sqlite_api.create_env(context)?)?;
         }
 
         // Portal API.
-        if context.scope.allow_portal_api {
-            env.raw_set("portal", self.portal_api.create_env()?)?;
+        if scope.allow_portal_api {
+            env.raw_set("portal", self.portal_api.create_env(context)?)?;
         }
 
         // Process API.
-        if context.scope.allow_process_api {
+        if scope.allow_process_api {
             env.raw_set("process", self.process_api.create_env(context)?)?;
         }
 

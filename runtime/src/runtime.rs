@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 
 use mlua::prelude::*;
 
@@ -133,7 +134,7 @@ impl Runtime {
             module_folder,
             persistent_folder,
 
-            scope
+            scope: Arc::new(RwLock::new(scope))
         })?;
 
         // Load referenced value.
