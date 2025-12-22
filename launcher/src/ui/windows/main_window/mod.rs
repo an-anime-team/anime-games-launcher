@@ -842,6 +842,14 @@ impl SimpleAsyncComponent for MainWindow {
                     persistent_folder: config.packages_persistent_path.clone()
                 };
 
+                // Add game's scope to all the game integration resources.
+                if let Some(scope) = &game.scope {
+                    for hash in game.lock.resources.keys() {
+                        self.allow_list.add_module_scope(*hash, scope.clone());
+                    }
+                }
+
+                // Load the game integration.
                 let result = self.runtime.load_packages(
                     &game.lock,
                     &self.storage,

@@ -23,6 +23,7 @@ use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_packages::lock::Lock as PackageLock;
+use agl_runtime::module::ModuleScope;
 use agl_games::manifest::GameManifest;
 
 use crate::config;
@@ -44,22 +45,30 @@ pub struct GameLock {
     pub manifest: GameManifest,
 
     /// Lock of the game package.
-    pub lock: PackageLock
+    pub lock: PackageLock,
+
+    /// Optional sandbox scope applied to all the runtime modules used by the
+    /// game integration.
+    pub scope: Option<ModuleScope>
 }
 
 impl GameLock {
     pub fn to_json(&self) -> Json {
         json!({
-            "version": 1,
+            "format": 1,
             "url": self.url,
             "manifest": self.manifest.to_json(),
-            "lock": self.lock.to_json()
+            "lock": self.lock.to_json(),
+            "scope": self.scope.as_ref()
+                .map(ModuleScope::to_json)
         })
     }
 
     pub fn from_json(value: &Json) -> anyhow::Result<Self> {
-        if value.get("version").and_then(Json::as_u64) != Some(1) {
-            anyhow::bail!("unsupported game lock file version");
+        if value.get("format").and_then(Json::as_u64) != Some(1)
+            && value.get("version").and_then(Json::as_u64) != Some(1)
+        {
+            anyhow::bail!("unsupported game lock file format");
         }
 
         Ok(Self {
@@ -80,7 +89,10 @@ impl GameLock {
                 .and_then(|game| {
                     PackageLock::from_json(game)
                         .ok_or_else(|| anyhow::anyhow!("invalid 'lock' field value in game lock"))
-                })?
+                })?,
+
+            scope: value.get("scope")
+                .map(ModuleScope::from_json)
         })
     }
 
@@ -145,7 +157,8 @@ impl GameLock {
         Ok(Self {
             url: manifest_url,
             manifest,
-            lock
+            lock,
+            scope: None
         })
     }
 }
