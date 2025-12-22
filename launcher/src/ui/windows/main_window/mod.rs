@@ -36,7 +36,7 @@ use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
 use agl_runtime::api::ApiOptions;
 use agl_runtime::api::portal_api::{
-    ToastOptions, NotificationOptions, DialogOptions
+    ToastOptions, NotificationOptions, DialogOptions, DialogButtonStatus
 };
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
@@ -1037,8 +1037,58 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            MainWindowMsg::ShowDialog(_options) => {
+            MainWindowMsg::ShowDialog(options) => {
+                let lang = config::get().language();
 
+                let title = match &lang {
+                    Ok(lang) => options.title.translate(lang),
+                    Err(_) => options.title.default_translation()
+                };
+
+                let message = match &lang {
+                    Ok(lang) => options.message.translate(lang),
+                    Err(_) => options.message.default_translation()
+                };
+
+                let dialog = adw::AlertDialog::new(
+                    Some(title),
+                    Some(message)
+                );
+
+                dialog.add_response("close", "Close");
+
+                dialog.connect_response(Some("close"), |dialog, _| {
+                    dialog.close();
+                });
+
+                for (i, button) in options.buttons.into_iter().enumerate() {
+                    let name = format!("response_{i}");
+
+                    let label = match &lang {
+                        Ok(lang) => button.label.translate(lang),
+                        Err(_) => button.label.default_translation()
+                    };
+
+                    dialog.connect_response(Some(&name), move |dialog, _| {
+                        if let Err(err) = button.callback.call::<()>(()) {
+                            tracing::error!(?err, "failed to execute dialog action");
+
+                            dialogs::error("Failed to execute dialog action", err.to_string());
+                        }
+
+                        dialog.close();
+                    });
+
+                    dialog.add_response(&name, label);
+
+                    dialog.set_response_appearance(&name, match button.status {
+                        DialogButtonStatus::Normal    => adw::ResponseAppearance::Default,
+                        DialogButtonStatus::Suggested => adw::ResponseAppearance::Suggested,
+                        DialogButtonStatus::Dangerous => adw::ResponseAppearance::Destructive
+                    });
+                }
+
+                dialog.present(self.window.as_ref());
             }
 
             MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,
