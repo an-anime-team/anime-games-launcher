@@ -101,6 +101,11 @@ type DialogOptions = {
 
     // Optional list of dialog buttons.
     buttons?: DialogButton[];
+
+    // Whether to add default "close" button to the dialog. If set to `false`
+    // then this button will not be added, so user will have to choose one of
+    // the provided buttons. Has no effect when no buttons provided.
+    can_close?: boolean;
 };
 
 type DialogButton = {

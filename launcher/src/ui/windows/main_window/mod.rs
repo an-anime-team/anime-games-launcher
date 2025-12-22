@@ -1055,11 +1055,13 @@ impl SimpleAsyncComponent for MainWindow {
                     Some(message)
                 );
 
-                dialog.add_response("close", "Close");
+                if options.can_close || options.buttons.is_empty() {
+                    dialog.add_response("close", "Close");
 
-                dialog.connect_response(Some("close"), |dialog, _| {
-                    dialog.close();
-                });
+                    dialog.connect_response(Some("close"), |dialog, _| {
+                        dialog.close();
+                    });
+                }
 
                 for (i, button) in options.buttons.into_iter().enumerate() {
                     let name = format!("response_{i}");

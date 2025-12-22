@@ -124,7 +124,8 @@ impl NotificationOptions {
 pub struct DialogOptions {
     pub title: LocalizableString,
     pub message: LocalizableString,
-    pub buttons: Vec<DialogButton>
+    pub buttons: Vec<DialogButton>,
+    pub can_close: bool
 }
 
 impl DialogOptions {
@@ -135,10 +136,11 @@ impl DialogOptions {
             buttons.raw_push(button.to_lua(lua)?)?;
         }
 
-        let options = lua.create_table_with_capacity(0, 3)?;
+        let options = lua.create_table_with_capacity(0, 4)?;
 
         options.raw_set("title", self.title.to_lua(lua)?)?;
         options.raw_set("message", self.message.to_lua(lua)?)?;
+        options.raw_set("can_close", self.can_close)?;
 
         if !buttons.is_empty() {
             options.raw_set("buttons", buttons)?;
@@ -165,7 +167,10 @@ impl DialogOptions {
 
                     Ok::<_, LuaError>(buttons)
                 })
-                .unwrap_or_else(|| Ok(vec![]))?
+                .unwrap_or_else(|| Ok(vec![]))?,
+
+            can_close: value.get::<Option<bool>>("can_close")?
+                .unwrap_or(true)
         })
     }
 }
