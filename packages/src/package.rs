@@ -41,6 +41,8 @@ pub struct PackageManifest {
 impl PackageManifest {
     pub fn to_json(&self) -> Json {
         json!({
+            "format": 1,
+
             "inputs": self.inputs.iter()
                 .map(|(k, v)| (k.to_string(), v.to_json()))
                 .collect::<HashMap<String, Json>>(),

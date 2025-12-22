@@ -76,6 +76,8 @@ impl Lock {
 
     pub fn to_json(&self) -> Json {
         json!({
+            "format": 1,
+
             "root": self.root.iter()
                 .map(Hash::to_base32)
                 .collect::<Vec<String>>(),
