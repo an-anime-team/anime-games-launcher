@@ -47,7 +47,7 @@ pub struct GameManifest {
 impl GameManifest {
     pub fn to_json(&self) -> Json {
         json!({
-            "version": 1,
+            "format": 1,
             "game": self.game.to_json(),
             "package": self.package.to_json(),
             "maintainers": self.maintainers.iter()

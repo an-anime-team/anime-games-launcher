@@ -35,7 +35,7 @@ pub struct GamesRegistryManifest {
 impl GamesRegistryManifest {
     pub fn to_json(&self) -> Json {
         json!({
-            "version": 1,
+            "format": 1,
             "games": self.games.iter()
                 .map(|game| game.to_json())
                 .collect::<Vec<_>>()
