@@ -249,6 +249,18 @@ impl Runtime {
         module: Module,
         paths: ModulePaths
     ) -> Result<(), RuntimeError> {
+        // Get the module key.
+        let key = key.to_string();
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(
+            ?key,
+            path = ?module.path,
+            scope = ?module.scope,
+            paths = ?paths,
+            "load module"
+        );
+
         // Check if the module file exists and is a readable file.
         if !module.path.is_file() {
             return Err(RuntimeError::ModuleDoesntExist(module.path));
@@ -270,9 +282,6 @@ impl Runtime {
 
         // Read the values table from the engine.
         let values_table = engine_table.raw_get::<LuaTable>("values")?;
-
-        // Get the module key.
-        let key = key.to_string();
 
         // Create environment for the module.
         let env = self.create_env_from_scope(
@@ -309,6 +318,13 @@ impl Runtime {
 
         // TODO: implement something like RichResourceFormat with Module format
         //       instead of doing shit with is_module_resource and so
+
+        #[cfg(feature = "tracing")]
+        tracing::trace!(
+            ?lock,
+            ?paths,
+            "load packages"
+        );
 
         #[inline]
         fn get_resource_key(
