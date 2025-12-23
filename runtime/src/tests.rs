@@ -33,6 +33,7 @@ use crate::allow_list::AllowList;
 
 use crate::module::{Module, ModuleScope};
 use crate::api::ApiOptions;
+use crate::api::torrent_api::{TorrentServer, TorrentServerOptions};
 use crate::runtime::{Runtime, RuntimeError, ModulePaths};
 
 #[cfg(feature = "packages-support")]
@@ -60,10 +61,11 @@ fn get_runtime() -> Result<Runtime, RuntimeError> {
 
     Runtime::new(ApiOptions {
         lua: Lua::new(),
-        client: reqwest::Client::new(),
+        reqwest_client: reqwest::Client::new(),
+        torrent_server: TorrentServer::start(TorrentServerOptions::default()),
         show_toast: Box::new(|_| {}),
         show_notification: Box::new(|_| {}),
-        show_dialog: Box::new(|_| None),
+        show_dialog: Box::new(|_| {}),
         translate
     })
 }

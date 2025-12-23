@@ -90,6 +90,10 @@ fn main() -> anyhow::Result<()> {
         .with_ansi(false)
         .with_filter({
             filter_fn(|metadata| {
+                if metadata.target().starts_with("librqbit") {
+                    return metadata.level() != &tracing::Level::TRACE;
+                }
+
                 !metadata.target().starts_with("h2") &&
                 !metadata.target().starts_with("hyper_util")
             })

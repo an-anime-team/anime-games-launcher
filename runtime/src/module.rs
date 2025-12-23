@@ -103,6 +103,14 @@ pub struct ModuleScope {
     /// Default: `true`.
     pub allow_sqlite_api: bool,
 
+    /// Allow module to access torrent API.
+    ///
+    /// This API allows module to work with BitTorrent protocol, download and
+    /// share files using DHT, magnet links and torrent files.
+    ///
+    /// Default: `true`.
+    pub allow_torrent_api: bool,
+
     /// Allow module to access portal API.
     ///
     /// This API allows module to send system/application-level notifications
@@ -149,6 +157,7 @@ impl Default for ModuleScope {
             allow_hash_api: true,
             allow_compression_api: true,
             allow_sqlite_api: true,
+            allow_torrent_api: true,
             allow_portal_api: true,
             allow_process_api: false,
             sandbox_read_paths: vec![],
@@ -170,6 +179,7 @@ impl ModuleScope {
                 "hash": self.allow_hash_api,
                 "compression": self.allow_compression_api,
                 "sqlite": self.allow_sqlite_api,
+                "torrent": self.allow_torrent_api,
                 "portal": self.allow_portal_api,
                 "process": self.allow_process_api
             },
@@ -218,6 +228,10 @@ impl ModuleScope {
 
             if let Some(allow) = api.get("sqlite").and_then(Json::as_bool) {
                 scope.allow_sqlite_api = allow;
+            }
+
+            if let Some(allow) = api.get("torrent").and_then(Json::as_bool) {
+                scope.allow_torrent_api = allow;
             }
 
             if let Some(allow) = api.get("portal").and_then(Json::as_bool) {

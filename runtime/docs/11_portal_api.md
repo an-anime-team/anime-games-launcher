@@ -5,8 +5,8 @@ notification, asking for a choice in a modal dialog, or request access to some
 sandboxed files or folders. This API allows you to directly interact with
 the user.
 
-| Function              | Description                                   |
-| --------------------- | --------------------------------------------- |
+| Function             | Description                                   |
+| -------------------- | --------------------------------------------- |
 | `portal.toast`       | Show in-app notification.                     |
 | `portal.notify`      | Show system notification.                     |
 | `portal.dialog`      | Show in-app modal dialog.                     |

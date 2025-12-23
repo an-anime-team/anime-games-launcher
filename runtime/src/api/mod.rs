@@ -34,6 +34,7 @@ pub mod archive_api;
 pub mod hash_api;
 pub mod compression_api;
 pub mod sqlite_api;
+pub mod torrent_api;
 pub mod portal_api;
 pub mod process_api;
 
@@ -168,8 +169,11 @@ pub struct ApiOptions {
     /// Lua engine.
     pub lua: Lua,
 
-    /// Client used by the network API.
-    pub client: reqwest::Client,
+    /// Reqwest client used by the network API.
+    pub reqwest_client: reqwest::Client,
+
+    /// BitTorrent server instance.
+    pub torrent_server: torrent_api::TorrentServer,
 
     /// Callback used to display a toast message.
     pub show_toast: Box<dyn Fn(portal_api::ToastOptions) + Send>,
@@ -178,7 +182,7 @@ pub struct ApiOptions {
     pub show_notification: Box<dyn Fn(portal_api::NotificationOptions) + Send>,
 
     /// Callback used to display a dialog.
-    pub show_dialog: Box<dyn Fn(portal_api::DialogOptions) -> Option<String> + Send>,
+    pub show_dialog: Box<dyn Fn(portal_api::DialogOptions) + Send>,
 
     /// Callback used to translate localizable string.
     pub translate: fn(agl_locale::LocalizableString) -> String
@@ -200,6 +204,7 @@ pub struct Api {
     hash_api: hash_api::HashApi,
     compression_api: compression_api::CompressionApi,
     sqlite_api: sqlite_api::SqliteApi,
+    torrent_api: torrent_api::TorrentApi,
     portal_api: portal_api::PortalApi,
     process_api: process_api::ProcessApi
 }
@@ -256,12 +261,13 @@ impl Api {
             string_api: string_api::StringApi::new(options.lua.clone())?,
             path_api: path_api::PathApi::new(options.lua.clone())?,
             filesystem_api: filesystem_api::FilesystemApi::new(options.lua.clone())?,
-            network_api: network_api::NetworkApi::new(options.lua.clone(), options.client)?,
+            network_api: network_api::NetworkApi::new(options.lua.clone(), options.reqwest_client)?,
             downloader_api: downloader_api::DownloaderApi::new(options.lua.clone())?,
             archive_api: archive_api::ArchiveApi::new(options.lua.clone())?,
             hash_api: hash_api::HashApi::new(options.lua.clone())?,
             compression_api: compression_api::CompressionApi::new(options.lua.clone())?,
             sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
+            torrent_api: torrent_api::TorrentApi::new(options.lua.clone(), options.torrent_server)?,
             portal_api: portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
                 show_toast: options.show_toast,
                 show_notification: options.show_notification,
@@ -367,6 +373,11 @@ impl Api {
         // Sqlite API.
         if scope.allow_sqlite_api {
             env.raw_set("sqlite", self.sqlite_api.create_env(context)?)?;
+        }
+
+        // Torrent API.
+        if scope.allow_torrent_api {
+            env.raw_set("torrent", self.torrent_api.create_env(context)?)?;
         }
 
         // Portal API.

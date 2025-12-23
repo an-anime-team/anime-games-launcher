@@ -126,6 +126,21 @@ pub struct Config {
     /// `runtime.memory_limit`
     pub runtime_memory_limit: usize,
 
+    /// Enable background DHT node.
+    ///
+    /// `runtime.torrent.dht`
+    pub runtime_torrent_enable_dht: bool,
+
+    /// Open BitTorrent protocol port using UPnP.
+    ///
+    /// `runtime.torrent.upnp`
+    pub runtime_torrent_enable_upnp: bool,
+
+    /// List of torrent trackers used by the torrent API.
+    ///
+    /// `runtime.torrent.trackers`
+    pub runtime_torrent_trackers: Vec<String>,
+
     /// URLs of the game registry files.
     ///
     /// `games.registries`
@@ -161,6 +176,12 @@ impl Default for Config {
             packages_temporary_path: DATA_FOLDER.join("packages").join("temporary"),
 
             runtime_memory_limit: 1024 * 1024 * 1024,
+
+            runtime_torrent_enable_dht: true,
+            runtime_torrent_enable_upnp: true,
+            runtime_torrent_trackers: vec![
+                String::from("udp://tracker.opentrackr.org:1337/announce")
+            ],
 
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/games/registry.json")
@@ -215,6 +236,11 @@ impl Config {
 
             [runtime]
             memory_limit = (self.runtime_memory_limit)
+
+            [runtime.torrent]
+            enable_dht = (self.runtime_torrent_enable_dht)
+            enable_upnp = (self.runtime_torrent_enable_upnp)
+            trackers = (self.runtime_torrent_trackers.iter().map(|url| url.as_str()).collect::<Vec<_>>())
 
             [games]
             registries = (self.games_registries.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -361,6 +387,27 @@ impl Config {
             // `runtime.memory_limit`
             if let Some(memory_limit) = runtime.get("memory_limit").and_then(Toml::as_integer) {
                 config.runtime_memory_limit = memory_limit as usize;
+            }
+
+            // `runtime.torrent.*`
+            if let Some(torrent) = runtime.get("torrent") {
+                // `runtime.torrent.enable_dht`
+                if let Some(enable_dht) = torrent.get("enable_dht").and_then(Toml::as_bool) {
+                    config.runtime_torrent_enable_dht = enable_dht;
+                }
+
+                // `runtime.torrent.enable_upnp`
+                if let Some(enable_upnp) = torrent.get("enable_upnp").and_then(Toml::as_bool) {
+                    config.runtime_torrent_enable_upnp = enable_upnp;
+                }
+
+                // `runtime.torrent.trackers`
+                if let Some(trackers) = torrent.get("trackers").and_then(Toml::as_array) {
+                    config.runtime_torrent_trackers = trackers.iter()
+                        .flat_map(Toml::as_str)
+                        .map(String::from)
+                        .collect();
+                }
             }
         }
 

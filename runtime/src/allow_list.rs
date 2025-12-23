@@ -75,6 +75,7 @@ impl AllowList {
         entry.allow_hash_api        |= scope.allow_hash_api;
         entry.allow_compression_api |= scope.allow_compression_api;
         entry.allow_sqlite_api      |= scope.allow_sqlite_api;
+        entry.allow_torrent_api     |= scope.allow_torrent_api;
         entry.allow_portal_api      |= scope.allow_portal_api;
         entry.allow_process_api     |= scope.allow_process_api;
 

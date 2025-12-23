@@ -35,6 +35,7 @@ use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
 use agl_runtime::api::ApiOptions;
+use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 use agl_runtime::api::portal_api::{
     ToastOptions, NotificationOptions, DialogOptions, DialogButtonStatus
 };
@@ -316,8 +317,23 @@ impl SimpleAsyncComponent for MainWindow {
 
         let runtime = Runtime::new(ApiOptions {
             lua,
-            client,
-            translate,
+            reqwest_client: client,
+
+            torrent_server: TorrentServer::start(TorrentServerOptions {
+                default_folder: config.packages_temporary_path.clone(),
+
+                socks_proxy: match config.general_network_proxy_url.clone() {
+                    Some(proxy) if proxy.starts_with("socks") => Some(proxy),
+                    _ => None
+                },
+
+                trackers: config.runtime_torrent_trackers.iter()
+                    .cloned()
+                    .collect(),
+
+                enable_dht: config.runtime_torrent_enable_dht,
+                enable_upnp: config.runtime_torrent_enable_upnp
+            }),
 
             show_toast: {
                 let sender = sender.clone();
@@ -340,11 +356,10 @@ impl SimpleAsyncComponent for MainWindow {
 
                 Box::new(move |options| {
                     sender.input(MainWindowMsg::ShowDialog(options));
-
-                    // FIXME
-                    None
                 })
             },
+
+            translate
         }).expect("failed to initialize packages runtime");
 
         let mut model = Self {

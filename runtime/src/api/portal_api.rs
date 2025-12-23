@@ -253,7 +253,7 @@ pub struct PortalApiOptions {
     pub show_notification: Box<dyn Fn(NotificationOptions) + Send>,
 
     /// Callback used to display a dialog.
-    pub show_dialog: Box<dyn Fn(DialogOptions) -> Option<String> + Send>,
+    pub show_dialog: Box<dyn Fn(DialogOptions) + Send>,
 
     /// Callback used to translate localizable string.
     pub translate: fn(LocalizableString) -> String
@@ -291,7 +291,9 @@ impl PortalApi {
 
             portal_dialog: {
                 lua.create_function(move |_, dialog_options: LuaTable| {
-                    Ok((options.show_dialog)(DialogOptions::from_lua(&dialog_options)?))
+                    (options.show_dialog)(DialogOptions::from_lua(&dialog_options)?);
+
+                    Ok(())
                 })?
             },
 
