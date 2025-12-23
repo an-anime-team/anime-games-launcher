@@ -10,6 +10,9 @@ jobs:
   check_target_branch:
     runs-on: ubuntu-latest
 
+    permissions:
+      pull-requests: write
+
     steps:
       - uses: Vankka/pr-target-branch-action@v2
         env:
@@ -21,7 +24,7 @@ jobs:
           change-to: next
 
           comment: |
-              Your pull request was set to target `master` instead of `next`.
+            Your pull request was set to target `master` instead of `next`.
 
-              The target branch of this pull request has been automatically changed.
-              Please verify that there are no merge conflicts.
+            The target branch of this pull request has been automatically changed.
+            Please verify that there are no merge conflicts.
