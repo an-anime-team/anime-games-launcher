@@ -21,8 +21,8 @@ use std::time::Duration;
 
 use adw::prelude::*;
 
-use relm4::abstractions::{DrawContext, DrawHandler};
 use relm4::prelude::*;
+use relm4::abstractions::{DrawContext, DrawHandler};
 
 use agl_core::export::tasks::tokio;
 
@@ -96,25 +96,31 @@ impl Graph {
 
         // Collect all points.
         let mut plot_points = Vec::new();
-        plot_points.push((width - OFFSET, height - (OFFSET + self.points[0] as f64 * y_scale)));
+
+        plot_points.push((
+            width - OFFSET,
+            height - (OFFSET + self.points[0] as f64 * y_scale)
+        ));
+
         for (i, point) in self.points.iter().enumerate() {
             let x = width - (OFFSET + x_scale * (i + 1) as f64);
             let y = height - OFFSET - *point as f64 * y_scale;
+
             plot_points.push((x, y));
         }
-        plot_points.push((OFFSET, height - (OFFSET + self.points[self.points.len() - 1] as f64 * y_scale)));
 
-        fn draw_curve(context: &DrawContext, points: &Vec<(f64, f64)>) {
+        plot_points.push((
+            OFFSET,
+            height - (OFFSET + self.points[self.points.len() - 1] as f64 * y_scale)
+        ));
+
+        fn draw_curve(context: &DrawContext, points: &[(f64, f64)]) {
             // Draw smooth Catmull-Rom spline through points.
             for i in 0..points.len() - 1 {
                 let p0 = if i == 0 { points[0] } else { points[i - 1] };
                 let p1 = points[i];
                 let p2 = points[i + 1];
-                let p3 = if i + 2 < points.len() {
-                    points[i + 2]
-                } else {
-                    points[i + 1]
-                };
+                let p3 = points.get(i + 2).unwrap_or(&points[i + 1]);
 
                 // Convert to Bézier.
                 context.curve_to(
@@ -123,7 +129,7 @@ impl Graph {
                     p2.0 - (p3.0 - p1.0) / 6.0,
                     p2.1 - (p3.1 - p1.1) / 6.0,
                     p2.0,
-                    p2.1,
+                    p2.1
                 );
             }
         }
@@ -134,15 +140,20 @@ impl Graph {
             // Draw filled area.
             context.move_to(plot_points[0].0, baseline);
             context.line_to(plot_points[0].0, plot_points[0].1);
+
             draw_curve(&context, &plot_points);
+
             context.line_to(plot_points[plot_points.len() - 1].0, baseline);
             context.close_path();
+
             context.set_source_rgba(red, green, blue, 0.2);
             context.fill()?;
 
             // Draw smooth curve.
             context.move_to(plot_points[0].0, plot_points[0].1);
+
             draw_curve(&context, &plot_points);
+
             context.set_source_rgba(red, green, blue, 1.0);
             context.stroke()?;
         }
@@ -156,9 +167,13 @@ impl Graph {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GraphMsg {
-    SetColor { red: f64, green: f64, blue: f64 },
+    SetColor {
+        red: f64,
+        green: f64,
+        blue: f64
+    },
     AddPoint(u64),
-    Clear,
+    Clear
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -179,7 +194,7 @@ impl AsyncComponent for Graph {
             #[local_ref]
             _area -> gtk::DrawingArea {
                 set_content_width: model.width,
-                set_content_height: model.height,
+                set_content_height: model.height
             }
         }
     }
@@ -199,7 +214,7 @@ impl AsyncComponent for Graph {
             mean_point: 0,
 
             points: VecDeque::from_iter(vec![0; init.window_size]),
-            handler: DrawHandler::new(),
+            handler: DrawHandler::new()
         };
 
         let _area = model.handler.drawing_area();
@@ -237,6 +252,7 @@ impl AsyncComponent for Graph {
                     .copied()
                     .max()
                     .unwrap_or_default();
+
                 self.mean_point = self.points.iter().copied().sum::<u64>() / self.window_size as u64;
             }
 
