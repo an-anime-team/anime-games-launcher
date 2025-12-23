@@ -294,7 +294,7 @@ impl SimpleAsyncComponent for MainWindow {
                 .expect("failed to set packages runtime memory limit");
         }
 
-        let client = config.client_builder()
+        let reqwest_client = config.client_builder()
             .and_then(|client| {
                 client.build()
                     .map_err(|err| anyhow::anyhow!(err))
@@ -303,6 +303,24 @@ impl SimpleAsyncComponent for MainWindow {
 
         let storage = Storage::open(&config.packages_resources_path)
             .expect("failed to open packages storage");
+
+        let torrent_server = config.runtime_torrent_enable.then(|| {
+            TorrentServer::start(TorrentServerOptions {
+                default_folder: config.packages_temporary_path.clone(),
+
+                socks_proxy: match config.general_network_proxy_url.clone() {
+                    Some(proxy) if proxy.starts_with("socks") => Some(proxy),
+                    _ => None
+                },
+
+                trackers: config.runtime_torrent_trackers.iter()
+                    .cloned()
+                    .collect(),
+
+                enable_dht: config.runtime_torrent_enable_dht,
+                enable_upnp: config.runtime_torrent_enable_upnp
+            })
+        });
 
         fn translate(str: LocalizableString) -> String {
             let config = config::get();
@@ -317,23 +335,8 @@ impl SimpleAsyncComponent for MainWindow {
 
         let runtime = Runtime::new(ApiOptions {
             lua,
-            reqwest_client: client,
-
-            torrent_server: TorrentServer::start(TorrentServerOptions {
-                default_folder: config.packages_temporary_path.clone(),
-
-                socks_proxy: match config.general_network_proxy_url.clone() {
-                    Some(proxy) if proxy.starts_with("socks") => Some(proxy),
-                    _ => None
-                },
-
-                trackers: config.runtime_torrent_trackers.iter()
-                    .cloned()
-                    .collect(),
-
-                enable_dht: config.runtime_torrent_enable_dht,
-                enable_upnp: config.runtime_torrent_enable_upnp
-            }),
+            reqwest_client,
+            torrent_server,
 
             show_toast: {
                 let sender = sender.clone();

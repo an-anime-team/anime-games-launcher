@@ -126,6 +126,12 @@ pub struct Config {
     /// `runtime.memory_limit`
     pub runtime_memory_limit: usize,
 
+    /// Enable torrent API support. If disabled - no runtime module will be able
+    /// to interact with it, and no background service will be started at all.
+    ///
+    /// `runtime.torrent.enable`
+    pub runtime_torrent_enable: bool,
+
     /// Enable background DHT node.
     ///
     /// `runtime.torrent.dht`
@@ -177,6 +183,7 @@ impl Default for Config {
 
             runtime_memory_limit: 1024 * 1024 * 1024,
 
+            runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
             runtime_torrent_enable_upnp: true,
             runtime_torrent_trackers: vec![
@@ -238,6 +245,7 @@ impl Config {
             memory_limit = (self.runtime_memory_limit)
 
             [runtime.torrent]
+            enable = (self.runtime_torrent_enable)
             enable_dht = (self.runtime_torrent_enable_dht)
             enable_upnp = (self.runtime_torrent_enable_upnp)
             trackers = (self.runtime_torrent_trackers.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -391,6 +399,11 @@ impl Config {
 
             // `runtime.torrent.*`
             if let Some(torrent) = runtime.get("torrent") {
+                // `runtime.torrent.enable`
+                if let Some(enable) = torrent.get("enable").and_then(Toml::as_bool) {
+                    config.runtime_torrent_enable = enable;
+                }
+
                 // `runtime.torrent.enable_dht`
                 if let Some(enable_dht) = torrent.get("enable_dht").and_then(Toml::as_bool) {
                     config.runtime_torrent_enable_dht = enable_dht;

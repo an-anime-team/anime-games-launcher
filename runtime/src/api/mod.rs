@@ -172,8 +172,9 @@ pub struct ApiOptions {
     /// Reqwest client used by the network API.
     pub reqwest_client: reqwest::Client,
 
-    /// BitTorrent server instance.
-    pub torrent_server: torrent_api::TorrentServer,
+    /// BitTorrent server instance. If `None` is provided then the torrent API
+    /// will be disabled for all the modules.
+    pub torrent_server: Option<torrent_api::TorrentServer>,
 
     /// Callback used to display a toast message.
     pub show_toast: Box<dyn Fn(portal_api::ToastOptions) + Send>,
@@ -204,7 +205,7 @@ pub struct Api {
     hash_api: hash_api::HashApi,
     compression_api: compression_api::CompressionApi,
     sqlite_api: sqlite_api::SqliteApi,
-    torrent_api: torrent_api::TorrentApi,
+    torrent_api: Option<torrent_api::TorrentApi>,
     portal_api: portal_api::PortalApi,
     process_api: process_api::ProcessApi
 }
@@ -267,7 +268,9 @@ impl Api {
             hash_api: hash_api::HashApi::new(options.lua.clone())?,
             compression_api: compression_api::CompressionApi::new(options.lua.clone())?,
             sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
-            torrent_api: torrent_api::TorrentApi::new(options.lua.clone(), options.torrent_server)?,
+            torrent_api: options.torrent_server.map(|server| {
+                torrent_api::TorrentApi::new(options.lua.clone(), server)
+            }).transpose()?,
             portal_api: portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
                 show_toast: options.show_toast,
                 show_notification: options.show_notification,
@@ -376,8 +379,8 @@ impl Api {
         }
 
         // Torrent API.
-        if scope.allow_torrent_api {
-            env.raw_set("torrent", self.torrent_api.create_env(context)?)?;
+        if let Some(torrent_api) = &self.torrent_api && scope.allow_torrent_api {
+            env.raw_set("torrent", torrent_api.create_env(context)?)?;
         }
 
         // Portal API.

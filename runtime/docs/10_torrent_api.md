@@ -4,6 +4,9 @@ BitTorrent protocol allows people to distribute files and folders in
 decentralized manner, fast and efficiently. This API allows you to fetch
 torrent files info, download and seed them to other people.
 
+Since BitTorrent protocol can be forbidden in some jurisdictions this API can
+be disabled by the user even if module has access to it.
+
 | Function       | Description                       |
 | -------------- | --------------------------------- |
 | `torrent.add`  | Add torrent to downloading queue. |
