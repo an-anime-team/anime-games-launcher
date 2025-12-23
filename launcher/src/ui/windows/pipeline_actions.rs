@@ -34,7 +34,7 @@ use crate::ui::components::game_actions_pipeline::{
     GameActionsPipelineFactory, GameActionsPipelineFactoryMsg
 };
 
-const GRAPH_DIFF_INTERVAL: Duration = Duration::from_millis(500);
+const GRAPH_DIFF_INTERVAL: Duration = Duration::from_secs(1);
 const GRAPH_DIFF_PRECISION: f64 = 1_000_000.0;
 
 #[derive(Debug, Clone)]
