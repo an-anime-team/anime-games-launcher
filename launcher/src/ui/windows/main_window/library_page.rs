@@ -225,7 +225,9 @@ impl SimpleAsyncComponent for LibraryPage {
                 };
 
                 let editions = match integration.get_editions(&consts::CURRENT_PLATFORM) {
-                    Ok(editions) => editions,
+                    Ok(Some(editions)) if editions.is_empty() => None,
+                    Ok(Some(editions)) => Some(editions),
+                    Ok(None) => None,
 
                     Err(err) => {
                         tracing::error!(
