@@ -252,7 +252,7 @@ type SettingsEntryEnum = {
 
 type SettingsEntryExpandable = {
     format: 'expandable';
-    values: SettingsEntryVariant[];
+    entries: SettingsEntry[];
 };
 
 type GameIntegration = {
