@@ -38,7 +38,7 @@ pub struct GraphInit {
     pub height: i32,
 
     /// Amount of last points to display on the graph.
-    pub window_size: usize,
+    pub points_num: usize,
 
     /// Plot lines RGB color from 0.0 to 1.0.
     pub color: (f64, f64, f64)
@@ -48,7 +48,7 @@ pub struct GraphInit {
 pub struct Graph {
     width: i32,
     height: i32,
-    window_size: usize,
+    points_num: usize,
     color: (f64, f64, f64),
 
     points: VecDeque<u64>,
@@ -79,7 +79,7 @@ impl Graph {
         context.set_line_width(2.0);
 
         // Calculate plot scale.
-        let x_scale = (width - 2.0 * OFFSET) / (self.window_size as f64 + 1.0);
+        let x_scale = (width - 2.0 * OFFSET) / (self.points_num as f64 + 1.0);
         let y_scale = (height - 3.0 * OFFSET) / self.max_point as f64;
 
         // Draw the mean line.
@@ -207,13 +207,13 @@ impl AsyncComponent for Graph {
         let model = Graph {
             width: init.width,
             height: init.height,
-            window_size: init.window_size,
+            points_num: init.points_num,
             color: init.color,
 
             max_point: 0,
             mean_point: 0,
 
-            points: VecDeque::from_iter(vec![0; init.window_size]),
+            points: VecDeque::from_iter(vec![0; init.points_num]),
             handler: DrawHandler::new()
         };
 
@@ -253,11 +253,11 @@ impl AsyncComponent for Graph {
                     .max()
                     .unwrap_or_default();
 
-                self.mean_point = self.points.iter().copied().sum::<u64>() / self.window_size as u64;
+                self.mean_point = self.points.iter().copied().sum::<u64>() / self.points_num as u64;
             }
 
             GraphMsg::Clear => {
-                self.points = VecDeque::from_iter(vec![0; self.window_size]);
+                self.points = VecDeque::from_iter(vec![0; self.points_num]);
 
                 self.max_point = 0;
                 self.mean_point = 0;

@@ -36,6 +36,7 @@ use crate::ui::components::game_actions_pipeline::{
 
 const GRAPH_DIFF_INTERVAL: Duration = Duration::from_secs(1);
 const GRAPH_DIFF_PRECISION: f64 = 1_000_000.0;
+const GRAPH_POINTS_NUM: usize = 60;
 
 #[derive(Debug, Clone)]
 pub enum PipelineActionsWindowInput {
@@ -148,7 +149,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                 .launch(GraphInit {
                     width: 600,
                     height: 180,
-                    window_size: 60,
+                    points_num: GRAPH_POINTS_NUM,
                     color: (
                         accent_color.red() as f64,
                         accent_color.green() as f64,
