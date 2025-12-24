@@ -43,6 +43,14 @@ Get information about already added torrent using its info hash. Return `nil`
 if there's no torrent with provided info hash.
 
 ```ts
+type TorrentPeerInfo = {
+    // Address of the peer.
+    address: string;
+
+    // Amount of bytes downloaded from this peer.
+    downloaded: number;
+};
+
 type TorrentFileInfo = {
     // Relative path of a file.
     path: string;
@@ -57,6 +65,9 @@ type TorrentInfo = {
 
     // List of torrent trackers.
     trackers: string[];
+
+    // List of active torrent peers.
+    peers: TorrentPeerInfo[];
 
     // Files of the torrent.
     files: TorrentFileInfo[];
@@ -75,6 +86,9 @@ type TorrentInfo = {
 
     // Whether the torrent downloading or seeding is paused.
     paused: boolean;
+
+    // Whether the torrent's downloading is finished.
+    finished: boolean;
 };
 ```
 

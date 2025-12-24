@@ -82,6 +82,15 @@ impl Default for TorrentServerOptions {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TorrentPeerInfo {
+    /// Address of the peer.
+    pub address: String,
+
+    /// Amount of bytes downloaded from this peer.
+    pub downloaded: u64
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TorrentFileInfo {
     /// Relative path to the file within a torrent.
     pub path: PathBuf,
@@ -110,6 +119,9 @@ pub struct TorrentInfo {
     /// List of torrent trackers.
     pub trackers: Box<[String]>,
 
+    /// List of torrent peers.
+    pub peers: Box<[TorrentPeerInfo]>,
+
     /// List of files within the torrent.
     pub files: Box<[TorrentFileInfo]>,
 
@@ -117,7 +129,10 @@ pub struct TorrentInfo {
     pub stats: TorrentStats,
 
     /// Whether the torrent is paused.
-    pub paused: bool
+    pub paused: bool,
+
+    /// Whether the torrent downloading is finished.
+    pub finished: bool
 }
 
 #[derive(Debug, Clone)]
@@ -244,6 +259,19 @@ impl TorrentServer {
                             continue;
                         };
 
+                        let mut peers = Vec::new();
+
+                        if let Some(live_info) = info.live() {
+                            let peers_info = live_info.per_peer_stats_snapshot(Default::default());
+
+                            for (address, stats) in peers_info.peers {
+                                peers.push(TorrentPeerInfo {
+                                    address,
+                                    downloaded: stats.counters.fetched_bytes
+                                });
+                            }
+                        }
+
                         let mut files = Vec::new();
 
                         let result = info.with_metadata(|metadata| {
@@ -253,6 +281,10 @@ impl TorrentServer {
                                     size: file.len
                                 });
                             }
+
+                            // for piece in metadata.lengths.iter_piece_infos() {
+                            //     piece.
+                            // }
                         });
 
                         if let Err(err) = result {
@@ -271,13 +303,15 @@ impl TorrentServer {
                             trackers: info.shared().trackers.iter()
                                 .map(|url| url.to_string())
                                 .collect(),
+                            peers: peers.into_boxed_slice(),
                             files: files.into_boxed_slice(),
                             stats: TorrentStats {
                                 current: stats.progress_bytes,
                                 total: stats.total_bytes,
                                 uploaded: stats.uploaded_bytes
                             },
-                            paused: info.is_paused()
+                            paused: info.is_paused(),
+                            finished: stats.finished
                         })));
                     }
                 }
@@ -399,6 +433,17 @@ impl TorrentApi {
                         return Ok(None);
                     };
 
+                    let peers = lua.create_table_with_capacity(info.peers.len(), 0)?;
+
+                    for peer in info.peers {
+                        let peer_info = lua.create_table_with_capacity(0, 2)?;
+
+                        peer_info.raw_set("address", peer.address)?;
+                        peer_info.raw_set("downloaded", peer.downloaded)?;
+
+                        peers.raw_push(peer_info)?;
+                    }
+
                     let files = lua.create_table_with_capacity(info.files.len(), 0)?;
 
                     for file in info.files {
@@ -416,13 +461,15 @@ impl TorrentApi {
                     stats.raw_set("total", info.stats.total)?;
                     stats.raw_set("uploaded", info.stats.uploaded)?;
 
-                    let result = lua.create_table_with_capacity(0, 5)?;
+                    let result = lua.create_table_with_capacity(0, 7)?;
 
                     result.raw_set("name", info.name)?;
                     result.raw_set("trackers", info.trackers)?;
+                    result.raw_set("peers", peers)?;
                     result.raw_set("files", files)?;
                     result.raw_set("stats", stats)?;
                     result.raw_set("paused", info.paused)?;
+                    result.raw_set("finished", info.finished)?;
 
                     Ok(Some(result))
                 })?
