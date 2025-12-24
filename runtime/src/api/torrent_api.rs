@@ -69,6 +69,9 @@ pub struct TorrentServerOptions {
     /// List of torrent tracker URIs.
     pub trackers: HashSet<String>,
 
+    /// Optional URL to the peers blocklist.
+    pub blocklist_url: Option<String>,
+
     /// Enable DHT.
     pub enable_dht: bool,
 
@@ -82,6 +85,7 @@ impl Default for TorrentServerOptions {
             default_folder: std::env::temp_dir(),
             socks_proxy: None,
             trackers: HashSet::new(),
+            blocklist_url: None,
             enable_dht: true,
             enable_upnp: true
         }
@@ -204,6 +208,7 @@ impl TorrentServer {
                         .flat_map(|url| url.parse())
                         .collect(),
 
+                    blocklist_url: options.blocklist_url,
                     disable_dht: !options.enable_dht,
                     enable_upnp_port_forwarding: options.enable_upnp,
 

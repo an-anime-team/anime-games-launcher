@@ -147,6 +147,11 @@ pub struct Config {
     /// `runtime.torrent.trackers`
     pub runtime_torrent_trackers: Vec<String>,
 
+    /// URL to the torrent peers blocklist.
+    ///
+    /// `runtime.torrent.blocklist_url`
+    pub runtime_torrent_blocklist_url: Option<String>,
+
     /// URLs of the game registry files.
     ///
     /// `games.registries`
@@ -189,6 +194,7 @@ impl Default for Config {
             runtime_torrent_trackers: vec![
                 String::from("udp://tracker.opentrackr.org:1337/announce")
             ],
+            runtime_torrent_blocklist_url: Some(String::from("https://raw.githubusercontent.com/Naunter/BT_BlockLists/master/bt_blocklists.gz")),
 
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/games/registry.json")
@@ -249,6 +255,7 @@ impl Config {
             enable_dht = (self.runtime_torrent_enable_dht)
             enable_upnp = (self.runtime_torrent_enable_upnp)
             trackers = (self.runtime_torrent_trackers.iter().map(|url| url.as_str()).collect::<Vec<_>>())
+            blocklist_url = (self.runtime_torrent_blocklist_url.as_deref().unwrap_or("none"))
 
             [games]
             registries = (self.games_registries.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -420,6 +427,15 @@ impl Config {
                         .flat_map(Toml::as_str)
                         .map(String::from)
                         .collect();
+                }
+
+                // `runtime.torrent.blocklist_url`
+                if let Some(blocklist_url) = torrent.get("blocklist_url").and_then(Toml::as_str) {
+                    config.runtime_torrent_blocklist_url = if blocklist_url == "none" {
+                        None
+                    } else {
+                        Some(blocklist_url.to_string())
+                    };
                 }
             }
         }

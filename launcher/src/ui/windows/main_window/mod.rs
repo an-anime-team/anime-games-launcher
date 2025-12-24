@@ -317,6 +317,7 @@ impl SimpleAsyncComponent for MainWindow {
                     .cloned()
                     .collect(),
 
+                blocklist_url: config.runtime_torrent_blocklist_url.clone(),
                 enable_dht: config.runtime_torrent_enable_dht,
                 enable_upnp: config.runtime_torrent_enable_upnp
             })
