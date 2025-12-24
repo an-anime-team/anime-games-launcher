@@ -20,6 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use agl_core::export::network::reqwest;
+use agl_core::tasks;
 
 use mlua::prelude::*;
 
@@ -195,6 +196,7 @@ pub struct Api {
 
     clone: LuaFunction,
     dbg: LuaFunction,
+    sleep: LuaFunction,
 
     string_api: string_api::StringApi,
     path_api: path_api::PathApi,
@@ -259,6 +261,28 @@ impl Api {
                 Ok(())
             })?,
 
+            sleep: options.lua.create_function(|_, (duration, callback): (u32, Option<LuaFunction>)| {
+                let duration = std::time::Duration::from_millis(duration as u64);
+
+                if let Some(callback) = callback {
+                    tasks::spawn(async move {
+                        tasks::sleep(duration).await;
+
+                        #[allow(unused)]
+                        if let Err(err) = callback.call::<()>(()) {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(?err, "sleep callback execution error");
+                        }
+                    });
+                }
+
+                else {
+                    std::thread::sleep(duration);
+                }
+
+                Ok(())
+            })?,
+
             string_api: string_api::StringApi::new(options.lua.clone())?,
             path_api: path_api::PathApi::new(options.lua.clone())?,
             filesystem_api: filesystem_api::FilesystemApi::new(options.lua.clone())?,
@@ -299,8 +323,10 @@ impl Api {
         versions_table.raw_set("runtime", crate::VERSION)?;
 
         env.raw_set("versions", versions_table)?;
+
         env.raw_set("clone", self.clone.clone())?;
         env.raw_set("dbg", self.dbg.clone())?;
+        env.raw_set("sleep", self.sleep.clone())?;
 
         // Some default lua functions.
         env.raw_set("print", self.lua.globals().get::<LuaFunction>("print")?)?;

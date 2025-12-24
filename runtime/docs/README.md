@@ -91,6 +91,34 @@ For each runtime change some migration guide will be provided. It's also
 recommended to implement some abstract polyfill libraries which would simplify
 migration process.
 
+## Sleeping and repeated execution
+
+Runtime provides `sleep` function to wait for provided amount of time. It works
+in two modes:
+
+- If a callback is provided - it will be scheduled to be executed while the main
+  thread will not be blocked.
+- If a callback is not provided - the main thread will be blocked for provided
+  duration.
+
+```luau
+-- Wait for 1 second
+sleep(1000)
+
+-- Make a function to run provided callback every duration seconds
+function spawn_interval(duration, callback)
+    sleep(duration, function()
+        spawn_interval(duration, callback)
+    end)
+
+    callback()
+end
+
+spawn_interval(5000, function()
+    print("This message will be printed every 5 seconds")
+end)
+```
+
 ## Available APIs
 
 List of all available APIs:
@@ -105,5 +133,6 @@ List of all available APIs:
 | Archive API    | `archive`    | Archives extraction.                           |
 | Hash API       | `hash`       | Hash values calculation.                       |
 | SQLite API     | `sqlite`     | SQLite databases management.                   |
+| Torrent API    | `torrent`    | BitTorrent protocol.                           |
 | Portal API     | `portal`     | Sandboxed application and system interactions. |
 | Process API    | `process`    | Binaries execution.                            |
