@@ -45,7 +45,6 @@ toml = "0.9"
 serde_json = "1.0"
 
 time = "0.3"
-unic-langid = "0.9"
 
 notify-rust = "4.11"
 

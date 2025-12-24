@@ -21,9 +21,9 @@ use std::time::Duration;
 
 use anyhow::Context;
 use toml::{toml, Value as Toml, Table as TomlTable};
-use unic_langid::LanguageIdentifier;
 
 use agl_core::export::network::reqwest;
+use agl_locale::unic_langid::LanguageIdentifier;
 
 use crate::consts::{DATA_FOLDER, CONFIG_FILE};
 

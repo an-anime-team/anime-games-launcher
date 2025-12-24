@@ -166,7 +166,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "unic-langid",
 ]
 
 [[package]]

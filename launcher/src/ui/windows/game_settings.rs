@@ -21,7 +21,7 @@ use std::sync::Arc;
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use unic_langid::LanguageIdentifier;
+use agl_locale::unic_langid::LanguageIdentifier;
 
 use agl_games::engine::{
     GameVariant,
