@@ -265,11 +265,23 @@ impl TorrentServer {
                             };
                         }
 
+                        let trackers = trackers
+                            .map(|mut trackers| {
+                                trackers.extend(options.trackers.clone());
+
+                                trackers
+                            })
+                            .unwrap_or_else(|| {
+                                options.trackers.iter()
+                                    .cloned()
+                                    .collect()
+                            });
+
                         let options = AddTorrentOptions {
                             output_folder: Some(output_folder.to_string_lossy().to_string()),
                             overwrite: true,
                             defer_writes: Some(false),
-                            trackers,
+                            trackers: Some(trackers),
                             paused,
 
                             ..AddTorrentOptions::default()
