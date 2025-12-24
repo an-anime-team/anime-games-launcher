@@ -7,10 +7,14 @@ torrent files info, download and seed them to other people.
 Since BitTorrent protocol can be forbidden in some jurisdictions this API can
 be disabled by the user even if module has access to it.
 
-| Function       | Description                          |
-| -------------- | ------------------------------------ |
-| `torrent.add`  | Add torrent to downloading queue.    |
-| `torrent.info` | Get information about added torrent. |
+Note that torrent API doesn't remember previously added torrents.
+
+| Function         | Description                                   |
+| ---------------- | --------------------------------------------- |
+| `torrent.add`    | Add torrent to downloading queue.             |
+| `torrent.info`   | Get information about added torrent.          |
+| `torrent.pause`  | Pause added torrent downloading and seeding.  |
+| `torrent.resume` | Resume added torrent downloading and seeding. |
 
 ## `torrent.add(torrent: string, [options: AddTorrentOptions]) -> string`
 
@@ -97,4 +101,24 @@ type TorrentInfo = {
 local info = torrent.info("cdf37bb22c748fa8cb1594bdc39efed1bcd5cc31")
 
 dbg(info)
+```
+
+## `torrent.pause(info_hash: string)`
+
+Pause added torrent downloading and seeding. Has no effect on torrents which
+weren't added to downloading queue.
+
+```luau
+-- Pause archlinux iso downloading and seeding
+torrent.pause("cdf37bb22c748fa8cb1594bdc39efed1bcd5cc31")
+```
+
+## `torrent.resume(info_hash: string)`
+
+Resume added torrent downloading and seeding. Has no effect on torrents which
+weren't added to downloading queue.
+
+```luau
+-- Resume archlinux iso downloading and seeding
+torrent.resume("cdf37bb22c748fa8cb1594bdc39efed1bcd5cc31")
 ```

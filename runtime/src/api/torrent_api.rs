@@ -48,7 +48,10 @@ pub enum TorrentServerError {
     InvalidInfoHash(#[source] Box<dyn std::error::Error + Send + 'static>),
 
     #[error("failed to read torrent metadata: {0}")]
-    ReadMetadata(#[source] Box<dyn std::error::Error + Send + 'static>)
+    ReadMetadata(#[source] Box<dyn std::error::Error + Send + 'static>),
+
+    #[error("failed to pause or resume a torrent: {0}")]
+    PauseOrResume(#[source] Box<dyn std::error::Error + Send + 'static>)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,6 +150,12 @@ enum TorrentServerMsg {
     GetInfo {
         info_hash: String,
         sender: Sender<Result<Option<TorrentInfo>, TorrentServerError>>
+    },
+
+    PauseOrResume {
+        info_hash: String,
+        pause: bool,
+        sender: Sender<Result<(), TorrentServerError>>
     }
 }
 
@@ -281,10 +290,6 @@ impl TorrentServer {
                                     size: file.len
                                 });
                             }
-
-                            // for piece in metadata.lengths.iter_piece_infos() {
-                            //     piece.
-                            // }
                         });
 
                         if let Err(err) = result {
@@ -313,6 +318,48 @@ impl TorrentServer {
                             paused: info.is_paused(),
                             finished: stats.finished
                         })));
+                    }
+
+                    TorrentServerMsg::PauseOrResume {
+                        info_hash,
+                        pause,
+                        sender
+                    } => {
+                        let info_hash = match TorrentIdOrHash::parse(&info_hash) {
+                            Ok(info_hash) => info_hash,
+
+                            Err(err) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(?err, "failed to parse torrent info hash");
+
+                                let _ = sender.send(Err(TorrentServerError::InvalidInfoHash(err.into())));
+
+                                continue;
+                            }
+                        };
+
+                        let Some(info) = session.get(info_hash) else {
+                            let _ = sender.send(Ok(()));
+
+                            continue;
+                        };
+
+                        let result = if pause {
+                            session.pause(&info).await
+                        } else {
+                            session.unpause(&info).await
+                        };
+
+                        if let Err(err) = result {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(?err, ?info_hash, ?pause, "failed to pause or resume a torrent");
+
+                            let _ = sender.send(Err(TorrentServerError::PauseOrResume(err.into())));
+
+                            continue;
+                        };
+
+                        let _ = sender.send(Ok(()));
                     }
                 }
             }
@@ -366,13 +413,37 @@ impl TorrentServer {
         receiver.recv()
             .map_err(|_| TorrentServerError::ServerIsOffline)?
     }
+
+    /// Try to pause or resume torrent downloading and seeding.
+    pub fn pause_or_resume(
+        &self,
+        info_hash: impl ToString,
+        pause: bool
+    ) -> Result<(), TorrentServerError> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+
+        let result = self.0.send(TorrentServerMsg::PauseOrResume {
+            info_hash: info_hash.to_string(),
+            pause,
+            sender
+        });
+
+        if result.is_err() {
+            return Err(TorrentServerError::ServerIsOffline);
+        }
+
+        receiver.recv()
+            .map_err(|_| TorrentServerError::ServerIsOffline)?
+    }
 }
 
 pub struct TorrentApi {
     lua: Lua,
 
     torrent_add: LuaFunctionBuilder,
-    torrent_info: LuaFunction
+    torrent_info: LuaFunction,
+    torrent_pause: LuaFunction,
+    torrent_resume: LuaFunction
 }
 
 impl TorrentApi {
@@ -475,16 +546,36 @@ impl TorrentApi {
                 })?
             },
 
+            torrent_pause: {
+                let torrent_server = server.clone();
+
+                lua.create_function(move |_, info_hash: String| {
+                    torrent_server.pause_or_resume(info_hash, true)
+                        .map_err(|err| LuaError::external(err.to_string()))
+                })?
+            },
+
+            torrent_resume: {
+                let torrent_server = server.clone();
+
+                lua.create_function(move |_, info_hash: String| {
+                    torrent_server.pause_or_resume(info_hash, false)
+                        .map_err(|err| LuaError::external(err.to_string()))
+                })?
+            },
+
             lua
         })
     }
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 2)?;
+        let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("add", (self.torrent_add)(&self.lua, context)?)?;
         env.raw_set("info", &self.torrent_info)?;
+        env.raw_set("pause", &self.torrent_pause)?;
+        env.raw_set("resume", &self.torrent_resume)?;
 
         Ok(env)
     }
