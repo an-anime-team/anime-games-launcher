@@ -190,7 +190,7 @@ impl Default for Config {
 
             runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
-            runtime_torrent_enable_upnp: true,
+            runtime_torrent_enable_upnp: false,
             runtime_torrent_trackers: vec![
                 String::from("udp://tracker.opentrackr.org:1337/announce")
             ],
