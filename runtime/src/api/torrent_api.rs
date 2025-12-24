@@ -202,6 +202,8 @@ impl TorrentServer {
             let session = TorrentSession::new_with_opts(
                 options.default_folder,
                 TorrentSessionOptions {
+                    persistence: None,
+
                     socks_proxy_url: options.socks_proxy,
 
                     trackers: options.trackers.iter()
