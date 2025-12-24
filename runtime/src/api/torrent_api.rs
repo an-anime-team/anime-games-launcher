@@ -114,7 +114,10 @@ pub struct TorrentInfo {
     pub files: Box<[TorrentFileInfo]>,
 
     /// Stats of the torrent.
-    pub stats: TorrentStats
+    pub stats: TorrentStats,
+
+    /// Whether the torrent is paused.
+    pub paused: bool
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +125,7 @@ enum TorrentServerMsg {
     Add {
         torrent: String,
         output_folder: PathBuf,
+        paused: bool,
         sender: Sender<Result<String, TorrentServerError>>
     },
 
@@ -172,6 +176,7 @@ impl TorrentServer {
                     TorrentServerMsg::Add {
                         torrent,
                         output_folder,
+                        paused,
                         sender
                     } => {
                         let mut info = AddTorrentInfo::Url(torrent.clone().into());
@@ -194,6 +199,7 @@ impl TorrentServer {
                             output_folder: Some(output_folder.to_string_lossy().to_string()),
                             overwrite: true,
                             defer_writes: Some(false),
+                            paused,
 
                             ..AddTorrentOptions::default()
                         };
@@ -270,7 +276,8 @@ impl TorrentServer {
                                 current: stats.progress_bytes,
                                 total: stats.total_bytes,
                                 uploaded: stats.uploaded_bytes
-                            }
+                            },
+                            paused: info.is_paused()
                         })));
                     }
                 }
@@ -285,13 +292,15 @@ impl TorrentServer {
     pub fn add_torrent(
         &self,
         torrent: impl ToString,
-        output_folder: impl Into<PathBuf>
+        output_folder: impl Into<PathBuf>,
+        paused: bool
     ) -> Result<String, TorrentServerError> {
         let (sender, receiver) = std::sync::mpsc::channel();
 
         let result = self.0.send(TorrentServerMsg::Add {
             torrent: torrent.to_string(),
             output_folder: output_folder.into(),
+            paused,
             sender
         });
 
@@ -347,11 +356,16 @@ impl TorrentApi {
 
                     lua.create_function(move |_, (torrent, options): (String, Option<LuaTable>)| {
                         let mut output_folder = context.temp_folder.clone();
+                        let mut paused = false;
 
                         #[allow(clippy::collapsible_if)]
                         if let Some(options) = options {
                             if let Some(opt_output_folder) = options.get::<Option<String>>("output_folder")? {
                                 output_folder = PathBuf::from(opt_output_folder);
+                            }
+
+                            if let Some(opt_paused) = options.get::<Option<bool>>("paused")? {
+                                paused = opt_paused;
                             }
                         }
 
@@ -368,7 +382,7 @@ impl TorrentApi {
                             return Err(LuaError::external("no output folder write permissions"));
                         }
 
-                        torrent_server.add_torrent(torrent, output_folder)
+                        torrent_server.add_torrent(torrent, output_folder, paused)
                             .map_err(|err| LuaError::external(err.to_string()))
                     })
                 })
@@ -402,12 +416,13 @@ impl TorrentApi {
                     stats.raw_set("total", info.stats.total)?;
                     stats.raw_set("uploaded", info.stats.uploaded)?;
 
-                    let result = lua.create_table_with_capacity(0, 4)?;
+                    let result = lua.create_table_with_capacity(0, 5)?;
 
                     result.raw_set("name", info.name)?;
                     result.raw_set("trackers", info.trackers)?;
                     result.raw_set("files", files)?;
                     result.raw_set("stats", stats)?;
+                    result.raw_set("paused", info.paused)?;
 
                     Ok(Some(result))
                 })?

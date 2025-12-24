@@ -22,6 +22,9 @@ type AddTorrentOptions = {
     // Path to a folder where the torrent should be downloaded. If unset, the
     // temporary folder is used.
     output_folder?: string;
+
+    // Whether the torrent downloading should be started immediately.
+    paused?: boolean;
 };
 ```
 
@@ -69,6 +72,9 @@ type TorrentInfo = {
         // Total amount of uploaded bytes.
         uploaded: number;
     };
+
+    // Whether the torrent downloading or seeding is paused.
+    paused: boolean;
 };
 ```
 
