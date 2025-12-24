@@ -26,6 +26,7 @@ pub enum GameActionsPipelineFactoryMsg {
         fraction: f64
     },
 
+    SetProgressVisible(bool),
     SetFinished(bool)
 }
 
@@ -34,6 +35,7 @@ pub struct GameActionsPipelineFactory {
     pub title: String,
     pub progress_text: String,
     pub progress_fraction: f64,
+    pub is_progress_visible: bool,
     pub is_finished: bool
 }
 
@@ -56,7 +58,7 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
                 set_show_text: true,
 
                 #[watch]
-                set_visible: !self.is_finished && self.progress_fraction > 0.0,
+                set_visible: !self.is_finished && self.is_progress_visible,
 
                 #[watch]
                 set_text: Some(&self.progress_text),
@@ -92,6 +94,10 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
             GameActionsPipelineFactoryMsg::SetProgress { text, fraction } => {
                 self.progress_text = text;
                 self.progress_fraction = fraction;
+            }
+
+            GameActionsPipelineFactoryMsg::SetProgressVisible(is_visible) => {
+                self.is_progress_visible = is_visible;
             }
 
             GameActionsPipelineFactoryMsg::SetFinished(is_finished) => {

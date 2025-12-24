@@ -52,6 +52,11 @@ pub enum PipelineActionsWindowInput {
         fraction: f64
     },
 
+    SetProgressVisible {
+        action_number: usize,
+        is_visible: bool
+    },
+
     SetFinished {
         action_number: usize,
         is_finished: bool
@@ -226,6 +231,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                         title: title.to_string(),
                         progress_fraction: 0.0,
                         progress_text: String::new(),
+                        is_progress_visible: false,
                         is_finished: false
                     });
 
@@ -236,9 +242,15 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
 
                 tasks::spawn_blocking(move || {
                     for (action, index) in actions {
+                        let action_number = index.current_index();
+
+                        sender.input(PipelineActionsWindowInput::SetProgressVisible {
+                            action_number,
+                            is_visible: true
+                        });
+
                         let result = {
                             let lang = lang.clone();
-                            let action_number = index.current_index();
                             let sender = sender.clone();
 
                             let last_update = Cell::new((
@@ -289,7 +301,6 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                         match result {
                             Ok(Some(true)) | Ok(None) => {
                                 let lang = lang.clone();
-                                let action_number = index.current_index();
                                 let sender = sender.clone();
 
                                 let last_update = Cell::new((
@@ -357,13 +368,18 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                         }
 
                         sender.input(PipelineActionsWindowInput::SetProgress {
-                            action_number: index.current_index(),
+                            action_number,
                             text: String::new(),
                             fraction: 1.0
                         });
 
+                        sender.input(PipelineActionsWindowInput::SetProgressVisible {
+                            action_number,
+                            is_visible: false
+                        });
+
                         sender.input(PipelineActionsWindowInput::SetFinished {
-                            action_number: index.current_index(),
+                            action_number,
                             is_finished: true
                         });
                     }
@@ -380,6 +396,16 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                 self.pipeline_actions.send(
                     action_number,
                     GameActionsPipelineFactoryMsg::SetProgress { text, fraction }
+                );
+            }
+
+            PipelineActionsWindowInput::SetProgressVisible {
+                action_number,
+                is_visible
+            } => {
+                self.pipeline_actions.send(
+                    action_number,
+                    GameActionsPipelineFactoryMsg::SetProgressVisible(is_visible)
                 );
             }
 
