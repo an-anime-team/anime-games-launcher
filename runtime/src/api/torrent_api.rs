@@ -572,7 +572,7 @@ impl TorrentApi {
                         stats.raw_set("total", torrent.stats.total)?;
                         stats.raw_set("uploaded", torrent.stats.uploaded)?;
 
-                        let torrent_info = lua.create_table_with_capacity(0, 2)?;
+                        let torrent_info = lua.create_table_with_capacity(0, 5)?;
 
                         torrent_info.raw_set("name", torrent.name)?;
                         torrent_info.raw_set("info_hash", torrent.info_hash)?;
