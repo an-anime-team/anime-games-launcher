@@ -168,11 +168,11 @@ impl HashApi {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 5)?;
 
-        env.raw_set("digitize", self.hash_digitize.clone())?;
+        env.raw_set("digitize", &self.hash_digitize)?;
         env.raw_set("digitize_file", (self.hash_digitize_file)(&self.lua, context)?)?;
-        env.raw_set("hasher", self.hash_hasher.clone())?;
-        env.raw_set("write", self.hash_write.clone())?;
-        env.raw_set("finalize", self.hash_finalize.clone())?;
+        env.raw_set("hasher", &self.hash_hasher)?;
+        env.raw_set("write", &self.hash_write)?;
+        env.raw_set("finalize", &self.hash_finalize)?;
 
         Ok(env)
     }

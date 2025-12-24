@@ -260,12 +260,12 @@ impl DownloaderApi {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
-        env.raw_set("create", self.downloader_create.clone())?;
+        env.raw_set("create", &self.downloader_create)?;
         env.raw_set("download", (self.downloader_download)(&self.lua, context)?)?;
-        env.raw_set("progress", self.downloader_progress.clone())?;
-        env.raw_set("wait", self.downloader_wait.clone())?;
-        env.raw_set("abort", self.downloader_abort.clone())?;
-        env.raw_set("close", self.downloader_close.clone())?;
+        env.raw_set("progress", &self.downloader_progress)?;
+        env.raw_set("wait", &self.downloader_wait)?;
+        env.raw_set("abort", &self.downloader_abort)?;
+        env.raw_set("close", &self.downloader_close)?;
 
         Ok(env)
     }

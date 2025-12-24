@@ -225,10 +225,10 @@ impl NetworkApi {
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.raw_set("fetch", self.net_fetch.clone())?;
-        env.raw_set("open", self.net_open.clone())?;
-        env.raw_set("read", self.net_read.clone())?;
-        env.raw_set("close", self.net_close.clone())?;
+        env.raw_set("fetch", &self.net_fetch)?;
+        env.raw_set("open", &self.net_open)?;
+        env.raw_set("read", &self.net_read)?;
+        env.raw_set("close", &self.net_close)?;
 
         Ok(env)
     }

@@ -372,11 +372,11 @@ impl SqliteApi {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("open", (self.sqlite_open)(&self.lua, context)?)?;
-        env.raw_set("execute", self.sqlite_execute.clone())?;
-        env.raw_set("batch", self.sqlite_batch.clone())?;
-        env.raw_set("query", self.sqlite_query.clone())?;
-        env.raw_set("query_row", self.sqlite_query_row.clone())?;
-        env.raw_set("close", self.sqlite_close.clone())?;
+        env.raw_set("execute", &self.sqlite_execute)?;
+        env.raw_set("batch", &self.sqlite_batch)?;
+        env.raw_set("query", &self.sqlite_query)?;
+        env.raw_set("query_row", &self.sqlite_query_row)?;
+        env.raw_set("close", &self.sqlite_close)?;
 
         Ok(env)
     }

@@ -478,9 +478,9 @@ impl PortalApi {
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
-        env.raw_set("toast", self.portal_toast.clone())?;
-        env.raw_set("notify", self.portal_notify.clone())?;
-        env.raw_set("dialog", self.portal_dialog.clone())?;
+        env.raw_set("toast", &self.portal_toast)?;
+        env.raw_set("notify", &self.portal_notify)?;
+        env.raw_set("dialog", &self.portal_dialog)?;
         env.raw_set("open_file", (self.portal_open_file)(&self.lua, context)?)?;
         env.raw_set("open_folder", (self.portal_open_folder)(&self.lua, context)?)?;
         env.raw_set("save_file", (self.portal_save_file)(&self.lua, context)?)?;

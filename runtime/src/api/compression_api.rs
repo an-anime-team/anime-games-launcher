@@ -267,14 +267,14 @@ impl CompressionApi {
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
-        env.raw_set("compress", self.compression_compress.clone())?;
-        env.raw_set("decompress", self.compression_decompress.clone())?;
-        env.raw_set("compressor", self.compression_compressor.clone())?;
-        env.raw_set("decompressor", self.compression_decompressor.clone())?;
-        env.raw_set("read", self.compression_read.clone())?;
-        env.raw_set("write", self.compression_write.clone())?;
-        env.raw_set("finish", self.compression_finish.clone())?;
-        env.raw_set("close", self.compression_close.clone())?;
+        env.raw_set("compress", &self.compression_compress)?;
+        env.raw_set("decompress", &self.compression_decompress)?;
+        env.raw_set("compressor", &self.compression_compressor)?;
+        env.raw_set("decompressor", &self.compression_decompressor)?;
+        env.raw_set("read", &self.compression_read)?;
+        env.raw_set("write", &self.compression_write)?;
+        env.raw_set("finish", &self.compression_finish)?;
+        env.raw_set("close", &self.compression_close)?;
 
         Ok(env)
     }

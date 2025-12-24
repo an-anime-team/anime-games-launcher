@@ -319,12 +319,12 @@ impl ProcessApi {
 
         env.raw_set("exec", (self.process_exec)(&self.lua, context)?)?;
         env.raw_set("open", (self.process_open)(&self.lua, context)?)?;
-        env.raw_set("stdin", self.process_stdin.clone())?;
-        env.raw_set("stdout", self.process_stdout.clone())?;
-        env.raw_set("stderr", self.process_stderr.clone())?;
-        env.raw_set("wait", self.process_wait.clone())?;
-        env.raw_set("kill", self.process_kill.clone())?;
-        env.raw_set("finished", self.process_finished.clone())?;
+        env.raw_set("stdin", &self.process_stdin)?;
+        env.raw_set("stdout", &self.process_stdout)?;
+        env.raw_set("stderr", &self.process_stderr)?;
+        env.raw_set("wait", &self.process_wait)?;
+        env.raw_set("kill", &self.process_kill)?;
+        env.raw_set("finished", &self.process_finished)?;
 
         Ok(env)
     }

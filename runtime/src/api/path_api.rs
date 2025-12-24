@@ -327,11 +327,11 @@ impl PathApi {
         env.raw_set("temp_dir", (self.path_temp_dir)(&self.lua, context)?)?;
         env.raw_set("module_dir", (self.path_module_dir)(&self.lua, context)?)?;
         env.raw_set("persist_dir", (self.path_persist_dir)(&self.lua, context)?)?;
-        env.raw_set("normalize", self.path_normalize.clone())?;
-        env.raw_set("join", self.path_join.clone())?;
-        env.raw_set("parts", self.path_parts.clone())?;
-        env.raw_set("parent", self.path_parent.clone())?;
-        env.raw_set("file_name", self.path_file_name.clone())?;
+        env.raw_set("normalize", &self.path_normalize)?;
+        env.raw_set("join", &self.path_join)?;
+        env.raw_set("parts", &self.path_parts)?;
+        env.raw_set("parent", &self.path_parent)?;
+        env.raw_set("file_name", &self.path_file_name)?;
         env.raw_set("exists", (self.path_exists)(&self.lua, context)?)?;
         env.raw_set("permissions", (self.path_permissions)(&self.lua, context)?)?;
 

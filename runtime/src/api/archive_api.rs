@@ -212,9 +212,9 @@ impl ArchiveApi {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("open", (self.archive_open)(&self.lua, context)?)?;
-        env.raw_set("entries", self.archive_entries.clone())?;
+        env.raw_set("entries", &self.archive_entries)?;
         env.raw_set("extract", (self.archive_extract)(&self.lua, context)?)?;
-        env.raw_set("close", self.archive_close.clone())?;
+        env.raw_set("close", &self.archive_close)?;
 
         Ok(env)
     }

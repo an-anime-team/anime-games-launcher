@@ -794,13 +794,13 @@ impl FilesystemApi {
         env.raw_set("move", (self.fs_move)(&self.lua, context)?)?;
         env.raw_set("remove", (self.fs_remove)(&self.lua, context)?)?;
         env.raw_set("open", (self.fs_open)(&self.lua, context)?)?;
-        env.raw_set("seek", self.fs_seek.clone())?;
-        env.raw_set("seek_rel", self.fs_seek_rel.clone())?;
-        env.raw_set("truncate", self.fs_truncate.clone())?;
-        env.raw_set("read", self.fs_read.clone())?;
-        env.raw_set("write", self.fs_write.clone())?;
-        env.raw_set("flush", self.fs_flush.clone())?;
-        env.raw_set("close", self.fs_close.clone())?;
+        env.raw_set("seek", &self.fs_seek)?;
+        env.raw_set("seek_rel", &self.fs_seek_rel)?;
+        env.raw_set("truncate", &self.fs_truncate)?;
+        env.raw_set("read", &self.fs_read)?;
+        env.raw_set("write", &self.fs_write)?;
+        env.raw_set("flush", &self.fs_flush)?;
+        env.raw_set("close", &self.fs_close)?;
 
         env.raw_set("create_file", (self.fs_create_file)(&self.lua, context)?)?;
         env.raw_set("read_file", (self.fs_read_file)(&self.lua, context)?)?;
