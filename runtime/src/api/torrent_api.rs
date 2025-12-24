@@ -603,7 +603,7 @@ impl TorrentApi {
                     let torrent_server = torrent_server.clone();
                     let context = context.clone();
 
-                    lua.create_function(move |_, (torrent, options): (Box<[u8]>, Option<LuaTable>)| {
+                    lua.create_function(move |_, (torrent, options): (LuaValue, Option<LuaTable>)| {
                         let mut output_folder = context.temp_folder.clone();
                         let mut paused = false;
 
@@ -629,6 +629,9 @@ impl TorrentApi {
                         if !context.can_write_path(&output_folder)? {
                             return Err(LuaError::external("no output folder write permissions"));
                         }
+
+                        let torrent = lua_value_to_bytes(torrent)?
+                            .into_boxed_slice();
 
                         torrent_server.add_torrent(torrent, output_folder, paused)
                             .map_err(|err| LuaError::external(err.to_string()))
