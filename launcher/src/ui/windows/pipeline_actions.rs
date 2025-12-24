@@ -210,6 +210,8 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                     })
                     .map(String::from);
 
+                self.graph.emit(GraphMsg::Clear);
+
                 self.game_index = Some(game_index);
                 self.game_title = Some(game_title);
 
