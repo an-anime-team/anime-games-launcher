@@ -7,16 +7,15 @@ torrent files info, download and seed them to other people.
 Since BitTorrent protocol can be forbidden in some jurisdictions this API can
 be disabled by the user even if module has access to it.
 
-| Function       | Description                       |
-| -------------- | --------------------------------- |
-| `torrent.add`  | Add torrent to downloading queue. |
-| `torrent.get`  | Get torrent handle from its hash. |
-| `torrent.info` | Get information about a torrent.  |
+| Function       | Description                          |
+| -------------- | ------------------------------------ |
+| `torrent.add`  | Add torrent to downloading queue.    |
+| `torrent.info` | Get information about added torrent. |
 
-## `torrent.add(uri: string, [options: AddTorrentOptions]) -> number`
+## `torrent.add(torrent: string, [options: AddTorrentOptions]) -> string`
 
-Add torrent to the downloading queue. A torrent URI can be either a path to a
-torrent file or a magnet link.
+Add torrent file, magnet link or info hash to the downloading queue and return 
+added torrent's info hash string.
 
 ```ts
 type AddTorrentOptions = {
@@ -33,4 +32,37 @@ local magnet_link = "magnet:?xt=urn:btih:cdf37bb22c748fa8cb1594bdc39efed1bcd5cc3
 -- The iso file will be downloaded to the `path.temp_dir()` folder since no
 -- output folder is specified
 torrent.add(magnet_link)
+```
+
+## `torrent.info(info_hash: string) -> TorrentInfo | nil`
+
+Get information about already added torrent using its info hash. Return `nil`
+if there's no torrent with provided info hash.
+
+```ts
+type TorrentFileInfo = {
+    // Relative path of a file.
+    path: string;
+
+    // Size of the file.
+    size: number;
+};
+
+type TorrentInfo = {
+    // Name of the torrent. Some torrents may not have it.
+    name?: string;
+
+    // List of torrent trackers.
+    trackers: string[];
+
+    // Files of the torrent.
+    files: TorrentFileInfo[];
+};
+```
+
+```luau
+-- Read torrent info for previously added archlinux iso
+local info = torrent.info("cdf37bb22c748fa8cb1594bdc39efed1bcd5cc31")
+
+dbg(info)
 ```
