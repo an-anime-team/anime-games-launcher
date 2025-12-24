@@ -12,6 +12,7 @@ Note that torrent API doesn't remember previously added torrents.
 | Function         | Description                                   |
 | ---------------- | --------------------------------------------- |
 | `torrent.add`    | Add torrent to downloading queue.             |
+| `torrent.list`   | List all the added torrents.                  |
 | `torrent.info`   | Get information about added torrent.          |
 | `torrent.pause`  | Pause added torrent downloading and seeding.  |
 | `torrent.resume` | Resume added torrent downloading and seeding. |
@@ -39,6 +40,46 @@ local magnet_link = "magnet:?xt=urn:btih:cdf37bb22c748fa8cb1594bdc39efed1bcd5cc3
 -- The iso file will be downloaded to the `path.temp_dir()` folder since no
 -- output folder is specified
 torrent.add(magnet_link)
+```
+
+## `torrent.list() -> TorrentListInfo[]`
+
+List all the added torrents and some of their info, including info hashes.
+
+```ts
+type TorrentStats = {
+    // Amount of downloaded (available) bytes.
+    current: number;
+    
+    // Total amount of bytes.
+    total: number;
+    
+    // Total amount of uploaded bytes.
+    uploaded: number;
+};
+
+type TorrentListInfo = {
+    // Name of the torrent. Some torrents may not have it.
+    name?: string;
+
+    // Info hash of the torrent.
+    info_hash: string;
+
+    // Torrent stats.
+    stats: TorrentStats;
+    
+    // Whether the torrent downloading or seeding is paused.
+    paused: boolean;
+    
+    // Whether the torrent's downloading is finished.
+    finished: boolean;
+};
+```
+
+```luau
+for _, info in torrent.list() do
+    print(`Hash: {info.info_hash}, name: {info.name}`)
+end
 ```
 
 ## `torrent.info(info_hash: string) -> TorrentInfo | nil`
@@ -77,16 +118,7 @@ type TorrentInfo = {
     files: TorrentFileInfo[];
 
     // Torrent stats.
-    stats: {
-        // Amount of downloaded (available) bytes.
-        current: number;
-
-        // Total amount of bytes.
-        total: number;
-
-        // Total amount of uploaded bytes.
-        uploaded: number;
-    };
+    stats: TorrentStats;
 
     // Whether the torrent downloading or seeding is paused.
     paused: boolean;

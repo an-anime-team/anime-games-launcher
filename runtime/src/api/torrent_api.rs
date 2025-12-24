@@ -85,6 +85,24 @@ impl Default for TorrentServerOptions {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TorrentListInfo {
+    /// Name of the torrent.
+    pub name: Option<String>,
+
+    /// Info hash of the torrent.
+    pub info_hash: String,
+
+    /// Torrent stats.
+    pub stats: TorrentStats,
+
+    /// Whether the torrent is paused.
+    pub paused: bool,
+
+    /// Whether the torrent downloading is finished.
+    pub finished: bool
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TorrentPeerInfo {
     /// Address of the peer.
     pub address: String,
@@ -145,6 +163,10 @@ enum TorrentServerMsg {
         output_folder: PathBuf,
         paused: bool,
         sender: Sender<Result<String, TorrentServerError>>
+    },
+
+    List {
+        sender: Sender<Box<[TorrentListInfo]>>
     },
 
     GetInfo {
@@ -246,6 +268,30 @@ impl TorrentServer {
                                 let _ = sender.send(Err(TorrentServerError::AddTorrent(err.into())));
                             }
                         }
+                    }
+
+                    TorrentServerMsg::List { sender } => {
+                        let torrents = session.with_torrents(|torrents| {
+                            torrents.into_iter()
+                                .map(|(_, info)| {
+                                    let stats = info.stats();
+
+                                    TorrentListInfo {
+                                        name: info.name(),
+                                        info_hash: info.info_hash().as_string(),
+                                        stats: TorrentStats {
+                                            current: stats.progress_bytes,
+                                            total: stats.total_bytes,
+                                            uploaded: stats.uploaded_bytes
+                                        },
+                                        paused: info.is_paused(),
+                                        finished: stats.finished
+                                    }
+                                })
+                                .collect::<Box<[_]>>()
+                        });
+
+                        let _ = sender.send(torrents);
                     }
 
                     TorrentServerMsg::GetInfo { info_hash, sender } => {
@@ -393,6 +439,22 @@ impl TorrentServer {
             .map_err(|_| TorrentServerError::ServerIsOffline)?
     }
 
+    /// Try to get list of info hashes of all the added torrents.
+    pub fn list(&self) -> Result<Box<[TorrentListInfo]>, TorrentServerError> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+
+        let result = self.0.send(TorrentServerMsg::List {
+            sender
+        });
+
+        if result.is_err() {
+            return Err(TorrentServerError::ServerIsOffline);
+        }
+
+        receiver.recv()
+            .map_err(|_| TorrentServerError::ServerIsOffline)
+    }
+
     /// Try to get information about added torrent file with provided info hash.
     /// Return `Ok(None)` if there's no torrent with provided info hash.
     pub fn get_info(
@@ -441,6 +503,7 @@ pub struct TorrentApi {
     lua: Lua,
 
     torrent_add: LuaFunctionBuilder,
+    torrent_list: LuaFunction,
     torrent_info: LuaFunction,
     torrent_pause: LuaFunction,
     torrent_resume: LuaFunction
@@ -491,6 +554,37 @@ impl TorrentApi {
                             .map_err(|err| LuaError::external(err.to_string()))
                     })
                 })
+            },
+
+            torrent_list: {
+                let torrent_server = server.clone();
+
+                lua.create_function(move |lua: &Lua, _: ()| {
+                    let torrents = torrent_server.list()
+                        .map_err(|err| LuaError::external(err.to_string()))?;
+
+                    let result = lua.create_table_with_capacity(torrents.len(), 0)?;
+
+                    for torrent in torrents {
+                        let stats = lua.create_table_with_capacity(0, 3)?;
+
+                        stats.raw_set("current", torrent.stats.current)?;
+                        stats.raw_set("total", torrent.stats.total)?;
+                        stats.raw_set("uploaded", torrent.stats.uploaded)?;
+
+                        let torrent_info = lua.create_table_with_capacity(0, 2)?;
+
+                        torrent_info.raw_set("name", torrent.name)?;
+                        torrent_info.raw_set("info_hash", torrent.info_hash)?;
+                        torrent_info.raw_set("stats", stats)?;
+                        torrent_info.raw_set("paused", torrent.paused)?;
+                        torrent_info.raw_set("finished", torrent.finished)?;
+
+                        result.raw_push(torrent_info)?;
+                    }
+
+                    Ok(result)
+                })?
             },
 
             torrent_info: {
@@ -570,9 +664,10 @@ impl TorrentApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 4)?;
+        let env = self.lua.create_table_with_capacity(0, 5)?;
 
         env.raw_set("add", (self.torrent_add)(&self.lua, context)?)?;
+        env.raw_set("list", &self.torrent_list)?;
         env.raw_set("info", &self.torrent_info)?;
         env.raw_set("pause", &self.torrent_pause)?;
         env.raw_set("resume", &self.torrent_resume)?;
