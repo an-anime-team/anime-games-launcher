@@ -83,15 +83,38 @@ impl Default for TorrentServerOptions {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TorrentFileInfo {
+    /// Relative path to the file within a torrent.
     pub path: PathBuf,
+
+    /// Total size of the file.
     pub size: u64
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TorrentStats {
+    /// Amount of downloaded (available) bytes.
+    pub current: u64,
+
+    /// Total amount of bytes to download.
+    pub total: u64,
+
+    /// Amount of bytes uploaded in the current session.
+    pub uploaded: u64
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TorrentInfo {
+    /// Name of the torrent.
     pub name: Option<String>,
+
+    /// List of torrent trackers.
     pub trackers: Box<[String]>,
-    pub files: Box<[TorrentFileInfo]>
+
+    /// List of files within the torrent.
+    pub files: Box<[TorrentFileInfo]>,
+
+    /// Stats of the torrent.
+    pub stats: TorrentStats
 }
 
 #[derive(Debug, Clone)]
@@ -235,12 +258,19 @@ impl TorrentServer {
                             continue;
                         }
 
+                        let stats = info.stats();
+
                         let _ = sender.send(Ok(Some(TorrentInfo {
                             name: info.name(),
                             trackers: info.shared().trackers.iter()
                                 .map(|url| url.to_string())
                                 .collect(),
-                            files: files.into_boxed_slice()
+                            files: files.into_boxed_slice(),
+                            stats: TorrentStats {
+                                current: stats.progress_bytes,
+                                total: stats.total_bytes,
+                                uploaded: stats.uploaded_bytes
+                            }
                         })));
                     }
                 }
@@ -366,14 +396,18 @@ impl TorrentApi {
                         files.raw_push(file_info)?;
                     }
 
-                    let result = lua.create_table_with_capacity(0, 3)?;
+                    let stats = lua.create_table_with_capacity(0, 3)?;
 
-                    if let Some(name) = info.name {
-                        result.raw_set("name", name)?;
-                    }
+                    stats.raw_set("current", info.stats.current)?;
+                    stats.raw_set("total", info.stats.total)?;
+                    stats.raw_set("uploaded", info.stats.uploaded)?;
 
+                    let result = lua.create_table_with_capacity(0, 4)?;
+
+                    result.raw_set("name", info.name)?;
                     result.raw_set("trackers", info.trackers)?;
                     result.raw_set("files", files)?;
+                    result.raw_set("stats", stats)?;
 
                     Ok(Some(result))
                 })?

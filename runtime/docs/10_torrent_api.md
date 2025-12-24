@@ -57,6 +57,18 @@ type TorrentInfo = {
 
     // Files of the torrent.
     files: TorrentFileInfo[];
+
+    // Torrent stats.
+    stats: {
+        // Amount of downloaded (available) bytes.
+        current: number;
+
+        // Total amount of bytes.
+        total: number;
+
+        // Total amount of uploaded bytes.
+        uploaded: number;
+    };
 };
 ```
 
