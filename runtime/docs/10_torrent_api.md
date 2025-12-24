@@ -11,11 +11,45 @@ Note that torrent API doesn't remember previously added torrents.
 
 | Function         | Description                                   |
 | ---------------- | --------------------------------------------- |
+| `torrent.create` | Create new torrent file.                      |
 | `torrent.add`    | Add torrent to downloading queue.             |
 | `torrent.list`   | List all the added torrents.                  |
 | `torrent.info`   | Get information about added torrent.          |
 | `torrent.pause`  | Pause added torrent downloading and seeding.  |
 | `torrent.resume` | Resume added torrent downloading and seeding. |
+
+## `torrent.create(path: string, [options: CreateTorrentOptions]) -> TorrentFile`
+
+Create new torrent file from provided path. This is a blocking function and may
+take some time to calculate piece hashes for all the files.
+
+```ts
+type CreateTorrentOptions = {
+    name?: string;
+    piece_size?: number;
+    trackers?: string[];
+};
+
+type TorrentFile = {
+    // Info hash of the torrent.
+    info_hash: string;
+
+    // Torrent magnet link.
+    magnet: string;
+
+    // Content of the torrent file.
+    content: number[];
+};
+```
+
+```luau
+fs.write_file("test.txt", "Hello, World!")
+
+local torrent_file = torrent.create("test.txt")
+
+print(`Info hash: {torrent_file.info_hash}`)
+print(`Magnet link: {torrent_file.magnet}`)
+```
 
 ## `torrent.add(torrent: string, [options: AddTorrentOptions]) -> string`
 
@@ -50,10 +84,10 @@ List all the added torrents and some of their info, including info hashes.
 type TorrentStats = {
     // Amount of downloaded (available) bytes.
     current: number;
-    
+
     // Total amount of bytes.
     total: number;
-    
+
     // Total amount of uploaded bytes.
     uploaded: number;
 };
@@ -67,10 +101,10 @@ type TorrentListInfo = {
 
     // Torrent stats.
     stats: TorrentStats;
-    
+
     // Whether the torrent downloading or seeding is paused.
     paused: boolean;
-    
+
     // Whether the torrent's downloading is finished.
     finished: boolean;
 };

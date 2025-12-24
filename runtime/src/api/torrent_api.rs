@@ -18,8 +18,10 @@
 
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::borrow::Cow;
 use std::sync::mpsc::Sender;
 
+use agl_core::export::compression::zstd::zstd_safe::WriteBuf;
 use mlua::prelude::*;
 
 use librqbit::{
@@ -27,7 +29,9 @@ use librqbit::{
     SessionOptions as TorrentSessionOptions,
     AddTorrent as AddTorrentInfo,
     AddTorrentOptions,
-    AddTorrentResponse
+    AddTorrentResponse,
+    CreateTorrentOptions,
+    Magnet
 };
 
 use librqbit::api::TorrentIdOrHash;
@@ -159,7 +163,7 @@ pub struct TorrentInfo {
 #[derive(Debug, Clone)]
 enum TorrentServerMsg {
     Add {
-        torrent: String,
+        torrent: Box<[u8]>,
         output_folder: PathBuf,
         paused: bool,
         sender: Sender<Result<String, TorrentServerError>>
@@ -225,13 +229,24 @@ impl TorrentServer {
                         paused,
                         sender
                     } => {
-                        let mut info = AddTorrentInfo::Url(torrent.clone().into());
+                        let torrent_str = String::from_utf8_lossy(torrent.as_slice())
+                            .to_string();
 
-                        if PathBuf::from(&torrent).is_file() {
+                        let mut info = AddTorrentInfo::TorrentFileBytes(torrent.into());
+
+                        if torrent_str.starts_with("magnet:")
+                            || torrent_str.starts_with("http")
+                            || matches!(TorrentIdOrHash::parse(&torrent_str), Ok(TorrentIdOrHash::Hash(_)))
+                        {
+                            info = AddTorrentInfo::Url(Cow::Borrowed(torrent_str.as_str()));
+                        }
+
+                        else if PathBuf::from(&torrent_str).is_file() {
                             // FIXME: check read permissions in torrent API
 
-                            info = match std::fs::read(&torrent) {
-                                Ok(content) => AddTorrentInfo::TorrentFileBytes(content.into()),
+                            match std::fs::read(&torrent_str) {
+                                Ok(content) => info = AddTorrentInfo::TorrentFileBytes(content.into()),
+
                                 Err(err) => {
                                     #[cfg(feature = "tracing")]
                                     tracing::error!(?err, "failed to read torrent file");
@@ -418,15 +433,15 @@ impl TorrentServer {
     /// queue. If succeeded - return info hash string of the added torrent.
     pub fn add_torrent(
         &self,
-        torrent: impl ToString,
-        output_folder: impl Into<PathBuf>,
+        torrent: Box<[u8]>,
+        output_folder: PathBuf,
         paused: bool
     ) -> Result<String, TorrentServerError> {
         let (sender, receiver) = std::sync::mpsc::channel();
 
         let result = self.0.send(TorrentServerMsg::Add {
-            torrent: torrent.to_string(),
-            output_folder: output_folder.into(),
+            torrent,
+            output_folder,
             paused,
             sender
         });
@@ -502,6 +517,7 @@ impl TorrentServer {
 pub struct TorrentApi {
     lua: Lua,
 
+    torrent_create: LuaFunctionBuilder,
     torrent_add: LuaFunctionBuilder,
     torrent_list: LuaFunction,
     torrent_info: LuaFunction,
@@ -515,6 +531,71 @@ impl TorrentApi {
         server: TorrentServer
     ) -> Result<Self, LuaError> {
         Ok(Self {
+            torrent_create: Box::new(|lua, context| {
+                let context = context.clone();
+
+                lua.create_function(move |lua: &Lua, (mut path, options): (PathBuf, Option<LuaTable>)| {
+                    let mut name = None;
+                    let mut piece_size = None;
+                    let mut trackers = vec![];
+
+                    if let Some(options) = options {
+                        name = options.get::<Option<String>>("name")?;
+                        piece_size = options.get::<Option<u32>>("piece_size")?;
+
+                        if let Some(opt_trackers) = options.get::<Option<Vec<String>>>("trackers")? {
+                            trackers = opt_trackers;
+                        }
+                    }
+
+                    if path.is_relative() {
+                        path = context.module_folder.join(path);
+                    }
+
+                    path = normalize_path(path, true)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to normalize path: {err}"))
+                        })?;
+
+                    if !context.can_read_path(&path)? {
+                        return Err(LuaError::external("no path read permissions"));
+                    }
+
+                    let result = tasks::block_on(librqbit::create_torrent(
+                        &path,
+                        CreateTorrentOptions {
+                            name: name.as_deref(),
+                            piece_length: piece_size
+                        }
+                    ));
+
+                    let torrent = result.map_err(|err| {
+                        LuaError::external(format!("failed to create torrent: {err}"))
+                    })?;
+
+                    let mut magnet = Magnet::from_id20(
+                        torrent.info_hash(),
+                        trackers,
+                        None
+                    );
+
+                    magnet.name = name.clone();
+
+                    let content = torrent.as_bytes()
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to get torrent file content: {err}"))
+                        })?;
+
+                    let result = lua.create_table_with_capacity(0, 3)?;
+
+                    result.raw_set("info_hash", torrent.info_hash().as_string())?;
+                    result.raw_set("magnet", magnet.to_string())?;
+                    result.raw_set("content", content.to_vec())?;
+
+                    Ok(result)
+                })
+            }),
+
             torrent_add: {
                 let torrent_server = server.clone();
 
@@ -522,11 +603,10 @@ impl TorrentApi {
                     let torrent_server = torrent_server.clone();
                     let context = context.clone();
 
-                    lua.create_function(move |_, (torrent, options): (String, Option<LuaTable>)| {
+                    lua.create_function(move |_, (torrent, options): (Box<[u8]>, Option<LuaTable>)| {
                         let mut output_folder = context.temp_folder.clone();
                         let mut paused = false;
 
-                        #[allow(clippy::collapsible_if)]
                         if let Some(options) = options {
                             if let Some(opt_output_folder) = options.get::<Option<String>>("output_folder")? {
                                 output_folder = PathBuf::from(opt_output_folder);
@@ -664,8 +744,9 @@ impl TorrentApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 5)?;
+        let env = self.lua.create_table_with_capacity(0, 6)?;
 
+        env.raw_set("create", (self.torrent_create)(&self.lua, context)?)?;
         env.raw_set("add", (self.torrent_add)(&self.lua, context)?)?;
         env.raw_set("list", &self.torrent_list)?;
         env.raw_set("info", &self.torrent_info)?;
