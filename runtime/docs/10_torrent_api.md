@@ -56,6 +56,10 @@ print(`Magnet link: {torrent_file.magnet}`)
 Add torrent file, magnet link or info hash to the downloading queue and return 
 added torrent's info hash string.
 
+Note that this function may block the thread until the torrent info enough to
+build info hash is retrieved from the network. It's recommended to use torrent
+files for instant additions.
+
 ```ts
 type AddTorrentOptions = {
     // Path to a folder where the torrent should be downloaded. If unset, the
