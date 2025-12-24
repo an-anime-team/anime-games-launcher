@@ -45,8 +45,14 @@ pub enum TorrentServerError {
     #[error("torrent server is offline")]
     ServerIsOffline,
 
+    #[error("failed to read torrent file: {0}")]
+    TorrentReadError(#[from] std::io::Error),
+
     #[error("failed to add torrent: {0}")]
     AddTorrent(#[source] Box<dyn std::error::Error + Send + 'static>),
+
+    #[error("failed to delete torrent: {0}")]
+    DeleteTorrent(#[source] Box<dyn std::error::Error + Send + 'static>),
 
     #[error("invalid torrent info hash format: {0}")]
     InvalidInfoHash(#[source] Box<dyn std::error::Error + Send + 'static>),
@@ -171,6 +177,7 @@ enum TorrentServerMsg {
         output_folder: PathBuf,
         trackers: Option<Vec<String>>,
         paused: bool,
+        restart: bool,
         sender: Sender<Result<String, TorrentServerError>>
     },
 
@@ -236,34 +243,43 @@ impl TorrentServer {
                         output_folder,
                         trackers,
                         paused,
+                        restart,
                         sender
                     } => {
-                        let torrent_str = String::from_utf8_lossy(torrent.as_slice())
-                            .to_string();
+                        fn get_torrent_info<'a>(
+                            torrent: Box<[u8]>
+                        ) -> std::io::Result<AddTorrentInfo<'a>> {
+                            let torrent_str = String::from_utf8_lossy(torrent.as_slice())
+                                .to_string();
 
-                        let mut info = AddTorrentInfo::TorrentFileBytes(torrent.into());
+                            let mut info = AddTorrentInfo::TorrentFileBytes(torrent.into());
 
-                        if torrent_str.starts_with("magnet:")
-                            || torrent_str.starts_with("http")
-                            || matches!(TorrentIdOrHash::parse(&torrent_str), Ok(TorrentIdOrHash::Hash(_)))
-                        {
-                            info = AddTorrentInfo::Url(Cow::Borrowed(torrent_str.as_str()));
+                            if torrent_str.starts_with("magnet:")
+                                || torrent_str.starts_with("http")
+                                || matches!(TorrentIdOrHash::parse(&torrent_str), Ok(TorrentIdOrHash::Hash(_)))
+                            {
+                                info = AddTorrentInfo::Url(Cow::Owned(torrent_str));
+                            }
+
+                            else if PathBuf::from(&torrent_str).is_file() {
+                                // FIXME: check read permissions in torrent API
+                                info = AddTorrentInfo::TorrentFileBytes(std::fs::read(&torrent_str)?.into());
+                            }
+
+                            Ok(info)
                         }
 
-                        else if PathBuf::from(&torrent_str).is_file() {
-                            // FIXME: check read permissions in torrent API
+                        let info = match get_torrent_info(torrent.clone()) {
+                            Ok(info) => info,
+                            Err(err) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(?err, "failed to read torrent file");
 
-                            match std::fs::read(&torrent_str) {
-                                Ok(content) => info = AddTorrentInfo::TorrentFileBytes(content.into()),
+                                let _ = sender.send(Err(TorrentServerError::TorrentReadError(err)));
 
-                                Err(err) => {
-                                    #[cfg(feature = "tracing")]
-                                    tracing::error!(?err, "failed to read torrent file");
-
-                                    continue;
-                                }
-                            };
-                        }
+                                continue;
+                            }
+                        };
 
                         let trackers = trackers
                             .map(|mut trackers| {
@@ -281,30 +297,76 @@ impl TorrentServer {
                             output_folder: Some(output_folder.to_string_lossy().to_string()),
                             overwrite: true,
                             defer_writes: Some(false),
-                            trackers: Some(trackers),
+                            trackers: Some(trackers.clone()),
                             paused,
 
                             ..AddTorrentOptions::default()
                         };
 
-                        match session.add_torrent(info, Some(options)).await {
-                            Ok(torrent) => {
-                                let info_hash = match torrent {
-                                    AddTorrentResponse::Added(_, handle) |
-                                    AddTorrentResponse::AlreadyManaged(_, handle) => handle.info_hash(),
-                                    AddTorrentResponse::ListOnly(info) => info.info_hash
-                                };
-
-                                let _ = sender.send(Ok(info_hash.as_string()));
-                            }
-
+                        let mut torrent_handle = match session.add_torrent(info, Some(options)).await {
+                            Ok(torrent) => torrent,
                             Err(err) => {
                                 #[cfg(feature = "tracing")]
                                 tracing::error!(?err, "failed to add torrent");
 
                                 let _ = sender.send(Err(TorrentServerError::AddTorrent(err.into())));
+
+                                continue;
                             }
+                        };
+
+                        if let AddTorrentResponse::AlreadyManaged(id, _) = torrent_handle && restart {
+                            if let Err(err) = session.delete(id.into(), false).await {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(?err, "failed to delete added torrent");
+
+                                let _ = sender.send(Err(TorrentServerError::DeleteTorrent(err.into())));
+
+                                continue;
+                            }
+
+                            let info = match get_torrent_info(torrent) {
+                                Ok(info) => info,
+                                Err(err) => {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::error!(?err, "failed to read torrent file");
+
+                                    let _ = sender.send(Err(TorrentServerError::TorrentReadError(err)));
+
+                                    continue;
+                                }
+                            };
+
+                            let options = AddTorrentOptions {
+                                output_folder: Some(output_folder.to_string_lossy().to_string()),
+                                overwrite: true,
+                                defer_writes: Some(false),
+                                trackers: Some(trackers),
+                                paused,
+
+                                ..AddTorrentOptions::default()
+                            };
+
+                            torrent_handle = match session.add_torrent(info, Some(options)).await {
+                                Ok(torrent_handle) => torrent_handle,
+                                Err(err) => {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::error!(?err, "failed to add torrent");
+
+                                    let _ = sender.send(Err(TorrentServerError::AddTorrent(err.into())));
+
+                                    continue;
+                                }
+                            };
                         }
+
+                        let info_hash = match torrent_handle {
+                            AddTorrentResponse::Added(_, handle) |
+                            AddTorrentResponse::AlreadyManaged(_, handle) => handle.info_hash(),
+                            AddTorrentResponse::ListOnly(info) => info.info_hash
+                        };
+
+                        let _ = sender.send(Ok(info_hash.as_string()));
                     }
 
                     TorrentServerMsg::List { sender } => {
@@ -458,7 +520,8 @@ impl TorrentServer {
         torrent: Box<[u8]>,
         output_folder: PathBuf,
         trackers: Option<Vec<String>>,
-        paused: bool
+        paused: bool,
+        restart: bool
     ) -> Result<String, TorrentServerError> {
         let (sender, receiver) = std::sync::mpsc::channel();
 
@@ -467,6 +530,7 @@ impl TorrentServer {
             output_folder,
             trackers,
             paused,
+            restart,
             sender
         });
 
@@ -631,6 +695,7 @@ impl TorrentApi {
                         let mut output_folder = context.temp_folder.clone();
                         let mut trackers = None;
                         let mut paused = false;
+                        let mut restart = true;
 
                         if let Some(options) = options {
                             if let Some(opt_output_folder) = options.get::<Option<String>>("output_folder")? {
@@ -641,6 +706,10 @@ impl TorrentApi {
 
                             if let Some(opt_paused) = options.get::<Option<bool>>("paused")? {
                                 paused = opt_paused;
+                            }
+
+                            if let Some(opt_restart) = options.get::<Option<bool>>("restart")? {
+                                restart = opt_restart;
                             }
                         }
 
@@ -664,7 +733,8 @@ impl TorrentApi {
                             torrent,
                             output_folder,
                             trackers,
-                            paused
+                            paused,
+                            restart
                         );
 
                         result.map_err(|err| LuaError::external(err.to_string()))

@@ -17,6 +17,7 @@ Note that torrent API doesn't remember previously added torrents.
 | `torrent.info`   | Get information about added torrent.          |
 | `torrent.pause`  | Pause added torrent downloading and seeding.  |
 | `torrent.resume` | Resume added torrent downloading and seeding. |
+| `torrent.delete` | Delete added torrent.                         |
 
 ## `torrent.create(path: string, [options: CreateTorrentOptions]) -> TorrentFile`
 
@@ -70,7 +71,12 @@ type AddTorrentOptions = {
     trackers?: string[];
 
     // Whether the torrent downloading should be started immediately.
+    // Default: `false`.
     paused?: boolean;
+
+    // Whether to restart the torrent if it's already added.
+    // Default: `true`.
+    restart?: boolean;
 };
 ```
 
