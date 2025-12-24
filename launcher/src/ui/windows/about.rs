@@ -72,30 +72,15 @@ impl SimpleAsyncComponent for AboutWindow {
                 "<p>Added</p>",
 
                 "<ul>",
-                    "<li>Added separate read and write permissions to sandboxed filesystem paths in modules runtime</li>",
-                    "<li>Added modules allow lists. Modules runtime tries to read module's scope from it and falls back to default values</li>",
-                    "<li>Add module scope to the game package lock. This scope will be applied to all the modules used by the game integration (game-specific sandbox permissions)</li>",
-                    "<li>Added portal API</li>",
-                    "<li>Added logging for runtime modules loading</li>",
-                "</ul>",
-
-                "<p>Fixed</p>",
-
-                "<ul>",
-                    "<li>Fixed layout of the games store details page</li>",
-                    "<li>Provide most of default lua functions for runtime modules</li>",
-                    "<li>Input resources of a package are now allowed to be read by output modules of this package</li>",
-                    "<li>Fixed panic message on application close</li>",
-                    "<li>Fixed game launch info hint being 'nil' when unset</li>",
+                    "<li>Added special handling for empty game editions list</li>",
+                    "<li>Added runtime torrent API</li>",
+                    "<li>Added 'sleep' runtime function</li>",
                 "</ul>",
 
                 "<p>Changed</p>",
 
                 "<ul>",
-                    "<li>Changed logging filters for stdout and 'debug.log' file</li>",
-                    "<li>Game integration pipeline actions now don't need to return any (boolean) output from `perform` functions</li>",
-                    "<li>Changed pipeline actions graph update rate to 0.5 seconds</li>",
-                    "<li>In many manifests 'format' is expected instead of 'version'. For now 'version' is accepted as fallback field</li>",
+                    "<li>Improve actions pipeline graph drawing</li>",
                 "</ul>"
             ].join("\n")
         }

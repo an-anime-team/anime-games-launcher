@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-beta3] - 24.12.2025
+
+### Added
+
+- Added special handling for empty game editions list
+- Added runtime torrent API
+- Added `sleep` runtime function
+
+### Changed
+
+- Improve actions pipeline graph drawing
+
 ## [2.0.0-beta2] - 22.12.2025
 
 ### Added
@@ -106,7 +118,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...next
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta3...next
+[2.0.0-beta3]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta2...v2.0.0-beta3
+[2.0.0-beta2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...v2.0.0-beta2
 [2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha2...v2.0.0-beta1
 [2.0.0-alpha2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha1...v2.0.0-alpha2
 [2.0.0-alpha1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.2...v2.0.0-alpha1
