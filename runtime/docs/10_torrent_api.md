@@ -66,6 +66,9 @@ type AddTorrentOptions = {
     // temporary folder is used.
     output_folder?: string;
 
+    // List of extra trackers for this torrent.
+    trackers?: string[];
+
     // Whether the torrent downloading should be started immediately.
     paused?: boolean;
 };

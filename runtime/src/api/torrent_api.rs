@@ -165,6 +165,7 @@ enum TorrentServerMsg {
     Add {
         torrent: Box<[u8]>,
         output_folder: PathBuf,
+        trackers: Option<Vec<String>>,
         paused: bool,
         sender: Sender<Result<String, TorrentServerError>>
     },
@@ -226,6 +227,7 @@ impl TorrentServer {
                     TorrentServerMsg::Add {
                         torrent,
                         output_folder,
+                        trackers,
                         paused,
                         sender
                     } => {
@@ -260,6 +262,7 @@ impl TorrentServer {
                             output_folder: Some(output_folder.to_string_lossy().to_string()),
                             overwrite: true,
                             defer_writes: Some(false),
+                            trackers,
                             paused,
 
                             ..AddTorrentOptions::default()
@@ -435,6 +438,7 @@ impl TorrentServer {
         &self,
         torrent: Box<[u8]>,
         output_folder: PathBuf,
+        trackers: Option<Vec<String>>,
         paused: bool
     ) -> Result<String, TorrentServerError> {
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -442,6 +446,7 @@ impl TorrentServer {
         let result = self.0.send(TorrentServerMsg::Add {
             torrent,
             output_folder,
+            trackers,
             paused,
             sender
         });
@@ -605,12 +610,15 @@ impl TorrentApi {
 
                     lua.create_function(move |_, (torrent, options): (LuaValue, Option<LuaTable>)| {
                         let mut output_folder = context.temp_folder.clone();
+                        let mut trackers = None;
                         let mut paused = false;
 
                         if let Some(options) = options {
                             if let Some(opt_output_folder) = options.get::<Option<String>>("output_folder")? {
                                 output_folder = PathBuf::from(opt_output_folder);
                             }
+
+                            trackers = options.get::<Option<Vec<String>>>("trackers")?;
 
                             if let Some(opt_paused) = options.get::<Option<bool>>("paused")? {
                                 paused = opt_paused;
@@ -633,8 +641,14 @@ impl TorrentApi {
                         let torrent = lua_value_to_bytes(torrent)?
                             .into_boxed_slice();
 
-                        torrent_server.add_torrent(torrent, output_folder, paused)
-                            .map_err(|err| LuaError::external(err.to_string()))
+                        let result = torrent_server.add_torrent(
+                            torrent,
+                            output_folder,
+                            trackers,
+                            paused
+                        );
+
+                        result.map_err(|err| LuaError::external(err.to_string()))
                     })
                 })
             },
