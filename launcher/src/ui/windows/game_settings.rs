@@ -22,7 +22,6 @@ use relm4::prelude::*;
 use adw::prelude::*;
 
 use agl_locale::unic_langid::LanguageIdentifier;
-use agl_locale::i18n;
 
 use agl_games::engine::{
     GameVariant,
@@ -35,6 +34,7 @@ use agl_games::engine::{
 
 use crate::consts;
 use crate::config;
+use crate::i18n;
 use crate::ui::dialogs;
 
 enum ParentWidget<'widget> {

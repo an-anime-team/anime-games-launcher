@@ -30,7 +30,6 @@ use anyhow::Context;
 
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
-use agl_locale::i18n;
 use agl_locale::string::LocalizableString;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
@@ -52,6 +51,7 @@ use agl_games::engine::{
 
 use crate::consts;
 use crate::config;
+use crate::i18n;
 use crate::cache;
 use crate::games::GameLock;
 use crate::ui::dialogs;

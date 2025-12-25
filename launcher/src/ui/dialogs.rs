@@ -21,7 +21,7 @@ use std::backtrace::Backtrace;
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use agl_locale::i18n;
+use crate::i18n;
 
 /// Display error dialog. It will allow user to look through the given error,
 /// current thread's backtrace, and close the dialog to continue working with

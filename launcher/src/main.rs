@@ -30,6 +30,43 @@ pub mod cache;
 pub mod games;
 pub mod ui;
 
+/// Custom `i18n` macro based on the `agl-locale`'s one which respects
+/// launcher's config file.
+///
+/// - `i18n("string_key") -> Option<&str>`
+/// - `i18n("string_key", { "arg" => "value", ... }) -> Option<String>`
+#[macro_export]
+macro_rules! i18n {
+    ($key:expr) => {
+        {
+            let lang = $crate::config::startup()
+                .language();
+
+            // Unfortunately text cloning is required here.
+            match lang {
+                Ok(lang) => agl_locale::i18n!(lang, $key)
+                    .map(|text| text.to_string()),
+
+                Err(_) => agl_locale::i18n!($key)
+                    .map(|text| text.to_string())
+            }
+        }.as_deref()
+    };
+
+    ($key:expr, {$( $arg_key:expr => $arg_value:expr $(,)* )+}) => {
+        {
+            let lang = $crate::config::startup()
+                .language();
+
+            match lang {
+                Ok(lang) => agl_locale::i18n!(lang, $key, $( $arg_key => $arg_value $(,)+ )+),
+                Err(_) => agl_locale::i18n!($key, $( $arg_key => $arg_value $(,)+ )+)
+            }
+        }
+    };
+}
+
+
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
