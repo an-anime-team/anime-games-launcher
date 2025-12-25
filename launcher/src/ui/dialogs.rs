@@ -21,6 +21,8 @@ use std::backtrace::Backtrace;
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use agl_locale::i18n;
+
 /// Display error dialog. It will allow user to look through the given error,
 /// current thread's backtrace, and close the dialog to continue working with
 /// app.
@@ -37,8 +39,8 @@ pub fn error(title: impl ToString, body: impl ToString) {
             .build();
 
         dialog.add_responses(&[
-            ("close", "Close"),
-            ("backtrace", "Backtrace")
+            ("close",     i18n!("close").unwrap_or("Close")),
+            ("backtrace", i18n!("backtrace").unwrap_or("Backtrace"))
         ]);
 
         dialog.connect_response(Some("close"), |dialog, _| {
@@ -50,7 +52,7 @@ pub fn error(title: impl ToString, body: impl ToString) {
         dialog.connect_response(Some("backtrace"), move |_, _| {
             relm4::view! {
                 dialog = adw::Dialog {
-                    set_title: "Backtrace",
+                    set_title: i18n!("backtrace").unwrap_or("Backtrace"),
                     set_size_request: (900, 700),
 
                     #[wrap(Some)]
@@ -102,8 +104,8 @@ pub fn critical_error(title: impl ToString, body: impl ToString) {
             .build();
 
         dialog.add_responses(&[
-            ("close", "Close"),
-            ("backtrace", "Backtrace")
+            ("close",     i18n!("close").unwrap_or("Close")),
+            ("backtrace", i18n!("backtrace").unwrap_or("Backtrace"))
         ]);
 
         dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
@@ -117,7 +119,7 @@ pub fn critical_error(title: impl ToString, body: impl ToString) {
         dialog.connect_response(Some("backtrace"), move |_, _| {
             relm4::view! {
                 dialog = adw::Dialog {
-                    set_title: "Backtrace",
+                    set_title: i18n!("backtrace").unwrap_or("Backtrace"),
                     set_size_request: (900, 700),
 
                     #[wrap(Some)]

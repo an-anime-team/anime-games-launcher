@@ -22,6 +22,7 @@ use relm4::prelude::*;
 use adw::prelude::*;
 
 use agl_locale::unic_langid::LanguageIdentifier;
+use agl_locale::i18n;
 
 use agl_games::engine::{
     GameVariant,
@@ -394,7 +395,11 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                         Err(err) => {
                             tracing::error!(?err, "failed to render game settings");
 
-                            dialogs::error("Failed to render game settings", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_render_game_settings")
+                                    .unwrap_or("Failed to render game settings"),
+                                err.to_string()
+                            );
 
                             return;
                         }
@@ -414,7 +419,11 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                     if let Err(err) = integration.set_property(name, value) {
                         tracing::error!(?err, "failed to set game property value");
 
-                        dialogs::error("Failed to set game property value", err.to_string());
+                        dialogs::error(
+                            i18n!("failed_set_game_property")
+                                .unwrap_or("Failed to set game property value"),
+                            err.to_string()
+                        );
 
                         return;
                     }
@@ -432,7 +441,11 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                     if let Err(err) = integration.set_property(name, value) {
                         tracing::error!(?err, "failed to set game property value");
 
-                        dialogs::error("Failed to set game property value", err.to_string());
+                        dialogs::error(
+                            i18n!("failed_set_game_property")
+                                .unwrap_or("Failed to set game property value"),
+                            err.to_string()
+                        );
 
                         return;
                     }
@@ -463,7 +476,11 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                         Err(err) => {
                             tracing::error!(?err, "failed to update game settings layout");
 
-                            dialogs::error("Failed to update game settings layout", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_update_game_settings_layout")
+                                    .unwrap_or("Failed to update game settings layout"),
+                                err.to_string()
+                            );
                         }
                     }
                 }

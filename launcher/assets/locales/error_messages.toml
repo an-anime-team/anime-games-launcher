@@ -1,0 +1,11 @@
+[failed_render_game_settings]
+en = "Failed to render game settings"
+ru = "Не удалось загрузить страницу настроек игры"
+
+[failed_update_game_settings_layout]
+en = "Failed to update game settings layout"
+ru = "Не удалось обновить список настроек игры"
+
+[failed_set_game_property]
+en = "Failed to set game property value"
+ru = "Не удалось обновить настройки игры"

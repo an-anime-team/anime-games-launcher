@@ -38,6 +38,10 @@ fn main() -> anyhow::Result<()> {
     // Setup custom panic handler.
     human_panic::setup_panic!(human_panic::metadata!());
 
+    // Include translations file.
+    agl_locale::include_i18n!("../assets/locales/interface.toml");
+    agl_locale::include_i18n!("../assets/locales/error_messages.toml");
+
     // Prepare stdout logger.
     let stdout_log = tracing_subscriber::fmt::layer()
         // .pretty()
