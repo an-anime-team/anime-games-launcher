@@ -7,7 +7,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
-agl-locale = { path = "../locale" }
+agl-locale = { path = "../agl-locale" }
 
 thiserror = "1.0"
 lazy_static = "1.5"

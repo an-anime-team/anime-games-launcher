@@ -21,7 +21,7 @@ default = [
 ]
 
 [dependencies.agl-core]
-path = "../core"
+path = "../agl-core"
 default-features = false
 features = [
     "tasks",
@@ -32,12 +32,12 @@ features = [
 ]
 
 [dependencies.agl-packages]
-path = "../packages"
+path = "../agl-packages"
 default-features = false
 optional = true
 
 [dependencies]
-agl-locale = { path = "../locale" }
+agl-locale = { path = "../agl-locale" }
 
 thiserror = "1.0"
 lazy_static = "1.5"

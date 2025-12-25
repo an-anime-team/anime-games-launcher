@@ -33,11 +33,11 @@ version = "0.8.1"
 features = ["v1_8"]
 
 [dependencies]
-agl-core = { path = "../core" }
-agl-locale = { path = "../locale", default-features = false }
-agl-packages = { path = "../packages" }
-agl-runtime = { path = "../runtime" }
-agl-games = { path = "../games" }
+agl-core = { path = "../agl-core" }
+agl-locale = { path = "../agl-locale", default-features = false }
+agl-packages = { path = "../agl-packages" }
+agl-runtime = { path = "../agl-runtime" }
+agl-games = { path = "../agl-games" }
 
 anyhow = "1.0"
 lazy_static = "1.5"

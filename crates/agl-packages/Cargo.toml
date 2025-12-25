@@ -15,7 +15,7 @@ tracing = [
 default = ["tracing"]
 
 [dependencies.agl-core]
-path = "../core"
+path = "../agl-core"
 default-features = false
 features = [
     "tasks",

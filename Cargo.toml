@@ -1,12 +1,12 @@
 [workspace]
 resolver = "3"
 members = [
-    "core",
-    "locale",
-    "packages",
-    "runtime",
-    "games",
-    "launcher"
+    "crates/agl-core",
+    "crates/agl-locale",
+    "crates/agl-packages",
+    "crates/agl-runtime",
+    "crates/agl-games",
+    "crates/anime-games-launcher"
 ]
 
 [profile.release]
