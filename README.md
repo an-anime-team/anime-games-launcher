@@ -1,25 +1,51 @@
-# Anime Games Launcher
+<div align="center">
+   <img src="./repository/images/logo.png" width="480px" />
+</div>
 
-A long work in progress universal launcher for Linux (as a primary platform).
+<table>
+   <tr>
+      <th align="center">
+         <img src="./repository/images/store-page.png" width="480px" />
+         <p>Store page</p>
+      </th>
+      <th align="center">
+         <img src="./repository/images/game-details.png" width="480px" />
+         <p>Game details</p>
+      </th>
+   </tr>
+   <tr>
+      <th align="center">
+         <img src="./repository/images/library-page.png" width="480px" />
+         <p>Library page</p>
+      </th>
+      <th align="center">
+         <img src="./repository/images/game-settings.png" width="480px" />
+         <p>Game settings</p>
+      </th>
+   </tr>
+</table>
 
-The project is split into the following subcrates:
+<p align="center">
+   <a href="https://discord.gg/ck37X6UWBp" target="_blank">Discord</a> /
+   <a href="https://github.com/an-anime-team/game-integrations" target="_blank">Game integrations</a> /
+   <a href="./repository/The Anime Games Launcher Developer Handbook.pdf" target="_blank">Developer Handbook</a>
+</p>
 
-1. Core library [`agl-core`](./core) implements default abstractions over
-   various hashing, compression/decompression and archives format, implements
-   files downloading mechanism, provides async tasks API and a couple of utility
-   structs. Can be fine-grained with features to choose which components you
-   need to use.
-2. Packages manager [`agl-packages`](./packages) implements a Nix-like packages
-   manager with simple inputs and outputs JSON files. This packages manager
-   can download files, extract archives and process nested packages as
-   dependencies.
-3. Modules runtime [`agl-runtime`](./runtime) implements a sandboxed, scoped 
-   luau scripts standard library and a runtime struct which can be used to run
-   scripts downloaded by the packages manager.
-4. Games API [`agl-games`](./games) - implements abstractions over luau objects
-   to provide games installation and launching functionality.
-5. Anime Games Launcher [`anime-games-launcher`](./launcher) - the standard
-   implementation of a UI for the games API.
+**Anime Games Launcher** is a fully community powered games launcher. It 
+provides a packages manager and special lua scripts runtime which can be used
+by external contributors to add games into the launcher.
+
+If you want to add a game support to this launcher - please start by reading
+[The Anime Games Launcher Developer Handbook](./repository/The%20Anime%20Games%20Launcher%20Developer%20Handbook.pdf),
+then follow the useful links to read up-to-date documentation.
+
+## Useful links
+
+- [Packages manager documentation](./crates/agl-packages/README.md)
+- [Lua runtime documentation](./crates/agl-runtime/docs/README.md)
+- [Game integrations documentation](./crates/agl-games/README.md)
+
+<br />
 
 The whole project and all its components listed in this repo are licensed 
 under [GPL-3.0-or-later](./LICENSE)
