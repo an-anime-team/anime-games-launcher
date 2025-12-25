@@ -30,6 +30,7 @@ use anyhow::Context;
 
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
+use agl_locale::i18n;
 use agl_locale::string::LocalizableString;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
@@ -178,7 +179,8 @@ impl SimpleAsyncComponent for MainWindow {
     menu! {
         main_menu: {
             section! {
-                "About" => About
+                #[allow(unused_braces)]
+                (i18n!("about_launcher").unwrap_or("About")) => About
             }
         }
     }
@@ -212,7 +214,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                             set_icon_name: Some(consts::APP_ID),
 
-                            set_title: "Loading",
+                            set_title: i18n!("loading").unwrap_or("Loading"),
 
                             #[watch]
                             set_description: model.loading_status.as_deref()
@@ -257,7 +259,9 @@ impl SimpleAsyncComponent for MainWindow {
 
                                 model.store_page.widget(),
                             } -> {
-                                set_title: Some("Store"),
+                                set_title: Some(i18n!("games_store")
+                                    .unwrap_or("Store")),
+
                                 set_name: Some("store"),
                                 set_icon_name: Some("shopping-cart-symbolic")
                             },
@@ -268,7 +272,9 @@ impl SimpleAsyncComponent for MainWindow {
 
                                 model.library_page.widget(),
                             } -> {
-                                set_title: Some("Library"),
+                                set_title: Some(i18n!("games_library")
+                                    .unwrap_or("Library")),
+
                                 set_name: Some("library"),
                                 set_icon_name: Some("applications-games-symbolic")
                             }

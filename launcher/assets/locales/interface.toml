@@ -5,6 +5,33 @@ ru = "Закрыть"
 [backtrace]
 en = "Backtrace"
 
+[loading]
+en = "Loading"
+ru = "Загрузка"
+
+[about_launcher]
+en = "About"
+ru = "О программе"
+
+[games_store]
+en = "Store"
+ru = "Магазин"
+
+[games_library]
+en = "Library"
+ru = "Библиотека"
+
 [settings]
 en = "Settings"
 ru = "Настройки"
+
+[game_process_id]
+en = "Game process"
+ru = "Процесс игры"
+
+[game_running_for]
+en = "Running for"
+
+[kill_game_process]
+en = "Kill"
+ru = "Убить"

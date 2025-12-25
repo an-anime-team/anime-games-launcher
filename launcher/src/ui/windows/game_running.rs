@@ -24,9 +24,11 @@ use adw::prelude::*;
 
 use agl_core::tasks;
 use agl_core::export::tasks::tokio;
+use agl_locale::i18n;
 
 use crate::consts;
 use crate::utils;
+use crate::ui::dialogs;
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -90,7 +92,8 @@ impl SimpleAsyncComponent for GameRunningWindow {
                 adw::PreferencesPage {
                     adw::PreferencesGroup {
                         adw::ActionRow {
-                            set_title: "Game process",
+                            set_title: i18n!("game_process_id")
+                                .unwrap_or("Game process"),
 
                             add_suffix = &gtk::Label {
                                 set_selectable: true,
@@ -104,7 +107,8 @@ impl SimpleAsyncComponent for GameRunningWindow {
                         },
 
                         adw::ActionRow {
-                            set_title: "Running for",
+                            set_title: i18n!("game_running_for")
+                                .unwrap_or("Running for"),
 
                             add_suffix = &gtk::Label {
                                 #[watch]
@@ -123,7 +127,9 @@ impl SimpleAsyncComponent for GameRunningWindow {
                                 add_css_class: "destructive-action",
 
                                 adw::ButtonContent {
-                                    set_label: "Kill",
+                                    set_label: i18n!("kill_game_process")
+                                        .unwrap_or("Kill"),
+
                                     set_icon_name: "violence-symbolic"
                                 },
 
@@ -200,6 +206,12 @@ impl SimpleAsyncComponent for GameRunningWindow {
                 if let Some(mut child) = self.child.take() {
                     if let Err(err) = child.kill() {
                         tracing::error!(?err, "failed to kill running game process");
+
+                        dialogs::error(
+                            i18n!("failed_kill_game_process")
+                                .unwrap_or("Failed to kill running game process"),
+                            err.to_string()
+                        );
                     }
                 }
 

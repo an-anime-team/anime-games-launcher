@@ -24,6 +24,7 @@ use adw::prelude::*;
 use relm4::prelude::*;
 
 use agl_core::tasks;
+use agl_locale::i18n;
 use agl_games::engine::ActionsPipeline;
 
 use crate::consts;
@@ -352,7 +353,11 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                 if let Err(err) = result {
                                     tracing::error!(?err, "failed to perform pipeline action");
 
-                                    dialogs::error("Failed to perform pipeline action", err.to_string());
+                                    dialogs::error(
+                                        i18n!("failed_perform_pipeline_action")
+                                            .unwrap_or("Failed to perform pipeline action"),
+                                        err.to_string()
+                                    );
 
                                     break;
                                 }
@@ -363,7 +368,11 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                             Err(err) => {
                                 tracing::error!(?err, "failed to perform pipeline action");
 
-                                dialogs::error("Failed to perform pipeline action", err.to_string());
+                                dialogs::error(
+                                    i18n!("failed_perform_pipeline_action")
+                                        .unwrap_or("Failed to perform pipeline action"),
+                                    err.to_string()
+                                );
 
                                 break;
                             }

@@ -277,7 +277,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
     view! {
         #[root]
         _window = adw::PreferencesDialog {
-            set_title: "Settings",
+            set_title: i18n!("settings").unwrap_or("Settings"),
 
             set_content_width: 800,
             set_content_height: 600,
