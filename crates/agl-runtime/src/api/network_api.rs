@@ -243,7 +243,7 @@ mod tests {
         let api = NetworkApi::new(Lua::new(), Client::new())?;
 
         let response = api.net_fetch.call::<LuaTable>(
-            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/runtime/tests/simple_package/package.json"
+            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/crates/agl-runtime/tests/simple_package/package.json"
         )?;
 
         assert_eq!(response.get::<u16>("status")?, 200);

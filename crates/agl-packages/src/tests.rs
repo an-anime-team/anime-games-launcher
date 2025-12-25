@@ -25,7 +25,7 @@ use crate::storage::Storage;
 use agl_core::export::tasks::tokio;
 use agl_core::network::downloader::Downloader;
 
-const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/packages/tests";
+const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/crates/agl-packages/tests";
 // const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
 
 fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {

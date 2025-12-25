@@ -36,7 +36,7 @@ use crate::api::ApiOptions;
 use crate::runtime::{Runtime, RuntimeError, ModulePaths};
 
 #[cfg(feature = "packages-support")]
-const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/runtime/tests";
+const TESTS_DIR_URL: &str = "https://github.com/an-anime-team/anime-games-launcher/raw/refs/heads/next/crates/agl-runtime/tests";
 // const TESTS_DIR_URL: &str = "http://127.0.0.1:8080";
 
 fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
