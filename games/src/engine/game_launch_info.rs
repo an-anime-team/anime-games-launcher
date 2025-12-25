@@ -22,7 +22,7 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use agl_locale::LocalizableString;
+use agl_locale::string::LocalizableString;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameLaunchStatus {

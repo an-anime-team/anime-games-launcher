@@ -62,6 +62,7 @@ dependencies = [
  "lazy_static",
  "mlua",
  "serde_json",
+ "toml",
  "unic-langid",
 ]
 

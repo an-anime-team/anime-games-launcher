@@ -16,5 +16,6 @@ default = ["json", "mlua"]
 lazy_static = "1.5"
 unic-langid = "0.9"
 
+toml = "0.9"
 serde_json = { version = "1.0", optional = true }
 mlua = { version = "0.10", features = ["luau-jit"], optional = true }

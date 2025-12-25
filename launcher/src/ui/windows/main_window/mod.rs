@@ -30,7 +30,7 @@ use anyhow::Context;
 
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
-use agl_locale::LocalizableString;
+use agl_locale::string::LocalizableString;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;

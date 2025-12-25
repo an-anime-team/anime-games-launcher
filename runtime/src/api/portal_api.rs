@@ -20,7 +20,7 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use agl_locale::LocalizableString;
+use agl_locale::string::LocalizableString;
 
 use super::*;
 

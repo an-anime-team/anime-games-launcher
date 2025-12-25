@@ -187,7 +187,7 @@ pub struct ApiOptions {
     pub show_dialog: Box<dyn Fn(portal_api::DialogOptions) + Send>,
 
     /// Callback used to translate localizable string.
-    pub translate: fn(agl_locale::LocalizableString) -> String
+    pub translate: fn(agl_locale::string::LocalizableString) -> String
 }
 
 /// Luau modules standard library builder.

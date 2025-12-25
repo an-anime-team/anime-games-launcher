@@ -23,7 +23,7 @@ use mlua::prelude::*;
 use agl_core::export::tasks::tokio;
 use agl_core::export::network::reqwest;
 use agl_core::network::downloader::Downloader;
-use agl_locale::LocalizableString;
+use agl_locale::string::LocalizableString;
 
 #[cfg(feature = "packages-support")]
 use agl_packages::storage::Storage;
