@@ -44,6 +44,7 @@ then follow the useful links to read up-to-date documentation.
 - [Packages manager documentation](./crates/agl-packages/README.md)
 - [Lua runtime documentation](./crates/agl-runtime/docs/README.md)
 - [Game integrations documentation](./crates/agl-games/README.md)
+- [Launcher localization files](./crates/anime-games-launcher/assets/locales)
 
 <br />
 
