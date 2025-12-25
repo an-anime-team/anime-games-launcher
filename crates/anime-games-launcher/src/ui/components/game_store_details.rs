@@ -260,7 +260,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                         set_visible: !model.maintainers.is_empty(),
 
                                         model.maintainers.widget() {
-                                            set_title: i18n!("game_maintainers")
+                                            set_title: i18n!("game_package_maintainers")
                                                 .unwrap_or("Maintainers")
                                         }
                                     }

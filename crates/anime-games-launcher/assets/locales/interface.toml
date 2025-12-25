@@ -100,11 +100,11 @@ ru = "Издатель: {name}"
 
 [game_package]
 en = "Package"
-ru = "Интеграция"
+ru = "Пакет интеграции"
 
-[game_maintainers]
+[game_package_maintainers]
 en = "Maintainers"
-ru = "Сопроводители"
+ru = "Сопровождающие"
 
 [about_game]
 en = "About game"
