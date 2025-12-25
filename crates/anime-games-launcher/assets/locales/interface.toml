@@ -12,6 +12,40 @@ ru = "Очередь вызовов"
 en = "Settings"
 ru = "Настройки"
 
+# ------------------------ Startup tasks ------------------------
+
+[creating_default_folders]
+en = "Creating default folders"
+ru = "Создание папок по умолчанию"
+
+[fetching_packages_allow_lists]
+en = "Fetching packages allow lists"
+ru = "Запрос белых списков пакетов"
+
+[fetching_games_registries]
+en = "Fetching games registries"
+ru = "Запрос реестров игр"
+
+[fetching_games_manifests]
+en = "Fetching games manifests"
+ru = "Запрос информации об играх"
+
+[loading_added_games]
+en = "Loading added games"
+ru = "Загрузка добавленных игр"
+
+[loading_game_package]
+en = "Loading {title} game package"
+ru = "Загрузка пакета игры {title}"
+
+[updating_game_package]
+en = "Updating {title} game package"
+ru = "Обновление пакета игры {title}"
+
+[adding_store_page_games]
+en = "Adding store page games"
+ru = "Добавление игр на страницу магазина"
+
 # ------------------------ Main window ------------------------
 
 [loading]

@@ -464,9 +464,11 @@ impl SimpleAsyncComponent for MainWindow {
 
             tracing::debug!("creating default folders");
 
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Creating default folders"))
-            ));
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("creating_default_folders")
+                    .unwrap_or("Creating default folders")
+                    .to_string()
+            )));
 
             std::fs::create_dir_all(consts::DATA_FOLDER.as_path())?;
             std::fs::create_dir_all(consts::CONFIG_FOLDER.as_path())?;
@@ -498,13 +500,15 @@ impl SimpleAsyncComponent for MainWindow {
             // Fetch packages allow lists.
 
             tracing::debug!(
-                registries = ?config.games_registries,
-                "fetching allow lists"
+                allow_lists = ?config.packages_allow_lists,
+                "fetching packages allow lists"
             );
 
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Fetching allow lists"))
-            ));
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("fetching_packages_allow_lists")
+                    .unwrap_or("Fetching packages allow lists")
+                    .to_string()
+            )));
 
             let mut tasks = Vec::with_capacity(config.packages_allow_lists.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
@@ -572,12 +576,14 @@ impl SimpleAsyncComponent for MainWindow {
 
             tracing::debug!(
                 registries = ?config::startup().games_registries,
-                "fetching game registries"
+                "fetching games registries"
             );
 
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Fetching game registries"))
-            ));
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("fetching_games_registries")
+                    .unwrap_or("Fetching games registries")
+                    .to_string()
+            )));
 
             let mut tasks = Vec::with_capacity(config.games_registries.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
@@ -656,9 +662,11 @@ impl SimpleAsyncComponent for MainWindow {
                 "fetching games manifests"
             );
 
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Fetching games manifests"))
-            ));
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("fetching_games_manifests")
+                    .unwrap_or("Fetching games manifests")
+                    .to_string()
+            )));
 
             let mut tasks = Vec::with_capacity(games_manifests.len());
             let mut paths = Vec::with_capacity(games_manifests.len());
@@ -714,9 +722,11 @@ impl SimpleAsyncComponent for MainWindow {
 
             tracing::debug!("loading added game packages locks");
 
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Loading added games"))
-            ));
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("loading_added_games")
+                    .unwrap_or("Loading added games")
+                    .to_string()
+            )));
 
             let storage = Storage::open(&config::startup().packages_resources_path)
                 .context("failed to open packages storage")?;
@@ -740,9 +750,10 @@ impl SimpleAsyncComponent for MainWindow {
                     Err(_) => lock.manifest.game.title.default_translation()
                 };
 
-                sender.input(MainWindowMsg::SetLoadingStatus(
-                    Some(format!("Loading {title} game package"))
-                ));
+                sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                    i18n!("loading_game_package", { title => title })
+                        .unwrap_or_else(|| format!("Loading {title} game package"))
+                )));
 
                 let is_expired = cache::is_expired(
                     entry.path(),
@@ -756,9 +767,10 @@ impl SimpleAsyncComponent for MainWindow {
                         "updating added game package lock, cache is expired"
                     );
 
-                    sender.input(MainWindowMsg::SetLoadingStatus(
-                        Some(format!("Updating {title} game package"))
-                    ));
+                    sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                        i18n!("updating_game_package", { title => title })
+                            .unwrap_or_else(|| format!("Updating {title} game package"))
+                    )));
 
                     let prev_scope = lock.scope;
 
@@ -780,9 +792,11 @@ impl SimpleAsyncComponent for MainWindow {
 
             tracing::debug!(?paths, "adding store page games");
 
-            sender.input(MainWindowMsg::SetLoadingStatus(
-                Some(String::from("Adding store page games"))
-            ));
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("adding_store_page_games")
+                    .unwrap_or("Adding store page games")
+                    .to_string()
+            )));
 
             for (url, path, _is_featured) in paths {
                 tracing::trace!(?url, ?path, "reading game manifest");
@@ -816,13 +830,21 @@ impl SimpleAsyncComponent for MainWindow {
                 Ok(Err(err)) => {
                     tracing::error!(?err, "failed to execute startup task");
 
-                    dialogs::critical_error("failed to execute startup task", err);
+                    dialogs::critical_error(
+                        i18n!("failed_execute_startup_task")
+                            .unwrap_or("Failed to execute startup task"),
+                        err
+                    );
                 }
 
                 Err(err) => {
                     tracing::error!(?err, "failed to execute startup task");
 
-                    dialogs::critical_error("failed to execute startup task", err);
+                    dialogs::critical_error(
+                        i18n!("failed_execute_startup_task")
+                            .unwrap_or("Failed to execute startup task"),
+                        err
+                    );
                 }
             }
         });
@@ -895,7 +917,8 @@ impl SimpleAsyncComponent for MainWindow {
                     );
 
                     dialogs::error(
-                        format!("Failed to load {title} game package"),
+                        i18n!("failed_load_game_package", { title => title })
+                            .unwrap_or_else(|| format!("Failed to load {title} game package")),
                         err.to_string()
                     );
 
@@ -927,8 +950,11 @@ impl SimpleAsyncComponent for MainWindow {
                     );
 
                     dialogs::error(
-                        "Failed to find game integration module in package lock",
-                        format!("Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken")
+                        i18n!("failed_find_locked_game_integration_title")
+                            .unwrap_or("Failed to find game integration module in package lock"),
+
+                        i18n!("failed_find_locked_game_integration_description", { title => title })
+                            .unwrap_or_else(|| format!("Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken"))
                     );
 
                     return;
@@ -954,7 +980,8 @@ impl SimpleAsyncComponent for MainWindow {
                         );
 
                         dialogs::error(
-                            format!("Failed to read {title} game integration from the runtime"),
+                            i18n!("failed_read_runtime_game_integration", { title => title })
+                                .unwrap_or_else(|| format!("Failed to read {title} game integration from the runtime")),
                             err.to_string()
                         );
 
@@ -969,8 +996,11 @@ impl SimpleAsyncComponent for MainWindow {
                         );
 
                         dialogs::error(
-                            "Game integration module is missing in the runtime",
-                            format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime")
+                            i18n!("game_integration_module_missing_title")
+                                .unwrap_or("Game integration module is missing in the runtime"),
+
+                            i18n!("game_integration_module_missing_description", { title => title })
+                                .unwrap_or_else(|| format!("Attempted to load {title} game integration, but integration module is missing in the packages runtime"))
                         );
 
                         return;
@@ -994,7 +1024,8 @@ impl SimpleAsyncComponent for MainWindow {
                         );
 
                         dialogs::error(
-                            format!("Failed to build {title} game integration"),
+                            i18n!("failed_build_game_integration", { title => title })
+                                .unwrap_or_else(|| format!("Failed to build {title} game integration")),
                             err.to_string()
                         );
 
@@ -1035,7 +1066,11 @@ impl SimpleAsyncComponent for MainWindow {
                         if let Err(err) = callback.call::<()>(()) {
                             tracing::error!(?err, "failed to execute toast action");
 
-                            dialogs::error("Failed to execute toast action", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_execute_toast_action")
+                                    .unwrap_or("Failed to execute toast action"),
+                                err.to_string()
+                            );
                         }
                     });
                 }
@@ -1070,7 +1105,11 @@ impl SimpleAsyncComponent for MainWindow {
                 if let Err(err) = notification.show() {
                     tracing::error!(?err, "failed to show system notification");
 
-                    dialogs::error("Failed to show system notification", err.to_string());
+                    dialogs::error(
+                        i18n!("failed_show_system_notification")
+                            .unwrap_or("Failed to show system notification"),
+                        err.to_string()
+                    );
                 }
             }
 
@@ -1093,7 +1132,7 @@ impl SimpleAsyncComponent for MainWindow {
                 );
 
                 if options.can_close || options.buttons.is_empty() {
-                    dialog.add_response("close", "Close");
+                    dialog.add_response("close", i18n!("close").unwrap_or("Close"));
 
                     dialog.connect_response(Some("close"), |dialog, _| {
                         dialog.close();
@@ -1112,7 +1151,11 @@ impl SimpleAsyncComponent for MainWindow {
                         if let Err(err) = button.callback.call::<()>(()) {
                             tracing::error!(?err, "failed to execute dialog action");
 
-                            dialogs::error("Failed to execute dialog action", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_execute_dialog_action")
+                                    .unwrap_or("Failed to execute dialog action"),
+                                err.to_string()
+                            );
                         }
 
                         dialog.close();
