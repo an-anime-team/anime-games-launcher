@@ -132,8 +132,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     add_css_class: "title-4",
 
-                                    set_text: i18n!("about")
-                                        .unwrap_or("About")
+                                    set_text: i18n!("about_game")
+                                        .unwrap_or("About game")
                                 },
 
                                 gtk::Label {

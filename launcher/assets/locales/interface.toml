@@ -72,6 +72,10 @@ ru = "Интеграция"
 en = "Maintainers"
 ru = "Сопроводители"
 
+[about_game]
+en = "About game"
+ru = "Об игре"
+
 # ------------------------ Game library page ------------------------
 
 [no_library_game_selected]
