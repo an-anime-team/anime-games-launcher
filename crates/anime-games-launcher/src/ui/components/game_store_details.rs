@@ -185,7 +185,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                                 .unwrap_or("Add to library")
                                                 .to_string(),
 
-                                            GameStatus::Adding => i18n!("game_add_to_library")
+                                            GameStatus::Adding => i18n!("game_adding_to_library")
                                                 .unwrap_or("Addding to library...")
                                                 .to_string(),
 
