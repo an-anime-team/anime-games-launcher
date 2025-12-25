@@ -66,9 +66,9 @@ macro_rules! include_i18n {
 /// Get translation string from default translations bundle.
 ///
 /// - `i18n("string_key") -> Option<&str>`
-/// - `i18n("string_key", { "arg" => "value", ... }) -> Option<String>`
+/// - `i18n("string_key", { arg => "value", ... }) -> Option<String>`
 /// - `i18n(lang, "string_key") -> Option<&str>`
-/// - `i18n(lang, "string_key", { "arg" => "value", ... }) -> Option<String>`
+/// - `i18n(lang, "string_key", { arg => "value", ... }) -> Option<String>`
 #[macro_export]
 macro_rules! i18n {
     ($key:expr) => {
@@ -84,7 +84,7 @@ macro_rules! i18n {
         {
             let mut args = std::collections::HashMap::new();
 
-            $( args.insert($arg_key, $arg_value); )+
+            $( args.insert(stringify!($arg_key), $arg_value.to_string()); )+
 
             $crate::DEFAULT_BUNDLE.read()
                 .expect("failed to lock default translations bundle")
@@ -106,7 +106,7 @@ macro_rules! i18n {
         {
             let mut args = std::collections::HashMap::new();
 
-            $( args.insert($arg_key.to_string(), $arg_value.to_string()); )+
+            $( args.insert(stringify!($arg_key), $arg_value.to_string()); )+
 
             $crate::DEFAULT_BUNDLE.read()
                 .expect("failed to lock default translations bundle")
