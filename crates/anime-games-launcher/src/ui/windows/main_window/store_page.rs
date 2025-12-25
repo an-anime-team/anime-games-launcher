@@ -115,6 +115,7 @@ impl SimpleAsyncComponent for StorePage {
                                 set_hexpand: true,
 
                                 set_halign: gtk::Align::Center,
+                                set_valign: gtk::Align::Start,
 
                                 set_row_spacing: 16,
                                 set_column_spacing: 24,
