@@ -106,7 +106,7 @@ macro_rules! i18n {
         {
             let mut args = std::collections::HashMap::new();
 
-            $( args.insert($arg_key, $arg_value); )+
+            $( args.insert($arg_key.to_string(), $arg_value.to_string()); )+
 
             $crate::DEFAULT_BUNDLE.read()
                 .expect("failed to lock default translations bundle")
