@@ -41,7 +41,7 @@ use agl_runtime::api::portal_api::{
 };
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
-use agl_games::engine::{
+use agl_games::api::{
     GameVariant,
     GameIntegration,
     ActionsPipeline,
@@ -964,7 +964,7 @@ impl SimpleAsyncComponent for MainWindow {
                     .transpose()
                     .map(|game_integration| {
                         game_integration.and_then(|game_integration| {
-                            game_integration.raw_get::<LuaTable>("value")
+                            game_integration.raw_get::<LuaValue>("value")
                         })
                     });
 
@@ -1007,7 +1007,7 @@ impl SimpleAsyncComponent for MainWindow {
                     }
                 };
 
-                let game_integration = GameIntegration::from_lua(
+                let game_integration = GameIntegration::load(
                     self.runtime.lua().clone(),
                     &game_integration
                 );

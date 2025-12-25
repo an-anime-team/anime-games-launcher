@@ -21,7 +21,7 @@ use std::sync::Arc;
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use agl_games::engine::{
+use agl_games::api::{
     GameEdition,
     GameVariant,
     GameIntegration,

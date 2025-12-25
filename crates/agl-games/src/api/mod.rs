@@ -37,6 +37,11 @@ pub use game_settings::*;
 use crate::platform::Platform;
 
 #[derive(Debug, Clone)]
+pub struct GameIntegrationOptions {
+    pub platform: Platform
+}
+
+#[derive(Debug, Clone)]
 pub struct GameIntegration {
     lua: Lua,
 
@@ -51,16 +56,37 @@ pub struct GameIntegration {
 
 impl GameIntegration {
     /// Try to load game integration from provided lua engine and integration
-    /// table.
-    pub fn from_lua(lua: Lua, table: &LuaTable) -> Result<Self, LuaError> {
-        if table.get::<u32>("format").ok() != Some(1)
-            && table.get::<u32>("version").ok() != Some(1)
-        {
-            return Err(LuaError::external("unsupported game integration format"));
+    /// value.
+    pub fn load(
+        lua: Lua,
+        integration: &LuaValue
+    ) -> Result<Self, LuaError> {
+        let integration = if let Some(table) = integration.as_table() {
+            table.clone()
         }
 
-        let game = table.get::<LuaTable>("game")?;
-        let settings = table.get::<LuaTable>("settings").ok();
+        else if let Some(func) = integration.as_function() {
+            let versions = lua.create_table_with_capacity(0, 1)?;
+
+            versions.raw_set("agl_games", crate::VERSION)?;
+
+            let options = lua.create_table_with_capacity(0, 2)?;
+
+            options.raw_set("versions", versions)?;
+
+            if let Some(platform) = Platform::current() {
+                options.raw_set("platform", platform.to_string())?;
+            }
+
+            func.call::<LuaTable>(options)?
+        }
+
+        else {
+            return Err(LuaError::external("invalid game integration format"));
+        };
+
+        let game = integration.get::<LuaTable>("game")?;
+        let settings = integration.get::<LuaTable>("settings").ok();
 
         Ok(Self {
             lua,

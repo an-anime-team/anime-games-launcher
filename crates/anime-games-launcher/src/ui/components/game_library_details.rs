@@ -22,7 +22,7 @@ use relm4::prelude::*;
 use adw::prelude::*;
 
 use agl_games::manifest::GameManifest;
-use agl_games::engine::{
+use agl_games::api::{
     GameVariant,
     GameIntegration,
     ActionsPipeline,

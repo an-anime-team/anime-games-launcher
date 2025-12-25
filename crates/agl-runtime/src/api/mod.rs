@@ -319,14 +319,14 @@ impl Api {
         // Some default functions and constants.
         let versions_table = self.lua.create_table_with_capacity(0, 2)?;
 
-        versions_table.raw_set("core", agl_core::VERSION)?;
-        versions_table.raw_set("runtime", crate::VERSION)?;
+        versions_table.raw_set("agl_core", agl_core::VERSION)?;
+        versions_table.raw_set("agl_runtime", crate::VERSION)?;
 
         env.raw_set("versions", versions_table)?;
 
-        env.raw_set("clone", self.clone.clone())?;
-        env.raw_set("dbg", self.dbg.clone())?;
-        env.raw_set("sleep", self.sleep.clone())?;
+        env.raw_set("clone", &self.clone)?;
+        env.raw_set("dbg", &self.dbg)?;
+        env.raw_set("sleep", &self.sleep)?;
 
         // Some default lua functions.
         env.raw_set("print", self.lua.globals().get::<LuaFunction>("print")?)?;

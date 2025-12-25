@@ -23,7 +23,7 @@ use adw::prelude::*;
 
 use agl_locale::unic_langid::LanguageIdentifier;
 
-use agl_games::engine::{
+use agl_games::api::{
     GameVariant,
     GameIntegration,
     GameSettingsEntry,

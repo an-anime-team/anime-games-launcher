@@ -24,7 +24,7 @@ use adw::prelude::*;
 use relm4::prelude::*;
 
 use agl_core::tasks;
-use agl_games::engine::ActionsPipeline;
+use agl_games::api::ActionsPipeline;
 
 use crate::{consts, config, i18n};
 use crate::ui::dialogs;
