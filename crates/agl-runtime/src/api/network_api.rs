@@ -33,7 +33,7 @@ fn create_request(
 
     // Change the request method if provided.
     if let Some(options) = &options {
-        method = options.get::<String>("method")
+        method = options.get::<Option<String>>("method")?
             .unwrap_or(String::from("get"));
     }
 
@@ -53,19 +53,18 @@ fn create_request(
 
     // Set request header and body if provided.
     if let Some(options) = &options {
-        if let Ok(headers) = options.get::<LuaTable>("headers") {
-            for pair in headers.pairs::<LuaString, LuaString>() {
+        if let Some(headers) = options.get::<Option<LuaTable>>("headers")? {
+            for pair in headers.pairs::<String, String>() {
                 let (key, value) = pair?;
 
-                request = request.header(
-                    key.to_string_lossy().to_string(),
-                    value.to_string_lossy().to_string()
-                );
+                request = request.header(key, value);
             }
         }
 
-        if let Ok(body) = options.get::<LuaValue>("body") {
+        if let Some(body) = options.get::<Option<LuaValue>>("body")? {
             request = match body {
+                LuaValue::Nil => request,
+
                 LuaValue::String(str) => request.body(str.as_bytes().to_vec()),
 
                 LuaValue::Table(table) => {
@@ -103,8 +102,7 @@ impl NetworkApi {
             net_fetch: {
                 let client = client.clone();
 
-                lua.create_function(move |lua, (url, options): (LuaString, Option<LuaTable>)| {
-                    let url = url.to_string_lossy().to_string();
+                lua.create_function(move |lua, (url, options): (String, Option<LuaTable>)| {
                     let request = create_request(&client, url, options)?;
 
                     // Perform the request.
@@ -139,8 +137,7 @@ impl NetworkApi {
                 let client = client.clone();
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |lua, (url, options): (LuaString, Option<LuaTable>)| {
-                    let url = url.to_string_lossy().to_string();
+                lua.create_function(move |lua, (url, options): (String, Option<LuaTable>)| {
                     let request = create_request(&client, url, options)?;
 
                     let (response, header) = tasks::block_on(async move {
@@ -155,7 +152,10 @@ impl NetworkApi {
                         result.raw_set("headers", headers.clone())?;
 
                         for (key, value) in response.headers() {
-                            headers.raw_set(key.to_string(), lua.create_string(value.as_bytes())?)?;
+                            headers.raw_set(
+                                key.to_string(),
+                                lua.create_string(value.as_bytes())?
+                            )?;
                         }
 
                         Ok::<_, LuaError>((response, result))

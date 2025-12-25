@@ -13,7 +13,7 @@ Launcher provides set of functions to perform HTTP request and download files.
 
 ```ts
 type Options = {
-    // Method of the request.
+    // Method of the request. GET is used by default.
     method?: 'get' | 'post' | 'head' | 'put' | 'patch' | 'delete' | 'connect',
 
     // Headers of the request.
