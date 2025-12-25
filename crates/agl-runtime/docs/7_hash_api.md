@@ -43,17 +43,17 @@ algorithms are provided by the `agl-core` library.
 | `sha3-384`        | 384  | Yes           | https://crates.io/crates/sha3        |
 | `sha3-512`        | 256  | Yes           | https://crates.io/crates/sha3        |
 
-## `hash.digitize(value: any, [algorithm: HashAlgorithm]) -> [number]`
+## `hash.digitize(algorithm: HashAlgorithm, value: any) -> number[]`
 
 Calculate hash for a given bytes slice using specified algorithm. By default
 `seahash` is used as a launcher's internal algorithm.
 
 ```luau
 -- [236, 74, 195, 208]
-dbg(hash.digitize("Hello, World!", "crc32"))
+dbg(hash.digitize("crc32", "Hello, World!"))
 ```
 
-## `hash.digitize_file(path: string, [algorithm: HashAlgorithm]) -> [number]`
+## `hash.digitize_file(algorithm: HashAlgorithm, path: string) -> number[]`
 
 Calculate hash for a given file path using specified algorithm. By default
 `seahash` is used as a launcher's internal algorithm. Only accessible files can
@@ -63,18 +63,18 @@ be hashed.
 fs.write_file("test.txt", "Hello, World!")
 
 -- [236, 74, 195, 208]
-dbg(hash.digitize_file("test.txt", "crc32"))
+dbg(hash.digitize_file("crc32", "test.txt"))
 ```
 
-## `hash.builder([algorithm: HashAlgorithm]) -> number`
+## `hash.hasher(algorithm: HashAlgorithm) -> number`
 
 Create new incremental data hasher. This should be used to hash large amounts of
-data. Unlike `hash.calc` method where you had to hold the whole data slice in
-RAM before making a hash, the hasher struct allows you to write small chunks of
-data iteratively, not keeping all of them in RAM at once.
+data. Unlike `hash.digitize` method where you had to hold the whole data slice
+in RAM before making a hash, the hasher struct allows you to write small chunks
+of data iteratively, not keeping all of them in RAM at once.
 
 ```luau
-local hasher = hash.builder("md5")
+local hasher = hash.hasher("md5")
 
 -- do some actions
 ```
@@ -84,7 +84,7 @@ local hasher = hash.builder("md5")
 Write a chunk of data to the open hasher.
 
 ```luau
-local hasher = hash.builder("xxh3-128")
+local hasher = hash.hasher("xxh3-128")
 local head = net.open("https://example.com/large_file.zip")
 
 if head.is_ok do
@@ -112,12 +112,12 @@ Finalize hash calculation in the open hasher struct. This will close the hasher
 and prevent future writes.
 
 ```luau
-local hasher = hash.builder("sha1")
+local hasher = hash.hasher("sha1")
 
 hash.write(hasher, "Hello")
 hash.write(hasher, "World")
 
 -- printed the same value
 print(str.encode(hash.finalize(hasher), "hex"))
-print(str.encode(hash.calc("HelloWorld"), "hex"))
+print(str.encode(hash.digitize("HelloWorld"), "hex"))
 ```
