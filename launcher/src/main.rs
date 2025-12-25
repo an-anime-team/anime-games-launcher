@@ -24,12 +24,10 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::filter::*;
 
 pub mod consts;
+pub mod utils;
 pub mod config;
 pub mod cache;
 pub mod games;
-
-// pub mod i18n;
-pub mod utils;
 pub mod ui;
 
 #[cfg(feature = "mimalloc")]
