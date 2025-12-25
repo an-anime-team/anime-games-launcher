@@ -32,11 +32,13 @@ lazy_static::lazy_static! {
 
     pub static ref SYSTEM_LANG: LanguageIdentifier = {
         let lang = std::env::var("AGL_LOCALE").ok()
+            .or_else(|| std::env::var("AGL_LANG").ok())
+            .or_else(|| std::env::var("AGL_LANGUAGE").ok())
             .or_else(|| std::env::var("LANG").ok())
             .or_else(|| std::env::var("LANGUAGE").ok())
             .or_else(|| std::env::var("LC_MESSAGES").ok())
             .or_else(|| std::env::var("LC_ALL").ok())
-            .unwrap_or_else(|| String::from("en-us"));
+            .unwrap_or_else(|| String::from("en"));
 
         lang.parse::<LanguageIdentifier>()
             .unwrap_or_else(|_| ENGLISH_LANG.clone())
