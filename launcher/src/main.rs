@@ -30,39 +30,31 @@ pub mod cache;
 pub mod games;
 pub mod ui;
 
+lazy_static::lazy_static! {
+    pub static ref STARTUP_LANG: agl_locale::unic_langid::LanguageIdentifier = {
+        config::startup()
+            .language()
+            .unwrap_or_else(|_| agl_locale::SYSTEM_LANG.clone())
+    };
+}
+
 /// Custom `i18n` macro based on the `agl-locale`'s one which respects
 /// launcher's config file.
 ///
-/// - `i18n("string_key") -> Option<&str>`
-/// - `i18n("string_key", { "arg" => "value", ... }) -> Option<String>`
+/// - `i18n("string_key") -> Option<String>`
+/// - `i18n("string_key", { arg => "value", ... }) -> Option<String>`
 #[macro_export]
 macro_rules! i18n {
     ($key:expr) => {
-        {
-            let lang = $crate::config::startup()
-                .language();
-
-            // Unfortunately text cloning is required here.
-            match lang {
-                Ok(lang) => agl_locale::i18n!(lang, $key)
-                    .map(|text| text.to_string()),
-
-                Err(_) => agl_locale::i18n!($key)
-                    .map(|text| text.to_string())
-            }
-        }.as_deref()
+        agl_locale::i18n!($crate::STARTUP_LANG.as_ref(), $key)
     };
 
     ($key:expr, {$( $arg_key:expr => $arg_value:expr $(,)* )+}) => {
-        {
-            let lang = $crate::config::startup()
-                .language();
-
-            match lang {
-                Ok(lang) => agl_locale::i18n!(lang, $key, $( $arg_key => $arg_value $(,)+ )+),
-                Err(_) => agl_locale::i18n!($key, $( $arg_key => $arg_value $(,)+ )+)
-            }
-        }
+        agl_locale::i18n!(
+            $crate::STARTUP_LANG.as_ref(),
+            $key,
+            {$( $arg_key => $arg_value )+}
+        )
     };
 }
 
@@ -77,6 +69,7 @@ fn main() -> anyhow::Result<()> {
 
     // Include translations file.
     agl_locale::include_i18n!("../assets/locales/interface.toml");
+    agl_locale::include_i18n!("../assets/locales/game_tags.toml");
     agl_locale::include_i18n!("../assets/locales/error_messages.toml");
 
     // Prepare stdout logger.

@@ -1,9 +1,18 @@
+# ------------------------ General ------------------------
+
 [close]
 en = "Close"
 ru = "Закрыть"
 
 [backtrace]
 en = "Backtrace"
+ru = "Очередь вызовов"
+
+[settings]
+en = "Settings"
+ru = "Настройки"
+
+# ------------------------ Main window ------------------------
 
 [loading]
 en = "Loading"
@@ -21,9 +30,57 @@ ru = "Магазин"
 en = "Library"
 ru = "Библиотека"
 
-[settings]
-en = "Settings"
-ru = "Настройки"
+[games]
+en = "Games"
+ru = "Игры"
+
+[details]
+en = "Details"
+ru = "Детали"
+
+[loaded_games_number]
+en = "Loaded {number} games"
+ru = "Загружено {number} игр"
+
+# ------------------------ Game store page ------------------------
+
+[game_add_to_library]
+en = "Add to library"
+ru = "Добавить в библиотеку"
+
+[game_adding_to_library]
+en = "Adding to library..."
+ru = "Добавляем в библиотеку..."
+
+[open_game_in_library]
+en = "Open in library"
+ru = "Открыть в библиотеке"
+
+[game_developer]
+en = "Developer: {name}"
+ru = "Разработчик: {name}"
+
+[game_publisher]
+en = "Publisher: {name}"
+ru = "Издатель: {name}"
+
+[game_package]
+en = "Package"
+ru = "Интеграция"
+
+[game_maintainers]
+en = "Maintainers"
+ru = "Сопроводители"
+
+# ------------------------ Game library page ------------------------
+
+[no_library_game_selected]
+en = "No game selected"
+ru = "Игра не выбрана"
+
+[game_play]
+en = "Play"
+ru = "Играть"
 
 [game_process_id]
 en = "Game process"

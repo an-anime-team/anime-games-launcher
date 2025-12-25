@@ -23,7 +23,7 @@ use agl_core::tasks;
 use agl_packages::storage::Storage;
 use agl_games::manifest::GameManifest;
 
-use crate::{config, games};
+use crate::{config, i18n, games};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 
@@ -132,7 +132,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     add_css_class: "title-4",
 
-                                    set_text: "About"
+                                    set_text: i18n!("about")
+                                        .unwrap_or("About")
                                 },
 
                                 gtk::Label {
@@ -178,10 +179,20 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     },
 
                                     #[watch]
-                                    set_label: match model.status {
-                                        GameStatus::NotAdded => "Add",
-                                        GameStatus::Adding   => "Adding to library...",
-                                        GameStatus::Added    => "Open in library"
+                                    set_label: &{
+                                        match model.status {
+                                            GameStatus::NotAdded => i18n!("game_add_to_library")
+                                                .unwrap_or("Add to library")
+                                                .to_string(),
+
+                                            GameStatus::Adding => i18n!("game_add_to_library")
+                                                .unwrap_or("Addding to library...")
+                                                .to_string(),
+
+                                            GameStatus::Added => i18n!("open_game_in_library")
+                                                .unwrap_or("Open in library")
+                                                .to_string()
+                                        }
                                     }
                                 },
 
@@ -199,7 +210,9 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     set_selectable: true,
 
                                     #[watch]
-                                    set_text: &format!("Developer: {}", model.developer)
+                                    set_text: i18n!("game_developer", { name => &model.developer })
+                                        .unwrap_or_else(|| format!("Developer: {}", &model.developer))
+                                        .as_str()
                                 },
 
                                 gtk::Label {
@@ -210,7 +223,9 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     set_selectable: true,
 
                                     #[watch]
-                                    set_text: &format!("Publisher: {}", model.publisher)
+                                    set_text: i18n!("game_publisher", { name => &model.publisher })
+                                        .unwrap_or_else(|| format!("Publisher: {}", &model.publisher))
+                                        .as_str()
                                 }
                             },
 
@@ -238,13 +253,15 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     adw::PreferencesGroup {
                                         set_vexpand: true,
 
-                                        set_title: "Package",
+                                        set_title: i18n!("game_package")
+                                            .unwrap_or("Package"),
 
                                         #[watch]
                                         set_visible: !model.maintainers.is_empty(),
 
                                         model.maintainers.widget() {
-                                            set_title: "Maintainers"
+                                            set_title: i18n!("game_maintainers")
+                                                .unwrap_or("Maintainers")
                                         }
                                     }
                                 }
@@ -427,7 +444,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                         tracing::error!(?err, "failed to serialize game package lock");
 
-                                        dialogs::error("Failed to serialize game package lock", err);
+                                        dialogs::error(
+                                            i18n!("failed_serialize_game_package_lock")
+                                                .unwrap_or("Failed to serialize game package lock"),
+                                            err
+                                        );
 
                                         return;
                                     }
@@ -438,7 +459,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     tracing::error!(?err, "failed to save game package lock");
 
-                                    dialogs::error("Failed to save game package lock", err);
+                                    dialogs::error(
+                                        i18n!("failed_save_game_package_lock")
+                                            .unwrap_or("Failed to save game package lock"),
+                                        err
+                                    );
 
                                     return;
                                 }
@@ -453,7 +478,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 tracing::error!(?err, "failed to download game package");
 
-                                dialogs::error("Failed to download game package", err);
+                                dialogs::error(
+                                    i18n!("failed_download_game_package")
+                                        .unwrap_or("Failed to download game package"),
+                                    err
+                                );
                             }
                         }
                     });

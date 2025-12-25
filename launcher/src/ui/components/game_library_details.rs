@@ -31,8 +31,7 @@ use agl_games::engine::{
     GameSettingsGroup
 };
 
-use crate::consts;
-use crate::config;
+use crate::{consts, config, i18n};
 use crate::ui::dialogs;
 
 use super::lazy_picture::{
@@ -114,7 +113,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 set_icon_name: Some(consts::APP_ID),
 
-                set_title: "No game selected",
+                set_title: i18n!("no_library_game_selected")
+                    .unwrap_or("No game selected"),
 
                 #[watch]
                 set_visible: model.game_title.is_none()
@@ -187,7 +187,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             adw::ButtonContent {
                                 set_icon_name: "media-playback-start-symbolic",
 
-                                set_label: "Play"
+                                set_label: i18n!("game_play")
+                                    .unwrap_or("Play")
                             },
 
                             connect_clicked => GameLibraryDetailsInput::LaunchGame
@@ -247,7 +248,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             adw::ButtonContent {
                                 set_icon_name: "settings-symbolic",
-                                set_label: "Settings"
+
+                                set_label: i18n!("settings")
+                                    .unwrap_or("Settings")
                             },
 
                             connect_clicked => GameLibraryDetailsInput::OpenGameSettingsWindow
@@ -365,7 +368,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             tracing::error!(?err, "failed to request game launch info");
 
-                            dialogs::error("Failed to request game launch info", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_request_game_launch_info")
+                                    .unwrap_or("Failed to request game launch info"),
+                                err.to_string()
+                            );
                         }
                     }
 
@@ -377,7 +384,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             tracing::error!(?err, "failed to request game actions pipeline");
 
-                            dialogs::error("Failed to request game actions pipeline", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_request_game_actions_pipeline")
+                                    .unwrap_or("Failed to request game actions pipeline"),
+                                err.to_string()
+                            );
                         }
                     }
 
@@ -389,7 +400,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             tracing::error!(?err, "failed to request game settings layout");
 
-                            dialogs::error("Failed to request game settings layout", err.to_string());
+                            dialogs::error(
+                                i18n!("failed_request_game_settings_layout")
+                                    .unwrap_or("Failed to request game settings layout"),
+                                err.to_string()
+                            );
                         }
                     }
                 }

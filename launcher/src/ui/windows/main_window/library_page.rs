@@ -30,7 +30,7 @@ use agl_games::engine::{
     GameSettingsGroup
 };
 
-use crate::{consts, config};
+use crate::{consts, config, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
@@ -129,7 +129,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 #[wrap(Some)]
                 set_sidebar = &adw::NavigationPage {
-                    set_title: "Games",
+                    set_title: i18n!("games").unwrap_or("Games"),
 
                     #[wrap(Some)]
                     set_child = model.cards_list.widget() {
@@ -146,7 +146,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 #[wrap(Some)]
                 set_content = &adw::NavigationPage {
-                    set_title: "Details",
+                    set_title: i18n!("details").unwrap_or("Details"),
 
                     set_hexpand: true,
 
@@ -238,7 +238,8 @@ impl SimpleAsyncComponent for LibraryPage {
                         );
 
                         dialogs::error(
-                            format!("Failed to build {title} game integration"),
+                            i18n!("failed_build_game_integration", { title => title })
+                                .unwrap_or_else(|| format!("Failed to build {title} game integration")),
                             err.to_string()
                         );
 

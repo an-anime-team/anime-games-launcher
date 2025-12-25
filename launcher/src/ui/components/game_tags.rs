@@ -21,6 +21,8 @@ use relm4::prelude::*;
 
 use agl_games::manifest::GameTag;
 
+use crate::i18n;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GameTagFactory(GameTag);
 
@@ -36,17 +38,17 @@ impl AsyncFactoryComponent for GameTagFactory {
         gtk::Overlay {
             set_align: gtk::Align::Start,
 
-            set_tooltip: match self.0 {
-                GameTag::Gambling          => "Game has scenes of gambling or has game mechanics related to gambling (wishes, banners, etc.)",
-                GameTag::Payments          => "Game can accept real money for in-game content",
-                GameTag::GraphicViolence   => "Game contains graphic violence",
-                GameTag::Cooperative       => "Game has built-in multiplayer (cooperative) elements",
-                GameTag::Social            => "Game has social features - online chat, VoIP, shared spaces, etc",
-                GameTag::Controller        => "Game has controllers support",
-                GameTag::PerformanceIssues => "Game is known to have bad performance, either globally across all the platforms or on the target platform specifically",
-                GameTag::AntiCheat         => "Game has an anti-cheat, either server- or client-side. This tag doesn’t necessary mean that this anti-cheat doesn’t support the target platform",
-                GameTag::Workarounds       => "Game cannot run on some platforms natively, but the integration package provides set of special utilities or game files modifications which make the game function. Note that this may violate its terms of service and result in taking actions on your account"
-            },
+            set_tooltip?: match self.0 {
+                GameTag::Gambling          => i18n!("game_tag_gambling_description").map(String::from),
+                GameTag::Payments          => i18n!("game_tag_payments_description").map(String::from),
+                GameTag::GraphicViolence   => i18n!("game_tag_graphic_violence_description").map(String::from),
+                GameTag::Cooperative       => i18n!("game_tag_cooperative_description").map(String::from),
+                GameTag::Social            => i18n!("game_tag_social_description").map(String::from),
+                GameTag::Controller        => i18n!("game_tag_controller_description").map(String::from),
+                GameTag::PerformanceIssues => i18n!("game_tag_performance_issues_description").map(String::from),
+                GameTag::AntiCheat         => i18n!("game_tag_anti_cheat_description").map(String::from),
+                GameTag::Workarounds       => i18n!("game_tag_workarounds_description").map(String::from),
+            }.as_deref(),
 
             gtk::Frame {
                 gtk::Box {
@@ -70,16 +72,42 @@ impl AsyncFactoryComponent for GameTagFactory {
                     },
 
                     gtk::Label {
-                        set_label: match self.0 {
-                            GameTag::Gambling          => "Gambling",
-                            GameTag::Payments          => "Payments",
-                            GameTag::GraphicViolence   => "Graphic Violence",
-                            GameTag::Cooperative       => "Cooperative",
-                            GameTag::Social            => "Social",
-                            GameTag::Controller        => "Controller",
-                            GameTag::PerformanceIssues => "Performance Issues",
-                            GameTag::AntiCheat         => "Anti Cheat",
-                            GameTag::Workarounds       => "Workarounds"
+                        set_label: &match self.0 {
+                            GameTag::Gambling => i18n!("game_tag_gambling_title")
+                                .unwrap_or("Gambling")
+                                .to_string(),
+
+                            GameTag::Payments => i18n!("game_tag_payments_title")
+                                .unwrap_or("Payments")
+                                .to_string(),
+
+                            GameTag::GraphicViolence => i18n!("game_tag_graphic_violence_title")
+                                .unwrap_or("Graphic Violence")
+                                .to_string(),
+
+                            GameTag::Cooperative => i18n!("game_tag_cooperative_title")
+                                .unwrap_or("Cooperative")
+                                .to_string(),
+
+                            GameTag::Social => i18n!("game_tag_social_title")
+                                .unwrap_or("Social")
+                                .to_string(),
+
+                            GameTag::Controller => i18n!("game_tag_controller_title")
+                                .unwrap_or("Controller")
+                                .to_string(),
+
+                            GameTag::PerformanceIssues => i18n!("game_tag_performance_issues_title")
+                                .unwrap_or("Performance Issues")
+                                .to_string(),
+
+                            GameTag::AntiCheat => i18n!("game_tag_anti_cheat_title")
+                                .unwrap_or("Anti-cheat")
+                                .to_string(),
+
+                            GameTag::Workarounds => i18n!("game_tag_workarounds_title")
+                                .unwrap_or("Workarounds")
+                                .to_string()
                         }
                     }
                 }

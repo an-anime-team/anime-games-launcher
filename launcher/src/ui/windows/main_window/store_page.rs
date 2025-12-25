@@ -21,7 +21,7 @@ use relm4::prelude::*;
 
 use agl_games::manifest::GameManifest;
 
-use crate::config;
+use crate::{config, i18n};
 use crate::games::GameLock;
 use crate::ui::components::lazy_picture::ImagePath;
 use crate::ui::components::card::CardComponent;
@@ -97,14 +97,16 @@ impl SimpleAsyncComponent for StorePage {
 
                                     add_css_class: "title-1",
 
-                                    set_label: "Store"
+                                    set_label: i18n!("games_store").unwrap_or("Store")
                                 },
 
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
 
                                     #[watch]
-                                    set_label: &format!("Loaded {} games", model.games.len())
+                                    set_label: i18n!("loaded_games_number", { number => model.games.len() })
+                                        .unwrap_or_else(|| format!("Loaded {} games", model.games.len()))
+                                        .as_str()
                                 }
                             },
 

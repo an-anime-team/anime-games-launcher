@@ -25,9 +25,7 @@ use adw::prelude::*;
 use agl_core::tasks;
 use agl_core::export::tasks::tokio;
 
-use crate::consts;
-use crate::utils;
-use crate::i18n;
+use crate::{consts, utils, i18n};
 use crate::ui::dialogs;
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);

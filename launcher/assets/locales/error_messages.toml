@@ -1,3 +1,37 @@
+# ------------------------ Game store page ------------------------
+
+[failed_serialize_game_package_lock]
+en = "Failed to serialize game package lock"
+ru = "Не удалось сериализовать пакет интеграции игры"
+
+[failed_save_game_package_lock]
+en = "Failed to save game package lock"
+ru = "Не удалось сохранить пакет интеграции игры"
+
+[failed_download_game_package]
+en = "Failed to download game package"
+ru = "Не удалось скачать пакет интеграции игры"
+
+# ------------------------ Game library page ------------------------
+
+[failed_build_game_integration]
+en = "Failed to build {title} game integration"
+ru = "Не удалось загрузить интеграцию игры {title}"
+
+[failed_request_game_launch_info]
+en = "Failed to request game launch info"
+ru = "Не удалось запросить информацию для запуска игры"
+
+[failed_request_game_actions_pipeline]
+en = "Failed to request game actions pipeline"
+ru = "Не удалось запросить необходимую последовательность действий (actions pipeline) для игры"
+
+# ------------------------ Game settings ------------------------
+
+[failed_request_game_settings_layout]
+en = "Failed to request game settings layout"
+ru = "Не удалось запросить список настроек игры"
+
 [failed_render_game_settings]
 en = "Failed to render game settings"
 ru = "Не удалось загрузить страницу настроек игры"
@@ -12,6 +46,7 @@ ru = "Не удалось обновить настройки игры"
 
 [failed_perform_pipeline_action]
 en = "Failed to perform pipeline action"
+ru = "Не удалось выполнить последовательность действий (pipeline action)"
 
 [failed_kill_game_process]
 en = "Failed to kill running game process"

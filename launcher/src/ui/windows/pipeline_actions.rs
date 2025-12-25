@@ -26,9 +26,7 @@ use relm4::prelude::*;
 use agl_core::tasks;
 use agl_games::engine::ActionsPipeline;
 
-use crate::consts;
-use crate::config;
-use crate::i18n;
+use crate::{consts, config, i18n};
 use crate::ui::dialogs;
 use crate::ui::components::graph::{Graph, GraphInit, GraphMsg};
 use crate::ui::components::game_actions_pipeline::{

@@ -32,9 +32,7 @@ use agl_games::engine::{
     GameSettingsGroup
 };
 
-use crate::consts;
-use crate::config;
-use crate::i18n;
+use crate::{consts, config, i18n};
 use crate::ui::dialogs;
 
 enum ParentWidget<'widget> {
