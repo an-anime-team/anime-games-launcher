@@ -462,10 +462,9 @@ impl Config {
     /// Get language identifier specified in the launcher config or, if absent,
     /// from the system settings.
     pub fn language(&self) -> anyhow::Result<LanguageIdentifier> {
-        let lang = self.general_language.clone()
-            .or_else(|| std::env::var("LANG").ok())
-            .or_else(|| std::env::var("LC_ALL").ok())
-            .unwrap_or_else(|| String::from("en-us"));
+        let Some(lang) = &self.general_language else {
+            return Ok(agl_locale::SYSTEM_LANG.clone());
+        };
 
         lang.parse::<LanguageIdentifier>()
             .map_err(|err| anyhow::anyhow!(err))
