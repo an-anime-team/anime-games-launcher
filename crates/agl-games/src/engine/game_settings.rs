@@ -92,7 +92,7 @@ impl GameSettingsEntry {
                     if name.is_nil() || name.is_null() {
                         Ok(None)
                     } else {
-                        Ok(name.as_string_lossy())
+                        Ok(name.as_string().map(|name| name.to_string_lossy()))
                     }
                 })
                 .unwrap_or(Ok(None))?,

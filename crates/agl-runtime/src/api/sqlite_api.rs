@@ -31,7 +31,7 @@ use super::*;
 enum SqliteParam {
     String(String),
     Double(f64),
-    Integer(i32),
+    Integer(i64),
     Boolean(bool),
     Blob(Vec<u8>),
     Nil
@@ -88,7 +88,7 @@ impl ToSql for SqliteParam {
         let value = match self {
             Self::String(string)   => ValueRef::Text(string.as_bytes()),
             Self::Double(double)   => ValueRef::Real(*double),
-            Self::Integer(integer) => ValueRef::Integer(*integer as i64),
+            Self::Integer(integer) => ValueRef::Integer(*integer),
             Self::Boolean(bool)    => ValueRef::Integer(if *bool { 1 } else { 0 }),
             Self::Blob(blob)       => ValueRef::Blob(blob.as_slice()),
             Self::Nil              => ValueRef::Null
@@ -103,7 +103,7 @@ impl FromSql for SqliteParam {
         match value {
             ValueRef::Text(text)       => Ok(Self::String(String::from_utf8_lossy(text).to_string())),
             ValueRef::Real(real)       => Ok(Self::Double(real)),
-            ValueRef::Integer(integer) => Ok(Self::Integer(integer as i32)),
+            ValueRef::Integer(integer) => Ok(Self::Integer(integer)),
             ValueRef::Blob(blob)       => Ok(Self::Blob(blob.to_vec())),
             ValueRef::Null             => Ok(Self::Nil)
         }

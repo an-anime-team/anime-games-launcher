@@ -15,4 +15,4 @@ serde_json = "1.0"
 
 os_info = "3.13"
 
-mlua = { version = "0.10", features = ["luau-jit"] }
+mlua = { version = "0.11", features = ["luau-jit"] }

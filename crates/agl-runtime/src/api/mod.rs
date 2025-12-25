@@ -224,7 +224,7 @@ impl Api {
                         }
 
                         LuaValue::Function(function) => {
-                            Ok(LuaValue::Function(function.deep_clone()))
+                            Ok(LuaValue::Function(function.deep_clone()?))
                         }
 
                         LuaValue::Table(table) => {
@@ -237,7 +237,7 @@ impl Api {
                                 )
                             })?;
 
-                            cloned.set_metatable(table.metatable());
+                            cloned.set_metatable(table.metatable())?;
 
                             Ok(LuaValue::Table(cloned))
                         }
