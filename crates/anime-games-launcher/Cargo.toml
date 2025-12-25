@@ -32,8 +32,16 @@ package = "libadwaita"
 version = "0.8.1"
 features = ["v1_8"]
 
+[dependencies.agl-core]
+path = "../agl-core"
+features = [
+    "tasks",
+    "network-all",
+    "tracing"
+]
+default-features = false
+
 [dependencies]
-agl-core = { path = "../agl-core" }
 agl-locale = { path = "../agl-locale", default-features = false }
 agl-packages = { path = "../agl-packages" }
 agl-runtime = { path = "../agl-runtime" }
