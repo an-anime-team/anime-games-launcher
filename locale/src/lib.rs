@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::str::FromStr;
+use std::sync::RwLock;
 
 pub use unic_langid;
 
@@ -41,7 +42,25 @@ lazy_static::lazy_static! {
             .unwrap_or_else(|_| ENGLISH_LANG.clone())
     };
 
-    pub static ref DEFAULT_BUNDLE: bundle::LocalizationBundle = bundle::LocalizationBundle::default();
+    pub static ref DEFAULT_BUNDLE: RwLock<bundle::LocalizationBundle> = {
+        RwLock::new(bundle::LocalizationBundle::default())
+    };
+}
+
+/// Include translations file in the `DEFAULT_BUNDLE`.
+#[macro_export]
+macro_rules! include_i18n {
+    ($($path:expr $(,)*)+) => {
+        let mut lock = $crate::DEFAULT_BUNDLE.write()
+            .expect("failed to lock default translations bundle");
+
+        $(
+            lock.load_str(include_str!($path))
+                .expect("failed to load embedded translations TOML file");
+        )+
+
+        drop(lock);
+    };
 }
 
 /// Get translation string from default translations bundle.
@@ -53,26 +72,45 @@ lazy_static::lazy_static! {
 #[macro_export]
 macro_rules! i18n {
     ($key:expr) => {
-        DEFAULT_BUNDLE.get_translation(key, SYSTEM_LANG.as_ref())
+        $crate::DEFAULT_BUNDLE.read()
+            .expect("failed to lock default translations bundle")
+            .get_translation(
+                $key,
+                $crate::SYSTEM_LANG.as_ref()
+            )
     };
 
     ($key:expr, {$( $arg_key:expr => $arg_value:expr $(,)* )+}) => {
-        let mut args = std::collections::HashMap::new();
+        {
+            let mut args = std::collections::HashMap::new();
 
-        $( args.insert($arg_key, $arg_value); )+
+            $( args.insert($arg_key, $arg_value); )+
 
-        DEFAULT_BUNDLE.get_translation_with_args(key, SYSTEM_LANG.as_ref(), args)
+            $crate::DEFAULT_BUNDLE.read()
+                .expect("failed to lock default translations bundle")
+                .get_translation_with_args(
+                    $key,
+                    $crate::SYSTEM_LANG.as_ref(),
+                    args
+                )
+        }
     };
 
     ($lang:expr, $key:expr) => {
-        DEFAULT_BUNDLE.get_translation(key, $lang)
+        $crate::DEFAULT_BUNDLE.read()
+            .expect("failed to lock default translations bundle")
+            .get_translation($key, $lang)
     };
 
     ($lang:expr, $key:expr, {$( $arg_key:expr => $arg_value:expr $(,)* )+}) => {
-        let mut args = std::collections::HashMap::new();
+        {
+            let mut args = std::collections::HashMap::new();
 
-        $( args.insert($arg_key, $arg_value); )+
+            $( args.insert($arg_key, $arg_value); )+
 
-        DEFAULT_BUNDLE.get_translation_with_args(key, $lang, args)
+            $crate::DEFAULT_BUNDLE.read()
+                .expect("failed to lock default translations bundle")
+                .get_translation_with_args($key, $lang, args)
+        }
     };
 }
