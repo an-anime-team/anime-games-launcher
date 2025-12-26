@@ -3,95 +3,117 @@
 [failed_execute_startup_task]
 en = "Failed to execute startup task"
 ru = "Не удалось выполнить задачу при запуске лаунчера"
+de = "Startaufgabe könnte nicht ausgeführt werden"
 
 [failed_load_game_package]
 en = "Failed to load {title} game package"
 ru = "Не удалось загрузить игровой пакет {title}"
+de = "Spielpaket für {title} konnte nicht geladen werden"
 
 [failed_find_locked_game_integration_title]
 en = "Failed to find game integration module in package lock"
 ru = "Не удалось найти модуль интеграции игры в lock файле игрового пакета"
+de = "Integrationsmodul konnte in der Paket-Lock-Datei nicht gefunden werden"
 
 [failed_find_locked_game_integration_description]
 en = "Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken"
 ru = "Лаунчер попытался найти модуль интеграции для игры {title}, но его нет в lock файле игрового пакета. Вероятно lock файл сломан"
+de = "Das Integrationsmodul für {title} konnte nicht gefunden werden weil es in der Paket-Lock-Datei fehlt. Möglicherweise ist die Paket-Lock-Datei beschädigt"
 
 [failed_read_runtime_game_integration]
 en = "Failed to read {title} game integration from the runtime"
 ru = "Не удалось прочесть интеграцию игры {title} из движка игровых пакетов"
+de = "Die Spielintegration für {title} konnte nicht aus der Runtime ausgelesen werden"
 
 [game_integration_module_missing_title]
 en = "Game integration module is missing in the runtime"
 ru = "Модуль интеграции игры отсутствует в движке игровых пакетов"
+de = "Das Spielintegrationsmodul fehlt in der Runtime"
 
 [game_integration_module_missing_description]
 en = "Attempted to load {title} game integration, but integration module is missing in the packages runtime"
 ru = "Лаунчер попытался загрузить игру {title}, но модуль интеграции отсутствует в движке игровых пакетов"
+de = "Die Spielintegration für {title} konnte nicht geladen werden weil diese in der Spiel-Runtime fehlt"
 
 [failed_build_game_integration]
 en = "Failed to build {title} game integration"
 ru = "Не удалось загрузить интеграцию игры {title}"
+de = "Erstellen der Spielintegration für {title} ist gescheitert"
 
 # ------------------------ Game store page ------------------------
 
 [failed_serialize_game_package_lock]
 en = "Failed to serialize game package lock"
 ru = "Не удалось сериализовать пакет интеграции игры"
+de = "Die Serialisierung der Spielpaketsperrdatei ist gescheitert"
 
 [failed_save_game_package_lock]
 en = "Failed to save game package lock"
 ru = "Не удалось сохранить пакет интеграции игры"
+de = "Die Spielpaketsperrdatei konnte nicht gespeichert werden"
 
 [failed_download_game_package]
 en = "Failed to download game package"
 ru = "Не удалось скачать пакет интеграции игры"
+de = "Das Spielpaket konnte nicht heruntergeladen werden"
 
 # ------------------------ Game library page ------------------------
 
 [failed_request_game_launch_info]
 en = "Failed to request game launch info"
 ru = "Не удалось запросить информацию для запуска игры"
+de = "Startinformationen konnten nicht abgefragt werden"
 
 [failed_request_game_actions_pipeline]
 en = "Failed to request game actions pipeline"
 ru = "Не удалось запросить необходимую последовательность действий (actions pipeline) для игры"
+de = "Das Abfragen der Aktions-Pipeline des Spieles ist gescheitert"
 
 # ------------------------ Game settings ------------------------
 
 [failed_request_game_settings_layout]
 en = "Failed to request game settings layout"
 ru = "Не удалось запросить список настроек игры"
+de = "Layout der Spieleinstellungen konnte nicht abgefragt werden"
 
 [failed_render_game_settings]
 en = "Failed to render game settings"
 ru = "Не удалось загрузить страницу настроек игры"
+de = "Spieleinstellungen konnten nicht gerendert werden"
 
 [failed_update_game_settings_layout]
 en = "Failed to update game settings layout"
 ru = "Не удалось обновить список настроек игры"
+de = "Das Layouts der Spieleinstellungen konnte nicht aktualisiert werden"
 
 [failed_set_game_property]
 en = "Failed to set game property value"
 ru = "Не удалось обновить настройки игры"
+de = "Spieleigenschaft konnte nicht gesetzt werden"
 
 [failed_perform_pipeline_action]
 en = "Failed to perform pipeline action"
 ru = "Не удалось выполнить последовательность действий (pipeline action)"
+de = "Die Pipeline-Action konnte nicht durchgeführt werden"
 
 [failed_kill_game_process]
 en = "Failed to kill running game process"
 ru = "Не удалось убить процесс игры"
+de = "Der Laufende Spielprozess konnten nicht beendet werden"
 
 # ------------------------ Portal API ------------------------
 
 [failed_execute_toast_action]
 en = "Failed to execute toast action"
 ru = "Не удалось выполнить действие во всплывающем уведомлении"
+de = "Toast-Aktion konnte nicht ausgeführt werden"
 
 [failed_show_system_notification]
 en = "Failed to show system notification"
 ru = "Не удалось отобразить системное уведомление"
+de = "Systembenachrichtigung konnte nicht angezeigt werden"
 
 [failed_execute_dialog_action]
 en = "Failed to execute dialog action"
 ru = "Не удалось выполнить действие диалогового окна"
+de = "Dialog-Aktion konnte nicht ausgeführt werden"
