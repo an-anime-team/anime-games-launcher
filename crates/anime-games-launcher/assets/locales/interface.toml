@@ -3,6 +3,7 @@
 [close]
 en = "Close"
 ru = "Закрыть"
+de = "Schließen"
 
 [backtrace]
 en = "Backtrace"
@@ -11,122 +12,151 @@ ru = "Очередь вызовов"
 [settings]
 en = "Settings"
 ru = "Настройки"
+de = "Einstellungen"
 
 # ------------------------ Startup tasks ------------------------
 
 [creating_default_folders]
 en = "Creating default folders"
 ru = "Создание папок по умолчанию"
+de = "Erstelle Standardordner"
 
 [fetching_packages_allow_lists]
 en = "Fetching packages allow lists"
 ru = "Запрос белых списков пакетов"
+de = "Rufe Paket-Whitelisten auf"
 
 [fetching_games_registries]
 en = "Fetching games registries"
 ru = "Запрос реестров игр"
+de = "Rufe Spielregister auf"
 
 [fetching_games_manifests]
 en = "Fetching games manifests"
 ru = "Запрос информации об играх"
+de = "Rufe Spielmanifste auf"
 
 [loading_added_games]
 en = "Loading added games"
 ru = "Загрузка добавленных игр"
+de = "Lade hinzugefügte Spiele"
 
 [loading_game_package]
 en = "Loading {title} game package"
 ru = "Загрузка пакета игры {title}"
+de = "Lade das Spielpaket für {title}"
 
 [updating_game_package]
 en = "Updating {title} game package"
 ru = "Обновление пакета игры {title}"
+de = "Aktualisiere das Spielpaket für {title}"
 
 [adding_store_page_games]
 en = "Adding store page games"
 ru = "Добавление игр на страницу магазина"
+de = "Füge Spiele der Shopseite hinzu"
 
 # ------------------------ Main window ------------------------
 
 [loading]
 en = "Loading"
 ru = "Загрузка"
+de = "Lade"
 
 [about_launcher]
 en = "About"
 ru = "О программе"
+de = "Über"
 
 [games_store]
 en = "Store"
 ru = "Магазин"
+de = "Shop"
 
 [games_library]
 en = "Library"
 ru = "Библиотека"
+de = "Bibliothek"
 
 [games]
 en = "Games"
 ru = "Игры"
+de = "Spiele"
 
 [details]
 en = "Details"
 ru = "Детали"
+de = "Details"
 
 [loaded_games_number]
 en = "Loaded {number} games"
 ru = "Загружено {number} игр"
+de = "{number} Spiele geladen"
 
 # ------------------------ Game store page ------------------------
 
 [game_add_to_library]
 en = "Add to library"
 ru = "Добавить в библиотеку"
+de = "Zur Bibliothek hinzufügen"
 
 [game_adding_to_library]
 en = "Adding to library..."
 ru = "Добавляем в библиотеку..."
+de = "Füge der Bibliothek hinzu..."
 
 [open_game_in_library]
 en = "Open in library"
 ru = "Открыть в библиотеке"
+de = "In Bibliothek öffnen"
 
 [game_developer]
 en = "Developer: {name}"
 ru = "Разработчик: {name}"
+de = "Entwickler: {name}"
 
 [game_publisher]
 en = "Publisher: {name}"
 ru = "Издатель: {name}"
+de = "Publisher: {name}"
 
 [game_package]
 en = "Package"
 ru = "Пакет интеграции"
+de = "Paket"
 
 [game_package_maintainers]
 en = "Maintainers"
 ru = "Сопровождающие"
+de = "Maintainer"
 
 [about_game]
 en = "About game"
 ru = "Об игре"
+de = "Über das Spiel"
 
 # ------------------------ Game library page ------------------------
 
 [no_library_game_selected]
 en = "No game selected"
 ru = "Игра не выбрана"
+de = "Kein Spiel ausgewählt"
 
 [game_play]
 en = "Play"
 ru = "Играть"
+de = "Spielen"
 
 [game_process_id]
 en = "Game process"
 ru = "Процесс игры"
+de = "Spielprozess"
 
 [game_running_for]
 en = "Running for"
+de = "Läuft seit"
 
 [kill_game_process]
 en = "Kill"
 ru = "Убить"
+de = "Beenden"
