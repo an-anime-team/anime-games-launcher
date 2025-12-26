@@ -66,19 +66,15 @@ impl GameIntegration {
         }
 
         else if let Some(func) = integration.as_function() {
-            let versions = lua.create_table_with_capacity(0, 1)?;
+            let env = lua.create_table_with_capacity(0, 2)?;
 
-            versions.raw_set("agl_games", crate::VERSION)?;
-
-            let options = lua.create_table_with_capacity(0, 2)?;
-
-            options.raw_set("versions", versions)?;
+            env.raw_set("version", crate::VERSION)?;
 
             if let Some(platform) = Platform::current() {
-                options.raw_set("platform", platform.to_string())?;
+                env.raw_set("platform", platform.to_string())?;
             }
 
-            func.call::<LuaTable>(options)?
+            func.call::<LuaTable>(env)?
         }
 
         else {

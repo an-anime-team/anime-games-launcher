@@ -319,8 +319,8 @@ impl Api {
         // Some default functions and constants.
         let versions_table = self.lua.create_table_with_capacity(0, 2)?;
 
-        versions_table.raw_set("agl_core", agl_core::VERSION)?;
-        versions_table.raw_set("agl_runtime", crate::VERSION)?;
+        versions_table.raw_set("core", agl_core::VERSION)?;
+        versions_table.raw_set("runtime", crate::VERSION)?;
 
         env.raw_set("versions", versions_table)?;
 
