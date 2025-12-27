@@ -4,15 +4,18 @@
 en = "Close"
 ru = "Закрыть"
 de = "Schließen"
+pt = "Fechar"
 
 [backtrace]
 en = "Backtrace"
 ru = "Очередь вызовов"
+pt = "Backtrace"
 
 [settings]
 en = "Settings"
 ru = "Настройки"
 de = "Einstellungen"
+pt = "Configurações"
 
 # ------------------------ Startup tasks ------------------------
 
@@ -20,41 +23,49 @@ de = "Einstellungen"
 en = "Creating default folders"
 ru = "Создание папок по умолчанию"
 de = "Erstelle Standardordner"
+pt = "Criando diretórios padrão"
 
 [fetching_packages_allow_lists]
 en = "Fetching packages allow lists"
 ru = "Запрос белых списков пакетов"
 de = "Rufe Paket-Whitelisten auf"
+pt = "Adquirindo listas de permissão do pacote"
 
 [fetching_games_registries]
 en = "Fetching games registries"
 ru = "Запрос реестров игр"
 de = "Rufe Spielregister auf"
+pt = "Adquirindo registros do jogo"
 
 [fetching_games_manifests]
 en = "Fetching games manifests"
 ru = "Запрос информации об играх"
 de = "Rufe Spielmanifste auf"
+pt = "Adquirindo manifestos do jogo"
 
 [loading_added_games]
 en = "Loading added games"
 ru = "Загрузка добавленных игр"
 de = "Lade hinzugefügte Spiele"
+pt = "Carregando jogos adicionados"
 
 [loading_game_package]
 en = "Loading {title} game package"
 ru = "Загрузка пакета игры {title}"
 de = "Lade das Spielpaket für {title}"
+pt = "Carregando pacote do jogo {title}"
 
 [updating_game_package]
 en = "Updating {title} game package"
 ru = "Обновление пакета игры {title}"
 de = "Aktualisiere das Spielpaket für {title}"
+pt = "Atualizando pacote do jogo {title}"
 
 [adding_store_page_games]
 en = "Adding store page games"
 ru = "Добавление игр на страницу магазина"
 de = "Füge Spiele der Shopseite hinzu"
+pt = "Adicionando jogos à página da loja"
 
 # ------------------------ Main window ------------------------
 
@@ -62,36 +73,43 @@ de = "Füge Spiele der Shopseite hinzu"
 en = "Loading"
 ru = "Загрузка"
 de = "Lade"
+pt = "Carregando"
 
 [about_launcher]
 en = "About"
 ru = "О программе"
 de = "Über"
+pt = "Sobre"
 
 [games_store]
 en = "Store"
 ru = "Магазин"
 de = "Shop"
+pt = "Loja"
 
 [games_library]
 en = "Library"
 ru = "Библиотека"
 de = "Bibliothek"
+pt = "Biblioteca"
 
 [games]
 en = "Games"
 ru = "Игры"
 de = "Spiele"
+pt = "Jogos"
 
 [details]
 en = "Details"
 ru = "Детали"
 de = "Details"
+pt = "Detalhes"
 
 [loaded_games_number]
 en = "Loaded {number} games"
 ru = "Загружено {number} игр"
 de = "{number} Spiele geladen"
+pt = "{number} Jogos carregados"
 
 # ------------------------ Game store page ------------------------
 
@@ -99,41 +117,49 @@ de = "{number} Spiele geladen"
 en = "Add to library"
 ru = "Добавить в библиотеку"
 de = "Zur Bibliothek hinzufügen"
+pt = "Adicionar à biblioteca"
 
 [game_adding_to_library]
 en = "Adding to library..."
 ru = "Добавляем в библиотеку..."
 de = "Füge der Bibliothek hinzu..."
+pt = "Adicionando à biblioteca"
 
 [open_game_in_library]
 en = "Open in library"
 ru = "Открыть в библиотеке"
 de = "In Bibliothek öffnen"
+pt = "Mostrar na biblioteca"
 
 [game_developer]
 en = "Developer: {name}"
 ru = "Разработчик: {name}"
 de = "Entwickler: {name}"
+pt = "Desenvolvedor: {name}"
 
 [game_publisher]
 en = "Publisher: {name}"
 ru = "Издатель: {name}"
 de = "Publisher: {name}"
+pt = "Publisher: {name}"
 
 [game_package]
 en = "Package"
 ru = "Пакет интеграции"
 de = "Paket"
+pt = "Pacote"
 
 [game_package_maintainers]
 en = "Maintainers"
 ru = "Сопровождающие"
 de = "Maintainer"
+pt = "Mantenedores"
 
 [about_game]
 en = "About game"
 ru = "Об игре"
 de = "Über das Spiel"
+pt = "Sobre o jogo"
 
 # ------------------------ Game library page ------------------------
 
@@ -141,22 +167,27 @@ de = "Über das Spiel"
 en = "No game selected"
 ru = "Игра не выбрана"
 de = "Kein Spiel ausgewählt"
+pt = "Nenhum jogo selecionado"
 
 [game_play]
 en = "Play"
 ru = "Играть"
 de = "Spielen"
+pt = "Jogar"
 
 [game_process_id]
 en = "Game process"
 ru = "Процесс игры"
 de = "Spielprozess"
+pt = "Processo do jogo"
 
 [game_running_for]
 en = "Running for"
 de = "Läuft seit"
+pt = "Executando por"
 
 [kill_game_process]
 en = "Kill"
 ru = "Убить"
 de = "Beenden"
+pt = "Matar"
