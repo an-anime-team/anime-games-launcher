@@ -14,7 +14,7 @@ Understanding this API is necessary for advanced use of many other APIs.
 | ------------- | ---------------------------------- |
 | `task.create` | Create new promise from lua value. |
 
-## `Promise`
+## `Promise<T>`
 
 This API introduces a special usertype called `Promise`, similar to JavaScript.
 This object has a `poll` method which returns a pair of values - the first one
@@ -25,9 +25,9 @@ Some promises can work fully in background while others will be running on the
 lua engine.
 
 ```ts
-type Promise = {
+type Promise<T> = {
     // Poll promise value. Throws an error if already finished.
-    poll: (): (boolean | null, any);
+    poll: (): (boolean | null, T);
 
     // Abort promise execution.
     abort: (): void;
