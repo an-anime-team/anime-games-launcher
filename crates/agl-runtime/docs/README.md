@@ -68,29 +68,6 @@ application's debug logger.
 dbg("test", 123, { a = { hello = "world", 1 }, 2 })
 ```
 
-## Sandbox module scope
-
-Some APIs naturally allow modules to escape the sandbox and directly affect
-the user's system. By default such APIs are not available to modules.
-
-There's currently no standard way to enable such APIs (TBD).
-
-## Backward compatibility
-
-There's no promise to keep backward compatibility with old runtime versions,
-although some effort will definitely be made to minimize the changes. To support
-both old and new runtime versions your luau modules should use `versions` table
-provided by the runtime:
-
-| Field              | Meaning                                              |
-| ------------------ | ---------------------------------------------------- |
-| `versions.core`    | Version of the Anime Games Launcher core library.    |
-| `versions.runtime` | Version of the Anime Games Launcher runtime library. |
-
-For each runtime change some migration guide will be provided. It's also
-recommended to implement some abstract polyfill libraries which would simplify
-migration process.
-
 ## Sleeping and repeated execution
 
 Runtime provides `sleep` function to wait for provided amount of time. It works
@@ -119,6 +96,59 @@ spawn_interval(5000, function()
 end)
 ```
 
+## Tasks awaiting
+
+To block current thread until a coroutine, a function, a `Promise` or another
+value is executed and return its output value you can use the `await` function:
+
+```luau
+-- Await a plain value
+dbg(await(123)) -- 123
+
+-- Await a function
+local result = await(function()
+    return 123
+end)
+
+dbg(result) -- 123
+
+-- Await a coroutine (thread)
+local result = await(coroutine.create(function()
+    for i = 1,5 do
+        sleep(100)
+
+        coroutine.yield()
+    end
+
+    return 123
+end))
+
+dbg(result) -- 123
+```
+
+## Sandbox module scope
+
+Some APIs naturally allow modules to escape the sandbox and directly affect
+the user's system. By default such APIs are not available to modules.
+
+There's currently no standard way to enable such APIs (TBD).
+
+## Backward compatibility
+
+There's no promise to keep backward compatibility with old runtime versions,
+although some effort will definitely be made to minimize the changes. To support
+both old and new runtime versions your luau modules should use `versions` table
+provided by the runtime:
+
+| Field              | Meaning                                              |
+| ------------------ | ---------------------------------------------------- |
+| `versions.core`    | Version of the Anime Games Launcher core library.    |
+| `versions.runtime` | Version of the Anime Games Launcher runtime library. |
+
+For each runtime change some migration guide will be provided. It's also
+recommended to implement some abstract polyfill libraries which would simplify
+migration process.
+
 ## Available APIs
 
 List of all available APIs:
@@ -127,6 +157,7 @@ List of all available APIs:
 | -------------- | ------------ | ---------------------------------------------- |
 | String API     | `str`        | String conversions and data serialization.     |
 | Path API       | `path`       | Paths construction and resolution.             |
+| Task API       | `task`       | Background / foreground tasks execution.       |
 | Filesystem API | `fs`         | Sandboxed filesystem manipulations.            |
 | Network API    | `net`        | Perform HTTP requests.                         |
 | Downloader API | `downloader` | HTTP files downloader.                         |

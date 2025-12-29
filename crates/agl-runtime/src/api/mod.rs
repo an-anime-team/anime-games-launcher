@@ -19,15 +19,16 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
+use mlua::prelude::*;
+
 use agl_core::export::network::reqwest;
 use agl_core::tasks;
-
-use mlua::prelude::*;
 
 // TODO: add tests.
 
 pub mod string_api;
 pub mod path_api;
+pub mod task_api;
 pub mod filesystem_api;
 pub mod network_api;
 pub mod downloader_api;
@@ -197,9 +198,11 @@ pub struct Api {
     clone: LuaFunction,
     dbg: LuaFunction,
     sleep: LuaFunction,
+    r#await: LuaFunction,
 
     string_api: string_api::StringApi,
     path_api: path_api::PathApi,
+    task_api: task_api::TaskApi,
     filesystem_api: filesystem_api::FilesystemApi,
     network_api: network_api::NetworkApi,
     downloader_api: downloader_api::DownloaderApi,
@@ -283,8 +286,44 @@ impl Api {
                 Ok(())
             })?,
 
+            r#await: options.lua.create_function(|_, task: LuaValue| -> Result<LuaValue, LuaError> {
+                match task {
+                    LuaValue::Thread(coroutine) => {
+                        tasks::block_on(coroutine.into_async::<LuaValue>(())?)
+                    }
+
+                    LuaValue::Function(callback) => {
+                        callback.call(())
+                    }
+
+                    LuaValue::UserData(object) => {
+                        // Check if object has the `poll` method, meaning it's
+                        // a promise. Otherwise return it as is.
+                        if object.get::<Option<LuaFunction>>("poll")?.is_none() {
+                            return Ok(LuaValue::UserData(object));
+                        };
+
+                        loop {
+                            // Call the method directly on the userdata so it
+                            // can reference itself. Otherwise an error will be
+                            // returned.
+                            let (status, result) = object.call_method::<(Option<bool>, LuaValue)>("poll", ())?;
+
+                            match status {
+                                Some(false) => (),
+                                Some(true) => return Ok(result),
+                                None => return Ok(LuaValue::Nil)
+                            }
+                        }
+                    }
+
+                    _ => Ok(task)
+                }
+            })?,
+
             string_api: string_api::StringApi::new(options.lua.clone())?,
             path_api: path_api::PathApi::new(options.lua.clone())?,
+            task_api: task_api::TaskApi::new(options.lua.clone())?,
             filesystem_api: filesystem_api::FilesystemApi::new(options.lua.clone())?,
             network_api: network_api::NetworkApi::new(options.lua.clone(), options.reqwest_client)?,
             downloader_api: downloader_api::DownloaderApi::new(options.lua.clone())?,
@@ -327,6 +366,7 @@ impl Api {
         env.raw_set("clone", &self.clone)?;
         env.raw_set("dbg", &self.dbg)?;
         env.raw_set("sleep", &self.sleep)?;
+        env.raw_set("await", &self.r#await)?;
 
         // Some default lua functions.
         env.raw_set("print", self.lua.globals().get::<LuaFunction>("print")?)?;
@@ -367,6 +407,11 @@ impl Api {
         // Path API.
         if scope.allow_path_api {
             env.raw_set("path", self.path_api.create_env(context)?)?;
+        }
+
+        // Task API.
+        if scope.allow_task_api {
+            env.raw_set("task", self.task_api.create_env()?)?;
         }
 
         // Filesystem API.

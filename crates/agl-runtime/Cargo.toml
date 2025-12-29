@@ -36,6 +36,16 @@ path = "../agl-packages"
 default-features = false
 optional = true
 
+[dependencies.mlua]
+version = "0.11"
+features = [
+    "luau-jit",
+    "async",
+    "serialize",
+    "send",
+    "error-send"
+]
+
 [dependencies]
 agl-locale = { path = "../agl-locale" }
 
@@ -46,7 +56,6 @@ lazy_static = "1.5"
 tracing = { version = "0.1", optional = true }
 
 # Luau engine
-mlua = { version = "0.11", features = ["luau-jit", "serialize", "send", "error-send"] }
 bufreaderwriter = "0.2.4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 librqbit = { version = "8.1", features = ["rust-tls"], default-features = false }
