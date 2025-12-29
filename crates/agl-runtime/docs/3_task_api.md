@@ -10,10 +10,9 @@ parallelized runtime APIs, e.g. filesystem one.
 
 Understanding this API is necessary for advanced use of many other APIs.
 
-| Function      | Description                                                     |
-| ------------- | --------------------------------------------------------------- |
-| `task.create` | Create new promise from lua value.                              |
-| `task.spawn`  | Create new promise from lua value and execute it in background. |
+| Function      | Description                        |
+| ------------- | ---------------------------------- |
+| `task.create` | Create new promise from lua value. |
 
 ## `Promise`
 
@@ -83,7 +82,7 @@ to keep it running and to obtain its output value. Here's an example:
 -- Create an example promise which will count up to 5
 local count = 0
 
-local promise = task.create(coroutine.create(function()
+local promise = task.create(function()
     count += 1
 
     if count < 5 then
@@ -91,7 +90,7 @@ local promise = task.create(coroutine.create(function()
     else
         return true, count
     end
-end))
+end)
 
 -- Execute the promise explicitly
 -- 
