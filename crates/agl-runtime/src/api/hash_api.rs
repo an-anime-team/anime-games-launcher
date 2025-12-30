@@ -28,8 +28,9 @@ use agl_core::hashes::{Hasher, HashAlgorithm};
 use mlua::prelude::*;
 
 use super::task_api::{Promise, PromiseValue};
-use super::filesystem_api::IO_READ_CHUNK_LEN;
 use super::*;
+
+pub const HASHER_CHUNK_LEN: usize = 4 * 1024 * 1024; // 4 MiB
 
 pub struct HashApi {
     lua: Lua,
@@ -85,7 +86,7 @@ impl HashApi {
                             let mut file = BufReader::new(File::open(path).await?);
                             let mut hasher = Hasher::new(algorithm);
 
-                            let mut buf = [0; IO_READ_CHUNK_LEN];
+                            let mut buf = [0; HASHER_CHUNK_LEN];
 
                             loop {
                                 let n = file.read(&mut buf).await?;

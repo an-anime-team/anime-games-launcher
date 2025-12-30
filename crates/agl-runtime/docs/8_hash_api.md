@@ -62,7 +62,7 @@ is a background promise.
 fs.write_file("test.txt", "Hello, World!")
 
 -- [236, 74, 195, 208]
-dbg(await(hash.digitize_file("crc32", "test.txt")))
+dbg(hash.digitize_file("crc32", "test.txt"):await())
 ```
 
 ## `hash.hasher(algorithm: HashAlgorithm) -> number`
