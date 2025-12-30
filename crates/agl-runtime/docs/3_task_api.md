@@ -10,9 +10,10 @@ parallelized runtime APIs, e.g. filesystem one.
 
 Understanding this API is necessary for advanced use of many other APIs.
 
-| Function      | Description                        |
-| ------------- | ---------------------------------- |
-| `task.create` | Create new promise from lua value. |
+| Function      | Description                                                   |
+| ------------- | ------------------------------------------------------------- |
+| `task.create` | Create new promise from lua value.                            |
+| `task.any`    | Create a promise which will resolve any of provided promises. |
 
 ## `Promise<T>`
 
