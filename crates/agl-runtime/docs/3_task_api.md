@@ -145,3 +145,26 @@ end)
 
 dbg(promise:await()) -- 123
 ```
+
+## `task.any(...tasks: any) -> Promise`
+
+Create a promise object which will finish if any of provided tasks finish.
+The tasks can be either other promises or lua types used to create a promise.
+
+If no tasks provided - returned promise will immediately resolve into `nil`.
+
+```luau
+local promise_1 = task.create(function()
+    -- Always tell that the promise is NOT finished
+    return false, "Hello from promise 1"
+end)
+
+local promise_2 = task.create(function()
+    -- Always tell that the promise IS finished
+    return true, "Hello from promise 2"
+end)
+
+-- Since promise #2 is finished and #1 isn't - the "Hello from promise 2"
+-- will be displayed.
+dbg(task.any(promise_1, promise_2):await())
+```

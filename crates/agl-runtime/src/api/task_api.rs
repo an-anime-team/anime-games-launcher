@@ -37,7 +37,39 @@ pub enum PromiseValue {
     Value(LuaValue),
     Callback(LuaFunction),
     Coroutine(LuaThread),
-    Task(JoinHandle<Result<TaskOutput, LuaError>>)
+    LuaPromise(LuaAnyUserData),
+    Task(JoinHandle<Result<TaskOutput, LuaError>>),
+    AnyTask(Box<[Promise]>)
+}
+
+impl std::fmt::Debug for PromiseValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Value(value) => f.debug_struct("PromiseValue")
+                .field("value", &value)
+                .finish(),
+
+            Self::Callback(callback) => f.debug_struct("PromiseValue")
+                .field("callback", &callback)
+                .finish(),
+
+            Self::Coroutine(coroutine) => f.debug_struct("PromiseValue")
+                .field("coroutine", &coroutine)
+                .finish(),
+
+            Self::LuaPromise(promise) => f.debug_struct("PromiseValue")
+                .field("promise", &promise)
+                .finish(),
+
+            Self::Task(handle) => f.debug_struct("PromiseValue")
+                .field("handle", &handle.id())
+                .finish(),
+
+            Self::AnyTask(tasks) => f.debug_struct("PromiseValue")
+                .field("tasks", &tasks)
+                .finish()
+        }
+    }
 }
 
 impl PromiseValue {
@@ -45,6 +77,15 @@ impl PromiseValue {
         match value {
             LuaValue::Function(callback) => Self::Callback(callback),
             LuaValue::Thread(coroutine) => Self::Coroutine(coroutine),
+
+            LuaValue::UserData(object) => {
+                if object.get::<LuaFunction>("poll").is_ok() {
+                    Self::LuaPromise(object)
+                } else {
+                    Self::Value(LuaValue::UserData(object))
+                }
+            }
+
             _ => Self::Value(value)
         }
     }
@@ -54,11 +95,17 @@ impl PromiseValue {
     ) -> Self {
         Self::Task(tasks::spawn(future))
     }
+
+    pub fn from_blocing(
+        callback: impl FnOnce() -> Result<TaskOutput, LuaError> + Send + 'static
+    ) -> Self {
+        Self::Task(tasks::spawn_blocking(callback))
+    }
 }
 
 /// A lua usertype wrapper over a promise value. Implements `poll` method to
 /// query output value.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Promise(Mutex<Option<PromiseValue>>);
 
 impl Promise {
@@ -78,7 +125,7 @@ impl Promise {
 
 impl LuaUserData for Promise {
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_method("poll", |lua: &Lua, promise: &Self, _: ()| -> Result<LuaMultiValue, LuaError> {
+        fn poll(lua: &Lua, promise: &Promise) -> Result<(Option<bool>, LuaValue), LuaError> {
             let mut lock = promise.lock();
 
             let Some(value) = lock.take() else {
@@ -86,39 +133,60 @@ impl LuaUserData for Promise {
             };
 
             match value {
-                PromiseValue::Value(value) => {
-                    lua.pack_multi((true, value))
-                }
+                PromiseValue::Value(value) => Ok((Some(true), value)),
 
                 PromiseValue::Callback(callback) => {
-                    let (status, value) = callback.call::<(Option<bool>, LuaValue)>(())?;
+                    let mut values = callback.call::<LuaVariadic<LuaValue>>(())?;
 
-                    // Do not execute function if it's finished or aborted.
-                    if status == Some(false) {
-                        *lock = Some(PromiseValue::Callback(callback));
+                    match values.len() {
+                        1 => {
+                            let Some(value) = values.pop() else {
+                                return Err(LuaError::external("failed to take callback output"));
+                            };
+
+                            Ok((Some(true), value))
+                        }
+
+                        2 => {
+                            let Some(value) = values.pop() else {
+                                return Err(LuaError::external("failed to take callback value"));
+                            };
+
+                            let Some(status) = values.pop() else {
+                                return Err(LuaError::external("failed to take callback status"));
+                            };
+
+                            let status = status.as_boolean();
+
+                            // Do not execute function if it's finished or aborted.
+                            if status == Some(false) {
+                                *lock = Some(PromiseValue::Callback(callback));
+                            }
+
+                            Ok((status, value))
+                        }
+
+                        _ => Ok((None, LuaValue::Nil))
                     }
-
-                    lua.pack_multi((status, value))
                 }
 
                 PromiseValue::Coroutine(coroutine) => {
                     let value = coroutine.resume::<LuaValue>(())?;
 
                     match coroutine.status() {
-                        LuaThreadStatus::Finished => {
-                            lua.pack_multi((true, value))
-                        }
+                        LuaThreadStatus::Finished => Ok((Some(true), value)),
+                        LuaThreadStatus::Error => Ok((None, value)),
 
                         LuaThreadStatus::Resumable | LuaThreadStatus::Running => {
                             *lock = Some(PromiseValue::Coroutine(coroutine));
 
-                            lua.pack_multi((false, value))
-                        }
-
-                        LuaThreadStatus::Error => {
-                            lua.pack_multi((LuaValue::Nil, value))
+                            Ok((Some(false), value))
                         }
                     }
+                }
+
+                PromiseValue::LuaPromise(promise) => {
+                    promise.call_method::<(Option<bool>, LuaValue)>("poll", ())
                 }
 
                 PromiseValue::Task(handle) => {
@@ -128,16 +196,38 @@ impl LuaUserData for Promise {
                                 LuaError::external(format!("failed to execute task: {err}"))
                             })??;
 
-                        lua.pack_multi((true, get_value(lua)))
+                        Ok((Some(true), get_value(lua)?))
                     }
 
                     else {
                         *lock = Some(PromiseValue::Task(handle));
 
-                        lua.pack_multi((false, LuaValue::Nil))
+                        Ok((Some(false), LuaValue::Nil))
                     }
                 }
+
+                PromiseValue::AnyTask(tasks) => {
+                    if tasks.is_empty() {
+                        return Ok((Some(true), LuaValue::Nil));
+                    }
+
+                    for task in &tasks {
+                        let (status, value) = poll(lua, task)?;
+
+                        if status != Some(false) {
+                            return Ok((status, value));
+                        }
+                    }
+
+                    *lock = Some(PromiseValue::AnyTask(tasks));
+
+                    Ok((Some(false), LuaValue::Nil))
+                }
             }
+        }
+
+        methods.add_method("poll", |lua: &Lua, promise: &Self, _: ()| -> Result<LuaMultiValue, LuaError> {
+            lua.pack_multi(poll(lua, promise)?)
         });
 
         methods.add_method("await", |lua: &Lua, promise: &Self, _: ()| -> Result<LuaValue, LuaError> {
@@ -152,10 +242,34 @@ impl LuaUserData for Promise {
 
                 PromiseValue::Callback(callback) => {
                     loop {
-                        let (status, value) = callback.call::<(Option<bool>, LuaValue)>(())?;
+                        let mut values = callback.call::<LuaVariadic<LuaValue>>(())?;
 
-                        if status != Some(false) {
-                            return Ok(value);
+                        match values.len() {
+                            1 => {
+                                let Some(value) = values.pop() else {
+                                    return Err(LuaError::external("failed to take callback output"));
+                                };
+
+                                return Ok(value);
+                            }
+
+                            2 => {
+                                let Some(value) = values.pop() else {
+                                    return Err(LuaError::external("failed to take callback value"));
+                                };
+
+                                let Some(status) = values.pop() else {
+                                    return Err(LuaError::external("failed to take callback status"));
+                                };
+
+                                let status = status.as_boolean();
+
+                                if status != Some(false) {
+                                    return Ok(value);
+                                }
+                            }
+
+                            _ => return Ok(LuaValue::Nil)
                         }
                     }
                 }
@@ -174,6 +288,10 @@ impl LuaUserData for Promise {
                     }
                 }
 
+                PromiseValue::LuaPromise(promise) => {
+                    promise.call_method("await", ())
+                }
+
                 PromiseValue::Task(handle) => {
                     let get_value = tasks::block_on(handle)
                         .map_err(|err| {
@@ -181,6 +299,18 @@ impl LuaUserData for Promise {
                         })??;
 
                     get_value(lua)
+                }
+
+                PromiseValue::AnyTask(tasks) => {
+                    loop {
+                        for task in &tasks {
+                            let (status, value) = poll(lua, task)?;
+
+                            if status != Some(false) {
+                                return Ok(value);
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -228,21 +358,24 @@ impl Drop for Promise {
 pub struct TaskApi {
     lua: Lua,
 
-    task_create: LuaFunction
+    task_create: LuaFunction,
+    task_any: LuaFunction
 }
 
 impl TaskApi {
     pub fn new(lua: Lua) -> Result<Self, LuaError> {
         Ok(Self {
             task_create: lua.create_function(|lua: &Lua, task: LuaValue| {
-                // Do not wrap a promise into another promise.
-                if let LuaValue::UserData(object) = &task
-                    && object.get::<Option<LuaFunction>>("await")?.is_some()
-                {
-                    return object.into_lua(lua);
-                }
-
                 Promise::from_lua_value(task)
+                    .into_lua(lua)
+            })?,
+
+            task_any: lua.create_function(|lua: &Lua, lua_tasks: LuaVariadic<LuaValue>| {
+                let promises = lua_tasks.into_iter()
+                    .map(Promise::from_lua_value)
+                    .collect::<Box<[Promise]>>();
+
+                Promise::new(PromiseValue::AnyTask(promises))
                     .into_lua(lua)
             })?,
 
@@ -252,9 +385,10 @@ impl TaskApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 1)?;
+        let env = self.lua.create_table_with_capacity(0, 2)?;
 
         env.raw_set("create", &self.task_create)?;
+        env.raw_set("any", &self.task_any)?;
 
         Ok(env)
     }
