@@ -17,15 +17,17 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use std::io::{Read, Write};
+use std::io::Write;
 
+use agl_core::tasks::fs::File;
+use agl_core::tasks::io::{BufReader, AsyncReadExt};
 use agl_core::hashes::{Hasher, HashAlgorithm};
 
 use mlua::prelude::*;
 
+use super::task_api::{Promise, PromiseValue};
 use super::filesystem_api::IO_READ_CHUNK_LEN;
 use super::*;
 
@@ -62,7 +64,7 @@ impl HashApi {
                 Box::new(move |lua: &Lua, context: &Context| {
                     let context = context.to_owned();
 
-                    lua.create_function(move |_, (algorithm, mut path): (LuaString, PathBuf)| {
+                    lua.create_function(move |lua: &Lua, (algorithm, mut path): (LuaString, PathBuf)| {
                         let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                             .map_err(LuaError::external)?;
 
@@ -79,25 +81,34 @@ impl HashApi {
                             return Err(LuaError::external("no path read permissions"));
                         }
 
-                        let mut file = File::open(path)?;
-                        let mut hasher = Hasher::new(algorithm);
+                        let value = PromiseValue::from_future(async move {
+                            let mut file = BufReader::new(File::open(path).await?);
+                            let mut hasher = Hasher::new(algorithm);
 
-                        let mut buf = [0; IO_READ_CHUNK_LEN];
+                            let mut buf = [0; IO_READ_CHUNK_LEN];
 
-                        loop {
-                            let n = file.read(&mut buf)?;
+                            loop {
+                                let n = file.read(&mut buf).await?;
 
-                            if n == 0 {
-                                break;
+                                if n == 0 {
+                                    break;
+                                }
+
+                                hasher.write_all(&buf[..n])?;
+                                hasher.flush()?;
                             }
 
-                            hasher.write_all(&buf[..n])?;
-                            hasher.flush()?;
-                        }
+                            let hash = hasher.finalize().0;
 
-                        let hash = hasher.finalize().0;
+                            Ok(Box::new(move |lua: &Lua| {
+                                let value = LuaValue::Table(bytes_to_lua_table(lua, &hash)?);
 
-                        Ok(hash)
+                                Ok(value)
+                            }) as task_api::TaskOutput)
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
                     })
                 })
             },
@@ -166,7 +177,7 @@ impl HashApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 5)?;
+        let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("digitize", &self.hash_digitize)?;
         env.raw_set("digitize_file", (self.hash_digitize_file)(&self.lua, context)?)?;

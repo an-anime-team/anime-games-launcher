@@ -45,25 +45,24 @@ algorithms are provided by the `agl-core` library.
 
 ## `hash.digitize(algorithm: HashAlgorithm, value: any) -> number[]`
 
-Calculate hash for a given bytes slice using specified algorithm. By default
-`seahash` is used as a launcher's internal algorithm.
+Calculate hash for a given bytes slice using specified algorithm.
 
 ```luau
 -- [236, 74, 195, 208]
 dbg(hash.digitize("crc32", "Hello, World!"))
 ```
 
-## `hash.digitize_file(algorithm: HashAlgorithm, path: string) -> number[]`
+## `hash.digitize_file(algorithm: HashAlgorithm, path: string) -> Promise<number[]>`
 
-Calculate hash for a given file path using specified algorithm. By default
-`seahash` is used as a launcher's internal algorithm. Only accessible files can
-be hashed.
+Calculate hash for a given file path using specified algorithm. Only accessible
+files can be hashed. Since this function works with system IO the returned value
+is a background promise.
 
 ```luau
 fs.write_file("test.txt", "Hello, World!")
 
 -- [236, 74, 195, 208]
-dbg(hash.digitize_file("crc32", "test.txt"))
+dbg(await(hash.digitize_file("crc32", "test.txt")))
 ```
 
 ## `hash.hasher(algorithm: HashAlgorithm) -> number`
@@ -106,7 +105,7 @@ hash.close(hasher)
 net.close(head.handle)
 ```
 
-## `hash.finalize(handle: number) -> [number]`
+## `hash.finalize(handle: number) -> number[]`
 
 Finalize hash calculation in the open hasher struct. This will close the hasher
 and prevent future writes.
