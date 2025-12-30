@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub use tokio::{fs, io, net, sync};
+pub use tokio::{fs, io, net, sync, join, try_join, select};
 pub use tokio::time::{sleep, sleep_until};
 pub use tokio::task::{JoinHandle, JoinError};
 
