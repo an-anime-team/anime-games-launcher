@@ -297,24 +297,13 @@ impl Api {
                     }
 
                     LuaValue::UserData(object) => {
-                        // Check if object has the `poll` method, meaning it's
+                        // Check if object has the `await` method, meaning it's
                         // a promise. Otherwise return it as is.
-                        if object.get::<Option<LuaFunction>>("poll")?.is_none() {
+                        if object.get::<Option<LuaFunction>>("await")?.is_none() {
                             return Ok(LuaValue::UserData(object));
                         };
 
-                        loop {
-                            // Call the method directly on the userdata so it
-                            // can reference itself. Otherwise an error will be
-                            // returned.
-                            let (status, result) = object.call_method::<(Option<bool>, LuaValue)>("poll", ())?;
-
-                            match status {
-                                Some(false) => (),
-                                Some(true) => return Ok(result),
-                                None => return Ok(LuaValue::Nil)
-                            }
-                        }
+                        object.call_method::<LuaValue>("await", ())
                     }
 
                     _ => Ok(task)

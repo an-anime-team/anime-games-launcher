@@ -29,6 +29,10 @@ type Promise<T> = {
     // Poll promise value. Throws an error if already finished.
     poll: (): (boolean | null, T);
 
+    // Wait until the promise finishes its execution, blocking the engine 
+    // thread to obtain its output value.
+    await: (): T;
+
     // Abort promise execution.
     abort: (): void;
 
@@ -49,6 +53,8 @@ happening in background on the rust side. This allows you to perform multiple
 
 Promises are supported by the `await` standard library function, which will
 keep running the `Promise.poll` method until it finishes, returning its output.
+The same can be done using promise's own `Promise.await` which is internally
+called by the `await` function.
 
 ### Creating a promise in lua
 
@@ -137,5 +143,5 @@ local promise = task.create(function()
     return true, 123
 end)
 
-dbg(await(promise))
+dbg(promise:await()) -- 123
 ```

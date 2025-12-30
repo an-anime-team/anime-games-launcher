@@ -22,14 +22,22 @@ use mlua::prelude::*;
 
 use agl_core::tasks::{self, JoinHandle};
 
+// I had to do this because if we block a lua engine thread to await some
+// promise using either `promise:await()` or `await(promise)` we won't be able
+// to create an output value in the engine from the rust side (e.g.
+// `lua.create_table()` will just block the rust side because the lua side is
+// also blocked by the `await` call). This forces us to return a rust callback
+// to the promise which could make the output value itself using its own lua
+// engine reference.
+pub type TaskOutput = Box<dyn FnOnce(&Lua) -> Result<LuaValue, LuaError> + Send + 'static>;
+
 /// Inner value of a promise. Exists because promise can mutate its stored value
 /// on the fly.
-#[derive(Debug)]
 pub enum PromiseValue {
     Value(LuaValue),
     Callback(LuaFunction),
     Coroutine(LuaThread),
-    Task(JoinHandle<Result<LuaValue, LuaError>>)
+    Task(JoinHandle<Result<TaskOutput, LuaError>>)
 }
 
 impl PromiseValue {
@@ -42,7 +50,7 @@ impl PromiseValue {
     }
 
     pub fn from_future(
-        future: impl Future<Output = Result<LuaValue, LuaError>> + Send + 'static
+        future: impl Future<Output = Result<TaskOutput, LuaError>> + Send + 'static
     ) -> Self {
         Self::Task(tasks::spawn(future))
     }
@@ -50,7 +58,7 @@ impl PromiseValue {
 
 /// A lua usertype wrapper over a promise value. Implements `poll` method to
 /// query output value.
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Promise(Mutex<Option<PromiseValue>>);
 
 impl Promise {
@@ -115,12 +123,12 @@ impl LuaUserData for Promise {
 
                 PromiseValue::Task(handle) => {
                     if handle.is_finished() {
-                        let value = tasks::block_on(handle)
+                        let get_value = tasks::block_on(handle)
                             .map_err(|err| {
                                 LuaError::external(format!("failed to execute task: {err}"))
-                            })?;
+                            })??;
 
-                        lua.pack_multi((true, value))
+                        lua.pack_multi((true, get_value(lua)))
                     }
 
                     else {
@@ -128,6 +136,51 @@ impl LuaUserData for Promise {
 
                         lua.pack_multi((false, LuaValue::Nil))
                     }
+                }
+            }
+        });
+
+        methods.add_method("await", |lua: &Lua, promise: &Self, _: ()| -> Result<LuaValue, LuaError> {
+            let mut lock = promise.lock();
+
+            let Some(value) = lock.take() else {
+                return Err(LuaError::external("task already finished"));
+            };
+
+            match value {
+                PromiseValue::Value(value) => Ok(value),
+
+                PromiseValue::Callback(callback) => {
+                    loop {
+                        let (status, value) = callback.call::<(Option<bool>, LuaValue)>(())?;
+
+                        if status != Some(false) {
+                            return Ok(value);
+                        }
+                    }
+                }
+
+                PromiseValue::Coroutine(coroutine) => {
+                    loop {
+                        let value = coroutine.resume::<LuaValue>(())?;
+
+                        match coroutine.status() {
+                            LuaThreadStatus::Finished | LuaThreadStatus::Error => {
+                                return Ok(value);
+                            }
+
+                            LuaThreadStatus::Resumable | LuaThreadStatus::Running => ()
+                        }
+                    }
+                }
+
+                PromiseValue::Task(handle) => {
+                    let get_value = tasks::block_on(handle)
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to execute task: {err}"))
+                        })??;
+
+                    get_value(lua)
                 }
             }
         });
@@ -182,7 +235,15 @@ impl TaskApi {
     pub fn new(lua: Lua) -> Result<Self, LuaError> {
         Ok(Self {
             task_create: lua.create_function(|lua: &Lua, task: LuaValue| {
-                Promise::from_lua_value(task).into_lua(lua)
+                // Do not wrap a promise into another promise.
+                if let LuaValue::UserData(object) = &task
+                    && object.get::<Option<LuaFunction>>("await")?.is_some()
+                {
+                    return object.into_lua(lua);
+                }
+
+                Promise::from_lua_value(task)
+                    .into_lua(lua)
             })?,
 
             lua
