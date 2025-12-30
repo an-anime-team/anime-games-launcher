@@ -23,6 +23,7 @@ use std::process::{Command, Stdio};
 
 use mlua::prelude::*;
 
+use super::task_api::{Promise, PromiseValue, TaskOutput};
 use super::*;
 
 const PROCESS_READ_CHUNK_LEN: usize = 4096;
@@ -50,53 +51,62 @@ impl ProcessApi {
                 let module_folder = context.module_folder.clone();
 
                 lua.create_function(move |lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
-                    let mut command = Command::new(binary);
+                    let module_folder = module_folder.clone();
 
-                    let mut command = command
-                        .current_dir(&module_folder)
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped());
+                    let value = PromiseValue::from_blocking(move || {
+                        let mut command = Command::new(binary);
 
-                    // Create module folder if it doesn't exist.
-                    if !module_folder.is_dir() {
-                        std::fs::create_dir_all(&module_folder)?;
-                    }
+                        let mut command = command
+                            .current_dir(&module_folder)
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped());
 
-                    // Apply command arguments.
-                    if let Some(args) = args {
-                        for arg in args.sequence_values::<LuaString>() {
-                            command = command.arg(arg?.to_string_lossy());
+                        // Create module folder if it doesn't exist.
+                        if !module_folder.is_dir() {
+                            std::fs::create_dir_all(&module_folder)?;
                         }
-                    }
 
-                    // Apply command environment.
-                    if let Some(env) = env {
-                        for pair in env.pairs::<LuaString, LuaString>() {
-                            let (key, value) = pair?;
-
-                            command = command.env(
-                                key.to_string_lossy(),
-                                value.to_string_lossy()
-                            );
+                        // Apply command arguments.
+                        if let Some(args) = args {
+                            for arg in args.sequence_values::<LuaString>() {
+                                command = command.arg(arg?.to_string_lossy());
+                            }
                         }
-                    }
 
-                    #[cfg(feature = "tracing")]
-                    tracing::debug!(?command, "running command");
+                        // Apply command environment.
+                        if let Some(env) = env {
+                            for pair in env.pairs::<LuaString, LuaString>() {
+                                let (key, value) = pair?;
 
-                    // Execute the command.
-                    let output = command.output()?;
+                                command = command.env(
+                                    key.to_string_lossy(),
+                                    value.to_string_lossy()
+                                );
+                            }
+                        }
 
-                    // Prepare the output.
-                    let result = lua.create_table_with_capacity(0, 4)?;
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!(?command, "running command");
 
-                    result.raw_set("status", output.status.code())?;
-                    result.raw_set("is_ok", output.status.success())?;
-                    result.raw_set("stdout", output.stdout)?;
-                    result.raw_set("stderr", output.stderr)?;
+                        // Execute the command.
+                        let output = command.output()?;
 
-                    Ok(result)
+                        Ok(Box::new(move |lua: &Lua| {
+                            // Prepare the output.
+                            let result = lua.create_table_with_capacity(0, 4)?;
+
+                            result.raw_set("status", output.status.code())?;
+                            result.raw_set("is_ok", output.status.success())?;
+                            result.raw_set("stdout", output.stdout)?;
+                            result.raw_set("stderr", output.stderr)?;
+
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 

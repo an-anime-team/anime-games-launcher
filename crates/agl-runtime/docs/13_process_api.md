@@ -15,10 +15,10 @@ to apply these updates. Process API allows trusted packages to execute binaries.
 | `process.kill`     | Kill an open binary process.            |
 | `process.finished` | Check if open binary process is closed. |
 
-## `process.exec(path: string, [args: [string]], [env: [key: string]: string]) -> Output`
+## `process.exec(path: string, [args: [string]], [env: [key: string]: string]) -> Promise<Output>`
 
-Execute given binary and return its output. Module dir is used as the binary's
-current directory.
+Execute given binary and return a background promise which resolves to its
+output. Module dir is used as the binary's current directory.
 
 ```ts
 type Output = {
@@ -29,8 +29,8 @@ type Output = {
     is_ok: boolean,
 
     // Output of the process.
-    stdout: [number],
-    stderr: [number]
+    stdout: number[],
+    stderr: number[]
 };
 ```
 
@@ -39,7 +39,7 @@ local my_file = path.join(path.module_dir(), "my_file.txt")
 
 fs.write_file(my_file, str.to_bytes("Hello, World!"))
 
-local output = process.exec("cat", { "my_file.txt" })
+local output = process.exec("cat", { "my_file.txt" }):await()
 
 -- "Hello, World!"
 print(str.from_bytes(output.stdout))
@@ -64,7 +64,7 @@ local handle = process.open("my_app")
 process.stdin(handle, "some input")
 ```
 
-## `process.stdout(handle: number) -> [number] | nil`
+## `process.stdout(handle: number) -> number[] | nil`
 
 Read the process's stdout chunk. If process is closed, then `nil` is returned.
 
@@ -82,7 +82,7 @@ end
 process.wait(handle)
 ```
 
-## `process.stderr(handle: number) -> [number] | nil`
+## `process.stderr(handle: number) -> number[] | nil`
 
 Read the process's stderr chunk. If process is closed, then `nil` is returned.
 
