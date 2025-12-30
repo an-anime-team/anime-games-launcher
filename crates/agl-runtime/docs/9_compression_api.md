@@ -55,28 +55,30 @@ presented for simplicity only.
 >    by this standard to process external data. You also have to specify the
 >    compression level in lzma decompressor builder, unlike other algorithms.
 
-## `compression.compress(algorithm: string, value: any) -> number[]`
+## `compression.compress(algorithm: string, value: any) -> Promise<number[]>`
 
 Compress given value using provided algorithm. The algorithm string must be a
 `CompressionAlgorithm` value with optional compression level specified after the
 column. If value is not a bytes slice - then it will be converted to bytes
-representation first.
+representation first. Since this function can take some time to finish the
+returned value is a background promise.
 
 ```luau
 -- zstd with default compression level, equal to zstd:default
-dbg(compression.compress("zstd", "Hello, World!"))
+dbg(compression.compress("zstd", "Hello, World!"):await())
 
 -- zstd with compression level 7
-dbg(compression.compress("zstd:7", "Hello, World!"))
+dbg(compression.compress("zstd:7", "Hello, World!"):await())
 ```
 
-## `compression.decompress(algorithm: string, value: number[]) -> number[]`
+## `compression.decompress(algorithm: string, value: number[]) -> Promise<number[]>`
 
-Decompress given bytes slice using the specified algorithm.
+Decompress given bytes slice using the specified algorithm. Since this function
+can take some time to finish the returned value is a background promise.
 
 ```luau
-local compressed = compression.compress("zstd", "Hello, World!")
-local decompressed = compression.decompress("zstd", compressed)
+local compressed = compression.compress("zstd", "Hello, World!"):await()
+local decompressed = compression.decompress("zstd", compressed):await()
 
 -- "Hello, World!"
 dbg(str.from_bytes(decompressed))

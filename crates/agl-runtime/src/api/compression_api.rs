@@ -25,6 +25,7 @@ use agl_core::compression::{Compressor, Decompressor};
 
 use mlua::prelude::*;
 
+use super::task_api::{Promise, PromiseValue, TaskOutput};
 use super::filesystem_api::IO_READ_CHUNK_LEN;
 use super::*;
 
@@ -86,18 +87,26 @@ impl CompressionApi {
                 let value = lua_value_to_bytes(value)?;
                 let len = value.len();
 
-                compressor.write_all(&value)?;
+                let value = PromiseValue::from_blocking(move || {
+                    compressor.write_all(&value)?;
 
-                drop(value);
+                    drop(value);
 
-                compressor.flush()?;
-                compressor.try_finish()?;
+                    compressor.flush()?;
+                    compressor.try_finish()?;
 
-                let mut result = Vec::with_capacity(len);
+                    let mut result = Vec::with_capacity(len);
 
-                compressor.read_to_end(&mut result)?;
+                    compressor.read_to_end(&mut result)?;
 
-                bytes_to_lua_table(lua, result)
+                    Ok(Box::new(move |lua: &Lua| {
+                        bytes_to_lua_table(lua, result)
+                            .map(LuaValue::Table)
+                    }) as TaskOutput)
+                });
+
+                Promise::new(value)
+                    .into_lua(lua)
             })?,
 
             compression_decompress: lua.create_function(move |lua, (algorithm, value): (LuaString, LuaValue)| {
@@ -110,17 +119,25 @@ impl CompressionApi {
                 let value = lua_value_to_bytes(value)?;
                 let len = value.len();
 
-                decompressor.write_all(&value)?;
+                let value = PromiseValue::from_blocking(move || {
+                    decompressor.write_all(&value)?;
 
-                drop(value);
+                    drop(value);
 
-                decompressor.flush()?;
+                    decompressor.flush()?;
 
-                let mut result = Vec::with_capacity(len);
+                    let mut result = Vec::with_capacity(len);
 
-                decompressor.read_to_end(&mut result)?;
+                    decompressor.read_to_end(&mut result)?;
 
-                bytes_to_lua_table(lua, result)
+                    Ok(Box::new(move |lua: &Lua| {
+                        bytes_to_lua_table(lua, result)
+                            .map(LuaValue::Table)
+                    }) as TaskOutput)
+                });
+
+                Promise::new(value)
+                    .into_lua(lua)
             })?,
 
             compression_compressor: {

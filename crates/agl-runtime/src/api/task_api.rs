@@ -102,7 +102,7 @@ impl PromiseValue {
         Self::Task(tasks::spawn(future))
     }
 
-    pub fn from_blocing(
+    pub fn from_blocking(
         callback: impl FnOnce() -> Result<TaskOutput, LuaError> + Send + 'static
     ) -> Self {
         Self::Task(tasks::spawn_blocking(callback))
