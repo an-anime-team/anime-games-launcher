@@ -38,6 +38,7 @@ use librqbit::api::TorrentIdOrHash;
 
 use agl_core::tasks;
 
+use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 use super::*;
 
 #[derive(Debug, thiserror::Error)]
@@ -649,38 +650,45 @@ impl TorrentApi {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
-                    let result = tasks::block_on(librqbit::create_torrent(
-                        &path,
-                        CreateTorrentOptions {
-                            name: name.as_deref(),
-                            piece_length: piece_size
-                        }
-                    ));
+                    let value = PromiseValue::from_future(async move {
+                        let result = librqbit::create_torrent(
+                            &path,
+                            CreateTorrentOptions {
+                                name: name.as_deref(),
+                                piece_length: piece_size
+                            }
+                        ).await;
 
-                    let torrent = result.map_err(|err| {
-                        LuaError::external(format!("failed to create torrent: {err}"))
-                    })?;
-
-                    let mut magnet = Magnet::from_id20(
-                        torrent.info_hash(),
-                        trackers,
-                        None
-                    );
-
-                    magnet.name = name.clone();
-
-                    let content = torrent.as_bytes()
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to get torrent file content: {err}"))
+                        let torrent = result.map_err(|err| {
+                            LuaError::external(format!("failed to create torrent: {err}"))
                         })?;
 
-                    let result = lua.create_table_with_capacity(0, 3)?;
+                        let mut magnet = Magnet::from_id20(
+                            torrent.info_hash(),
+                            trackers,
+                            None
+                        );
 
-                    result.raw_set("info_hash", torrent.info_hash().as_string())?;
-                    result.raw_set("magnet", magnet.to_string())?;
-                    result.raw_set("content", content.to_vec())?;
+                        magnet.name = name.clone();
 
-                    Ok(result)
+                        let content = torrent.as_bytes()
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to get torrent file content: {err}"))
+                            })?;
+
+                        Ok(Box::new(move |lua: &Lua| {
+                            let result = lua.create_table_with_capacity(0, 3)?;
+
+                            result.raw_set("info_hash", torrent.info_hash().as_string())?;
+                            result.raw_set("magnet", magnet.to_string())?;
+                            result.raw_set("content", content.to_vec())?;
+
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
@@ -691,7 +699,7 @@ impl TorrentApi {
                     let torrent_server = torrent_server.clone();
                     let context = context.clone();
 
-                    lua.create_function(move |_, (torrent, options): (LuaValue, Option<LuaTable>)| {
+                    lua.create_function(move |lua: &Lua, (torrent, options): (LuaValue, Option<LuaTable>)| {
                         let mut output_folder = context.temp_folder.clone();
                         let mut trackers = None;
                         let mut paused = false;
@@ -729,15 +737,29 @@ impl TorrentApi {
                         let torrent = lua_value_to_bytes(torrent)?
                             .into_boxed_slice();
 
-                        let result = torrent_server.add_torrent(
-                            torrent,
-                            output_folder,
-                            trackers,
-                            paused,
-                            restart
-                        );
+                        let torrent_server = torrent_server.clone();
 
-                        result.map_err(|err| LuaError::external(err.to_string()))
+                        let value = PromiseValue::from_blocking(move || {
+                            let result = torrent_server.add_torrent(
+                                torrent,
+                                output_folder,
+                                trackers,
+                                paused,
+                                restart
+                            );
+
+                            let result = result.map_err(|err| {
+                                LuaError::external(err.to_string())
+                            })?;
+
+                            Ok(Box::new(move |lua: &Lua| {
+                                lua.create_string(result.as_bytes())
+                                    .map(LuaValue::String)
+                            }) as TaskOutput)
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
                     })
                 })
             },
@@ -746,30 +768,39 @@ impl TorrentApi {
                 let torrent_server = server.clone();
 
                 lua.create_function(move |lua: &Lua, _: ()| {
-                    let torrents = torrent_server.list()
-                        .map_err(|err| LuaError::external(err.to_string()))?;
+                    let torrent_server = torrent_server.clone();
 
-                    let result = lua.create_table_with_capacity(torrents.len(), 0)?;
+                    let value = PromiseValue::from_blocking(move || {
+                        let torrents = torrent_server.list()
+                            .map_err(|err| LuaError::external(err.to_string()))?;
 
-                    for torrent in torrents {
-                        let stats = lua.create_table_with_capacity(0, 3)?;
+                        Ok(Box::new(move |lua: &Lua| {
+                            let result = lua.create_table_with_capacity(torrents.len(), 0)?;
 
-                        stats.raw_set("current", torrent.stats.current)?;
-                        stats.raw_set("total", torrent.stats.total)?;
-                        stats.raw_set("uploaded", torrent.stats.uploaded)?;
+                            for torrent in torrents {
+                                let stats = lua.create_table_with_capacity(0, 3)?;
 
-                        let torrent_info = lua.create_table_with_capacity(0, 5)?;
+                                stats.raw_set("current", torrent.stats.current)?;
+                                stats.raw_set("total", torrent.stats.total)?;
+                                stats.raw_set("uploaded", torrent.stats.uploaded)?;
 
-                        torrent_info.raw_set("name", torrent.name)?;
-                        torrent_info.raw_set("info_hash", torrent.info_hash)?;
-                        torrent_info.raw_set("stats", stats)?;
-                        torrent_info.raw_set("paused", torrent.paused)?;
-                        torrent_info.raw_set("finished", torrent.finished)?;
+                                let torrent_info = lua.create_table_with_capacity(0, 5)?;
 
-                        result.raw_push(torrent_info)?;
-                    }
+                                torrent_info.raw_set("name", torrent.name)?;
+                                torrent_info.raw_set("info_hash", torrent.info_hash)?;
+                                torrent_info.raw_set("stats", stats)?;
+                                torrent_info.raw_set("paused", torrent.paused)?;
+                                torrent_info.raw_set("finished", torrent.finished)?;
 
-                    Ok(result)
+                                result.raw_push(torrent_info)?;
+                            }
+
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
@@ -777,70 +808,97 @@ impl TorrentApi {
                 let torrent_server = server.clone();
 
                 lua.create_function(move |lua: &Lua, info_hash: String| {
-                    let info = torrent_server.get_info(info_hash)
-                        .map_err(|err| LuaError::external(err.to_string()))?;
+                    let torrent_server = torrent_server.clone();
 
-                    let Some(info) = info else {
-                        return Ok(None);
-                    };
+                    let value = PromiseValue::from_blocking(move || {
+                        let info = torrent_server.get_info(info_hash)
+                            .map_err(|err| LuaError::external(err.to_string()))?;
 
-                    let peers = lua.create_table_with_capacity(info.peers.len(), 0)?;
+                        Ok(Box::new(move |lua: &Lua| {
+                            let Some(info) = info else {
+                                return Ok(LuaValue::Nil);
+                            };
 
-                    for peer in info.peers {
-                        let peer_info = lua.create_table_with_capacity(0, 2)?;
+                            let peers = lua.create_table_with_capacity(info.peers.len(), 0)?;
 
-                        peer_info.raw_set("address", peer.address)?;
-                        peer_info.raw_set("downloaded", peer.downloaded)?;
+                            for peer in info.peers {
+                                let peer_info = lua.create_table_with_capacity(0, 2)?;
 
-                        peers.raw_push(peer_info)?;
-                    }
+                                peer_info.raw_set("address", peer.address)?;
+                                peer_info.raw_set("downloaded", peer.downloaded)?;
 
-                    let files = lua.create_table_with_capacity(info.files.len(), 0)?;
+                                peers.raw_push(peer_info)?;
+                            }
 
-                    for file in info.files {
-                        let file_info = lua.create_table_with_capacity(0, 2)?;
+                            let files = lua.create_table_with_capacity(info.files.len(), 0)?;
 
-                        file_info.raw_set("path", file.path)?;
-                        file_info.raw_set("size", file.size)?;
+                            for file in info.files {
+                                let file_info = lua.create_table_with_capacity(0, 2)?;
 
-                        files.raw_push(file_info)?;
-                    }
+                                file_info.raw_set("path", file.path)?;
+                                file_info.raw_set("size", file.size)?;
 
-                    let stats = lua.create_table_with_capacity(0, 3)?;
+                                files.raw_push(file_info)?;
+                            }
 
-                    stats.raw_set("current", info.stats.current)?;
-                    stats.raw_set("total", info.stats.total)?;
-                    stats.raw_set("uploaded", info.stats.uploaded)?;
+                            let stats = lua.create_table_with_capacity(0, 3)?;
 
-                    let result = lua.create_table_with_capacity(0, 7)?;
+                            stats.raw_set("current", info.stats.current)?;
+                            stats.raw_set("total", info.stats.total)?;
+                            stats.raw_set("uploaded", info.stats.uploaded)?;
 
-                    result.raw_set("name", info.name)?;
-                    result.raw_set("trackers", info.trackers)?;
-                    result.raw_set("peers", peers)?;
-                    result.raw_set("files", files)?;
-                    result.raw_set("stats", stats)?;
-                    result.raw_set("paused", info.paused)?;
-                    result.raw_set("finished", info.finished)?;
+                            let result = lua.create_table_with_capacity(0, 7)?;
 
-                    Ok(Some(result))
+                            result.raw_set("name", info.name)?;
+                            result.raw_set("trackers", info.trackers)?;
+                            result.raw_set("peers", peers)?;
+                            result.raw_set("files", files)?;
+                            result.raw_set("stats", stats)?;
+                            result.raw_set("paused", info.paused)?;
+                            result.raw_set("finished", info.finished)?;
+
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
             torrent_pause: {
                 let torrent_server = server.clone();
 
-                lua.create_function(move |_, info_hash: String| {
-                    torrent_server.pause_or_resume(info_hash, true)
-                        .map_err(|err| LuaError::external(err.to_string()))
+                lua.create_function(move |lua: &Lua, info_hash: String| {
+                    let torrent_server = torrent_server.clone();
+
+                    let value = PromiseValue::from_blocking(move || {
+                        torrent_server.pause_or_resume(info_hash, true)
+                            .map_err(|err| LuaError::external(err.to_string()))?;
+
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
             torrent_resume: {
                 let torrent_server = server.clone();
 
-                lua.create_function(move |_, info_hash: String| {
-                    torrent_server.pause_or_resume(info_hash, false)
-                        .map_err(|err| LuaError::external(err.to_string()))
+                lua.create_function(move |lua: &Lua, info_hash: String| {
+                    let torrent_server = torrent_server.clone();
+
+                    let value = PromiseValue::from_blocking(move || {
+                        torrent_server.pause_or_resume(info_hash, false)
+                            .map_err(|err| LuaError::external(err.to_string()))?;
+
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
