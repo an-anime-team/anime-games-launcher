@@ -49,17 +49,8 @@ impl ProcessApi {
                 let context = context.to_owned();
                 let module_folder = context.module_folder.clone();
 
-                lua.create_function(move |lua, (mut path, args, env): (PathBuf, Option<LuaTable>, Option<LuaTable>)| {
-                    if path.is_relative() {
-                        path = context.module_folder.join(path);
-                    }
-
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    let mut command = Command::new(path);
+                lua.create_function(move |lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
+                    let mut command = Command::new(binary);
 
                     let mut command = command
                         .current_dir(&module_folder)
@@ -117,17 +108,8 @@ impl ProcessApi {
                     let module_folder = context.module_folder.clone();
                     let process_handles = process_handles.clone();
 
-                    lua.create_function(move |_, (mut path, args, env): (PathBuf, Option<LuaTable>, Option<LuaTable>)| {
-                        if path.is_relative() {
-                            path = context.module_folder.join(path);
-                        }
-
-                        path = normalize_path(path, true)
-                            .map_err(|err| {
-                                LuaError::external(format!("failed to normalize path: {err}"))
-                            })?;
-
-                        let mut command = Command::new(path);
+                    lua.create_function(move |_, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
+                        let mut command = Command::new(binary);
 
                         let mut command = command
                             .current_dir(&module_folder)
