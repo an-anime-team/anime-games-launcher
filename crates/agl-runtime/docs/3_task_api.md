@@ -10,10 +10,11 @@ parallelized runtime APIs, e.g. filesystem one.
 
 Understanding this API is necessary for advanced use of many other APIs.
 
-| Function      | Description                                                   |
-| ------------- | ------------------------------------------------------------- |
-| `task.create` | Create new promise from lua value.                            |
-| `task.any`    | Create a promise which will resolve any of provided promises. |
+| Function      | Description                                                     |
+| ------------- | --------------------------------------------------------------- |
+| `task.create` | Create a promise from lua value.                                |
+| `task.sleep`  | Create a promise which will last for provided duration of time. |
+| `task.any`    | Create a promise which will resolve any of provided promises.   |
 
 ## `Promise<T>`
 
@@ -145,6 +146,33 @@ local promise = task.create(function()
 end)
 
 dbg(promise:await()) -- 123
+```
+
+## `task.sleep(duration: number, [callback: () -> any]) -> Promise`
+
+Create a promise object which will finish after provided amount of milliseconds.
+If optional callback is provided - then it will be executed with the last `poll`
+method call to obtain the promise's output value.
+
+Note that the callback *will not* be ran automatically, you will have to poll
+the promise manually.
+
+```luau
+-- Example promise that never finishes
+local example_promise = task.create(function()
+    return false, "Example promise"
+end)
+
+-- Timeout promise that will last for 1000 ms
+local timeout_promise = task.sleep(1000, function()
+    return "Timeout"
+end)
+
+-- A new promise that will either execute the task (never) or the timeout
+local work_promise = task.any(example_promise, timeout_promise)
+
+-- Since example promise will never finish - timeout is reached
+dbg(work_promise:await()) -- "Timeout"
 ```
 
 ## `task.any(...tasks: any) -> Promise`

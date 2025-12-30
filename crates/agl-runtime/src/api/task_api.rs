@@ -31,6 +31,12 @@ use agl_core::tasks::{self, JoinHandle};
 // engine reference.
 pub type TaskOutput = Box<dyn FnOnce(&Lua) -> Result<LuaValue, LuaError> + Send + 'static>;
 
+/// Create new `TaskOutput` if output value is already known.
+#[inline]
+pub fn task_output(result: Result<LuaValue, LuaError>) -> TaskOutput {
+    Box::new(move |_: &Lua| result) as TaskOutput
+}
+
 /// Inner value of a promise. Exists because promise can mutate its stored value
 /// on the fly.
 pub enum PromiseValue {
@@ -186,7 +192,14 @@ impl LuaUserData for Promise {
                 }
 
                 PromiseValue::LuaPromise(promise) => {
-                    promise.call_method::<(Option<bool>, LuaValue)>("poll", ())
+                    let (status, value) = promise.call_method::<(Option<bool>, LuaValue)>("poll", ())?;
+
+                    // Do not execute function if it's finished or aborted.
+                    if status == Some(false) {
+                        *lock = Some(PromiseValue::LuaPromise(promise));
+                    }
+
+                    Ok((status, value))
                 }
 
                 PromiseValue::Task(handle) => {
@@ -302,8 +315,13 @@ impl LuaUserData for Promise {
                 }
 
                 PromiseValue::AnyTask(tasks) => {
+                    if tasks.is_empty() {
+                        return Ok(LuaValue::Nil);
+                    }
+
                     loop {
                         for task in &tasks {
+                            // FIXME: task.any(task.sleep(..), ..) errors here!
                             let (status, value) = poll(lua, task)?;
 
                             if status != Some(false) {
@@ -359,6 +377,7 @@ pub struct TaskApi {
     lua: Lua,
 
     task_create: LuaFunction,
+    task_sleep: LuaFunction,
     task_any: LuaFunction
 }
 
@@ -370,7 +389,40 @@ impl TaskApi {
                     .into_lua(lua)
             })?,
 
+            task_sleep: lua.create_function(|lua: &Lua, (duration, callback): (u32, Option<LuaFunction>)| {
+                let duration = std::time::Duration::from_millis(duration as u64);
+
+                let value = PromiseValue::from_future(async move {
+                    tasks::sleep(duration).await;
+
+                    let Some(callback) = callback else {
+                        return Ok(task_output(Ok(LuaValue::Nil)));
+                    };
+
+                    Ok(Box::new(move |_: &Lua| {
+                        match callback.call::<LuaValue>(()) {
+                            Ok(value) => Ok(value),
+
+                            Err(err) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(?err, "sleep callback execution error");
+
+                                Err(err)
+                            }
+                        }
+                    }) as TaskOutput)
+                });
+
+                Promise::new(value)
+                    .into_lua(lua)
+            })?,
+
             task_any: lua.create_function(|lua: &Lua, lua_tasks: LuaVariadic<LuaValue>| {
+                if lua_tasks.is_empty() {
+                    return Promise::from_lua_value(LuaValue::Nil)
+                        .into_lua(lua);
+                }
+
                 let promises = lua_tasks.into_iter()
                     .map(Promise::from_lua_value)
                     .collect::<Box<[Promise]>>();
@@ -385,9 +437,10 @@ impl TaskApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 2)?;
+        let env = self.lua.create_table_with_capacity(0, 3)?;
 
         env.raw_set("create", &self.task_create)?;
+        env.raw_set("sleep", &self.task_sleep)?;
         env.raw_set("any", &self.task_any)?;
 
         Ok(env)
