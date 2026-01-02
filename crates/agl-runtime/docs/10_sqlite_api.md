@@ -7,7 +7,7 @@ SQL commands.
 | Function           | Description                            |
 | ------------------ | -------------------------------------- |
 | `sqlite.open`      | Open SQLite database from given file.  |
-| `sqlite.execute`   | Execute single SQL command.            |
+| `sqlite.exec`      | Execute single SQL command.            |
 | `sqlite.batch`     | Execute multiple SQL commands at once. |
 | `sqlite.query`     | Query multiple rows from the database. |
 | `sqlite.query_row` | Query single row from the database.    |
@@ -22,7 +22,7 @@ of the database connection which can be used in other methods.
 local handle = sqlite.open("settings.db")
 ```
 
-## `sqlite.execute(handle: number, command: string, [params: [any]]) -> number`
+## `sqlite.exec(handle: number, command: string, [params: any[]]) -> number`
 
 Execute single SQL command, returning latest *inserted* row id. If no inserts
 happened - old value will be returned.
@@ -37,13 +37,13 @@ performance of the following calls of the same command.
 local handle = sqlite.open("example.db")
 
 -- You can specify params which will be properly fed to the command.
-local row_id = sqlite.execute(handle, "INSERT INTO your_table (column1, column2) VALUES (?1, ?2)", {
+local row_id = sqlite.exec(handle, "INSERT INTO your_table (column1, column2) VALUES (?1, ?2)", {
     "Example value 1",
     "Example value 2"
 })
 
 -- Delete just inserted row using its id.
-sqlite.execute(handle, "DELETE FROM your_table WHERE rowid = ?1", { row_id })
+sqlite.exec(handle, "DELETE FROM your_table WHERE rowid = ?1", { row_id })
 
 -- Always close your database connections.
 sqlite.close(handle)
@@ -51,14 +51,14 @@ sqlite.close(handle)
 
 ## `sqlite.batch(handle: humber, command: string)`
 
-Execute multiple SQL commands. Unlike `sqlite.execute` here you can't provide
+Execute multiple SQL commands. Unlike `sqlite.exec` here you can't provide
 params to the command. Instead you have to modify the command itself and ensure
 data escaping manually.
 
 ```luau
 local handle = sqlite.open("example.db")
 
-local rows = sqlite.execute(handle, [[
+local rows = sqlite.batch(handle, [[
     BEGIN TRANSACTION;
         INSERT INTO your_table (column1, column2) VALUES ('value1', 'value2');
         INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
@@ -72,7 +72,7 @@ print(`Query affected {rows} rows`)
 sqlite.close(handle)
 ```
 
-## `sqlite.query(handle: number, query: string, [params: [any]]) -> {table} | nil`
+## `sqlite.query(handle: number, query: string, [params: any[]]) -> table[] | nil`
 
 Query multiple rows from the database. This method will return a list of rows
 stored as lua tables or `nil` if no rows were found. Note that this is a
@@ -89,7 +89,7 @@ if not sqlite.query(handle, "SELECT * FROM your_table") then
 end
 
 -- Insert some example values
-sqlite.execute(handle, [[
+sqlite.batch(handle, [[
     INSERT INTO your_table (column1, column2) VALUES ('value1', 'value2');
     INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
     INSERT INTO your_table (column1, column2) VALUES ('value5', 'value6');
@@ -121,7 +121,7 @@ if not sqlite.query_row(handle, "SELECT * FROM your_table") then
 end
 
 -- Insert some example values
-sqlite.execute(handle, [[
+sqlite.batch(handle, [[
     INSERT INTO your_table (column1, column2) VALUES ('value1', 'value2');
     INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
     INSERT INTO your_table (column1, column2) VALUES ('value5', 'value6');

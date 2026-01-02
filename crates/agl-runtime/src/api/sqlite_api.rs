@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ use mlua::prelude::*;
 use rusqlite::{Connection, ToSql};
 use rusqlite::types::{ValueRef, ToSqlOutput, FromSql, FromSqlResult};
 
+use super::bytes::Bytes;
 use super::*;
 
 /// Lua to SQLite types bridge.
@@ -33,52 +34,42 @@ enum SqliteParam {
     Double(f64),
     Integer(i64),
     Boolean(bool),
-    Blob(Vec<u8>),
-    Nil
+    Blob(Bytes),
+    Null
 }
 
-impl SqliteParam {
-    pub fn to_lua(&self, lua: &Lua) -> Result<LuaValue, LuaError> {
-        match self {
-            Self::String(value) => lua.create_string(value)
-                .map(LuaValue::String),
-
-            Self::Double(value)  => Ok(LuaValue::Number(*value)),
-            Self::Integer(value) => Ok(LuaValue::Integer(*value)),
-            Self::Boolean(value) => Ok(LuaValue::Boolean(*value)),
-            Self::Nil            => Ok(LuaNil),
-
-            Self::Blob(blob) => {
-                let result = lua.create_table_with_capacity(blob.len(), 0)?;
-
-                for byte in blob {
-                    result.raw_push(*byte)?;
-                }
-
-                Ok(LuaValue::Table(result))
-            }
-        }
-    }
-
-    pub fn from_lua(value: &LuaValue) -> Result<Self, LuaError> {
+impl FromLua for SqliteParam {
+    fn from_lua(value: LuaValue, lua: &Lua) -> Result<Self, LuaError> {
         match value {
             LuaValue::String(value)  => Ok(Self::String(value.to_string_lossy().to_string())),
-            LuaValue::Number(value)  => Ok(Self::Double(*value)),
-            LuaValue::Integer(value) => Ok(Self::Integer(*value)),
-            LuaValue::Boolean(value) => Ok(Self::Boolean(*value)),
-            LuaValue::Nil            => Ok(Self::Nil),
+            LuaValue::Number(value)  => Ok(Self::Double(value)),
+            LuaValue::Integer(value) => Ok(Self::Integer(value)),
+            LuaValue::Boolean(value) => Ok(Self::Boolean(value)),
+            LuaValue::Nil            => Ok(Self::Null),
 
-            LuaValue::Table(table) => {
-                let mut blob = Vec::with_capacity(table.raw_len());
+            LuaValue::Table(_) => Bytes::from_lua(value, lua).map(Self::Blob),
 
-                for byte in table.clone().sequence_values::<u8>() {
-                    blob.push(byte?);
-                }
-
-                Ok(Self::Blob(blob))
+            LuaValue::UserData(ref object) if object.get::<Option<LuaFunction>>("as_table")?.is_some() => {
+                Bytes::from_lua(value, lua).map(Self::Blob)
             }
 
             _ => Err(LuaError::external("can't coerce given value type"))
+        }
+    }
+}
+
+impl IntoLua for SqliteParam {
+    fn into_lua(self, lua: &Lua) -> Result<LuaValue, LuaError> {
+        match self {
+            Self::String(str) => lua.create_string(str)
+                .map(LuaValue::String),
+
+            Self::Double(double)   => Ok(LuaValue::Number(double)),
+            Self::Integer(integer) => Ok(LuaValue::Integer(integer)),
+            Self::Boolean(bool)    => Ok(LuaValue::Boolean(bool)),
+            Self::Null             => Ok(LuaValue::Nil),
+
+            Self::Blob(bytes) => bytes.into_lua(lua)
         }
     }
 }
@@ -91,7 +82,7 @@ impl ToSql for SqliteParam {
             Self::Integer(integer) => ValueRef::Integer(*integer),
             Self::Boolean(bool)    => ValueRef::Integer(if *bool { 1 } else { 0 }),
             Self::Blob(blob)       => ValueRef::Blob(blob.as_slice()),
-            Self::Nil              => ValueRef::Null
+            Self::Null             => ValueRef::Null
         };
 
         Ok(ToSqlOutput::Borrowed(value))
@@ -104,8 +95,8 @@ impl FromSql for SqliteParam {
             ValueRef::Text(text)       => Ok(Self::String(String::from_utf8_lossy(text).to_string())),
             ValueRef::Real(real)       => Ok(Self::Double(real)),
             ValueRef::Integer(integer) => Ok(Self::Integer(integer)),
-            ValueRef::Blob(blob)       => Ok(Self::Blob(blob.to_vec())),
-            ValueRef::Null             => Ok(Self::Nil)
+            ValueRef::Blob(blob)       => Ok(Self::Blob(Bytes::from(blob.to_vec()))),
+            ValueRef::Null             => Ok(Self::Null)
         }
     }
 }
@@ -114,7 +105,7 @@ pub struct SqliteApi {
     lua: Lua,
 
     sqlite_open: LuaFunctionBuilder,
-    sqlite_execute: LuaFunction,
+    sqlite_exec: LuaFunction,
     sqlite_batch: LuaFunction,
     sqlite_query: LuaFunction,
     sqlite_query_row: LuaFunction,
@@ -170,7 +161,7 @@ impl SqliteApi {
                 })
             },
 
-            sqlite_execute: {
+            sqlite_exec: {
                 let connection_handles = connection_handles.clone();
 
                 lua.create_function(move |_, (handle, command, params): (i32, LuaString, Option<LuaTable>)| {
@@ -184,17 +175,11 @@ impl SqliteApi {
                     let mut query = connection.prepare_cached(&command.to_string_lossy())
                         .map_err(LuaError::external)?;
 
-                    // raw_len for better performance.
-                    let params_len = params.as_ref()
-                        .map(LuaTable::raw_len)
-                        .unwrap_or_default();
-
-                    let mut query_params = Vec::with_capacity(params_len);
+                    let mut query_params = vec![];
 
                     if let Some(params) = params {
-                        for param in params.sequence_values::<LuaValue>() {
-                            query_params.push(SqliteParam::from_lua(&param?)?);
-                        }
+                        query_params = params.sequence_values::<SqliteParam>()
+                            .collect::<Result<_, LuaError>>()?;
                     }
 
                     query.execute(rusqlite::params_from_iter(query_params))
@@ -236,17 +221,11 @@ impl SqliteApi {
                     let mut query = connection.prepare_cached(&query.to_string_lossy())
                         .map_err(LuaError::external)?;
 
-                    // raw_len for better performance.
-                    let params_len = params.as_ref()
-                        .map(LuaTable::raw_len)
-                        .unwrap_or_default();
-
-                    let mut query_params = Vec::with_capacity(params_len);
+                    let mut query_params = vec![];
 
                     if let Some(params) = params {
-                        for param in params.sequence_values::<LuaValue>() {
-                            query_params.push(SqliteParam::from_lua(&param?)?);
-                        }
+                        query_params = params.sequence_values::<SqliteParam>()
+                            .collect::<Result<_, LuaError>>()?;
                     }
 
                     let rows = query.query_map(rusqlite::params_from_iter(query_params), |row| {
@@ -268,13 +247,11 @@ impl SqliteApi {
                     for row in rows {
                         let row = row.map_err(LuaError::external)?;
 
-                        let result_row = lua.create_table_with_capacity(row.len(), 0)?;
+                        let row = row.into_iter()
+                            .map(|column| column.into_lua(lua))
+                            .collect::<Result<Box<[_]>, _>>()?;
 
-                        for column in row {
-                            result_row.raw_push(column.to_lua(lua)?)?;
-                        }
-
-                        result.raw_push(result_row)?;
+                        result.raw_push(lua.create_sequence_from(row)?)?;
                     }
 
                     Ok(result)
@@ -295,17 +272,11 @@ impl SqliteApi {
                     let mut query = connection.prepare_cached(&query.to_string_lossy())
                         .map_err(LuaError::external)?;
 
-                    // raw_len for better performance.
-                    let params_len = params.as_ref()
-                        .map(LuaTable::raw_len)
-                        .unwrap_or_default();
-
-                    let mut query_params = Vec::with_capacity(params_len);
+                    let mut query_params = vec![];
 
                     if let Some(params) = params {
-                        for param in params.sequence_values::<LuaValue>() {
-                            query_params.push(SqliteParam::from_lua(&param?)?);
-                        }
+                        query_params = params.sequence_values::<SqliteParam>()
+                            .collect::<Result<_, LuaError>>()?;
                     }
 
                     let row = query.query_row(rusqlite::params_from_iter(query_params), |row| {
@@ -333,13 +304,12 @@ impl SqliteApi {
                         return Ok(LuaValue::Nil);
                     }
 
-                    let result = lua.create_table_with_capacity(row.len(), 0)?;
+                    let row = row.into_iter()
+                        .map(|column| column.into_lua(lua))
+                        .collect::<Result<Vec<LuaValue>, LuaError>>()?;
 
-                    for column in row {
-                        result.raw_push(column.to_lua(lua)?)?;
-                    }
-
-                    Ok(LuaValue::Table(result))
+                    lua.create_sequence_from(row)
+                        .map(LuaValue::Table)
                 })?
             },
 
@@ -354,8 +324,11 @@ impl SqliteApi {
                         return Err(LuaError::external("invalid database connection handle"));
                     };
 
-                    connection.execute("PRAGMA optimize", []).map_err(LuaError::external)?;
-                    connection.cache_flush().map_err(LuaError::external)?;
+                    connection.execute("PRAGMA optimize", [])
+                        .map_err(LuaError::external)?;
+
+                    connection.cache_flush()
+                        .map_err(LuaError::external)?;
 
                     handles.remove(&handle);
 
@@ -372,7 +345,7 @@ impl SqliteApi {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("open", (self.sqlite_open)(&self.lua, context)?)?;
-        env.raw_set("execute", &self.sqlite_execute)?;
+        env.raw_set("exec", &self.sqlite_exec)?;
         env.raw_set("batch", &self.sqlite_batch)?;
         env.raw_set("query", &self.sqlite_query)?;
         env.raw_set("query_row", &self.sqlite_query_row)?;
