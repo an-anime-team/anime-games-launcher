@@ -66,12 +66,12 @@ pub struct ModuleScope {
     /// Default: `true`.
     pub allow_filesystem_api: bool,
 
-    /// Allow module to access network API.
+    /// Allow module to access HTTP API.
     ///
-    /// This API allows module to perform HTTP requests.
+    /// This API allows module to perform HTTP(S) requests.
     ///
     /// Default: `true`.
-    pub allow_network_api: bool,
+    pub allow_http_api: bool,
 
     /// Allow module to access downloader API.
     ///
@@ -160,7 +160,7 @@ impl Default for ModuleScope {
             allow_path_api: true,
             allow_task_api: true,
             allow_filesystem_api: true,
-            allow_network_api: true,
+            allow_http_api: true,
             allow_downloader_api: true,
             allow_archive_api: true,
             allow_hash_api: true,
@@ -183,7 +183,7 @@ impl ModuleScope {
                 "path": self.allow_path_api,
                 "task": self.allow_task_api,
                 "filesystem": self.allow_filesystem_api,
-                "network": self.allow_network_api,
+                "http": self.allow_http_api,
                 "downloader": self.allow_downloader_api,
                 "archive": self.allow_archive_api,
                 "hash": self.allow_hash_api,
@@ -220,8 +220,8 @@ impl ModuleScope {
                 scope.allow_filesystem_api = allow;
             }
 
-            if let Some(allow) = api.get("network").and_then(Json::as_bool) {
-                scope.allow_network_api = allow;
+            if let Some(allow) = api.get("http").and_then(Json::as_bool) {
+                scope.allow_http_api = allow;
             }
 
             if let Some(allow) = api.get("downloader").and_then(Json::as_bool) {

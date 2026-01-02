@@ -30,7 +30,7 @@ pub mod string_api;
 pub mod path_api;
 pub mod task_api;
 pub mod filesystem_api;
-pub mod network_api;
+pub mod http_api;
 pub mod downloader_api;
 pub mod archive_api;
 pub mod hash_api;
@@ -204,7 +204,7 @@ pub struct Api {
     path_api: path_api::PathApi,
     task_api: task_api::TaskApi,
     filesystem_api: filesystem_api::FilesystemApi,
-    network_api: network_api::NetworkApi,
+    http_api: http_api::NetworkApi,
     downloader_api: downloader_api::DownloaderApi,
     archive_api: archive_api::ArchiveApi,
     hash_api: hash_api::HashApi,
@@ -314,7 +314,7 @@ impl Api {
             path_api: path_api::PathApi::new(options.lua.clone())?,
             task_api: task_api::TaskApi::new(options.lua.clone())?,
             filesystem_api: filesystem_api::FilesystemApi::new(options.lua.clone())?,
-            network_api: network_api::NetworkApi::new(options.lua.clone(), options.reqwest_client)?,
+            http_api: http_api::NetworkApi::new(options.lua.clone(), options.reqwest_client)?,
             downloader_api: downloader_api::DownloaderApi::new(options.lua.clone())?,
             archive_api: archive_api::ArchiveApi::new(options.lua.clone())?,
             hash_api: hash_api::HashApi::new(options.lua.clone())?,
@@ -408,9 +408,9 @@ impl Api {
             env.raw_set("fs", self.filesystem_api.create_env(context)?)?;
         }
 
-        // Network API.
-        if scope.allow_network_api {
-            env.raw_set("net", self.network_api.create_env()?)?;
+        // HTTP API.
+        if scope.allow_http_api {
+            env.raw_set("http", self.http_api.create_env()?)?;
         }
 
         // Downloader API.
