@@ -24,6 +24,7 @@ use agl_core::tasks;
 
 use mlua::prelude::*;
 
+use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput};
 
 fn create_request(
@@ -63,24 +64,8 @@ fn create_request(
             }
         }
 
-        if let Some(body) = options.get::<Option<LuaValue>>("body")? {
-            request = match body {
-                LuaValue::Nil => request,
-
-                LuaValue::String(str) => request.body(str.as_bytes().to_vec()),
-
-                LuaValue::Table(table) => {
-                    let mut body = Vec::with_capacity(table.raw_len());
-
-                    for byte in table.sequence_values::<u8>() {
-                        body.push(byte?);
-                    }
-
-                    request.body(body)
-                }
-
-                _ => return Err(LuaError::external("invalid body value"))
-            };
+        if let Some(body) = options.get::<Option<Bytes>>("body")? {
+            request = request.body(body.to_vec());
         }
     }
 
@@ -134,6 +119,8 @@ impl NetworkApi {
                                 }
                             }
 
+                            let body = Bytes::new(body.into_boxed_slice());
+
                             let result = lua.create_table_with_capacity(0, 4)?;
 
                             result.raw_set("status", status.as_u16())?;
@@ -158,15 +145,13 @@ impl NetworkApi {
                     let request = create_request(&client, url, options)?;
 
                     let (response, header) = tasks::block_on(async move {
-                        let result = lua.create_table_with_capacity(0, 3)?;
-                        let headers = lua.create_table()?;
-
                         let response = request.send().await
                             .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
 
-                        result.raw_set("status", response.status().as_u16())?;
-                        result.raw_set("is_ok", response.status().is_success())?;
-                        result.raw_set("headers", headers.clone())?;
+                        let headers = lua.create_table_with_capacity(
+                            0,
+                            response.headers().len()
+                        )?;
 
                         for (key, value) in response.headers() {
                             headers.raw_set(
@@ -174,6 +159,12 @@ impl NetworkApi {
                                 lua.create_string(value.as_bytes())?
                             )?;
                         }
+
+                        let result = lua.create_table_with_capacity(0, 3)?;
+
+                        result.raw_set("status", response.status().as_u16())?;
+                        result.raw_set("is_ok", response.status().is_success())?;
+                        result.raw_set("headers", headers.clone())?;
 
                         Ok::<_, LuaError>((response, result))
                     })?;
@@ -217,8 +208,8 @@ impl NetworkApi {
                         return Ok(LuaNil);
                     };
 
-                    lua.create_sequence_from(chunk)
-                        .map(LuaValue::Table)
+                    Bytes::new(chunk.to_vec().into_boxed_slice())
+                        .into_lua(lua)
                 })?
             },
 

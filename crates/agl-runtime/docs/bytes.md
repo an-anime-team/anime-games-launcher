@@ -5,7 +5,9 @@ and provides lua methods to read them. Most of the standard library functions
 will return this type for memory efficiency.
 
 You can't build this type from lua side. Instead, all the API functions accept
-lua tables with bytes stored as sequence values.
+lua strings or tables with bytes stored as sequence values. In API methods'
+definitions all the lua types which can be converted in `Bytes` are called
+`Bytes`.
 
 ## `Bytes.as_table() -> number[]`
 
@@ -17,6 +19,17 @@ local bytes: Bytes = ...
 for _, byte: number in ipairs(bytes:as_table()) do
     dbg(byte)
 end
+```
+
+## `Bytes.as_string() -> string`
+
+Convert bytes type into a lua string. It is possible since lua strings don't
+require any specific encoding.
+
+```luau
+local bytes: Bytes = ...
+
+dbg(bytes:as_string())
 ```
 
 ## `Bytes.len -> number`

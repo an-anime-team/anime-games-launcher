@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@ use std::path::PathBuf;
 use std::borrow::Cow;
 use std::sync::mpsc::Sender;
 
-use agl_core::export::compression::zstd::zstd_safe::WriteBuf;
 use mlua::prelude::*;
 
 use librqbit::{
@@ -38,6 +37,7 @@ use librqbit::api::TorrentIdOrHash;
 
 use agl_core::tasks;
 
+use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 use super::*;
 
@@ -250,7 +250,7 @@ impl TorrentServer {
                         fn get_torrent_info<'a>(
                             torrent: Box<[u8]>
                         ) -> std::io::Result<AddTorrentInfo<'a>> {
-                            let torrent_str = String::from_utf8_lossy(torrent.as_slice())
+                            let torrent_str = String::from_utf8_lossy(&torrent)
                                 .to_string();
 
                             let mut info = AddTorrentInfo::TorrentFileBytes(torrent.into());
@@ -699,7 +699,7 @@ impl TorrentApi {
                     let torrent_server = torrent_server.clone();
                     let context = context.clone();
 
-                    lua.create_function(move |lua: &Lua, (torrent, options): (LuaValue, Option<LuaTable>)| {
+                    lua.create_function(move |lua: &Lua, (torrent, options): (Bytes, Option<LuaTable>)| {
                         let mut output_folder = context.temp_folder.clone();
                         let mut trackers = None;
                         let mut paused = false;
@@ -734,14 +734,11 @@ impl TorrentApi {
                             return Err(LuaError::external("no output folder write permissions"));
                         }
 
-                        let torrent = lua_value_to_bytes(torrent)?
-                            .into_boxed_slice();
-
                         let torrent_server = torrent_server.clone();
 
                         let value = PromiseValue::from_blocking(move || {
                             let result = torrent_server.add_torrent(
-                                torrent,
+                                (*torrent).clone(),
                                 output_folder,
                                 trackers,
                                 paused,

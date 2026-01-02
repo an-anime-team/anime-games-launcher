@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -43,43 +43,6 @@ pub mod portal_api;
 pub mod process_api;
 
 use crate::module::ModuleScope;
-
-/// Convert arbitrary lua value into bytes slice some reasonable way.
-pub fn lua_value_to_bytes(value: LuaValue) -> Result<Vec<u8>, LuaError> {
-    match value {
-        LuaValue::Number(value)  => Ok(value.to_be_bytes().to_vec()),
-        LuaValue::Integer(value) => Ok(value.to_be_bytes().to_vec()),
-        LuaValue::String(value)  => Ok(value.as_bytes().to_vec()),
-
-        // Assuming it's a vector of bytes.
-        LuaValue::Table(table) => {
-            let mut data = Vec::with_capacity(table.raw_len());
-
-            for byte in table.sequence_values::<u8>() {
-                data.push(byte?);
-            }
-
-            Ok(data)
-        }
-
-        _ => Err(LuaError::external("can't coerce given value to a bytes slice"))
-    }
-}
-
-/// Make lua table from a bytes slice.
-pub fn bytes_to_lua_table(
-    lua: &Lua,
-    slice: impl AsRef<[u8]>
-) -> Result<LuaTable, LuaError> {
-    let slice = slice.as_ref();
-    let table = lua.create_table_with_capacity(slice.len(), 0)?;
-
-    for byte in slice {
-        table.raw_push(*byte)?;
-    }
-
-    Ok(table)
-}
 
 /// Normalize path by resolving symbolic links.
 pub fn normalize_path(

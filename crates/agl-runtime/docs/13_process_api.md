@@ -23,14 +23,14 @@ output. Module dir is used as the binary's current directory.
 ```ts
 type Output = {
     // Exit code of the process.
-    status: number | null,
+    status: number | null;
 
     // Was the process closed normally.
-    is_ok: boolean,
+    is_ok: boolean;
 
     // Output of the process.
-    stdout: number[],
-    stderr: number[]
+    stdout: Bytes;
+    stderr: Bytes;
 };
 ```
 
@@ -42,7 +42,7 @@ fs.write_file(my_file, str.to_bytes("Hello, World!"))
 local output = process.exec("cat", { "my_file.txt" }):await()
 
 -- "Hello, World!"
-print(str.from_bytes(output.stdout))
+print(output.stdout:as_string())
 ```
 
 ## `process.open(path: string, [args: [string]], [env: [key: string]: string]) -> number`
@@ -54,7 +54,7 @@ current directory.
 local handle = process.open("curl", { "api.ipify.org" })
 ```
 
-## `process.stdin(handle: number, data: any)`
+## `process.stdin(handle: number, data: Bytes)`
 
 Write a bytes slice to the process's stdin.
 
@@ -64,7 +64,7 @@ local handle = process.open("my_app")
 process.stdin(handle, "some input")
 ```
 
-## `process.stdout(handle: number) -> number[] | nil`
+## `process.stdout(handle: number) -> Bytes | nil`
 
 Read the process's stdout chunk. If process is closed, then `nil` is returned.
 
@@ -75,14 +75,14 @@ while not process.finished(handle) do
     local output = process.stdout(handle)
 
     if output then
-        print(output)
+        print(`stdout: {output:as_string()}`)
     end
 end
 
 process.wait(handle)
 ```
 
-## `process.stderr(handle: number) -> number[] | nil`
+## `process.stderr(handle: number) -> Bytes | nil`
 
 Read the process's stderr chunk. If process is closed, then `nil` is returned.
 
@@ -93,7 +93,7 @@ while not process.finished(handle) do
     local err = process.stderr(handle)
 
     if err then
-        print("stderr: " .. err)
+        print(`stderr: {err:as_string()}`)
     end
 end
 
@@ -113,7 +113,7 @@ This is a blocking method. This will remove the process handle.
 local handle = process.open("my_app")
 local output = process.wait()
 
-print(output.stdout)
+dbg(output.stdout:as_string())
 ```
 
 ## `process.kill(handle: number)`

@@ -16,24 +16,26 @@ bytes-string conversions, support for data encoding and serialization.
 
 Following table contains list of `StringEncoding` enum values.
 
-| Name                   | Description                                          |
-| ---------------------- | ---------------------------------------------------- |
-| `base16` or `hex`      | Convert bytes array to base16 (hex) string.          |
-| `base32`               | Convert bytes array to base32 string (`base32/pad`). |
-| `base32/pad`           | RFC 4648 lower with padding.                         |
-| `base32/nopad`         | RFC 4648 lower without padding.                      |
-| `base32/hex-pad`       | RFC 4648 hex lower with padding.                     |
-| `base32/hex-nopad`     | RFC 4648 hex lower without padding.                  |
-| `base64`               | Convert bytes array to base64 string (`base64/pad`). |
-| `base64/pad`           | Standard lower with padding.                         |
-| `base64/nopad`         | Standard lower without padding.                      |
-| `base64/urlsafe-pad`   | URL-safe with padding.                               |
-| `base64/urlsafe-nopad` | URL-safe without padding.                            |
-| `json`                 | Convert given value to a JSON string.                |
-| `toml`                 | Convert given value to a TOML string.                |
-| `yaml`                 | Convert given value to a YAML string.                |
+| Name                     | Description                                          |
+| ------------------------ | ---------------------------------------------------- |
+| `base16` or `hex`        | Convert bytes array to base16 (hex) string.          |
+| `base32`                 | Convert bytes array to base32 string (`base32/pad`). |
+| `base32/pad`             | RFC 4648 lower with padding.                         |
+| `base32/nopad`           | RFC 4648 lower without padding.                      |
+| `base32/hex-pad`         | RFC 4648 hex lower with padding.                     |
+| `base32/hex-nopad`       | RFC 4648 hex lower without padding.                  |
+| `base64`                 | Convert bytes array to base64 string (`base64/pad`). |
+| `base64/pad`             | Standard lower with padding.                         |
+| `base64/nopad`           | Standard lower without padding.                      |
+| `base64/urlsafe-pad`     | URL-safe with padding.                               |
+| `base64/urlsafe-nopad`   | URL-safe without padding.                            |
+| `json` or `json/compact` | Convert given value to a JSON string.                |
+| `json/pretty`            | Convert given value to a pretty JSON string.         |
+| `toml` or `toml/compact` | Convert given value to a TOML string.                |
+| `toml/pretty`            | Convert given value to a pretty TOML string.         |
+| `yaml`                   | Convert given value to a YAML string.                |
 
-## `str.to_bytes(value: any, [charset: string]) -> [number]`
+## `str.to_bytes(value: any, [charset: string]) -> Bytes`
 
 Convert string (or some other values) to a bytes vector.
 
@@ -41,26 +43,19 @@ If charset is specified, then the given value's byte representation will be
 interpreted as UTF-8 encoded string, and this method will try to convert it into
 a given charset.
 
-> Note: this method internally uses the same algorithm as many other methods in
-> the standard which accept many types.
->
-> E.g. when hashing a value it firstly will be converted into bytes using this
-> method.
-
 ```luau
-print(str.to_bytes("abc")) -- [97, 98, 99]
-print(str.to_bytes(0.5)) -- [63, 224, 0, 0, 0, 0, 0, 0]
-print(str.to_bytes({ 1, 2, 3 })) -- [1, 2, 3]
+print(str.to_bytes("abc"):as_table()) -- [97, 98, 99]
+print(str.to_bytes({ 1, 2, 3 }):as_table()) -- [1, 2, 3]
 
 local a = str.from_bytes({ 208, 176, 208, 177, 208, 190, 208, 177, 208, 176 })
 local b = str.to_bytes(a, "cp1251")
 
 -- Cyrillic is encoded using 1 byte in cp1251:
 -- [224, 225, 238, 225, 224]
-print(b)
+print(b:as_table())
 ```
 
-## `str.from_bytes(bytes: [number], [charset: string]) -> string`
+## `str.from_bytes(bytes: Bytes, [charset: string]) -> string`
 
 Convert bytes slice into a lua string. If charset is specified, then
 this method will try to decode bytes from this charset into UTF-8.

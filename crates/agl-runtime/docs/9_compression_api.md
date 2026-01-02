@@ -55,7 +55,7 @@ presented for simplicity only.
 >    by this standard to process external data. You also have to specify the
 >    compression level in lzma decompressor builder, unlike other algorithms.
 
-## `compression.compress(algorithm: string, value: any) -> Promise<number[]>`
+## `compression.compress(algorithm: string, value: Bytes) -> Promise<Bytes>`
 
 Compress given value using provided algorithm. The algorithm string must be a
 `CompressionAlgorithm` value with optional compression level specified after the
@@ -71,7 +71,7 @@ dbg(compression.compress("zstd", "Hello, World!"):await())
 dbg(compression.compress("zstd:7", "Hello, World!"):await())
 ```
 
-## `compression.decompress(algorithm: string, value: number[]) -> Promise<number[]>`
+## `compression.decompress(algorithm: string, value: Bytes) -> Promise<Bytes>`
 
 Decompress given bytes slice using the specified algorithm. Since this function
 can take some time to finish the returned value is a background promise.
@@ -103,12 +103,22 @@ Create data decompression object, returning handle to it.
 local lzma2 = compression.decompressor("lzma2")
 ```
 
-## `compression.write(handle: number, value: [number]) -> number`
+## `compression.read(handle: number) -> Bytes`
 
-Write bytes to the compressor / decompressor object, returning amount of bytes
-of processed data added to the flush buffer. You can use this value to read
-chunks of processed data of some size, e.g. don't flush the data if it's under
-1024 bytes, which is quite helpful for advanced data processing logic.
+Read bytes from a compressor / decompressor object.
+
+```luau
+local compressor = compression.compressor("lz4")
+
+compression.write(compressor, str.to_bytes("Hello, "))
+compression.write(compressor, str.to_bytes("World!"))
+
+dbg(compression.read(compressor):as_table())
+```
+
+## `compression.write(handle: number, value: Bytes)`
+
+Write bytes to a compressor / decompressor object.
 
 ```luau
 local compressor = compression.compressor("lz4")
@@ -117,9 +127,11 @@ compression.write(compressor, str.to_bytes("Hello, "))
 compression.write(compressor, str.to_bytes("World!"))
 ```
 
-## `compression.flush(handle: number) -> [number]`
+## `compression.finish(handle: number)`
 
-Flush the written data, returning the processing result.
+Finish data compression / decompression. This method will finish procesing all
+the buffered data and, if needed, append a compression algorithm ending
+sequence.
 
 ```luau
 local compressor = compression.compressor("zstd:best")
@@ -127,7 +139,9 @@ local compressor = compression.compressor("zstd:best")
 compression.write(compressor, str.to_bytes("Hello, "))
 compression.write(compressor, str.to_bytes("World!"))
 
-dbg(compression.flush(compressor))
+compression.finish(compressor)
+
+dbg(compression.read():as_table())
 
 compression.close(compressor)
 ```

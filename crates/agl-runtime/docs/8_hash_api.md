@@ -43,7 +43,7 @@ algorithms are provided by the `agl-core` library.
 | `sha3-384`        | 384  | Yes           | https://crates.io/crates/sha3        |
 | `sha3-512`        | 256  | Yes           | https://crates.io/crates/sha3        |
 
-## `hash.digitize(algorithm: HashAlgorithm, value: any) -> number[]`
+## `hash.digitize(algorithm: HashAlgorithm, value: Bytes) -> Bytes`
 
 Calculate hash for a given bytes slice using specified algorithm.
 
@@ -52,7 +52,7 @@ Calculate hash for a given bytes slice using specified algorithm.
 dbg(hash.digitize("crc32", "Hello, World!"))
 ```
 
-## `hash.digitize_file(algorithm: HashAlgorithm, path: string) -> Promise<number[]>`
+## `hash.digitize_file(algorithm: HashAlgorithm, path: string) -> Promise<Bytes>`
 
 Calculate hash for a given file path using specified algorithm. Only accessible
 files can be hashed. Since this function works with system IO the returned value
@@ -78,7 +78,7 @@ local hasher = hash.hasher("md5")
 -- do some actions
 ```
 
-## `hash.write(handle: number, value: any)`
+## `hash.write(handle: number, value: Bytes)`
 
 Write a chunk of data to the open hasher.
 
@@ -105,7 +105,7 @@ hash.close(hasher)
 net.close(head.handle)
 ```
 
-## `hash.finalize(handle: number) -> number[]`
+## `hash.finalize(handle: number) -> Bytes`
 
 Finalize hash calculation in the open hasher struct. This will close the hasher
 and prevent future writes.

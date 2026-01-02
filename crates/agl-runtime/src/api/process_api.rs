@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,10 +23,11 @@ use std::process::{Command, Stdio};
 
 use mlua::prelude::*;
 
+use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput};
 use super::*;
 
-const PROCESS_READ_CHUNK_LEN: usize = 4096;
+const PROCESS_READ_CHUNK_SIZE: usize = 4096;
 
 pub struct ProcessApi {
     lua: Lua,
@@ -96,10 +97,13 @@ impl ProcessApi {
                             // Prepare the output.
                             let result = lua.create_table_with_capacity(0, 4)?;
 
+                            let stdout = Bytes::new(output.stdout.into_boxed_slice());
+                            let stderr = Bytes::new(output.stderr.into_boxed_slice());
+
                             result.raw_set("status", output.status.code())?;
                             result.raw_set("is_ok", output.status.success())?;
-                            result.raw_set("stdout", output.stdout)?;
-                            result.raw_set("stderr", output.stderr)?;
+                            result.raw_set("stdout", stdout)?;
+                            result.raw_set("stderr", stderr)?;
 
                             Ok(LuaValue::Table(result))
                         }) as TaskOutput)
@@ -174,7 +178,7 @@ impl ProcessApi {
             process_stdin: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, (handle, data): (i32, LuaValue)| {
+                lua.create_function(move |_, (handle, data): (i32, Bytes)| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -184,7 +188,7 @@ impl ProcessApi {
 
                     // Try to write data to the process's stdin.
                     if let Some(stdin) = &mut process.stdin {
-                        stdin.write_all(&lua_value_to_bytes(data)?)?;
+                        stdin.write_all(&data)?;
                     }
 
                     Ok(handle)
@@ -204,12 +208,12 @@ impl ProcessApi {
 
                     // Read the process's stdout chunk.
                     if let Some(stdout) = &mut process.stdout {
-                        let mut buf = [0; PROCESS_READ_CHUNK_LEN];
+                        let mut buf = [0; PROCESS_READ_CHUNK_SIZE];
 
                         let len = stdout.read(&mut buf)?;
 
-                        return bytes_to_lua_table(lua, &buf[..len])
-                            .map(LuaValue::Table);
+                        return Bytes::new(buf[..len].to_vec().into_boxed_slice())
+                            .into_lua(lua);
                     }
 
                     Ok(LuaNil)
@@ -229,12 +233,12 @@ impl ProcessApi {
 
                     // Read the process's stderr chunk.
                     if let Some(stderr) = &mut process.stderr {
-                        let mut buf = [0; PROCESS_READ_CHUNK_LEN];
+                        let mut buf = [0; PROCESS_READ_CHUNK_SIZE];
 
                         let len = stderr.read(&mut buf)?;
 
-                        return bytes_to_lua_table(lua, &buf[..len])
-                            .map(LuaValue::Table);
+                        return Bytes::new(buf[..len].to_vec().into_boxed_slice())
+                            .into_lua(lua);
                     }
 
                     Ok(LuaNil)
@@ -277,10 +281,13 @@ impl ProcessApi {
                     // Prepare lua result.
                     let result = lua.create_table_with_capacity(0, 4)?;
 
+                    let stdout = Bytes::new(output.stdout.into_boxed_slice());
+                    let stderr = Bytes::new(output.stderr.into_boxed_slice());
+
                     result.raw_set("status", output.status.code())?;
                     result.raw_set("is_ok", output.status.success())?;
-                    result.raw_set("stdout", output.stdout)?;
-                    result.raw_set("stderr", output.stderr)?;
+                    result.raw_set("stdout", stdout)?;
+                    result.raw_set("stderr", stderr)?;
 
                     Ok(result)
                 })?

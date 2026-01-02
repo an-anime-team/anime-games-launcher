@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -25,9 +25,10 @@ use agl_core::compression::{Compressor, Decompressor};
 
 use mlua::prelude::*;
 
+use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput};
-use super::filesystem_api::IO_READ_CHUNK_LEN;
-use super::*;
+
+pub const COMPRESSOR_READ_CHUNK_SIZE: usize = 4096;
 
 enum Variant {
     Compressor(Compressor),
@@ -77,14 +78,13 @@ impl CompressionApi {
         let compression_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            compression_compress: lua.create_function(move |lua, (algorithm, value): (LuaString, LuaValue)| {
+            compression_compress: lua.create_function(move |lua, (algorithm, value): (LuaString, Bytes)| {
                 let mut compressor = Compressor::from_str(&algorithm.to_string_lossy())
                     .map_err(|err| {
                         LuaError::external("failed to create compressor")
                             .context(err)
                     })?;
 
-                let value = lua_value_to_bytes(value)?;
                 let len = value.len();
 
                 let value = PromiseValue::from_blocking(move || {
@@ -100,8 +100,8 @@ impl CompressionApi {
                     compressor.read_to_end(&mut result)?;
 
                     Ok(Box::new(move |lua: &Lua| {
-                        bytes_to_lua_table(lua, result)
-                            .map(LuaValue::Table)
+                        Bytes::new(result.into_boxed_slice())
+                            .into_lua(lua)
                     }) as TaskOutput)
                 });
 
@@ -109,14 +109,13 @@ impl CompressionApi {
                     .into_lua(lua)
             })?,
 
-            compression_decompress: lua.create_function(move |lua, (algorithm, value): (LuaString, LuaValue)| {
+            compression_decompress: lua.create_function(move |lua, (algorithm, value): (LuaString, Bytes)| {
                 let mut decompressor = Decompressor::from_str(&algorithm.to_string_lossy())
                     .map_err(|err| {
                         LuaError::external("failed to create decompressor")
                             .context(err)
                     })?;
 
-                let value = lua_value_to_bytes(value)?;
                 let len = value.len();
 
                 let value = PromiseValue::from_blocking(move || {
@@ -131,8 +130,8 @@ impl CompressionApi {
                     decompressor.read_to_end(&mut result)?;
 
                     Ok(Box::new(move |lua: &Lua| {
-                        bytes_to_lua_table(lua, result)
-                            .map(LuaValue::Table)
+                        Bytes::new(result.into_boxed_slice())
+                            .into_lua(lua)
                     }) as TaskOutput)
                 });
 
@@ -210,18 +209,19 @@ impl CompressionApi {
                         return Err(LuaError::external("invalid compression handle"));
                     };
 
-                    let mut buf = [0; IO_READ_CHUNK_LEN];
+                    let mut buf = [0; COMPRESSOR_READ_CHUNK_SIZE];
 
                     let len = variant.read(&mut buf)?;
 
-                    bytes_to_lua_table(lua, &buf[..len])
+                    Bytes::new(buf[..len].to_vec().into_boxed_slice())
+                        .into_lua(lua)
                 })?
             },
 
             compression_write: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |_, (handle, value): (i32, LuaValue)| {
+                lua.create_function(move |_, (handle, value): (i32, Bytes)| {
                     let mut handles = compression_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read compression handle")
@@ -232,7 +232,7 @@ impl CompressionApi {
                         return Err(LuaError::external("invalid compression handle"));
                     };
 
-                    variant.write_all(&lua_value_to_bytes(value)?)?;
+                    variant.write_all(&value)?;
                     variant.flush()?;
 
                     Ok(())

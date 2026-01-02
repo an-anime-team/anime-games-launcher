@@ -20,7 +20,7 @@ type Options = {
     headers?: [key: string]: string;
 
     // Body of the request.
-    body?: number[];
+    body?: Bytes;
 };
 
 type Response = {
@@ -34,7 +34,7 @@ type Response = {
     headers: [key: string]: string;
 
     // Body of the response.
-    body: number[];
+    body: Bytes;
 };
 ```
 
@@ -42,7 +42,7 @@ type Response = {
 local response = http.fetch("https://example.com")
 
 if response.is_ok then
-    print(response.body)
+    print(response.body:as_string())
 end
 ```
 
@@ -54,16 +54,16 @@ similar to the IO API.
 ```ts
 type LazyResponse = {
     // Status code of the response.
-    status: number,
+    status: number;
 
     // True if request succeeded (status 200 - 299).
-    is_ok: boolean,
+    is_ok: boolean;
 
     // Table of response headers.
-    headers: [key: string]: string,
+    headers: [key: string]: string;
 
     // Request handle.
-    handle: number
+    handle: number;
 };
 ```
 
@@ -77,9 +77,9 @@ end
 http.close(head.handle)
 ```
 
-## `http.read(handle: number) -> number[] | nil`
+## `http.read(handle: number) -> Bytes | nil`
 
-Read chunk of response body, or return nil if there's nothing else to read.
+Read chunk of response body, or return `nil` if there's nothing else to read.
 
 ```luau
 local head = http.open("https://example.com/large_file.zip")

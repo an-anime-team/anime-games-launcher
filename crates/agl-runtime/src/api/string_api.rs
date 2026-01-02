@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,28 +16,36 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use agl_core::export::compression::zstd::zstd_safe::WriteBuf;
 use mlua::prelude::*;
 
 use encoding_rs::Encoding;
 
-use super::*;
+use super::bytes::Bytes;
 
-#[allow(clippy::only_used_in_recursion)]
-fn fix_lua_type(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
+/// Filter provided lua value to keep only basic types like numbers, booleans,
+/// strings and tables.
+fn filter_lua_value(value: LuaValue) -> Result<LuaValue, LuaError> {
     match value {
-        LuaValue::Integer(integer) => Ok(LuaValue::Integer(integer)),
-        LuaValue::Number(double)   => Ok(LuaValue::Number(double)),
-        LuaValue::Boolean(boolean) => Ok(LuaValue::Boolean(boolean)),
-        LuaValue::String(string)   => Ok(LuaValue::String(string)),
+        LuaValue::Integer(_) |
+        LuaValue::Number(_) |
+        LuaValue::Boolean(_) |
+        LuaValue::String(_) => Ok(value),
 
         LuaValue::Table(table) => {
             table.for_each::<LuaValue, LuaValue>(|key, value| {
-                table.raw_set(key, fix_lua_type(lua, value)?)?;
+                table.raw_set(key, filter_lua_value(value)?)?;
 
                 Ok(())
             })?;
 
             Ok(LuaValue::Table(table))
+        }
+
+        // Bytes userdata
+        LuaValue::UserData(object) if object.get::<Option<LuaFunction>>("as_table")?.is_some() => {
+            object.call_method::<LuaTable>("as_table", ())
+                .map(LuaValue::Table)
         }
 
         _ => Ok(LuaValue::Nil)
@@ -49,8 +57,8 @@ enum StringEncoding {
     Base16,
     Base32(base32::Alphabet),
     Base64(base64::engine::GeneralPurpose),
-    Json,
-    Toml,
+    Json { pretty: bool },
+    Toml { pretty: bool },
     Yaml
 }
 
@@ -117,8 +125,12 @@ impl StringEncoding {
                 Some(Self::Base64(encoding))
             }
 
-            b"json" => Some(Self::Json),
-            b"toml" => Some(Self::Toml),
+            b"json" | b"json/compact"  => Some(Self::Json { pretty: false }),
+            b"json/pretty" => Some(Self::Json { pretty: true }),
+
+            b"toml" | b"toml/compact" => Some(Self::Toml { pretty: false }),
+            b"toml/pretty" => Some(Self::Toml { pretty: true }),
+
             b"yaml" => Some(Self::Yaml),
 
             _ => None
@@ -130,35 +142,41 @@ impl StringEncoding {
 
         match self {
             Self::Base16 => {
-                let value = lua_value_to_bytes(value)?;
+                let value = Bytes::from_lua(value, lua)?;
 
-                lua.create_string(hex::encode(value))
+                lua.create_string(hex::encode(value.as_slice()))
             }
 
             Self::Base32(alphabet) => {
-                let value = lua_value_to_bytes(value)?;
+                let value = Bytes::from_lua(value, lua)?;
 
-                lua.create_string(base32::encode(*alphabet, &value))
+                lua.create_string(base32::encode(*alphabet, value.as_slice()))
             }
 
             Self::Base64(engine) => {
-                let value = lua_value_to_bytes(value)?;
+                let value = Bytes::from_lua(value, lua)?;
 
-                lua.create_string(engine.encode(value))
+                lua.create_string(engine.encode(value.as_slice()))
             }
 
-            Self::Json => {
-                let value = serde_json::to_vec_pretty(&value)
-                    .map_err(LuaError::external)?;
+            Self::Json { pretty } => {
+                let value = if *pretty {
+                    serde_json::to_vec_pretty(&value)
+                } else {
+                    serde_json::to_vec(&value)
+                };
 
-                lua.create_string(value)
+                lua.create_string(value.map_err(LuaError::external)?)
             }
 
-            Self::Toml => {
-                let value = toml::to_string(&value)
-                    .map_err(LuaError::external)?;
+            Self::Toml { pretty } => {
+                let value = if *pretty {
+                    toml::to_string_pretty(&value)
+                } else {
+                    toml::to_string(&value)
+                };
 
-                lua.create_string(value)
+                lua.create_string(value.map_err(LuaError::external)?)
             }
 
             Self::Yaml => {
@@ -178,8 +196,8 @@ impl StringEncoding {
                 let value = hex::decode(string.as_bytes())
                     .map_err(LuaError::external)?;
 
-                bytes_to_lua_table(lua, value)
-                    .map(LuaValue::Table)
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
             }
 
             Self::Base32(alphabet) => {
@@ -189,40 +207,40 @@ impl StringEncoding {
                 let value = base32::decode(*alphabet, &string)
                     .ok_or_else(|| LuaError::external("invalid base32 string"))?;
 
-                bytes_to_lua_table(lua, value)
-                    .map(LuaValue::Table)
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
             }
 
             Self::Base64(engine) => {
                 let value = engine.decode(string.as_bytes())
                     .map_err(LuaError::external)?;
 
-                bytes_to_lua_table(lua, value)
-                    .map(LuaValue::Table)
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
             }
 
-            Self::Json => {
+            Self::Json { .. } => {
                 let value = serde_json::from_slice::<serde_json::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
-                Ok(fix_lua_type(lua, lua.to_value(&value)?)?)
+                Ok(filter_lua_value(lua.to_value(&value)?)?)
             }
 
-            Self::Toml => {
+            Self::Toml { .. } => {
                 let string = string.to_string_lossy()
                     .to_string();
 
                 let value = toml::from_str::<toml::Value>(&string)
                     .map_err(LuaError::external)?;
 
-                Ok(fix_lua_type(lua, lua.to_value(&value)?)?)
+                Ok(filter_lua_value(lua.to_value(&value)?)?)
             }
 
             Self::Yaml => {
                 let value = serde_yml::from_slice::<serde_yml::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
-                Ok(fix_lua_type(lua, lua.to_value(&value)?)?)
+                Ok(filter_lua_value(lua.to_value(&value)?)?)
             }
         }
     }
@@ -240,26 +258,27 @@ pub struct StringApi {
 impl StringApi {
     pub fn new(lua: Lua) -> Result<Self, LuaError> {
         Ok(Self {
-            str_to_bytes: lua.create_function(|_, (value, charset): (LuaValue, Option<LuaString>)| {
-                let value = lua_value_to_bytes(value)?;
-
+            str_to_bytes: lua.create_function(|lua: &Lua, (value, charset): (Bytes, Option<LuaString>)| {
                 let Some(charset) = charset else {
-                    return Ok(value);
+                    return value.into_lua(lua);
                 };
 
                 let Some(charset) = Encoding::for_label(&charset.as_bytes()) else {
                     return Err(LuaError::external("invalid charset"));
                 };
 
-                let value = String::from_utf8(value)
+                let value = String::from_utf8(value.to_vec())
                     .map_err(|err| LuaError::external(format!("utf-8 string expected: {err}")))?;
 
-                Ok(charset.encode(&value).0.to_vec())
+                let value = charset.encode(&value).0.to_vec();
+
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
             })?,
 
-            str_from_bytes: lua.create_function(|lua, (value, charset): (Vec<u8>, Option<LuaString>)| {
+            str_from_bytes: lua.create_function(|lua, (value, charset): (Bytes, Option<LuaString>)| {
                 let Some(charset) = charset else {
-                    return lua.create_string(value);
+                    return lua.create_string(value.as_slice());
                 };
 
                 let Some(charset) = Encoding::for_label(&charset.as_bytes()) else {

@@ -202,13 +202,11 @@ impl LuaUserData for Bytes {
 
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("as_table", |lua: &Lua, bytes: &Self, _: ()| {
-            let table = lua.create_table_with_capacity(bytes.len, 0)?;
+            lua.create_sequence_from(bytes.iter().copied())
+        });
 
-            for byte in &bytes.buf {
-                table.raw_push(*byte)?;
-            }
-
-            Ok(table)
+        methods.add_method("as_string", |lua: &Lua, bytes: &Self, _: ()| {
+            lua.create_string(&bytes.buf)
         });
 
         methods.add_method_mut("read", |lua: &Lua, bytes: &mut Self, _: ()| {
@@ -258,5 +256,21 @@ impl LuaUserData for Bytes {
 
             Ok(LuaValue::Integer(bytes.pos as i64))
         });
+    }
+}
+
+impl AsRef<Bytes> for Bytes {
+    #[inline(always)]
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl std::ops::Deref for Bytes {
+    type Target = Box<[u8]>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.buf
     }
 }

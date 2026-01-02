@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ use agl_core::hashes::{Hasher, HashAlgorithm};
 
 use mlua::prelude::*;
 
+use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue};
 use super::*;
 
@@ -47,13 +48,13 @@ impl HashApi {
         let hasher_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            hash_digitize: lua.create_function(move |_, (algorithm, value): (LuaString, LuaValue)| {
+            hash_digitize: lua.create_function(move |_, (algorithm, value): (LuaString, Bytes)| {
                 let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                     .map_err(LuaError::external)?;
 
                 let mut hasher = Hasher::new(algorithm);
 
-                hasher.write_all(&lua_value_to_bytes(value)?)?;
+                hasher.write_all(&value)?;
                 hasher.flush()?;
 
                 let hash = hasher.finalize().0;
@@ -102,9 +103,8 @@ impl HashApi {
                             let hash = hasher.finalize().0;
 
                             Ok(Box::new(move |lua: &Lua| {
-                                let value = LuaValue::Table(bytes_to_lua_table(lua, &hash)?);
-
-                                Ok(value)
+                                Bytes::new(hash)
+                                    .into_lua(lua)
                             }) as task_api::TaskOutput)
                         });
 
@@ -142,7 +142,7 @@ impl HashApi {
             hash_write: {
                 let hasher_handles = hasher_handles.clone();
 
-                lua.create_function(move |_, (handle, value): (i32, LuaValue)| {
+                lua.create_function(move |_, (handle, value): (i32, Bytes)| {
                     let mut hashers = hasher_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -150,7 +150,7 @@ impl HashApi {
                         return Err(LuaError::external("invalid hasher handle"));
                     };
 
-                    hasher.write_all(&lua_value_to_bytes(value)?)?;
+                    hasher.write_all(&value)?;
                     hasher.flush()?;
 
                     Ok(())
@@ -160,7 +160,7 @@ impl HashApi {
             hash_finalize: {
                 let hasher_handles = hasher_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let mut hashers = hasher_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -168,7 +168,8 @@ impl HashApi {
                         return Err(LuaError::external("invalid hasher handle"));
                     };
 
-                    Ok(hasher.finalize().0)
+                    Bytes::new(hasher.finalize().0)
+                        .into_lua(lua)
                 })?
             },
 
@@ -178,7 +179,7 @@ impl HashApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 6)?;
+        let env = self.lua.create_table_with_capacity(0, 5)?;
 
         env.raw_set("digitize", &self.hash_digitize)?;
         env.raw_set("digitize_file", (self.hash_digitize_file)(&self.lua, context)?)?;
@@ -192,6 +193,8 @@ impl HashApi {
 
 #[cfg(test)]
 mod tests {
+    use agl_core::export::compression::zstd::zstd_safe::WriteBuf;
+
     use super::*;
 
     #[test]
@@ -243,7 +246,7 @@ mod tests {
             api.hash_write.call::<()>((hasher, "World"))?;
             api.hash_write.call::<()>((hasher, "!"))?;
 
-            assert_eq!(api.hash_finalize.call::<Vec<u8>>(hasher)?, hash);
+            assert_eq!(api.hash_finalize.call::<Bytes>(hasher)?.as_slice(), hash);
         }
 
         Ok(())
