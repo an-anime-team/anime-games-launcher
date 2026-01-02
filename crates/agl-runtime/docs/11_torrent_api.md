@@ -52,10 +52,10 @@ print(`Info hash: {torrent_file.info_hash}`)
 print(`Magnet link: {torrent_file.magnet}`)
 ```
 
-## `torrent.add(torrent: string, [options: AddTorrentOptions]) -> Promise<string>`
+## `torrent.add(torrent: Bytes, [options: AddTorrentOptions]) -> Promise<string>`
 
-Add torrent file, magnet link or info hash to the downloading queue and return 
-added torrent's info hash string.
+Add torrent from a file path or content, magnet link or info hash to the
+downloading queue and return added torrent's info hash string.
 
 While torrent files contain all the necessary information about the torrent the
 same can't be said for info hashes and magnet links. That's why a background
