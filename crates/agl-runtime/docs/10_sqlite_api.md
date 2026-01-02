@@ -22,7 +22,7 @@ of the database connection which can be used in other methods.
 local handle = sqlite.open("settings.db")
 ```
 
-## `sqlite.exec(handle: number, command: string, [params: any[]]) -> number`
+## `sqlite.exec(handle: number, command: string, [params: any[]]) -> Promise<number>`
 
 Execute single SQL command, returning latest *inserted* row id. If no inserts
 happened - old value will be returned.
@@ -40,16 +40,16 @@ local handle = sqlite.open("example.db")
 local row_id = sqlite.exec(handle, "INSERT INTO your_table (column1, column2) VALUES (?1, ?2)", {
     "Example value 1",
     "Example value 2"
-})
+}):await()
 
 -- Delete just inserted row using its id.
-sqlite.exec(handle, "DELETE FROM your_table WHERE rowid = ?1", { row_id })
+sqlite.exec(handle, "DELETE FROM your_table WHERE rowid = ?1", { row_id }):await()
 
 -- Always close your database connections.
 sqlite.close(handle)
 ```
 
-## `sqlite.batch(handle: humber, command: string)`
+## `sqlite.batch(handle: humber, command: string) -> Promise<void>`
 
 Execute multiple SQL commands. Unlike `sqlite.exec` here you can't provide
 params to the command. Instead you have to modify the command itself and ensure
@@ -64,7 +64,7 @@ local rows = sqlite.batch(handle, [[
         INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
         INSERT INTO your_table (column1, column2) VALUES ('value5', 'value6');
     COMMIT;
-]])
+]]):await()
 
 print(`Query affected {rows} rows`)
 
@@ -72,7 +72,7 @@ print(`Query affected {rows} rows`)
 sqlite.close(handle)
 ```
 
-## `sqlite.query(handle: number, query: string, [params: any[]]) -> table[] | nil`
+## `sqlite.query(handle: number, query: string, [params: any[]]) -> Promise<table[] | nil>`
 
 Query multiple rows from the database. This method will return a list of rows
 stored as lua tables or `nil` if no rows were found. Note that this is a
@@ -84,7 +84,7 @@ your query.
 local handle = sqlite.open("example.db") -- empty database
 
 -- Will return nil because there's no rows in your_table
-if not sqlite.query(handle, "SELECT * FROM your_table") then
+if not sqlite.query(handle, "SELECT * FROM your_table"):await() then
     print("No rows matched")
 end
 
@@ -93,9 +93,9 @@ sqlite.batch(handle, [[
     INSERT INTO your_table (column1, column2) VALUES ('value1', 'value2');
     INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
     INSERT INTO your_table (column1, column2) VALUES ('value5', 'value6');
-]])
+]]):await()
 
-local rows = sqlite.query(handle, "SELECT rowid, column1, column2 FROM your_table")
+local rows = sqlite.query(handle, "SELECT rowid, column1, column2 FROM your_table"):await()
 
 for _, row in ipairs(rows) do
     print(`[row {row[1]}] column1 = {row[2]}, column2 = {row[3]}`)
@@ -105,7 +105,7 @@ end
 sqlite.close(handle)
 ```
 
-## `sqlite.query_row(hande: number, query: string, [params: [any]]) -> table | nil`
+## `sqlite.query_row(hande: number, query: string, [params: [any]]) -> Promise<table | nil>`
 
 Query single row from the database. Unlike `sqlite.query` this method will
 return the first matched row and stop execution.
@@ -116,7 +116,7 @@ This method will return `nil` if no rows matched.
 local handle = sqlite.open("example.db") -- empty database
 
 -- Will return nil because there's no rows in your_table
-if not sqlite.query_row(handle, "SELECT * FROM your_table") then
+if not sqlite.query_row(handle, "SELECT * FROM your_table"):await() then
     print("No rows matched")
 end
 
@@ -125,13 +125,13 @@ sqlite.batch(handle, [[
     INSERT INTO your_table (column1, column2) VALUES ('value1', 'value2');
     INSERT INTO your_table (column1, column2) VALUES ('value3', 'value4');
     INSERT INTO your_table (column1, column2) VALUES ('value5', 'value6');
-]])
+]]):await()
 
-local row = sqlite.query_row(handle, "SELECT rowid FROM your_table")
+local row = sqlite.query_row(handle, "SELECT rowid FROM your_table"):await()
 
 dbg(row[1]) -- 1 (first inserted row)
 
-row = sqlite.query_row(handle, "SELECT rowid FROM your_table WHERE rowid > 1")
+row = sqlite.query_row(handle, "SELECT rowid FROM your_table WHERE rowid > 1"):await()
 
 dbg(row[1]) -- 2 (second inserted row)
 

@@ -25,6 +25,7 @@ use rusqlite::{Connection, ToSql};
 use rusqlite::types::{ValueRef, ToSqlOutput, FromSql, FromSqlResult};
 
 use super::bytes::Bytes;
+use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 use super::*;
 
 /// Lua to SQLite types bridge.
@@ -164,16 +165,11 @@ impl SqliteApi {
             sqlite_exec: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |_, (handle, command, params): (i32, LuaString, Option<LuaTable>)| {
-                    let mut handles = connection_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                lua.create_function(move |lua: &Lua, (handle, command, params): (i32, LuaString, Option<LuaTable>)| {
+                    let connection_handles = connection_handles.clone();
 
-                    let Some(connection) = handles.get_mut(&handle) else {
-                        return Err(LuaError::external("invalid database connection handle"));
-                    };
-
-                    let mut query = connection.prepare_cached(&command.to_string_lossy())
-                        .map_err(LuaError::external)?;
+                    let command = command.to_string_lossy()
+                        .to_string();
 
                     let mut query_params = vec![];
 
@@ -182,44 +178,64 @@ impl SqliteApi {
                             .collect::<Result<_, LuaError>>()?;
                     }
 
-                    query.execute(rusqlite::params_from_iter(query_params))
-                        .map_err(LuaError::external)?;
+                    let value = PromiseValue::from_blocking(move || {
+                        let mut handles = connection_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                    Ok(connection.last_insert_rowid())
+                        let Some(connection) = handles.get_mut(&handle) else {
+                            return Err(LuaError::external("invalid database connection handle"));
+                        };
+
+                        let mut query = connection.prepare_cached(&command)
+                            .map_err(LuaError::external)?;
+
+                        query.execute(rusqlite::params_from_iter(query_params))
+                            .map_err(LuaError::external)?;
+
+                        Ok(task_output(Ok(LuaValue::Integer(connection.last_insert_rowid()))))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
             sqlite_batch: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |_, (handle, command): (i32, LuaString)| {
-                    let mut handles = connection_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                lua.create_function(move |lua: &Lua, (handle, command): (i32, LuaString)| {
+                    let connection_handles = connection_handles.clone();
 
-                    let Some(connection) = handles.get_mut(&handle) else {
-                        return Err(LuaError::external("invalid database connection handle"));
-                    };
+                    let command = command.to_string_lossy()
+                        .to_string();
 
-                    connection.execute_batch(&command.to_string_lossy())
-                        .map_err(LuaError::external)?;
+                    let value = PromiseValue::from_blocking(move || {
+                        let mut handles = connection_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                    Ok(())
+                        let Some(connection) = handles.get_mut(&handle) else {
+                            return Err(LuaError::external("invalid database connection handle"));
+                        };
+
+                        connection.execute_batch(&command)
+                            .map_err(LuaError::external)?;
+
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
             sqlite_query: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |lua, (handle, query, params): (i32, LuaString, Option<LuaTable>)| -> Result<LuaTable, LuaError> {
-                    let mut handles = connection_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                lua.create_function(move |lua: &Lua, (handle, query, params): (i32, LuaString, Option<LuaTable>)| {
+                    let connection_handles = connection_handles.clone();
 
-                    let Some(connection) = handles.get_mut(&handle) else {
-                        return Err(LuaError::external("invalid database connection handle"));
-                    };
-
-                    let mut query = connection.prepare_cached(&query.to_string_lossy())
-                        .map_err(LuaError::external)?;
+                    let query = query.to_string_lossy()
+                        .to_string();
 
                     let mut query_params = vec![];
 
@@ -228,49 +244,62 @@ impl SqliteApi {
                             .collect::<Result<_, LuaError>>()?;
                     }
 
-                    let rows = query.query_map(rusqlite::params_from_iter(query_params), |row| {
-                        let mut columns = Vec::new();
+                    let value = PromiseValue::from_blocking(move || {
+                        let mut handles = connection_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                        let mut i = 0;
+                        let Some(connection) = handles.get_mut(&handle) else {
+                            return Err(LuaError::external("invalid database connection handle"));
+                        };
 
-                        while let Ok(column) = row.get::<_, SqliteParam>(i) {
-                            columns.push(column);
+                        let mut query = connection.prepare_cached(&query)
+                            .map_err(LuaError::external)?;
 
-                            i += 1;
-                        }
+                        let rows = query.query_map(rusqlite::params_from_iter(query_params), |row| {
+                            let mut columns = Vec::new();
 
-                        Ok(columns)
-                    }).map_err(LuaError::external)?;
+                            let mut i = 0;
 
-                    let result = lua.create_table()?;
+                            while let Ok(column) = row.get::<_, SqliteParam>(i) {
+                                columns.push(column);
 
-                    for row in rows {
-                        let row = row.map_err(LuaError::external)?;
+                                i += 1;
+                            }
 
-                        let row = row.into_iter()
-                            .map(|column| column.into_lua(lua))
-                            .collect::<Result<Box<[_]>, _>>()?;
+                            Ok(columns)
+                        }).map_err(LuaError::external)?;
 
-                        result.raw_push(lua.create_sequence_from(row)?)?;
-                    }
+                        let rows = rows.collect::<Result<Vec<Vec<SqliteParam>>, rusqlite::Error>>()
+                            .map_err(LuaError::external)?;
 
-                    Ok(result)
+                        Ok(Box::new(move |lua: &Lua| {
+                            let result = lua.create_table_with_capacity(rows.len(), 0)?;
+
+                            for row in rows {
+                                let row = row.into_iter()
+                                    .map(|column| column.into_lua(lua))
+                                    .collect::<Result<Box<[_]>, _>>()?;
+
+                                result.raw_push(lua.create_sequence_from(row)?)?;
+                            }
+
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
             sqlite_query_row: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |lua, (handle, query, params): (i32, LuaString, Option<LuaTable>)| -> Result<LuaValue, LuaError> {
-                    let mut handles = connection_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                lua.create_function(move |lua: &Lua, (handle, query, params): (i32, LuaString, Option<LuaTable>)| -> Result<LuaValue, LuaError> {
+                    let connection_handles = connection_handles.clone();
 
-                    let Some(connection) = handles.get_mut(&handle) else {
-                        return Err(LuaError::external("invalid database connection handle"));
-                    };
-
-                    let mut query = connection.prepare_cached(&query.to_string_lossy())
-                        .map_err(LuaError::external)?;
+                    let query = query.to_string_lossy()
+                        .to_string();
 
                     let mut query_params = vec![];
 
@@ -279,37 +308,54 @@ impl SqliteApi {
                             .collect::<Result<_, LuaError>>()?;
                     }
 
-                    let row = query.query_row(rusqlite::params_from_iter(query_params), |row| {
-                        let mut columns = Vec::new();
+                    let value = PromiseValue::from_blocking(move || {
+                        let mut handles = connection_handles.lock()
+                            .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
-                        let mut i = 0;
+                        let Some(connection) = handles.get_mut(&handle) else {
+                            return Err(LuaError::external("invalid database connection handle"));
+                        };
 
-                        while let Ok(column) = row.get::<_, SqliteParam>(i) {
-                            columns.push(column);
+                        let mut query = connection.prepare_cached(&query)
+                            .map_err(LuaError::external)?;
 
-                            i += 1;
-                        }
+                        let row = query.query_row(rusqlite::params_from_iter(query_params), |row| {
+                            let mut columns = Vec::new();
 
-                        Ok(columns)
+                            let mut i = 0;
+
+                            while let Ok(column) = row.get::<_, SqliteParam>(i) {
+                                columns.push(column);
+
+                                i += 1;
+                            }
+
+                            Ok(columns)
+                        });
+
+                        Ok(Box::new(move |lua: &Lua| {
+                            let row = match row {
+                                Ok(row) => row,
+
+                                Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(LuaValue::Nil),
+                                Err(err) => return Err(LuaError::external(err))
+                            };
+
+                            if row.is_empty() {
+                                return Ok(LuaValue::Nil);
+                            }
+
+                            let row = row.into_iter()
+                                .map(|column| column.into_lua(lua))
+                                .collect::<Result<Vec<LuaValue>, LuaError>>()?;
+
+                            lua.create_sequence_from(row)
+                                .map(LuaValue::Table)
+                        }) as TaskOutput)
                     });
 
-                    let row = match row {
-                        Ok(row) => row,
-
-                        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(LuaValue::Nil),
-                        Err(err) => return Err(LuaError::external(err))
-                    };
-
-                    if row.is_empty() {
-                        return Ok(LuaValue::Nil);
-                    }
-
-                    let row = row.into_iter()
-                        .map(|column| column.into_lua(lua))
-                        .collect::<Result<Vec<LuaValue>, LuaError>>()?;
-
-                    lua.create_sequence_from(row)
-                        .map(LuaValue::Table)
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
