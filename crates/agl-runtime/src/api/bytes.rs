@@ -49,6 +49,11 @@ impl Bytes {
     pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
+
+    #[inline]
+    pub const fn as_slice(&self) -> &[u8] {
+        &self.buf
+    }
 }
 
 impl Read for Bytes {

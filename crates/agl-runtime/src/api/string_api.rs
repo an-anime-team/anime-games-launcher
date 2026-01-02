@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use agl_core::export::compression::zstd::zstd_safe::WriteBuf;
 use mlua::prelude::*;
 
 use encoding_rs::Encoding;

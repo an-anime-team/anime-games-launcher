@@ -193,8 +193,6 @@ impl HashApi {
 
 #[cfg(test)]
 mod tests {
-    use agl_core::export::compression::zstd::zstd_safe::WriteBuf;
-
     use super::*;
 
     #[test]
