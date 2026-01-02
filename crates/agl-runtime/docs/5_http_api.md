@@ -9,7 +9,7 @@ Standard set of methods to perform HTTP(S) requests.
 | `http.read`  | Read the open HTTP request.         |
 | `http.close` | Close the open HTTP request.        |
 
-## `http.fetch(url: string, [options: Options]) -> Response`
+## `http.fetch(url: string, [options: Options]) -> Promise<Response>`
 
 ```ts
 type Options = {

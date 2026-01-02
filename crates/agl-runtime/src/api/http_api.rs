@@ -24,6 +24,8 @@ use agl_core::tasks;
 
 use mlua::prelude::*;
 
+use super::task_api::{Promise, PromiseValue, TaskOutput};
+
 fn create_request(
     client: &Client,
     url: impl AsRef<str>,
@@ -105,31 +107,46 @@ impl NetworkApi {
                 lua.create_function(move |lua, (url, options): (String, Option<LuaTable>)| {
                     let request = create_request(&client, url, options)?;
 
-                    // Perform the request.
-                    let response = tasks::block_on(async move {
-                        let result = lua.create_table_with_capacity(0, 4)?;
-                        let headers = lua.create_table()?;
-
+                    let value = PromiseValue::from_future(async move {
                         let response = request.send().await
-                            .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to perform request: {err}"))
+                            })?;
 
-                        result.raw_set("status", response.status().as_u16())?;
-                        result.raw_set("is_ok", response.status().is_success())?;
-                        result.raw_set("headers", headers.clone())?;
-
-                        for (key, value) in response.headers() {
-                            headers.raw_set(key.to_string(), lua.create_string(value.as_bytes())?)?;
-                        }
+                        let status = response.status();
+                        let headers = response.headers().clone();
 
                         let body = response.bytes().await
-                            .map_err(|err| LuaError::external(format!("failed to fetch body: {err}")))?;
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to fetch body: {err}"))
+                            })?
+                            .to_vec();
 
-                        result.raw_set("body", body.to_vec())?;
+                        Ok(Box::new(move |lua: &Lua| {
+                            let headers_table = lua.create_table_with_capacity(0, headers.len())?;
 
-                        Ok::<_, LuaError>(result)
-                    })?;
+                            for (key, value) in headers {
+                                if let Some(key) = key {
+                                    headers_table.raw_set(
+                                        key.to_string(),
+                                        lua.create_string(value.as_bytes())?
+                                    )?;
+                                }
+                            }
 
-                    Ok(response)
+                            let result = lua.create_table_with_capacity(0, 4)?;
+
+                            result.raw_set("status", status.as_u16())?;
+                            result.raw_set("is_ok", status.is_success())?;
+                            result.raw_set("headers", headers_table)?;
+                            result.raw_set("body", body)?;
+
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
