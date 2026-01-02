@@ -210,7 +210,14 @@ impl LuaUserData for Bytes {
         methods.add_meta_method("__eq", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() == other.as_slice()));
         methods.add_meta_method("__lt", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() < other.as_slice()));
         methods.add_meta_method("__le", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() <= other.as_slice()));
-        methods.add_meta_method("__index", |_: &Lua, bytes: &Self, idx: usize| Ok(bytes.as_slice()[idx - 1]));
+
+        methods.add_meta_method("__index", |_: &Lua, bytes: &Self, idx: usize| {
+            if idx == 0 {
+                Ok(LuaValue::Nil)
+            } else {
+                Ok(LuaValue::Integer(bytes.as_slice()[idx - 1] as i64))
+            }
+        });
 
         methods.add_method("as_table", |lua: &Lua, bytes: &Self, _: ()| {
             lua.create_sequence_from(bytes.iter().copied())
