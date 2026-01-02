@@ -9,6 +9,10 @@ lua strings or tables with bytes stored as sequence values. In API methods'
 definitions all the lua types which can be converted in `Bytes` are called
 `Bytes`.
 
+Implements the following metamethods: `__eq`, `__lt`, `__le`, `__index`,
+`__len`. You can directly access bytes from this usertype using table indexes
+starting from 1 (just like in standard lua).
+
 ## `Bytes.as_table() -> number[]`
 
 Convert bytes type into a lua table.

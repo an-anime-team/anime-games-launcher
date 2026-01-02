@@ -206,6 +206,12 @@ impl LuaUserData for Bytes {
     }
 
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+        methods.add_meta_method("__len", |_: &Lua, bytes: &Self, _: ()| Ok(bytes.len));
+        methods.add_meta_method("__eq", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() == other.as_slice()));
+        methods.add_meta_method("__lt", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() < other.as_slice()));
+        methods.add_meta_method("__le", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() <= other.as_slice()));
+        methods.add_meta_method("__index", |_: &Lua, bytes: &Self, idx: usize| Ok(bytes.as_slice()[idx - 1]));
+
         methods.add_method("as_table", |lua: &Lua, bytes: &Self, _: ()| {
             lua.create_sequence_from(bytes.iter().copied())
         });
