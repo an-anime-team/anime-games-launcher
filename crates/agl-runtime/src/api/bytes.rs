@@ -212,10 +212,10 @@ impl LuaUserData for Bytes {
         methods.add_meta_method("__le", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() <= other.as_slice()));
 
         methods.add_meta_method("__index", |_: &Lua, bytes: &Self, idx: usize| {
-            if idx == 0 {
+            if idx > 0 && let Some(byte) = bytes.as_slice().get(idx - 1) {
+                Ok(LuaValue::Integer(*byte as i64))
+            } else  {
                 Ok(LuaValue::Nil)
-            } else {
-                Ok(LuaValue::Integer(bytes.as_slice()[idx - 1] as i64))
             }
         });
 
