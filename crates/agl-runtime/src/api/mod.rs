@@ -26,6 +26,8 @@ use agl_core::tasks;
 
 // TODO: add tests.
 
+pub mod bytes;
+
 pub mod string_api;
 pub mod path_api;
 pub mod task_api;
