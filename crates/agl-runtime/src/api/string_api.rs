@@ -331,12 +331,11 @@ mod tests {
     fn text_encodings() -> Result<(), LuaError> {
         let api = StringApi::new(Lua::new())?;
 
-        assert_eq!(api.str_to_bytes.call::<Vec<u8>>("abc")?, &[97, 98, 99]);
-        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(0.5)?, &[63, 224, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(vec![1, 2, 3])?, &[1, 2, 3]);
+        assert_eq!(api.str_to_bytes.call::<Bytes>("abc")?.as_slice(), &[97, 98, 99]);
+        assert_eq!(api.str_to_bytes.call::<Bytes>([1, 2, 3])?.as_slice(), &[1, 2, 3]);
 
-        assert_eq!(api.str_to_bytes.call::<Vec<u8>>("абоба")?, &[208, 176, 208, 177, 208, 190, 208, 177, 208, 176]);
-        assert_eq!(api.str_to_bytes.call::<Vec<u8>>(("абоба", "cp1251"))?, &[224, 225, 238, 225, 224]);
+        assert_eq!(api.str_to_bytes.call::<Bytes>("абоба")?.as_slice(), &[208, 176, 208, 177, 208, 190, 208, 177, 208, 176]);
+        assert_eq!(api.str_to_bytes.call::<Bytes>(("абоба", "cp1251"))?.as_slice(), &[224, 225, 238, 225, 224]);
 
         assert_eq!(api.str_from_bytes.call::<LuaString>(vec![97, 98, 99])?, b"abc");
 
@@ -368,10 +367,10 @@ mod tests {
 
         for (name, value) in encodings {
             let encoded = api.str_encode.call::<LuaString>(("Hello, World!", name))?;
-            let decoded = api.str_decode.call::<Vec<u8>>((value, name))?;
+            let decoded = api.str_decode.call::<Bytes>((value, name))?;
 
             assert_eq!(encoded, value);
-            assert_eq!(decoded, b"Hello, World!");
+            assert_eq!(decoded.as_slice(), b"Hello, World!");
         }
 
         let table = lua.create_table_with_capacity(0, 3)?;
@@ -388,6 +387,7 @@ mod tests {
 
         for (name, value) in encodings {
             let encoded = api.str_encode.call::<LuaString>((table.clone(), name))?;
+
             let decoded_1 = api.str_decode.call::<LuaTable>((value, name))?;
             let decoded_2 = api.str_decode.call::<LuaTable>((encoded, name))?;
 

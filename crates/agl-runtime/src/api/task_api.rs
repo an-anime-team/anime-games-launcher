@@ -124,8 +124,14 @@ impl Promise {
     }
 
     #[inline]
-    pub fn lock(&self) -> MutexGuard<'_, Option<PromiseValue>> {
+    fn lock(&self) -> MutexGuard<'_, Option<PromiseValue>> {
         self.0.lock().expect("failed to lock promise value")
+    }
+}
+
+impl FromLua for Promise {
+    fn from_lua(value: LuaValue, _: &Lua) -> LuaResult<Self> {
+        Ok(Self::from_lua_value(value))
     }
 }
 

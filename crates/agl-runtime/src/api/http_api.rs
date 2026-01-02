@@ -250,13 +250,15 @@ mod tests {
     fn fetch() -> Result<(), LuaError> {
         let api = NetworkApi::new(Lua::new(), Client::new())?;
 
-        let response = api.net_fetch.call::<LuaTable>(
+        let promise = api.net_fetch.call::<LuaAnyUserData>(
             "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/crates/agl-runtime/tests/simple_package/package.json"
         )?;
 
+        let response = promise.call_method::<LuaTable>("await", ())?;
+
         assert_eq!(response.get::<u16>("status")?, 200);
         assert!(response.get::<bool>("is_ok")?);
-        assert_eq!(seahash::hash(&response.get::<Vec<u8>>("body")?), 8997647943168728036);
+        assert_eq!(seahash::hash(&response.get::<Bytes>("body")?), 8997647943168728036);
 
         Ok(())
     }
@@ -276,7 +278,7 @@ mod tests {
 
         let mut body_len = 0;
 
-        while let Some(chunk) = api.net_read.call::<Option<Vec<u8>>>(handle)? {
+        while let Some(chunk) = api.net_read.call::<Option<Bytes>>(handle)? {
             body_len += chunk.len();
         }
 
