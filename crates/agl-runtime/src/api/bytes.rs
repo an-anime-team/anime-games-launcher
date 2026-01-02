@@ -279,3 +279,31 @@ impl std::ops::Deref for Bytes {
         &self.buf
     }
 }
+
+impl From<Box<[u8]>> for Bytes {
+    #[inline(always)]
+    fn from(value: Box<[u8]>) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<Vec<u8>> for Bytes {
+    #[inline]
+    fn from(value: Vec<u8>) -> Self {
+        Self::new(value.into_boxed_slice())
+    }
+}
+
+impl From<Bytes> for Box<[u8]> {
+    #[inline(always)]
+    fn from(value: Bytes) -> Self {
+        value.buf
+    }
+}
+
+impl From<Bytes> for Vec<u8> {
+    #[inline]
+    fn from(value: Bytes) -> Self {
+        value.buf.to_vec()
+    }
+}
