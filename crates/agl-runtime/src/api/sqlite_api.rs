@@ -48,8 +48,22 @@ impl FromLua for SqliteParam {
             LuaValue::Boolean(value) => Ok(Self::Boolean(value)),
             LuaValue::Nil            => Ok(Self::Null),
 
+            // Try to use table sequence values as bytes blob.
             LuaValue::Table(_) => Bytes::from_lua(value, lua).map(Self::Blob),
 
+            // Decode param from lua function output.
+            LuaValue::Function(callback) => {
+                Self::from_lua(callback.call::<LuaValue>(())?, lua)
+            }
+
+            // Decode param from a Promise result.
+            LuaValue::UserData(ref object) if object.get::<Option<LuaFunction>>("await")?.is_some() => {
+                let value = object.call_method::<LuaValue>("await", ())?;
+
+                Self::from_lua(value, lua)
+            }
+
+            // Use Bytes as Blob.
             LuaValue::UserData(ref object) if object.get::<Option<LuaFunction>>("as_table")?.is_some() => {
                 Bytes::from_lua(value, lua).map(Self::Blob)
             }
