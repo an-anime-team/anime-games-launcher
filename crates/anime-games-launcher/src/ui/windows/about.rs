@@ -52,7 +52,9 @@ impl SimpleAsyncComponent for AboutWindow {
             ]),
 
             set_translator_credits: &[
-                "Русский, English — Nikita Podvirnyi https://github.com/krypt0nn"
+                "Русский, English — Nikita Podvirnyi https://github.com/krypt0nn",
+                "German — @caemputer https://github.com/caemputer",
+                "Portuguese — João Dias https://github.com/retrozinndev"
             ].join("\n"),
 
             set_debug_info: &[
@@ -72,15 +74,42 @@ impl SimpleAsyncComponent for AboutWindow {
                 "<p>Added</p>",
 
                 "<ul>",
-                    "<li>Added special handling for empty game editions list</li>",
-                    "<li>Added runtime torrent API</li>",
-                    "<li>Added 'sleep' runtime function</li>",
+                    "<li>'torrent.add' API got 'restart' option to restart already added torrents</li>",
+                    "<li>Added launcher localization using in-house 'agl-locale' crate; English, Russian, German and Portuguese languages are supported now</li>",
+                    "<li>Game integrations now can be returned by a function to support lazy loading</li>",
+                    "<li>Added task API with 'Promise' userdata type. If returned from runtime - the actual work happens in background and doesn't block lua engine thread</li>",
+                    "<li>Added 'await' runtime function to resolve different lua types, including functions, coroutines (threads), 'Promises' and more</li>",
+                    "<li>Added 'Bytes' userdata type to replace tables of numbers used to represent bytes on lua side. Most of runtime API methods were reworked to return and accept this custom type</li>",
+                    "<li>Added system API to query system-related information, currently local and UTC time, environment variables and binaries paths</li>",
+                "</ul>",
+
+                "<p>Fixed</p>",
+
+                "<ul>",
+                    "<li>Actions pipeline execution graph now resets on window close</li>",
+                    "<li>Fixed vertical distance between store page game cards</li>",
+                    "<li>Fixed 'http.fetch' options parsing</li>",
+                    "<li>Process API now doesn't resolve the binary path and doesn't check for relative path</li>",
                 "</ul>",
 
                 "<p>Changed</p>",
 
                 "<ul>",
-                    "<li>Improve actions pipeline graph drawing</li>",
+                    "<li>Force torrent API to add global torrents list to each added torrent</li>",
+                    "<li>Display progress bar in actions pipeline window even if current progress is 0</li>",
+                    "<li>Updated lua engine version; 64 bit numbers should be supported now</li>",
+                    "<li>Changed required GTK4 and libadwaita versions to support older linux distros</li>",
+                    "<li>Add more environment variables to parse system language from</li>",
+                    "<li>Renamed network API to HTTP API</li>",
+                    "<li>Most of runtime API methods were promisified (reworked to return 'Promise') and perform actual work in background to not to block lua engine thread</li>",
+                    "<li>In-RAM memory buffers for some APIs were increased for better performance</li>",
+                    "<li>Sqlite API now can accept functions, coroutines (threads), 'Promise' and 'Bytes' types as query params (they will be resolved into actual values)</li>",
+                "</ul>",
+
+                "<p>Removed</p>",
+
+                "<ul>",
+                    "<li>Removed unused 'utils' and 'i18n' launcher modules</li>",
                 "</ul>"
             ].join("\n")
         }

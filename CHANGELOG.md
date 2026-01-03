@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-beta4] - 03.01.2026
+
+### Added
+
+- `torrent.add` API got `restart` option to restart already added torrents
+- Added launcher localization using in-house `agl-locale` crate;
+  English, Russian, German and Portuguese languages are supported now
+- Game integrations now can be returned by a function to support lazy loading
+- Added task API with `Promise` userdata type. If returned from runtime - the
+  actual work happens in background and doesn't block lua engine thread
+- Added `await` runtime function to resolve different lua types, including
+  functions, coroutines (threads), `Promises` and more
+- Added `Bytes` userdata type to replace tables of numbers used to represent
+  bytes on lua side. Most of runtime API methods were reworked to return and
+  accept this custom type
+- Added system API to query system-related information, currently local and UTC
+  time, environment variables and binaries paths
+
+### Fixed
+
+- Actions pipeline execution graph now resets on window close
+- Fixed vertical distance between store page game cards
+- Fixed `http.fetch` options parsing
+- Process API now doesn't resolve the binary path and doesn't check for relative
+  path
+
+### Changed
+
+- Force torrent API to add global torrents list to each added torrent
+- Display progress bar in actions pipeline window even if current progress is 0
+- Updated lua engine version; 64 bit numbers should be supported now
+- Changed required GTK4 and libadwaita versions to support older linux distros
+- Add more environment variables to parse system language from
+- Renamed network API to HTTP API
+- Most of runtime API methods were promisified (reworked to return `Promise`)
+  and perform actual work in background to not to block lua engine thread
+- In-RAM memory buffers for some APIs were increased for better performance
+- Sqlite API now can accept functions, coroutines (threads), `Promise` and
+  `Bytes` types as query params (they will be resolved into actual values)
+
+### Removed
+
+- Removed unused `utils` and `i18n` launcher modules
+
 ## [2.0.0-beta3] - 24.12.2025
 
 ### Added
@@ -118,7 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta3...next
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta4...next
+[2.0.0-beta4]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta3...v2.0.0-beta4
 [2.0.0-beta3]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta2...v2.0.0-beta3
 [2.0.0-beta2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...v2.0.0-beta2
 [2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha2...v2.0.0-beta1
