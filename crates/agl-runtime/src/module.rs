@@ -57,6 +57,14 @@ pub struct ModuleScope {
     /// Default: `true`.
     pub allow_task_api: bool,
 
+    /// Allow module to access system API.
+    ///
+    /// This API allows module to request information about host system's local
+    /// time, unix timestamp, read environment variables.
+    ///
+    /// Default: `true`.
+    pub allow_system_api: bool,
+
     /// Allow module to access filesystem API.
     ///
     /// This API allows module to perform read/write/create operations on files
@@ -159,6 +167,7 @@ impl Default for ModuleScope {
             allow_string_api: true,
             allow_path_api: true,
             allow_task_api: true,
+            allow_system_api: true,
             allow_filesystem_api: true,
             allow_http_api: true,
             allow_downloader_api: true,
@@ -182,6 +191,7 @@ impl ModuleScope {
                 "string": self.allow_string_api,
                 "path": self.allow_path_api,
                 "task": self.allow_task_api,
+                "system": self.allow_system_api,
                 "filesystem": self.allow_filesystem_api,
                 "http": self.allow_http_api,
                 "downloader": self.allow_downloader_api,
@@ -214,6 +224,10 @@ impl ModuleScope {
 
             if let Some(allow) = api.get("task").and_then(Json::as_bool) {
                 scope.allow_task_api = allow;
+            }
+
+            if let Some(allow) = api.get("system").and_then(Json::as_bool) {
+                scope.allow_system_api = allow;
             }
 
             if let Some(allow) = api.get("filesystem").and_then(Json::as_bool) {

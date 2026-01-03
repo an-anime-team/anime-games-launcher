@@ -166,8 +166,9 @@ List of all available APIs:
 | String API     | `str`        | String conversions and data serialization.     |
 | Path API       | `path`       | Paths construction and resolution.             |
 | Task API       | `task`       | Background / foreground tasks execution.       |
+| System API     | `system`     | Query system time, environment and other info. |
 | Filesystem API | `fs`         | Sandboxed filesystem manipulations.            |
-| Network API    | `net`        | Perform HTTP requests.                         |
+| HTTP API       | `http`       | Perform HTTP requests.                         |
 | Downloader API | `downloader` | HTTP files downloader.                         |
 | Archive API    | `archive`    | Archives extraction.                           |
 | Hash API       | `hash`       | Hash values calculation.                       |

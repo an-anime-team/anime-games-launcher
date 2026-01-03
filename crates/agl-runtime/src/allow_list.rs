@@ -69,6 +69,7 @@ impl AllowList {
         entry.allow_string_api      |= scope.allow_string_api;
         entry.allow_path_api        |= scope.allow_path_api;
         entry.allow_task_api        |= scope.allow_task_api;
+        entry.allow_system_api      |= scope.allow_system_api;
         entry.allow_filesystem_api  |= scope.allow_filesystem_api;
         entry.allow_http_api        |= scope.allow_http_api;
         entry.allow_downloader_api  |= scope.allow_downloader_api;

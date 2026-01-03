@@ -72,21 +72,21 @@ fn create_request(
     Ok(request)
 }
 
-pub struct NetworkApi {
+pub struct HttpApi {
     lua: Lua,
 
-    net_fetch: LuaFunction,
-    net_open: LuaFunction,
-    net_read: LuaFunction,
-    net_close: LuaFunction
+    http_fetch: LuaFunction,
+    http_open: LuaFunction,
+    http_read: LuaFunction,
+    http_close: LuaFunction
 }
 
-impl NetworkApi {
+impl HttpApi {
     pub fn new(lua: Lua, client: Client) -> Result<Self, LuaError> {
         let net_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            net_fetch: {
+            http_fetch: {
                 let client = client.clone();
 
                 lua.create_function(move |lua, (url, options): (String, Option<LuaTable>)| {
@@ -137,7 +137,7 @@ impl NetworkApi {
                 })?
             },
 
-            net_open: {
+            http_open: {
                 let client = client.clone();
                 let net_handles = net_handles.clone();
 
@@ -186,7 +186,7 @@ impl NetworkApi {
                 })?
             },
 
-            net_read: {
+            http_read: {
                 let net_handles = net_handles.clone();
 
                 lua.create_function(move |lua, handle: i32| {
@@ -213,7 +213,7 @@ impl NetworkApi {
                 })?
             },
 
-            net_close: {
+            http_close: {
                 let net_handles = net_handles.clone();
 
                 lua.create_function(move |_, handle: i32| {
@@ -233,10 +233,10 @@ impl NetworkApi {
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
-        env.raw_set("fetch", &self.net_fetch)?;
-        env.raw_set("open", &self.net_open)?;
-        env.raw_set("read", &self.net_read)?;
-        env.raw_set("close", &self.net_close)?;
+        env.raw_set("fetch", &self.http_fetch)?;
+        env.raw_set("open", &self.http_open)?;
+        env.raw_set("read", &self.http_read)?;
+        env.raw_set("close", &self.http_close)?;
 
         Ok(env)
     }
@@ -248,9 +248,9 @@ mod tests {
 
     #[test]
     fn fetch() -> Result<(), LuaError> {
-        let api = NetworkApi::new(Lua::new(), Client::new())?;
+        let api = HttpApi::new(Lua::new(), Client::new())?;
 
-        let promise = api.net_fetch.call::<LuaAnyUserData>(
+        let promise = api.http_fetch.call::<LuaAnyUserData>(
             "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/refs/heads/next/crates/agl-runtime/tests/simple_package/package.json"
         )?;
 
@@ -265,9 +265,9 @@ mod tests {
 
     #[test]
     fn read() -> Result<(), LuaError> {
-        let api = NetworkApi::new(Lua::new(), Client::new())?;
+        let api = HttpApi::new(Lua::new(), Client::new())?;
 
-        let header = api.net_open.call::<LuaTable>(
+        let header = api.http_open.call::<LuaTable>(
             "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz"
         )?;
 
@@ -278,7 +278,7 @@ mod tests {
 
         let mut body_len = 0;
 
-        while let Some(chunk) = api.net_read.call::<Option<Bytes>>(handle)? {
+        while let Some(chunk) = api.http_read.call::<Option<Bytes>>(handle)? {
             body_len += chunk.len();
         }
 
