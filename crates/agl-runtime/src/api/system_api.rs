@@ -155,7 +155,7 @@ impl SystemApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 3)?;
+        let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("local_time", &self.system_local_time)?;
         env.raw_set("utc_time", &self.system_utc_time)?;
