@@ -57,14 +57,14 @@ impl FromLua for SqliteParam {
             }
 
             // Decode param from a Promise result.
-            LuaValue::UserData(ref object) if object.get::<Option<LuaFunction>>("await")?.is_some() => {
+            LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Promise") => {
                 let value = object.call_method::<LuaValue>("await", ())?;
 
                 Self::from_lua(value, lua)
             }
 
             // Use Bytes as Blob.
-            LuaValue::UserData(ref object) if object.get::<Option<LuaFunction>>("as_table")?.is_some() => {
+            LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Bytes") => {
                 Bytes::from_lua(value, lua).map(Self::Blob)
             }
 

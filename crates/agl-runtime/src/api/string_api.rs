@@ -42,7 +42,7 @@ fn filter_lua_value(value: LuaValue) -> Result<LuaValue, LuaError> {
         }
 
         // Bytes userdata
-        LuaValue::UserData(object) if object.get::<Option<LuaFunction>>("as_table")?.is_some() => {
+        LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Bytes") => {
             object.call_method::<LuaTable>("as_table", ())
                 .map(LuaValue::Table)
         }

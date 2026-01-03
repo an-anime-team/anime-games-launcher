@@ -85,7 +85,7 @@ impl PromiseValue {
             LuaValue::Thread(coroutine) => Self::Coroutine(coroutine),
 
             LuaValue::UserData(object) => {
-                if object.get::<LuaFunction>("poll").is_ok() {
+                if object.type_name().ok().flatten().as_deref() == Some("Promise") {
                     Self::LuaPromise(object)
                 } else {
                     Self::Value(LuaValue::UserData(object))
@@ -136,6 +136,16 @@ impl FromLua for Promise {
 }
 
 impl LuaUserData for Promise {
+    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+        fields.add_field_method_get("finished", |_, promise: &Self| -> Result<bool, LuaError> {
+            Ok(promise.lock().is_some())
+        });
+
+        fields.add_field_method_get("background", |_, promise: &Self| -> Result<bool, LuaError> {
+            Ok(matches!(&*promise.lock(), Some(PromiseValue::Task(_))))
+        });
+    }
+
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
         fn poll(lua: &Lua, promise: &Promise) -> Result<(Option<bool>, LuaValue), LuaError> {
             let mut lock = promise.lock();
@@ -327,7 +337,6 @@ impl LuaUserData for Promise {
 
                     loop {
                         for task in &tasks {
-                            // FIXME: task.any(task.sleep(..), ..) errors here!
                             let (status, value) = poll(lua, task)?;
 
                             if status != Some(false) {
@@ -351,16 +360,6 @@ impl LuaUserData for Promise {
             }
 
             Ok(())
-        });
-    }
-
-    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("finished", |_, promise: &Self| -> Result<bool, LuaError> {
-            Ok(promise.lock().is_some())
-        });
-
-        fields.add_field_method_get("background", |_, promise: &Self| -> Result<bool, LuaError> {
-            Ok(matches!(&*promise.lock(), Some(PromiseValue::Task(_))))
         });
     }
 }

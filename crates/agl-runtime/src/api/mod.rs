@@ -261,13 +261,7 @@ impl Api {
                         callback.call(())
                     }
 
-                    LuaValue::UserData(object) => {
-                        // Check if object has the `await` method, meaning it's
-                        // a promise. Otherwise return it as is.
-                        if object.get::<Option<LuaFunction>>("await")?.is_none() {
-                            return Ok(LuaValue::UserData(object));
-                        };
-
+                    LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Promise") => {
                         object.call_method::<LuaValue>("await", ())
                     }
 
