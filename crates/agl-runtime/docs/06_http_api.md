@@ -39,17 +39,16 @@ type Response = {
 ```
 
 ```luau
-local response = http.fetch("https://example.com")
+local response = http.fetch("https://example.com"):await()
 
 if response.is_ok then
     print(response.body:as_string())
 end
 ```
 
-## `http.open(url: string, [options: Options]) -> LazyResponse`
+## `http.open(url: string, [options: Options]) -> Promise<LazyResponse>`
 
-Open new HTTP request in background and return a handle to lazily read the body,
-similar to the IO API.
+Open new HTTP request in background and return a handle to lazily read the body.
 
 ```ts
 type LazyResponse = {
@@ -68,33 +67,34 @@ type LazyResponse = {
 ```
 
 ```luau
-local head = http.open("https://example.com/large_file.zip")
+local response = http.open("https://example.com/large_file.zip"):await()
 
-if head.is_ok then
-    -- ...
+if response.is_ok then
+    -- read body using request handle
 end
 
-http.close(head.handle)
+http.close(response.handle)
 ```
 
 ## `http.read(handle: number) -> Bytes | nil`
 
 Read chunk of response body, or return `nil` if there's nothing else to read.
+This is a blocking method.
 
 ```luau
-local head = http.open("https://example.com/large_file.zip")
+local response = http.open("https://example.com/large_file.zip"):await()
 
-if head.is_ok do
-    local chunk = http.read(head.handle)
+if response.is_ok do
+    local chunk = http.read(response.handle)
 
     while chunk do
-        -- do something with a chunk of data.
+        -- do something with a chunk of data
 
-        chunk = http.read(head.handle)
+        chunk = http.read(response.handle)
     end
 end
 
-http.close(head.handle)
+http.close(response.handle)
 ```
 
 ## `http.close(handle: number)`
@@ -102,10 +102,12 @@ http.close(head.handle)
 Close the open HTTP client.
 
 ```luau
-local head = http.open("https://example.com/large_file.zip")
+local response = http.open("https://example.com/large_file.zip", {
+    method = "head"
+}):await()
 
--- fetch head only and do not download the body.
-print(head.headers["Content-Length"])
+-- fetch head only and do not download the body
+print(response.headers["Content-Length"])
 
-http.close(head.handle)
+http.close(response.handle)
 ```

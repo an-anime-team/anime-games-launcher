@@ -25,7 +25,7 @@ use agl_core::tasks;
 use mlua::prelude::*;
 
 use super::bytes::Bytes;
-use super::task_api::{Promise, PromiseValue, TaskOutput};
+use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 
 fn create_request(
     client: &Client,
@@ -89,7 +89,7 @@ impl HttpApi {
             http_fetch: {
                 let client = client.clone();
 
-                lua.create_function(move |lua, (url, options): (String, Option<LuaTable>)| {
+                lua.create_function(move |lua: &Lua, (url, options): (String, Option<LuaTable>)| {
                     let request = create_request(&client, url, options)?;
 
                     let value = PromiseValue::from_future(async move {
@@ -141,74 +141,96 @@ impl HttpApi {
                 let client = client.clone();
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |lua, (url, options): (String, Option<LuaTable>)| {
+                lua.create_function(move |lua: &Lua, (url, options): (String, Option<LuaTable>)| {
                     let request = create_request(&client, url, options)?;
 
-                    let (response, header) = tasks::block_on(async move {
+                    let net_handles = net_handles.clone();
+
+                    let value = PromiseValue::from_future(async move {
                         let response = request.send().await
-                            .map_err(|err| LuaError::external(format!("failed to perform request: {err}")))?;
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to perform request: {err}"))
+                            })?;
 
-                        let headers = lua.create_table_with_capacity(
-                            0,
-                            response.headers().len()
-                        )?;
+                        let status = response.status();
+                        let headers = response.headers().clone();
 
-                        for (key, value) in response.headers() {
-                            headers.raw_set(
-                                key.to_string(),
-                                lua.create_string(value.as_bytes())?
-                            )?;
+                        let mut handles = net_handles.lock()
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to register handle: {err}"))
+                            })?;
+
+                        let mut handle = rand::random::<i32>();
+
+                        while handles.contains_key(&handle) {
+                            handle = rand::random::<i32>();
                         }
 
-                        let result = lua.create_table_with_capacity(0, 3)?;
+                        handles.insert(handle, response);
 
-                        result.raw_set("status", response.status().as_u16())?;
-                        result.raw_set("is_ok", response.status().is_success())?;
-                        result.raw_set("headers", headers.clone())?;
+                        Ok(Box::new(move |lua: &Lua| {
+                            let headers_table = lua.create_table_with_capacity(0, headers.len())?;
 
-                        Ok::<_, LuaError>((response, result))
-                    })?;
+                            for (key, value) in headers {
+                                if let Some(key) = key {
+                                    headers_table.raw_set(
+                                        key.to_string(),
+                                        lua.create_string(value.as_bytes())?
+                                    )?;
+                                }
+                            }
 
-                    let mut handles = net_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+                            let result = lua.create_table_with_capacity(0, 4)?;
 
-                    let mut handle = rand::random::<i32>();
+                            result.raw_set("status", status.as_u16())?;
+                            result.raw_set("is_ok", status.is_success())?;
+                            result.raw_set("headers", headers_table)?;
+                            result.raw_set("handle", handle)?;
 
-                    while handles.contains_key(&handle) {
-                        handle = rand::random::<i32>();
-                    }
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
 
-                    handles.insert(handle, response);
-
-                    header.raw_set("handle", handle)?;
-
-                    Ok(header)
+                    Promise::new(value)
+                        .into_lua(lua)
                 })?
             },
 
             http_read: {
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
-                    let mut handles = net_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                lua.create_function(move |lua: &Lua, handle: i32| {
+                    let net_handles = net_handles.clone();
 
-                    let Some(response) = handles.get_mut(&handle) else {
-                        return Err(LuaError::external("invalid request handle"));
-                    };
+                    let value = PromiseValue::from_blocking(move || {
+                        let mut handles = net_handles.lock()
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to read handle: {err}"))
+                            })?;
 
-                    let chunk = tasks::block_on(async move {
-                        response.chunk().await
+                        let Some(response) = handles.get_mut(&handle) else {
+                            return Err(LuaError::external("invalid request handle"));
+                        };
+
+                        // Blocking instead of a future because there's some
+                        // problems with `Send` trait.
+                        let chunk = tasks::block_on(response.chunk())
                             .map_err(|err| {
                                 LuaError::external(format!("failed to read body chunk: {err}"))
-                            })
-                    })?;
+                            })?;
 
-                    let Some(chunk) = chunk else {
-                        return Ok(LuaNil);
-                    };
+                        let Some(chunk) = chunk else {
+                            return Ok(task_output(Ok(LuaValue::Nil)));
+                        };
 
-                    Bytes::new(chunk.to_vec().into_boxed_slice())
+                        let chunk = Bytes::from(chunk.to_vec());
+
+                        Ok(Box::new(move |lua: &Lua| {
+                            chunk.into_lua(lua)
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
                         .into_lua(lua)
                 })?
             },
@@ -218,7 +240,9 @@ impl HttpApi {
 
                 lua.create_function(move |_, handle: i32| {
                     net_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?
                         .remove(&handle);
 
                     Ok(())
@@ -267,9 +291,11 @@ mod tests {
     fn read() -> Result<(), LuaError> {
         let api = HttpApi::new(Lua::new(), Client::new())?;
 
-        let header = api.http_open.call::<LuaTable>(
+        let promise = api.http_open.call::<LuaAnyUserData>(
             "https://github.com/doitsujin/dxvk/releases/download/v2.4/dxvk-2.4.tar.gz"
         )?;
+
+        let header = promise.call_method::<LuaTable>("await", ())?;
 
         assert_eq!(header.get::<u16>("status")?, 200);
         assert!(header.get::<bool>("is_ok")?);
@@ -278,7 +304,13 @@ mod tests {
 
         let mut body_len = 0;
 
-        while let Some(chunk) = api.http_read.call::<Option<Bytes>>(handle)? {
+        loop {
+            let promise = api.http_read.call::<LuaAnyUserData>(handle)?;
+
+            let Some(chunk) = promise.call_method::<Option<Bytes>>("await", ())? else {
+                break;
+            };
+
             body_len += chunk.len();
         }
 
