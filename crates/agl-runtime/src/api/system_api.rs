@@ -86,19 +86,27 @@ impl SystemApi {
                     .map(LuaValue::String)
             })?,
 
-            system_env: lua.create_function(|lua: &Lua, name: Option<String>| {
-                if let Some(name) = name {
-                    let Ok(value) = std::env::var(&name) else {
-                        return Ok(LuaValue::Nil);
-                    };
+            system_env: lua.create_function(|lua: &Lua, names: LuaVariadic<String>| {
+                if names.is_empty() {
+                    let env = lua.create_table_from(std::env::vars())
+                        .map(LuaValue::Table)?;
 
-                    lua.create_string(value)
-                        .map(LuaValue::String)
+                    Ok(LuaMultiValue::from_vec(vec![env]))
                 }
 
                 else {
-                    lua.create_table_from(std::env::vars())
-                        .map(LuaValue::Table)
+                    let result = names.into_iter()
+                        .map(|name| {
+                            std::env::var(&name).ok()
+                                .and_then(|value| {
+                                    lua.create_string(value).ok()
+                                        .map(LuaValue::String)
+                                })
+                                .unwrap_or(LuaValue::Nil)
+                        })
+                        .collect();
+
+                    Ok(LuaMultiValue::from_vec(result))
                 }
             })?,
 

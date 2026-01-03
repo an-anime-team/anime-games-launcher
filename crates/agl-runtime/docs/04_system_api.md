@@ -34,15 +34,20 @@ print(system.utc_time("[day].[month].[year] [hour]:[minute]:[second]")) -- 03.01
 print(system.utc_time("rfc2822")) -- Sat, 03 Jan 2026 16:03:26 +0000
 ```
 
-## `system.env([name: string]) -> { [name: string]: string } | string | nil`
+## `system.env([...names: string]) -> { [name: string]: string } | ...(string | nil) | nil`
 
-Get table of all the current processe's environment variables. If variable name
-is provided then either its value is returned or `nil` if variable with this
-name doesn't exist.
+Get table of all the current processe's environment variables. If variable names
+are provided then either their values are returned or `nil` if variable with
+this name doesn't exist.
 
 ```luau
 -- Get table of all the variables.
 dbg(system.env())
+
+-- Get values of "user" and "term" variables
+local user, term = system.env("user", "term")
+
+dbg(user, term)
 ```
 
 ## `system.find(...names: string) -> ...(string | nil)`
