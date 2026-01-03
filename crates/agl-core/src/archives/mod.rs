@@ -127,6 +127,20 @@ impl Archive {
         }
     }
 
+    /// Get format of the currently open archive.
+    pub const fn format(&self) -> ArchiveFormat {
+        match self {
+            #[cfg(feature = "archives-tar")]
+            Self::Tar(_) => ArchiveFormat::Tar,
+
+            #[cfg(feature = "archives-zip")]
+            Self::Zip(_) => ArchiveFormat::Zip,
+
+            #[cfg(feature = "archives-7z")]
+            Self::Sevenz(_) => ArchiveFormat::Sevenz
+        }
+    }
+
     /// Get list of archive entries.
     pub fn get_entries(&self) -> Result<Vec<ArchiveEntry>, ArchiveError> {
         #[cfg(feature = "tracing")]
