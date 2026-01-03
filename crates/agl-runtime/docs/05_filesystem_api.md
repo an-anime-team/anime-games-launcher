@@ -85,7 +85,7 @@ Copy file or folder to another location. This function will throw an error if
 the target location already exists or is not accessible.
 
 ```luau
-fs.copy("my_folder", "new_location/my_folder")
+fs.copy("my_folder", "new_location/my_folder"):await()
 ```
 
 ## `fs.move(source: string, target: string) -> Promise<void>`
@@ -94,7 +94,7 @@ Move a file or a folder to another location. This function will throw an error
 if the target location already exists or is not accessible.
 
 ```luau
-fs.move("my_folder", "new_location/my_folder")
+fs.move("my_folder", "new_location/my_folder"):await()
 ```
 
 ## `fs.remove(path: string) -> Promise<void>`
@@ -103,9 +103,9 @@ Remove a file, folder or a symlink. Removing a folder will remove all its
 content as well.
 
 ```luau
-fs.remove("my_file.txt")
-fs.remove("my_folder")
-fs.remove("my_symlink")
+fs.remove("my_file.txt"):await()
+fs.remove("my_folder"):await()
+fs.remove("my_symlink"):await()
 ```
 
 ## `fs.open(path: string, [options: Options]) -> number`
@@ -438,7 +438,7 @@ type Entry = {
 
 ```luau
 function print_dir(path, prefix)
-    for _, entry in pairs(fs.read_dir(path)) do
+    for _, entry in pairs(fs.read_dir(path):await()) do
         print(prefix .. entry.name)
 
         if entry.type == "directory" do
@@ -455,11 +455,11 @@ print_dir("my_dir", "")
 Remove given folder and all its content.
 
 ```luau
-fs.create_dir("my_dir")
+fs.create_dir("my_dir"):await()
 
 print(fs.exists("my_dir")) -- true
 
-fs.remove_dir("my_dir")
+fs.remove_dir("my_dir"):await()
 
 print(fs.exists("my_dir")) -- false
 ```
