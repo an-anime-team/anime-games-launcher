@@ -25,12 +25,12 @@ features = ["macros", "libadwaita"]
 [dependencies.gtk]
 package = "gtk4"
 version = "0.10.3"
-features = ["v4_16"]
+features = ["v4_18"]
 
 [dependencies.adw]
 package = "libadwaita"
 version = "0.8.1"
-features = ["v1_8"]
+features = ["v1_7"]
 
 [dependencies.agl-core]
 path = "../agl-core"
