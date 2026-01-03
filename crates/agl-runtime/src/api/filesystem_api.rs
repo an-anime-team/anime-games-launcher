@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,20 +20,20 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::fs::File;
 use std::io::{Read, Write, Seek, SeekFrom};
-use std::time::{UNIX_EPOCH, Duration};
+use std::time::{Duration, UNIX_EPOCH};
 
 use mlua::prelude::*;
 
 use bufreaderwriter::rand::BufReaderWriterRand;
 
+use super::bytes::Bytes;
 use super::*;
 
-pub const IO_READ_CHUNK_LEN: usize = 8192; // 8 KiB reads
-pub const IO_BUF_SIZE: usize = 16384; // 16 KiB read/write in-RAM cache
+pub const IO_READ_CHUNK_LEN: usize = 8 * 1024; // 8 KiB reads
+pub const IO_BUFFER_SIZE: usize = 4 * 1024 * 1024 * 1024; // 4 MiB read/write in-RAM cache
 
 pub struct FilesystemApi {
     lua: Lua,
-    file_handles: Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>>,
 
     fs_exists: LuaFunctionBuilder,
     fs_metadata: LuaFunctionBuilder,
@@ -388,7 +388,9 @@ impl FilesystemApi {
                             .open(path)?;
 
                         let mut handles = file_handles.lock()
-                            .map_err(|err| LuaError::external(format!("failed to register handle: {err}")))?;
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to register handle: {err}"))
+                            })?;
 
                         let mut handle = rand::random::<i32>();
 
@@ -396,7 +398,9 @@ impl FilesystemApi {
                             handle = rand::random::<i32>();
                         }
 
-                        handles.insert(handle, BufReaderWriterRand::reader_with_capacity(IO_BUF_SIZE, file));
+                        let buf = BufReaderWriterRand::reader_with_capacity(IO_BUFFER_SIZE, file);
+
+                        handles.insert(handle, buf);
 
                         Ok(handle)
                     })
@@ -408,7 +412,9 @@ impl FilesystemApi {
 
                 lua.create_function(move |_, (handle, position): (i32, i64)| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     let Some(file) = handles.get_mut(&handle) else {
                         return Err(LuaError::external("invalid file handle"));
@@ -432,7 +438,9 @@ impl FilesystemApi {
 
                 lua.create_function(move |_, (handle, offset): (i32, i64)| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     let Some(file) = handles.get_mut(&handle) else {
                         return Err(LuaError::external("invalid file handle"));
@@ -449,7 +457,9 @@ impl FilesystemApi {
 
                 lua.create_function(move |_, (handle, length): (i32, u64)| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     let Some(file) = handles.get_mut(&handle) else {
                         return Err(LuaError::external("invalid file handle"));
@@ -464,9 +474,11 @@ impl FilesystemApi {
             fs_read: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position, length): (i32, Option<i64>, Option<u64>)| {
+                lua.create_function(move |lua: &Lua, (handle, position, length): (i32, Option<i64>, Option<u64>)| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     let Some(file) = handles.get_mut(&handle) else {
                         return Err(LuaError::external("invalid file handle"));
@@ -489,7 +501,8 @@ impl FilesystemApi {
 
                         file.read_exact(&mut buf)?;
 
-                        Ok(buf)
+                        Bytes::from(buf)
+                            .into_lua(lua)
                     }
 
                     // Or just read a chunk of data.
@@ -498,7 +511,12 @@ impl FilesystemApi {
 
                         let len = file.read(&mut buf)?;
 
-                        Ok(buf[..len].to_vec())
+                        if len == 0 {
+                            return Ok(LuaValue::Nil);
+                        }
+
+                        Bytes::from(buf[..len].to_vec())
+                            .into_lua(lua)
                     }
                 })?
             },
@@ -506,9 +524,11 @@ impl FilesystemApi {
             fs_write: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, content, position): (i32, Vec<u8>, Option<i64>)| {
+                lua.create_function(move |_, (handle, content, position): (i32, Bytes, Option<i64>)| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     let Some(file) = handles.get_mut(&handle) else {
                         return Err(LuaError::external("invalid file handle"));
@@ -526,7 +546,7 @@ impl FilesystemApi {
                     }
 
                     // Write the content to the file.
-                    file.write_all(&content)?;
+                    file.write_all(content.as_slice())?;
 
                     Ok(())
                 })?
@@ -537,7 +557,9 @@ impl FilesystemApi {
 
                 lua.create_function(move |_, handle: i32| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     // Flush the file if the handle is valid.
                     if let Some(file) = handles.get_mut(&handle) {
@@ -553,7 +575,9 @@ impl FilesystemApi {
 
                 lua.create_function(move |_, handle: i32| {
                     let mut handles = file_handles.lock()
-                        .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
+                        .map_err(|err| {
+                            LuaError::external(format!("failed to read handle: {err}"))
+                        })?;
 
                     // Flush the file if the handle is valid.
                     if let Some(file) = handles.get_mut(&handle) {
@@ -597,7 +621,7 @@ impl FilesystemApi {
             fs_read_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -611,14 +635,16 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
-                    Ok(std::fs::read(path)?)
+                    let content = Bytes::from(std::fs::read(path)?);
+
+                    content.into_lua(lua)
                 })
             }),
 
             fs_write_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (mut path, content): (PathBuf, LuaValue)| {
+                lua.create_function(move |_, (mut path, content): (PathBuf, Bytes)| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -636,24 +662,7 @@ impl FilesystemApi {
                         std::fs::create_dir_all(parent)?;
                     }
 
-                    match content {
-                        LuaValue::Table(bytes) => {
-                            let bytes = bytes.sequence_values()
-                                .collect::<Result<Vec<u8>, _>>()?;
-
-                            std::fs::write(path, bytes)?;
-                        }
-
-                        LuaValue::String(str) => {
-                            std::fs::write(path, str.as_bytes())?;
-                        }
-
-                        _ => return Err(LuaError::FromLuaConversionError {
-                            from: "table | string",
-                            to: String::from("[u8]"),
-                            message: Some(String::from("bytes table or string expected"))
-                        })
-                    }
+                    std::fs::write(path, content.as_slice())?;
 
                     Ok(())
                 })
@@ -772,16 +781,8 @@ impl FilesystemApi {
                 })
             }),
 
-            lua,
-            file_handles
+            lua
         })
-    }
-
-    #[inline(always)]
-    pub const fn file_handles(
-        &self
-    ) -> &Arc<Mutex<HashMap<i32, BufReaderWriterRand<File>>>> {
-        &self.file_handles
     }
 
     /// Create new lua table with API functions.

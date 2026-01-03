@@ -212,11 +212,10 @@ local content = str.from_bytes(fs.read(handle, 0))
 print(content) -- "Hello"
 ```
 
-## `fs.read(handle: number, [position: number, [length: number]]) -> [number]`
+## `fs.read(handle: number, [position: number, [length: number]]) -> Bytes | nil`
 
 Read chunk of binary data from the open file handle. Size of chunk is determined
-by the rust API. If zero length chunk is returned, then there's no more data
-to read.
+by the rust API. If `nil` is returned then there's no more data to read.
 
 If `position` is specified, then `fs.seek` will be used before reading the
 chunk. This will affect future operations as well. Position can be negative to
@@ -230,7 +229,7 @@ given number.
 local handle = fs.open("large_file.txt")
 local chunk  = fs.read(handle)
 
-while #chunk > 0 do
+while chunk do
     -- do something with chunk of data
 
     chunk = fs.read(handle)
@@ -248,7 +247,7 @@ local game_version = fs.read(handle, 1000, 3)
 fs.close(handle)
 ```
 
-## `fs.write(handle: number, content: [number], [position: number])`
+## `fs.write(handle: number, content: Bytes, [position: number])`
 
 Write given data to the open file at its current position.
 
@@ -388,19 +387,18 @@ fs.create_file("file_1")
 fs.write_file("file_2", {})
 ```
 
-## `fs.read_file(path: string) -> [number]`
+## `fs.read_file(path: string) -> Bytes`
 
-Read the whole content of a file in a given path.
-
-> Note: do not try to read large files using this function.
+Read the whole content of a file in a given path. It's not recommended to read
+whole content of large files at once.
 
 ```luau
 local content = fs.read_file("my_file.txt")
 
-print("Read " .. #content .. " bytes")
+print(`Read {#content} bytes`)
 ```
 
-## `fs.write_file(path: string, content: [number] | string)`
+## `fs.write_file(path: string, content: Bytes)`
 
 Overwrite existing file with given content, or create a new one.
 
@@ -426,7 +424,7 @@ Create directory if it doesn't exist.
 fs.create_dir("a/b/c/d")
 ```
 
-## `fs.read_dir(path: string) -> [Entry]`
+## `fs.read_dir(path: string) -> Entry[]`
 
 Read the given directory, returning list of its entries.
 
