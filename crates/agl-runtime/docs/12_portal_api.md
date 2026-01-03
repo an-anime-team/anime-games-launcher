@@ -86,10 +86,9 @@ portal.notify({
 })
 ```
 
-## `portal.dialog(options: DialogOptions) -> string`
+## `portal.dialog(options: DialogOptions)`
 
-Show in-app modal dialog and block the current thread execution until the user
-selects an option within the dialog, returning name of selected button.
+Show in-app modal dialog. This is a non-blocking function.
 
 ```ts
 type DialogOptions = {
@@ -120,11 +119,10 @@ type DialogButton = {
 };
 ```
 
-## `portal.open_file([options: OpenFileOptions]) -> string | string[] | null`
+## `portal.open_file([options: OpenFileOptions]) -> Promise<string | string[] | null>`
 
-Open system file selection dialog. Block current thread until a file is
-selected, returning either `nil` if no file selected, path to selected file,
-or list of paths if `multiple = true`.
+Open system file selection dialog. Return background promise which will resolve
+into a path to a selected file(s) or `nil` if no file selected.
 
 Selected paths are temporary allowed to be read, but not modified (read-only
 access).
@@ -145,7 +143,7 @@ type OpenFileOptions = {
 ```luau
 local file_path = portal.open_file({
     title = "Open file"
-})
+}):await()
 
 if file_path then
     print(`Selected path: {file_path}`)
@@ -155,11 +153,10 @@ if file_path then
 end
 ```
 
-## `portal.open_folder([options: OpenFolderOptions]) -> string | string[] | null`
+## `portal.open_folder([options: OpenFolderOptions]) -> Promise<string | string[] | null>`
 
-Open a system folder selection dialog. Block current thread until a folder
-is selected, returning either `nil` if no folder selected, path to selected
-folder, or a list of paths to selected folders if `multiple = true`.
+Open a system folder selection dialog. Return background promise which will
+resolve into a path(s) to a selected folder or `nil` if no folder selected.
 
 Selected paths are temporary allowed to be written to (read-write access).
 
@@ -179,7 +176,7 @@ type OpenFolderOptions = {
 ```luau
 local folder_path = portal.open_folder({
     title = "Open folder"
-})
+}):await()
 
 if folder_path then
     print(`Selected path: {folder_path}`)
@@ -189,10 +186,10 @@ if folder_path then
 end
 ```
 
-## `portal.save_file([options: SaveFileOptions]) -> string | null`
+## `portal.save_file([options: SaveFileOptions]) -> Promise<string | null>`
 
-Open a system file saving dialog. Block current thread until a file is selected,
-returning either `nil` if no file selected or path to the selected file.
+Open a system file saving dialog. Return background promise which will resulve
+into a selected file path or `nil` if no file selected .
 
 Selected path is temporary allowed to be written to (read-write access).
 
@@ -213,7 +210,7 @@ type SaveFileOptions = {
 local file_path = portal.save_file({
     title = "Save file",
     file_name = "amogus.txt"
-})
+}):await()
 
 if file_path then
     fs.write_file(file_path, "Hello, World!")
