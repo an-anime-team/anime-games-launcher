@@ -79,7 +79,7 @@ print("Size: " .. metadata.length)
 print("Type: " .. metadata.type)
 ```
 
-## `fs.copy(source: string, target: string)`
+## `fs.copy(source: string, target: string) -> Promise<void>`
 
 Copy file or folder to another location. This function will throw an error if
 the target location already exists or is not accessible.
@@ -88,7 +88,7 @@ the target location already exists or is not accessible.
 fs.copy("my_folder", "new_location/my_folder")
 ```
 
-## `fs.move(source: string, target: string)`
+## `fs.move(source: string, target: string) -> Promise<void>`
 
 Move a file or a folder to another location. This function will throw an error
 if the target location already exists or is not accessible.
@@ -97,7 +97,7 @@ if the target location already exists or is not accessible.
 fs.move("my_folder", "new_location/my_folder")
 ```
 
-## `fs.remove(path: string)`
+## `fs.remove(path: string) -> Promise<void>`
 
 Remove a file, folder or a symlink. Removing a folder will remove all its
 content as well.
@@ -377,54 +377,54 @@ fs.write({ 1, 2, 3 })
 fs.close(handle)
 ```
 
-## `fs.create_file(path: string)`
+## `fs.create_file(path: string) -> Promise<void>`
 
 Create an empty file.
 
 ```luau
 -- these two lines will do the same
-fs.create_file("file_1")
-fs.write_file("file_2", {})
+fs.create_file("file_1"):await()
+fs.write_file("file_2", {}):await()
 ```
 
-## `fs.read_file(path: string) -> Bytes`
+## `fs.read_file(path: string) -> Promise<Bytes>`
 
 Read the whole content of a file in a given path. It's not recommended to read
 whole content of large files at once.
 
 ```luau
-local content = fs.read_file("my_file.txt")
+local content = fs.read_file("my_file.txt"):await()
 
 print(`Read {#content} bytes`)
 ```
 
-## `fs.write_file(path: string, content: Bytes)`
+## `fs.write_file(path: string, content: Bytes) -> Promise<void>`
 
 Overwrite existing file with given content, or create a new one.
 
 ```luau
-fs.write_file("my_file.txt", { 1, 2, 3 }) -- bytes 1, 2 and 3
-fs.write_file("my_file.txt", "123") -- ASCII characters for 1, 2 and 3
+fs.write_file("my_file.txt", { 1, 2, 3 }):await() -- bytes 1, 2 and 3
+fs.write_file("my_file.txt", "123"):await() -- ASCII characters for 1, 2 and 3
 ```
 
-## `fs.remove_file(path: string)`
+## `fs.remove_file(path: string) -> Promise<void>`
 
 Remove file in a given path.
 
 ```luau
-fs.remove_file("my_file.txt")
+fs.remove_file("my_file.txt"):await()
 ```
 
-## `fs.create_dir(path: string)`
+## `fs.create_dir(path: string) -> Promise<void>`
 
 Create directory if it doesn't exist.
 
 ```luau
 -- this will create all the parent directories too
-fs.create_dir("a/b/c/d")
+fs.create_dir("a/b/c/d"):await()
 ```
 
-## `fs.read_dir(path: string) -> Entry[]`
+## `fs.read_dir(path: string) -> Promise<Entry[]>`
 
 Read the given directory, returning list of its entries.
 
@@ -441,7 +441,7 @@ function print_dir(path, prefix)
     for _, entry in pairs(fs.read_dir(path)) do
         print(prefix .. entry.name)
 
-        if entry.type == "folder" do
+        if entry.type == "directory" do
             print_dir(entry.path, prefix .. "  ")
         end
     end
@@ -450,7 +450,7 @@ end
 print_dir("my_dir", "")
 ```
 
-## `fs.remove_dir(path: string)`
+## `fs.remove_dir(path: string) -> Promise<void>`
 
 Remove given folder and all its content.
 

@@ -26,7 +26,10 @@ use mlua::prelude::*;
 
 use bufreaderwriter::rand::BufReaderWriterRand;
 
+use agl_core::tasks::fs;
+
 use super::bytes::Bytes;
+use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 use super::*;
 
 pub const IO_READ_CHUNK_LEN: usize = 8 * 1024; // 8 KiB reads
@@ -144,7 +147,7 @@ impl FilesystemApi {
             fs_copy: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (mut source, mut target): (PathBuf, PathBuf)| {
+                lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
                     if source.is_relative() {
                         source = context.module_folder.join(source);
                     }
@@ -181,18 +184,21 @@ impl FilesystemApi {
                         return Err(LuaError::external("no target path write permissions"));
                     }
 
-                    fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
+                    async fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
                         if source.is_file() {
-                            std::fs::copy(source, target)?;
+                            fs::copy(source, target).await?;
                         }
 
                         else if source.is_dir() {
-                            std::fs::create_dir_all(target)?;
+                            fs::create_dir_all(target).await?;
 
                             for entry in source.read_dir()? {
                                 let entry = entry?;
 
-                                try_copy(&entry.path(), &target.join(entry.file_name()))?;
+                                Box::pin(try_copy(
+                                    &entry.path(),
+                                    &target.join(entry.file_name())
+                                )).await?;
                             }
                         }
 
@@ -212,16 +218,21 @@ impl FilesystemApi {
                         Ok(())
                     }
 
-                    try_copy(&source, &target)?;
+                    let value = PromiseValue::from_future(async move {
+                        try_copy(&source, &target).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_move: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (mut source, mut target): (PathBuf, PathBuf)| {
+                lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
                     if source.is_relative() {
                         source = context.module_folder.join(source);
                     }
@@ -258,30 +269,33 @@ impl FilesystemApi {
                         return Err(LuaError::external("no target path write permissions"));
                     }
 
-                    fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
+                    async fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
                         if source.is_file() {
-                            // Try to rename the file (mv) or copy
-                            // it and then remove the source if mv
-                            // has failed (different mounts).
-                            if std::fs::rename(source, target).is_err() {
-                                std::fs::copy(source, target)?;
-                                std::fs::remove_file(source)?;
+                            // Try to rename the file (mv) or copy it and then
+                            // remove the source if mv has failed (different
+                            // mounts).
+                            if fs::rename(source, target).await.is_err() {
+                                fs::copy(source, target).await?;
+                                fs::remove_file(source).await?;
                             }
                         }
 
                         else if source.is_dir() {
-                            // Try to rename the folder (mv) or create
-                            // a target folder and move all the files there.
-                            if std::fs::rename(source, target).is_err() {
-                                std::fs::create_dir_all(target)?;
+                            // Try to rename the folder (mv) or create a target
+                            // folder and move all the files there.
+                            if fs::rename(source, target).await.is_err() {
+                                fs::create_dir_all(target).await?;
 
                                 for entry in source.read_dir()? {
                                     let entry = entry?;
 
-                                    try_move(&entry.path(), &target.join(entry.file_name()))?;
+                                    Box::pin(try_move(
+                                        &entry.path(),
+                                        &target.join(entry.file_name())
+                                    )).await?;
                                 }
 
-                                std::fs::remove_dir_all(source)?;
+                                fs::remove_dir_all(source).await?;
                             }
                         }
 
@@ -293,22 +307,27 @@ impl FilesystemApi {
                                 )?;
                             }
 
-                            std::fs::remove_file(source)?;
+                            fs::remove_file(source).await?;
                         }
 
                         Ok(())
                     }
 
-                    try_move(&source, &target)?;
+                    let value = PromiseValue::from_future(async move {
+                        try_move(&source, &target).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_remove: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -322,13 +341,18 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
-                    if path.is_dir() {
-                        std::fs::remove_dir_all(path)?;
-                    } else {
-                        std::fs::remove_file(path)?;
-                    }
+                    let value = PromiseValue::from_future(async move {
+                        if path.is_dir() {
+                            fs::remove_dir_all(path).await?;
+                        } else {
+                            fs::remove_file(path).await?;
+                        }
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
@@ -594,7 +618,7 @@ impl FilesystemApi {
             fs_create_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -608,13 +632,18 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
-                    if let Some(parent) = path.parent() && !parent.is_dir() {
-                        std::fs::create_dir_all(parent)?;
-                    }
+                    let value = PromiseValue::from_future(async move {
+                        if let Some(parent) = path.parent() && !parent.is_dir() {
+                            fs::create_dir_all(parent).await?;
+                        }
 
-                    std::fs::write(path, [])?;
+                        fs::write(path, []).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
@@ -635,16 +664,23 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
-                    let content = Bytes::from(std::fs::read(path)?);
+                    let value = PromiseValue::from_future(async move {
+                        let content = Bytes::from(fs::read(path).await?);
 
-                    content.into_lua(lua)
+                        Ok(Box::new(move |lua: &Lua| {
+                            content.into_lua(lua)
+                        }) as TaskOutput)
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_write_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, (mut path, content): (PathBuf, Bytes)| {
+                lua.create_function(move |lua: &Lua, (mut path, content): (PathBuf, Bytes)| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -658,20 +694,25 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
-                    if let Some(parent) = path.parent() && !parent.is_dir() {
-                        std::fs::create_dir_all(parent)?;
-                    }
+                    let value = PromiseValue::from_future(async move {
+                        if let Some(parent) = path.parent() && !parent.is_dir() {
+                            fs::create_dir_all(parent).await?;
+                        }
 
-                    std::fs::write(path, content.as_slice())?;
+                        fs::write(path, content.as_slice()).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_remove_file: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -685,16 +726,21 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
-                    std::fs::remove_file(path)?;
+                    let value = PromiseValue::from_future(async move {
+                        fs::remove_file(path).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_create_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -708,16 +754,21 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
-                    std::fs::create_dir_all(path)?;
+                    let value = PromiseValue::from_future(async move {
+                        fs::create_dir_all(path).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_read_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |lua, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -731,37 +782,48 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
-                    let entries = lua.create_table()?;
+                    let value = PromiseValue::from_blocking(move || {
+                        let entries = path.read_dir()?
+                            .map(|entry| {
+                                entry.map(|entry| (entry.file_name(), entry.path()))
+                            })
+                            .collect::<Result<Box<[_]>, _>>()?;
 
-                    for entry in path.read_dir()? {
-                        let entry = entry?;
+                        Ok(Box::new(move |lua: &Lua| {
+                            let result = lua.create_table_with_capacity(entries.len(), 0)?;
 
-                        let entry_table = lua.create_table_with_capacity(0, 3)?;
+                            for (name, path) in entries {
+                                let entry_table = lua.create_table_with_capacity(0, 3)?;
 
-                        entry_table.raw_set("name", entry.file_name().to_string_lossy().to_string())?;
-                        entry_table.raw_set("path", entry.path().to_string_lossy().to_string())?;
+                                entry_table.raw_set("name", name.to_string_lossy().to_string())?;
+                                entry_table.raw_set("path", path.to_string_lossy().to_string())?;
 
-                        entry_table.raw_set("type", {
-                            if entry.path().is_symlink() {
-                                "symlink"
-                            } else if entry.path().is_dir() {
-                                "directory"
-                            } else {
-                                "file"
+                                entry_table.raw_set("type", {
+                                    if path.is_symlink() {
+                                        "symlink"
+                                    } else if path.is_dir() {
+                                        "directory"
+                                    } else {
+                                        "file"
+                                    }
+                                })?;
+
+                                result.raw_push(entry_table)?;
                             }
-                        })?;
 
-                        entries.raw_push(entry_table)?;
-                    }
+                            Ok(LuaValue::Table(result))
+                        }) as TaskOutput)
+                    });
 
-                    Ok(entries)
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
             fs_remove_dir: Box::new(|lua: &Lua, context: &Context| {
                 let context = context.to_owned();
 
-                lua.create_function(move |_, mut path: PathBuf| {
+                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
                         path = context.module_folder.join(path);
                     }
@@ -775,9 +837,14 @@ impl FilesystemApi {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
-                    std::fs::remove_dir_all(path)?;
+                    let value = PromiseValue::from_future(async move {
+                        fs::remove_dir_all(path).await?;
 
-                    Ok(())
+                        Ok(task_output(Ok(LuaValue::Nil)))
+                    });
+
+                    Promise::new(value)
+                        .into_lua(lua)
                 })
             }),
 
