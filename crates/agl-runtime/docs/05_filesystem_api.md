@@ -315,10 +315,10 @@ fs.close(handle)
 
 Flush file content on disk.
 
-Write operations are performed on a small buffer in the RAM and are flushed on
+Write operations are performed on a small buffer in the RAM and are flushed to
 disk only when the buffer is full. This greatly improves performance of
-operations, but changes will not be available for other file readers until the
-buffer is flushed. This function forcely flushes the buffer on disk.
+operations, but you changes will not be stored until the buffer is flushed. This
+function forcely flushes the buffer to disk.
 
 ```luau
 local reader = fs.open("file.txt", {
