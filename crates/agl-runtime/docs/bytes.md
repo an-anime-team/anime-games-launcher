@@ -44,10 +44,18 @@ Get length of the buffer. Since it's immutable the value will never change.
 
 Get current cursor position in the buffer.
 
-## `Bytes.read() -> number[] | nil`
+## `Bytes.read([position: number], [length: number]) -> number[] | nil`
 
 Read content of the bytes buffer. Return lua table of read bytes or `nil` if end
 of buffer reached.
+
+If `position` is specified, then `Bytes.seek` will be used before reading the
+chunk. This will affect future operations as well. Position can be negative to
+set offset from the end of the file. Otherwise it's always set from the
+beginning of the buffer.
+
+If `length` is specified, then the exact amount of bytes will attempted to be
+read. If buffer doesn't have enough bytes - an error will be returned.
 
 ```luau
 local bytes: Bytes = ...
@@ -79,11 +87,11 @@ if bytes:read_exact(3) == str.to_bytes("png") then
 end
 ```
 
-## `Bytes.seek(pos: number) -> number`
+## `Bytes.seek(position: number) -> number`
 
 Set buffer cursor to the specified absolute position if it's a positive value,
-and to `Bytes.len - |pos|` if its value is negative. Out of bounds seeking is
-not allowed and will return an error.
+and to `Bytes.len - |position|` if its value is negative. Out of bounds seeking
+is not allowed and will return an error.
 
 Return new cursor position of the buffer.
 

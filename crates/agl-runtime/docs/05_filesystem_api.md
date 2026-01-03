@@ -222,8 +222,8 @@ chunk. This will affect future operations as well. Position can be negative to
 set offset from the end of the file. Otherwise it's always set from the
 beginning of the file.
 
-If `length` is specified, then the chunk length will not be larger than the
-given number.
+If `length` is specified, then the exact amount of bytes will attempted to be
+read. If file doesn't have enough bytes - an error will be returned.
 
 ```luau
 local handle = fs.open("large_file.txt")

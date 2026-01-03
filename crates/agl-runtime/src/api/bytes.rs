@@ -227,22 +227,42 @@ impl LuaUserData for Bytes {
             lua.create_string(&bytes.buf)
         });
 
-        methods.add_method_mut("read", |lua: &Lua, bytes: &mut Self, _: ()| {
-            let mut buf = Vec::new();
+        methods.add_method_mut("read", |lua: &Lua, bytes: &mut Self, (position, length): (Option<i64>, Option<u64>)| {
+            // Seek the file if position is given.
+            if let Some(position) = position {
+                if position >= 0 {
+                    bytes.seek(SeekFrom::Start(position as u64))?;
+                }
 
-            let n = bytes.read(&mut buf)?;
-
-            if n == 0 {
-                return Ok(LuaValue::Nil);
+                else {
+                    bytes.seek(SeekFrom::End(position))?;
+                }
             }
 
-            let table = lua.create_table_with_capacity(n, 0)?;
+            // Read exact amount of bytes.
+            let buf = if let Some(length) = length {
+                let mut buf = vec![0; length as usize];
 
-            for byte in buf {
-                table.raw_push(byte)?;
+                bytes.read_exact(&mut buf)?;
+
+                buf
             }
 
-            Ok(LuaValue::Table(table))
+            // Or just read a chunk of data.
+            else {
+                let mut buf = Vec::new();
+
+                let n = bytes.read(&mut buf)?;
+
+                if n == 0 {
+                    return Ok(LuaValue::Nil);
+                }
+
+                buf
+            };
+
+            lua.create_sequence_from(buf)
+                .map(LuaValue::Table)
         });
 
         methods.add_method_mut("read_exact", |lua: &Lua, bytes: &mut Self, len: usize| {
@@ -259,11 +279,11 @@ impl LuaUserData for Bytes {
             Ok(LuaValue::Table(table))
         });
 
-        methods.add_method_mut("seek", |_: &Lua, bytes: &mut Self, pos: i64| {
-            if pos >= 0 {
-                bytes.seek(SeekFrom::Start(pos as u64))?;
+        methods.add_method_mut("seek", |_: &Lua, bytes: &mut Self, position: i64| {
+            if position >= 0 {
+                bytes.seek(SeekFrom::Start(position as u64))?;
             } else {
-                bytes.seek(SeekFrom::End(pos))?;
+                bytes.seek(SeekFrom::End(position))?;
             }
 
             Ok(LuaValue::Integer(bytes.pos as i64))
