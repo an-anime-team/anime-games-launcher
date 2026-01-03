@@ -65,7 +65,9 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() -> anyhow::Result<()> {
     // Setup custom panic handler.
-    human_panic::setup_panic!(human_panic::metadata!());
+    if !*consts::APP_DEBUG {
+        human_panic::setup_panic!(human_panic::metadata!());
+    }
 
     // Include translations file.
     agl_locale::include_i18n!("../assets/locales/interface.toml");
