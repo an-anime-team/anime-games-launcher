@@ -20,6 +20,7 @@ use std::path::PathBuf;
 
 use mlua::prelude::*;
 
+#[derive(Debug)]
 pub struct SystemApi {
     lua: Lua,
 

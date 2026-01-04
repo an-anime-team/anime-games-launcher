@@ -117,6 +117,6 @@ hash.write(hasher, "Hello")
 hash.write(hasher, "World")
 
 -- printed the same value
-print(str.encode(hash.finalize(hasher), "hex"))
-print(str.encode(hash.digitize("HelloWorld"), "hex"))
+print(str.encode("hex", hash.finalize(hasher)))
+print(str.encode("hex", hash.digitize("HelloWorld")))
 ```

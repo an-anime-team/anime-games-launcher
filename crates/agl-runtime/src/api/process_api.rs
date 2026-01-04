@@ -27,7 +27,7 @@ use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput};
 use super::*;
 
-const PROCESS_READ_CHUNK_SIZE: usize = 4096;
+const PROCESS_READ_CHUNK_SIZE: usize = 4096; // 4 KiB stdout/stderr reads
 
 pub struct ProcessApi {
     lua: Lua,
@@ -48,7 +48,6 @@ impl ProcessApi {
 
         Ok(Self {
             process_exec: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
                 let module_folder = context.module_folder.clone();
 
                 lua.create_function(move |lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
@@ -118,7 +117,6 @@ impl ProcessApi {
                 let process_handles = process_handles.clone();
 
                 Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
                     let module_folder = context.module_folder.clone();
                     let process_handles = process_handles.clone();
 
@@ -212,11 +210,15 @@ impl ProcessApi {
 
                         let len = stdout.read(&mut buf)?;
 
-                        return Bytes::new(buf[..len].to_vec().into_boxed_slice())
+                        if len == 0 {
+                            return Ok(LuaValue::Nil);
+                        }
+
+                        return Bytes::from(buf[..len].to_vec())
                             .into_lua(lua);
                     }
 
-                    Ok(LuaNil)
+                    Ok(LuaValue::Nil)
                 })?
             },
 
@@ -237,11 +239,15 @@ impl ProcessApi {
 
                         let len = stderr.read(&mut buf)?;
 
-                        return Bytes::new(buf[..len].to_vec().into_boxed_slice())
+                        if len == 0 {
+                            return Ok(LuaValue::Nil);
+                        }
+
+                        return Bytes::from(buf[..len].to_vec())
                             .into_lua(lua);
                     }
 
-                    Ok(LuaNil)
+                    Ok(LuaValue::Nil)
                 })?
             },
 

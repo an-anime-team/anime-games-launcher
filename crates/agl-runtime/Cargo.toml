@@ -66,6 +66,7 @@ time = { version = "0.3", features = ["local-offset", "formatting"] }
 toml = "0.9"
 serde_json = "1.0"
 serde_yml = "0.0.12"
+bson = "3.1"
 
 rand = "0.9"
 seahash = "4.1"

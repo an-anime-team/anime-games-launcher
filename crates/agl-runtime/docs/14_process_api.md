@@ -66,7 +66,8 @@ process.stdin(handle, "some input")
 
 ## `process.stdout(handle: number) -> Bytes | nil`
 
-Read the process's stdout chunk. If process is closed, then `nil` is returned.
+Read the process's stdout. If process is closed, stdout is not available or no
+data was read - `nil` is returned.
 
 ```luau
 local handle = process.open("cat", { "large_file.txt" })
@@ -84,7 +85,8 @@ process.wait(handle)
 
 ## `process.stderr(handle: number) -> Bytes | nil`
 
-Read the process's stderr chunk. If process is closed, then `nil` is returned.
+Read the process's stderr. If process is closed, stderr is not available or no
+data was read - `nil` is returned.
 
 ```luau
 local handle = process.open("my_app")

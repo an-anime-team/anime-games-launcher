@@ -72,6 +72,7 @@ fn create_request(
     Ok(request)
 }
 
+#[derive(Debug)]
 pub struct HttpApi {
     lua: Lua,
 

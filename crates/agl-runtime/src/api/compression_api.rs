@@ -60,6 +60,7 @@ impl Write for Variant {
     }
 }
 
+#[derive(Debug)]
 pub struct CompressionApi {
     lua: Lua,
 

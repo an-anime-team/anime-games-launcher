@@ -32,7 +32,7 @@ use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 use super::*;
 
-pub const IO_READ_CHUNK_LEN: usize = 8 * 1024; // 8 KiB reads
+pub const IO_READ_CHUNK_LEN: usize = 4096; // 4 KiB file reads
 pub const IO_BUFFER_SIZE: usize = 4 * 1024 * 1024 * 1024; // 4 MiB read/write in-RAM cache
 
 pub struct FilesystemApi {

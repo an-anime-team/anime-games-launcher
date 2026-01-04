@@ -378,6 +378,7 @@ impl Drop for Promise {
     }
 }
 
+#[derive(Debug)]
 pub struct TaskApi {
     lua: Lua,
 

@@ -20,7 +20,7 @@ use std::io::{Read, Seek, SeekFrom};
 
 use mlua::prelude::*;
 
-pub const BYTES_READ_CHUNK_SIZE: usize = 8192;
+pub const BYTES_READ_CHUNK_SIZE: usize = 1024;
 
 /// Immutable slice of binary data.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
