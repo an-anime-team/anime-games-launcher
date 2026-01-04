@@ -24,7 +24,6 @@ use tracing_subscriber::filter::*;
 use anyhow::Context;
 use clap::Parser;
 
-use agl_core::export::tasks::tokio;
 use agl_core::export::network::reqwest;
 
 use agl_core::tasks;
@@ -443,18 +442,16 @@ fn build_runtime(
     })?)
 }
 
-async fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {
+fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {
     match value {
         LuaValue::Function(ref callback) => {
-            let value = callback.call::<LuaValue>(())?;
-
-            Box::pin(resolve_lua_value(value)).await
+            resolve_lua_value(callback.call::<LuaValue>(())?)
         }
 
         LuaValue::Thread(coroutine) => {
-            let value = coroutine.into_async::<LuaValue>(())?.await?;
+            let value = tasks::block_on(coroutine.into_async::<LuaValue>(())?)?;
 
-            Box::pin(resolve_lua_value(value)).await
+            resolve_lua_value(value)
         }
 
         LuaValue::UserData(object) => {
@@ -462,7 +459,7 @@ async fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {
                 Some("Promise") => {
                     let value = object.call_method::<LuaValue>("await", ())?;
 
-                    Box::pin(resolve_lua_value(value)).await
+                    resolve_lua_value(value)
                 }
 
                 Some("Bytes") => {
@@ -477,8 +474,7 @@ async fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     // Prepare stdout logger.
     let stdout_log = tracing_subscriber::fmt::layer()
         .with_filter({
@@ -531,7 +527,7 @@ async fn main() -> anyhow::Result<()> {
         &mut lock_files_folder
     ] {
         if !path.exists() {
-            tasks::fs::create_dir_all(&path).await?;
+            std::fs::create_dir_all(&path)?;
         }
 
         *path = path.canonicalize()?;
@@ -551,7 +547,7 @@ async fn main() -> anyhow::Result<()> {
 
                 tracing::info!("downloading packages");
 
-                let lock = storage.install_packages(&downloader, source).await
+                let lock = tasks::block_on(storage.install_packages(&downloader, source))
                     .context("failed to install packages")?;
 
                 let lock_name = lock_name.unwrap_or_else(|| {
@@ -568,10 +564,10 @@ async fn main() -> anyhow::Result<()> {
 
                 tracing::info!(?path, "saving lock file");
 
-                tasks::fs::write(
+                std::fs::write(
                     path,
                     serde_json::to_vec_pretty(&lock.to_json())?
-                ).await?;
+                )?;
 
                 tracing::info!("done");
             }
@@ -587,7 +583,7 @@ async fn main() -> anyhow::Result<()> {
 
                     tracing::info!("downloading packages");
 
-                    let lock = storage.install_packages(&downloader, [&source]).await
+                    let lock = tasks::block_on(storage.install_packages(&downloader, [&source]))
                         .context("failed to install packages")?;
 
                     tracing::info!("downloading finished");
@@ -653,7 +649,7 @@ async fn main() -> anyhow::Result<()> {
                                 package_hash = package_hash.to_string(),
                                 ?resource_name,
                                 resource_hash = resource.hash.to_string(),
-                                output = format!("{:#?}", resolve_lua_value(output).await?),
+                                output = format!("{:#?}", resolve_lua_value(output)?),
                                 "module output"
                             );
                         }
@@ -674,7 +670,7 @@ async fn main() -> anyhow::Result<()> {
 
                     let downloader = Downloader::from_client(client.clone());
 
-                    downloader.download(&source, &temp_path).wait().await
+                    tasks::block_on(downloader.download(&source, &temp_path).wait())
                         .context("failed to download module")?;
 
                     tracing::debug!(?source, ?temp_path, "downloaded module file");
@@ -714,7 +710,7 @@ async fn main() -> anyhow::Result<()> {
                 };
 
                 tracing::info!(
-                    output = format!("{:#?}", resolve_lua_value(output).await?),
+                    output = format!("{:#?}", resolve_lua_value(output)?),
                     "module output"
                 );
             }
