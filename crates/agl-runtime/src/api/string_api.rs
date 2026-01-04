@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::str::FromStr;
+
 use mlua::prelude::*;
 
 use encoding_rs::Encoding;
@@ -62,80 +64,6 @@ enum StringEncoding {
 }
 
 impl StringEncoding {
-    pub fn from_name(name: impl AsRef<[u8]>) -> Option<Self> {
-        match name.as_ref() {
-            b"base16" | b"hex" => Some(Self::Base16),
-
-            // Base32
-            b"base32" | b"base32/pad" => {
-                Some(Self::Base32(base32::Alphabet::Rfc4648Lower { padding: true }))
-            }
-
-            b"base32/nopad" => {
-                Some(Self::Base32(base32::Alphabet::Rfc4648Lower { padding: false }))
-            }
-
-            b"base32/hex-pad"   => {
-                Some(Self::Base32(base32::Alphabet::Rfc4648HexLower { padding: true }))
-            }
-
-            b"base32/hex-nopad" => {
-                Some(Self::Base32(base32::Alphabet::Rfc4648HexLower { padding: false }))
-            }
-
-            // Base64
-            b"base64" | b"base64/pad" => {
-                let encoding = base64::engine::GeneralPurpose::new(
-                    &base64::alphabet::STANDARD,
-                    base64::engine::GeneralPurposeConfig::new()
-                        .with_encode_padding(true)
-                );
-
-                Some(Self::Base64(encoding))
-            }
-
-            b"base64/nopad" => {
-                let encoding = base64::engine::GeneralPurpose::new(
-                    &base64::alphabet::STANDARD,
-                    base64::engine::GeneralPurposeConfig::new()
-                        .with_encode_padding(false)
-                );
-
-                Some(Self::Base64(encoding))
-            }
-
-            b"base64/urlsafe-pad" => {
-                let encoding = base64::engine::GeneralPurpose::new(
-                    &base64::alphabet::URL_SAFE,
-                    base64::engine::GeneralPurposeConfig::new()
-                        .with_encode_padding(true)
-                );
-
-                Some(Self::Base64(encoding))
-            }
-
-            b"base64/urlsafe-nopad" => {
-                let encoding = base64::engine::GeneralPurpose::new(
-                    &base64::alphabet::URL_SAFE,
-                    base64::engine::GeneralPurposeConfig::new()
-                        .with_encode_padding(false)
-                );
-
-                Some(Self::Base64(encoding))
-            }
-
-            b"json" | b"json/compact"  => Some(Self::Json { pretty: false }),
-            b"json/pretty" => Some(Self::Json { pretty: true }),
-
-            b"toml" | b"toml/compact" => Some(Self::Toml { pretty: false }),
-            b"toml/pretty" => Some(Self::Toml { pretty: true }),
-
-            b"yaml" => Some(Self::Yaml),
-
-            _ => None
-        }
-    }
-
     pub fn encode(&self, lua: &Lua, value: LuaValue) -> Result<LuaString, LuaError> {
         use base64::Engine;
 
@@ -245,6 +173,85 @@ impl StringEncoding {
     }
 }
 
+impl FromStr for StringEncoding {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "base16" | "hex" => Ok(Self::Base16),
+
+            // Base32
+            "base32" | "base32/pad" => {
+                Ok(Self::Base32(base32::Alphabet::Rfc4648Lower { padding: true }))
+            }
+
+            "base32/nopad" => {
+                Ok(Self::Base32(base32::Alphabet::Rfc4648Lower { padding: false }))
+            }
+
+            "base32/hex-pad"   => {
+                Ok(Self::Base32(base32::Alphabet::Rfc4648HexLower { padding: true }))
+            }
+
+            "base32/hex-nopad" => {
+                Ok(Self::Base32(base32::Alphabet::Rfc4648HexLower { padding: false }))
+            }
+
+            // Base64
+            "base64" | "base64/pad" => {
+                let encoding = base64::engine::GeneralPurpose::new(
+                    &base64::alphabet::STANDARD,
+                    base64::engine::GeneralPurposeConfig::new()
+                        .with_encode_padding(true)
+                );
+
+                Ok(Self::Base64(encoding))
+            }
+
+            "base64/nopad" => {
+                let encoding = base64::engine::GeneralPurpose::new(
+                    &base64::alphabet::STANDARD,
+                    base64::engine::GeneralPurposeConfig::new()
+                        .with_encode_padding(false)
+                );
+
+                Ok(Self::Base64(encoding))
+            }
+
+            "base64/urlsafe-pad" => {
+                let encoding = base64::engine::GeneralPurpose::new(
+                    &base64::alphabet::URL_SAFE,
+                    base64::engine::GeneralPurposeConfig::new()
+                        .with_encode_padding(true)
+                );
+
+                Ok(Self::Base64(encoding))
+            }
+
+            "base64/urlsafe-nopad" => {
+                let encoding = base64::engine::GeneralPurpose::new(
+                    &base64::alphabet::URL_SAFE,
+                    base64::engine::GeneralPurposeConfig::new()
+                        .with_encode_padding(false)
+                );
+
+                Ok(Self::Base64(encoding))
+            }
+
+            "json" | "json/compact"  => Ok(Self::Json { pretty: false }),
+            "json/pretty" => Ok(Self::Json { pretty: true }),
+
+            "toml" | "toml/compact" => Ok(Self::Toml { pretty: false }),
+            "toml/pretty" => Ok(Self::Toml { pretty: true }),
+
+            "yaml" => Ok(Self::Yaml),
+
+            _ => Err(())
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct StringApi {
     lua: Lua,
 
@@ -289,16 +296,16 @@ impl StringApi {
                 lua.create_string(value.as_bytes())
             })?,
 
-            str_encode: lua.create_function(|lua, (value, encoding): (LuaValue, LuaString)| {
-                let Some(encoding) = StringEncoding::from_name(encoding.as_bytes()) else {
+            str_encode: lua.create_function(|lua, (encoding, value): (String, LuaValue)| {
+                let Ok(encoding) = StringEncoding::from_str(&encoding) else {
                     return Err(LuaError::external("invalid encoding"));
                 };
 
                 encoding.encode(lua, value)
             })?,
 
-            str_decode: lua.create_function(|lua, (value, encoding): (LuaString, LuaString)| {
-                let Some(encoding) = StringEncoding::from_name(encoding.as_bytes()) else {
+            str_decode: lua.create_function(|lua, (encoding, value): (String, LuaString)| {
+                let Ok(encoding) = StringEncoding::from_str(&encoding) else {
                     return Err(LuaError::external("invalid encoding"));
                 };
 
@@ -365,8 +372,8 @@ mod tests {
         ];
 
         for (name, value) in encodings {
-            let encoded = api.str_encode.call::<LuaString>(("Hello, World!", name))?;
-            let decoded = api.str_decode.call::<Bytes>((value, name))?;
+            let encoded = api.str_encode.call::<LuaString>((name, "Hello, World!"))?;
+            let decoded = api.str_decode.call::<Bytes>((name, value))?;
 
             assert_eq!(encoded, value);
             assert_eq!(decoded.as_slice(), b"Hello, World!");
@@ -385,10 +392,10 @@ mod tests {
         ];
 
         for (name, value) in encodings {
-            let encoded = api.str_encode.call::<LuaString>((table.clone(), name))?;
+            let encoded = api.str_encode.call::<LuaString>((name, table.clone()))?;
 
-            let decoded_1 = api.str_decode.call::<LuaTable>((value, name))?;
-            let decoded_2 = api.str_decode.call::<LuaTable>((encoded, name))?;
+            let decoded_1 = api.str_decode.call::<LuaTable>((name, value))?;
+            let decoded_2 = api.str_decode.call::<LuaTable>((name, encoded))?;
 
             assert_eq!(decoded_1.get::<LuaString>("test_string")?, "str");
             assert_eq!(decoded_1.get::<LuaValue>("test_bool")?, LuaValue::Boolean(true));

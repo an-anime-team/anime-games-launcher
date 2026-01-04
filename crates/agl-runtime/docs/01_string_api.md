@@ -31,6 +31,7 @@ Following table contains list of `StringEncoding` enum values.
 | `base64/urlsafe-nopad`   | URL-safe without padding.                            |
 | `json` or `json/compact` | Convert given value to a JSON string.                |
 | `json/pretty`            | Convert given value to a pretty JSON string.         |
+| `bson`                   | Convert given value to a BSON binary string.         |
 | `toml` or `toml/compact` | Convert given value to a TOML string.                |
 | `toml/pretty`            | Convert given value to a pretty TOML string.         |
 | `yaml`                   | Convert given value to a YAML string.                |
@@ -69,22 +70,22 @@ local b = str.to_bytes(a)
 print(b)
 ```
 
-## `str.encode(value: any, encoding: StringEncoding) -> string`
+## `str.encode(encoding: StringEncoding, value: any) -> string`
 
 Encode given value to a string.
 
 ```luau
-print(str.encode(123, "base16"))               -- 7b
-print(str.encode("Hello, World!", "base64"))   -- "SGVsbG8sIFdvcmxkIQ=="
-print(str.encode({ hello = "world" }, "json")) -- "{\"hello\":\"world\"}"
+print(str.encode("base16", 123))               -- 7b
+print(str.encode("base64", "Hello, World!"))   -- "SGVsbG8sIFdvcmxkIQ=="
+print(str.encode("json", { hello = "world" })) -- "{\"hello\":\"world\"}"
 ```
 
-## `str.decode(value: string, encoding: StringEncoding) -> any`
+## `str.decode(encoding: StringEncoding, value: string) -> any`
 
 Decode given string to a bytes slice.
 
 ```luau
-print(str.decode("7b", "base16"))                                   -- [0, 0, 0, 123]
-print(str.from_bytes(str.decode("SGVsbG8sIFdvcmxkIQ==", "base64"))) -- "Hello, World!"
-print(str.decode("{\"hello\":\"world\"}", "json"))                  -- { hello = "world" }
+print(str.decode("base16", "7b"))                                   -- [0, 0, 0, 123]
+print(str.from_bytes(str.decode("base64", "SGVsbG8sIFdvcmxkIQ=="))) -- "Hello, World!"
+print(str.decode("json", "{\"hello\":\"world\"}"))                  -- { hello = "world" }
 ```
