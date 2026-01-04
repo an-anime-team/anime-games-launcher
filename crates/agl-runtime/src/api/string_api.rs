@@ -59,6 +59,7 @@ enum StringEncoding {
     Base32(base32::Alphabet),
     Base64(base64::engine::GeneralPurpose),
     Json { pretty: bool },
+    Bson,
     Toml { pretty: bool },
     Yaml
 }
@@ -94,6 +95,13 @@ impl StringEncoding {
                 };
 
                 lua.create_string(value.map_err(LuaError::external)?)
+            }
+
+            Self::Bson => {
+                let value = bson::serialize_to_vec(&value)
+                    .map_err(LuaError::external)?;
+
+                lua.create_string(value)
             }
 
             Self::Toml { pretty } => {
@@ -148,6 +156,13 @@ impl StringEncoding {
 
             Self::Json { .. } => {
                 let value = serde_json::from_slice::<serde_json::Value>(&string.as_bytes())
+                    .map_err(LuaError::external)?;
+
+                Ok(filter_lua_value(lua.to_value(&value)?)?)
+            }
+
+            Self::Bson => {
+                let value = bson::deserialize_from_slice::<bson::Bson>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 Ok(filter_lua_value(lua.to_value(&value)?)?)
@@ -240,6 +255,8 @@ impl FromStr for StringEncoding {
 
             "json" | "json/compact"  => Ok(Self::Json { pretty: false }),
             "json/pretty" => Ok(Self::Json { pretty: true }),
+
+            "bson" => Ok(Self::Bson),
 
             "toml" | "toml/compact" => Ok(Self::Toml { pretty: false }),
             "toml/pretty" => Ok(Self::Toml { pretty: true }),
@@ -386,12 +403,15 @@ mod tests {
         table.set("test_bool", true)?;
 
         let encodings = [
-            ("json", "{ \"test_string\": \"str\", \"test_bool\": true, \"test_null\": null }"),
-            ("toml", "test_string = \"str\"\ntest_bool = true"),
-            ("yaml", "test_string: \"str\"\ntest_bool: true\ntest_null: null")
+            ("json", b"{ \"test_string\": \"str\", \"test_bool\": true, \"test_null\": null }".as_slice()),
+            ("bson", [0x31, 0x00, 0x00, 0x00, 0x02, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x00, 0x04, 0x00, 0x00, 0x00, 0x73, 0x74, 0x72, 0x00, 0x0a, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x6e, 0x75, 0x6c, 0x6c, 0x00, 0x08, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x62, 0x6f, 0x6f, 0x6c, 0x00, 0x01, 0x00].as_slice()),
+            ("toml", b"test_string = \"str\"\ntest_bool = true".as_slice()),
+            ("yaml", b"test_string: \"str\"\ntest_bool: true\ntest_null: null".as_slice())
         ];
 
         for (name, value) in encodings {
+            let value = lua.create_string(value)?;
+
             let encoded = api.str_encode.call::<LuaString>((name, table.clone()))?;
 
             let decoded_1 = api.str_decode.call::<LuaTable>((name, value))?;

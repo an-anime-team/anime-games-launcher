@@ -31,10 +31,13 @@ Following table contains list of `StringEncoding` enum values.
 | `base64/urlsafe-nopad`   | URL-safe without padding.                            |
 | `json` or `json/compact` | Convert given value to a JSON string.                |
 | `json/pretty`            | Convert given value to a pretty JSON string.         |
-| `bson`                   | Convert given value to a BSON binary string.         |
+| `bson` \*                | Convert given value to a BSON binary string.         |
 | `toml` or `toml/compact` | Convert given value to a TOML string.                |
 | `toml/pretty`            | Convert given value to a pretty TOML string.         |
 | `yaml`                   | Convert given value to a YAML string.                |
+
+> \* Although BSON is a binary format since lua strings don't have any specific
+>    text encoding it's possible to store binary data in them.
 
 ## `str.to_bytes(value: any, [charset: string]) -> Bytes`
 
