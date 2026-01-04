@@ -645,8 +645,10 @@ async fn main() -> anyhow::Result<()> {
                     for (resource_name, resource) in package.outputs.iter() {
                         if resource.format == ResourceFormat::File
                             && resource.url.contains(".lua")
-                            && let Some(output) = runtime.get_value::<LuaValue>(format!("{}#module", resource.hash))?
+                            && let Some(output) = runtime.get_value::<LuaTable>(format!("{}#module", resource.hash))?
                         {
+                            let output = output.get::<LuaValue>("value")?;
+
                             tracing::info!(
                                 package_hash = package_hash.to_string(),
                                 ?resource_name,
