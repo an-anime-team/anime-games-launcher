@@ -103,9 +103,10 @@ Create data decompression object, returning handle to it.
 local lzma2 = compression.decompressor("lzma2")
 ```
 
-## `compression.read(handle: number) -> Bytes`
+## `compression.read(handle: number) -> Bytes | nil`
 
-Read bytes from a compressor / decompressor object.
+Read bytes from a compressor / decompressor object. Return `nil` if there's
+nothing to read.
 
 ```luau
 local compressor = compression.compressor("lz4")
