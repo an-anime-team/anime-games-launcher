@@ -213,6 +213,10 @@ impl CompressionApi {
 
                     let len = variant.read(&mut buf)?;
 
+                    if len == 0 {
+                        return Ok(LuaValue::Nil);
+                    }
+
                     Bytes::new(buf[..len].to_vec().into_boxed_slice())
                         .into_lua(lua)
                 })?
