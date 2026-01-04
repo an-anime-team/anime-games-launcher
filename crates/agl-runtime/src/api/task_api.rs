@@ -161,6 +161,8 @@ impl LuaUserData for Promise {
                     let mut values = callback.call::<LuaVariadic<LuaValue>>(())?;
 
                     match values.len() {
+                        0 => Ok((Some(true), LuaValue::Nil)),
+
                         1 => {
                             let Some(value) = values.pop() else {
                                 return Err(LuaError::external("failed to take callback output"));
