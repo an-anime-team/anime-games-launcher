@@ -6,7 +6,8 @@ members = [
     "crates/agl-packages",
     "crates/agl-runtime",
     "crates/agl-games",
-    "crates/anime-games-launcher"
+    "crates/anime-games-launcher",
+    "crates/anirun"
 ]
 
 [profile.release]

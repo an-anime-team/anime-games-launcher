@@ -1,6 +1,7 @@
 /target
 /.direnv
 /result
+/.anirun
 
 /flamegraph.svg
 /perf.data
