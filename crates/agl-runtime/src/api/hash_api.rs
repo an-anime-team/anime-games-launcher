@@ -31,7 +31,7 @@ use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue};
 use super::*;
 
-pub const HASHER_CHUNK_LEN: usize = 4 * 1024 * 1024; // 4 MiB
+pub const HASHER_CHUNK_LEN: usize = 8 * 1024; // 8 KiB
 
 pub struct HashApi {
     lua: Lua,
