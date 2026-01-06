@@ -54,11 +54,6 @@ fn create_request(
 
     let mut request = client.request(method, url.as_ref());
 
-    request = request.header(
-        "User-Agent",
-        format!("agl-runtime/{}", crate::VERSION)
-    );
-
     // Set request header and body if provided.
     if let Some(options) = &options {
         if let Some(headers) = options.get::<Option<LuaTable>>("headers")? {
