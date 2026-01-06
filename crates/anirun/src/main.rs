@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::filter::*;
@@ -66,8 +67,18 @@ struct Cli {
     #[arg(long, alias = "lock-files", alias = "locks")]
     pub lock_files_folder: Option<PathBuf>,
 
+    /// Optional proxy string. Used in all HTTP requests and, if socks5 string
+    /// provided, in torrent runtime API.
     #[arg(long)]
     pub proxy: Option<String>,
+
+    /// HTTP requests user agent string.
+    #[arg(long)]
+    pub user_agent: Option<String>,
+
+    /// HTTP requests timeout in milliseconds. No timeout is used if unset.
+    #[arg(long)]
+    pub timeout: Option<u64>,
 
     #[command(subcommand)]
     pub command: CliCommands
@@ -350,14 +361,23 @@ fn translate(str: LocalizableString) -> String {
     str.translate(&*SYSTEM_LANG).to_string()
 }
 
-fn build_client(proxy: Option<String>) -> anyhow::Result<reqwest::Client> {
-    let mut client = reqwest::ClientBuilder::new();
+fn build_client(
+    proxy: Option<String>,
+    user_agent: Option<String>,
+    timeout: Option<Duration>
+) -> anyhow::Result<reqwest::Client> {
+    let mut client = reqwest::ClientBuilder::new()
+        .user_agent(user_agent.unwrap_or_else(|| format!("anirun/{APP_VERSION}")));
 
     if let Some(proxy) = &proxy {
         let proxy = reqwest::Proxy::all(proxy)
             .context("failed to build proxy")?;
 
         client = client.proxy(proxy);
+    }
+
+    if let Some(timeout) = timeout {
+        client = client.connect_timeout(timeout);
     }
 
     client.build().context("failed to build HTTP client")
@@ -534,7 +554,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Build reqwest client.
-    let client = build_client(cli.proxy.clone())?;
+    let client = build_client(
+        cli.proxy.clone(),
+        cli.user_agent,
+        cli.timeout.map(Duration::from_millis)
+    )?;
 
     // Process the parsed command.
     match cli.command {
