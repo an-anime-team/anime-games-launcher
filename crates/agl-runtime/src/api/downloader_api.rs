@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use agl_core::export::network::reqwest::Client;
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 
@@ -41,7 +42,7 @@ pub struct DownloaderApi {
 }
 
 impl DownloaderApi {
-    pub fn new(lua: Lua) -> Result<Self, LuaError> {
+    pub fn new(lua: Lua, client: Client) -> Result<Self, LuaError> {
         let downloader_handles = Arc::new(Mutex::new(HashMap::new()));
         let tasks_handles = Arc::new(Mutex::new(HashMap::new()));
 
@@ -50,7 +51,7 @@ impl DownloaderApi {
                 let downloader_handles = downloader_handles.clone();
 
                 lua.create_function(move |_, _: ()| {
-                    let downloader = Downloader::new();
+                    let downloader = Downloader::from_client(client.clone());
 
                     let mut handles = downloader_handles.lock()
                         .map_err(|err| {
