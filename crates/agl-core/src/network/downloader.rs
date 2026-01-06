@@ -36,7 +36,10 @@ use reqwest::Client;
 const DOWNLOADER_CHUNKS_REQUESTS_TIMEOUT: Option<Duration> = None;
 
 lazy_static::lazy_static! {
-    static ref CLIENT: Client = Client::new();
+    static ref CLIENT: Client = Client::builder()
+        .user_agent(format!("agl-core/{}", crate::VERSION))
+        .build()
+        .expect("failed to build reqwest client");
 }
 
 #[derive(Debug, thiserror::Error)]
