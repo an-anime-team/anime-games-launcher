@@ -42,7 +42,7 @@ fn create_request(
 
     let method = match method.to_ascii_lowercase().as_str() {
         "get"     => Method::GET,
-        "port"    => Method::POST,
+        "post"    => Method::POST,
         "head"    => Method::HEAD,
         "put"     => Method::PUT,
         "patch"   => Method::PATCH,
