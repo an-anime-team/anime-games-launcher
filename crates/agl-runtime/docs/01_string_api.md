@@ -11,6 +11,9 @@ bytes-string conversions, support for data encoding and serialization.
 | `str.from_bytes` | Convert bytes slice to a string. |
 | `str.encode`     | Encode value to a string.        |
 | `str.decode`     | Decode value from a string.      |
+| `str.lowercase`  | Convert characters to lowercase. |
+| `str.uppercase`  | Convert characters to uppercase. |
+| `str.trim`       | Trim characters by a pattern.    |
 
 ## Supported encodings
 
@@ -91,4 +94,38 @@ Decode given string to a bytes slice.
 print(str.decode("base16", "7b"))                                   -- [0, 0, 0, 123]
 print(str.from_bytes(str.decode("base64", "SGVsbG8sIFdvcmxkIQ=="))) -- "Hello, World!"
 print(str.decode("json", "{\"hello\":\"world\"}"))                  -- { hello = "world" }
+```
+
+## `str.lowercase(value: string) -> string`
+
+Convert text characters into lowercase variant. Unlike standard lua's
+`string.lower`, `str.lowercase` supports unicode characters.
+
+```luau
+if str.lowercase("Hello") == "hello" then
+    -- ...
+end
+```
+
+## `str.uppercase(value: string) -> string`
+
+Convert text characters into uppercase variant. Unlike standard lua's
+`string.upper`, `str.uppercase` supports unicode characters.
+
+```luau
+if str.uppercase("Hello") == "HELLO" then
+    -- ...
+end
+```
+
+## `str.trim(value: string, [pattern: string]) -> string`
+
+Remove first and last characters of given text if they match provided pattern
+(characters of a pattern string). If pattern string is not provided then
+whitespace characters (spaces, tabs, new lines, etc.) are removed.
+
+```luau
+if str.lowercase(str.trim("Hello\n")) == "hello" then
+    -- ...
+end
 ```

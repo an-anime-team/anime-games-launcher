@@ -275,7 +275,11 @@ pub struct StringApi {
     str_to_bytes: LuaFunction,
     str_from_bytes: LuaFunction,
     str_encode: LuaFunction,
-    str_decode: LuaFunction
+    str_decode: LuaFunction,
+
+    str_lowercase: LuaFunction,
+    str_uppercase: LuaFunction,
+    str_trim: LuaFunction
 }
 
 impl StringApi {
@@ -299,7 +303,7 @@ impl StringApi {
                     .into_lua(lua)
             })?,
 
-            str_from_bytes: lua.create_function(|lua, (value, charset): (Bytes, Option<LuaString>)| {
+            str_from_bytes: lua.create_function(|lua: &Lua, (value, charset): (Bytes, Option<LuaString>)| {
                 let Some(charset) = charset else {
                     return lua.create_string(value.as_slice());
                 };
@@ -313,7 +317,7 @@ impl StringApi {
                 lua.create_string(value.as_bytes())
             })?,
 
-            str_encode: lua.create_function(|lua, (encoding, value): (String, LuaValue)| {
+            str_encode: lua.create_function(|lua: &Lua, (encoding, value): (String, LuaValue)| {
                 let Ok(encoding) = StringEncoding::from_str(&encoding) else {
                     return Err(LuaError::external("invalid encoding"));
                 };
@@ -321,12 +325,64 @@ impl StringApi {
                 encoding.encode(lua, value)
             })?,
 
-            str_decode: lua.create_function(|lua, (encoding, value): (String, LuaString)| {
+            str_decode: lua.create_function(|lua: &Lua, (encoding, value): (String, LuaString)| {
                 let Ok(encoding) = StringEncoding::from_str(&encoding) else {
                     return Err(LuaError::external("invalid encoding"));
                 };
 
                 encoding.decode(lua, value)
+            })?,
+
+            str_lowercase: lua.create_function(|_lua: &Lua, value: Bytes| {
+                Ok(value.as_string_lossy().to_lowercase())
+            })?,
+
+            str_uppercase: lua.create_function(|_lua: &Lua, value: Bytes| {
+                Ok(value.as_string_lossy().to_uppercase())
+            })?,
+
+            str_trim: lua.create_function(|lua: &Lua, (value, pattern): (Bytes, Option<Bytes>)| {
+                let Some(pattern) = pattern else {
+                    return lua.create_string(value.as_string_lossy().trim());
+                };
+
+                let value = value.as_slice();
+                let pattern = pattern.as_slice();
+
+                let n = value.len();
+
+                if n == 0 {
+                    return lua.create_string("");
+                }
+
+                let mut i = 0;
+                let mut j = n;
+
+                while i < n {
+                    if !pattern.contains(&value[i]) {
+                        break;
+                    }
+
+                    i += 1;
+                }
+
+                if i == n {
+                    return lua.create_string("");
+                }
+
+                while j > 1 {
+                    if !pattern.contains(&value[j - 1]) {
+                        break;
+                    }
+
+                    j -= 1;
+                }
+
+                if i > j {
+                    return lua.create_string("");
+                }
+
+                lua.create_string(&value[i..j])
             })?,
 
             lua
@@ -335,12 +391,16 @@ impl StringApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 4)?;
+        let env = self.lua.create_table_with_capacity(0, 7)?;
 
         env.raw_set("to_bytes", &self.str_to_bytes)?;
         env.raw_set("from_bytes", &self.str_from_bytes)?;
         env.raw_set("encode", &self.str_encode)?;
         env.raw_set("decode", &self.str_decode)?;
+
+        env.raw_set("lowercase", &self.str_lowercase)?;
+        env.raw_set("uppercase", &self.str_uppercase)?;
+        env.raw_set("trim", &self.str_trim)?;
 
         Ok(env)
     }
@@ -428,6 +488,53 @@ mod tests {
                 assert_eq!(decoded_2.get::<LuaValue>("test_null")?, LuaValue::Nil);
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn text_lowercase() -> Result<(), LuaError> {
+        let lua = Lua::new();
+        let api = StringApi::new(lua.clone())?;
+
+        assert_eq!(api.str_lowercase.call::<String>("Hello, World! 😊")?, "hello, world! 😊");
+        assert_eq!(api.str_lowercase.call::<String>("Привет, Мир! 😊")?, "привет, мир! 😊");
+
+        assert_eq!(api.str_lowercase.call::<String>("Hello, World! 😊".as_bytes())?, "hello, world! 😊");
+        assert_eq!(api.str_lowercase.call::<String>("Привет, Мир! 😊".as_bytes())?, "привет, мир! 😊");
+
+        Ok(())
+    }
+
+    #[test]
+    fn text_uppercase() -> Result<(), LuaError> {
+        let lua = Lua::new();
+        let api = StringApi::new(lua.clone())?;
+
+        assert_eq!(api.str_uppercase.call::<String>("Hello, World! 😊")?, "HELLO, WORLD! 😊");
+        assert_eq!(api.str_uppercase.call::<String>("Привет, Мир! 😊")?, "ПРИВЕТ, МИР! 😊");
+
+        assert_eq!(api.str_uppercase.call::<String>("Hello, World! 😊".as_bytes())?, "HELLO, WORLD! 😊");
+        assert_eq!(api.str_uppercase.call::<String>("Привет, Мир! 😊".as_bytes())?, "ПРИВЕТ, МИР! 😊");
+
+        Ok(())
+    }
+
+    #[test]
+    fn text_trim() -> Result<(), LuaError> {
+        let lua = Lua::new();
+        let api = StringApi::new(lua.clone())?;
+
+        assert_eq!(api.str_trim.call::<String>("hello")?, "hello");
+        assert_eq!(api.str_trim.call::<String>(" hello\n")?, "hello");
+        assert_eq!(api.str_trim.call::<String>((" hello\n", " "))?, "hello\n");
+        assert_eq!(api.str_trim.call::<String>((" hello\n", "\n"))?, " hello");
+        assert_eq!(api.str_trim.call::<String>((" hello\n", " \n"))?, "hello");
+        assert_eq!(api.str_trim.call::<String>((" \n", " \n"))?, "");
+        assert_eq!(api.str_trim.call::<String>((" \n", ""))?, " \n");
+        assert_eq!(api.str_trim.call::<String>(("   ", " "))?, "");
+        assert_eq!(api.str_trim.call::<String>((" ", ""))?, " ");
+        assert_eq!(api.str_trim.call::<String>(("", " "))?, "");
 
         Ok(())
     }

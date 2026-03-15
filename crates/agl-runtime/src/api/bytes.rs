@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::borrow::Cow;
 use std::io::{Read, Seek, SeekFrom};
 
 use mlua::prelude::*;
@@ -23,7 +24,7 @@ use mlua::prelude::*;
 pub const BYTES_READ_CHUNK_SIZE: usize = 1024;
 
 /// Immutable slice of binary data.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bytes {
     buf: Box<[u8]>,
     pos: usize,
@@ -53,6 +54,11 @@ impl Bytes {
     #[inline]
     pub const fn as_slice(&self) -> &[u8] {
         &self.buf
+    }
+
+    #[inline]
+    pub fn as_string_lossy(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(&self.buf)
     }
 }
 
