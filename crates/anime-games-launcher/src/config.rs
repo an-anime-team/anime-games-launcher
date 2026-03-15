@@ -178,7 +178,7 @@ impl Default for Config {
             cache_packages_allow_lists_duration: Duration::from_hours(8),
 
             packages_allow_lists: vec![
-                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/packages/allow_list.json")
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json")
             ],
 
             packages_resources_path: DATA_FOLDER.join("packages").join("resources"),
@@ -191,13 +191,11 @@ impl Default for Config {
             runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
             runtime_torrent_enable_upnp: false,
-            runtime_torrent_trackers: vec![
-                String::from("udp://tracker.opentrackr.org:1337/announce")
-            ],
+            runtime_torrent_trackers: vec![],
             runtime_torrent_blocklist_url: Some(String::from("https://raw.githubusercontent.com/Naunter/BT_BlockLists/master/bt_blocklists.gz")),
 
             games_registries: vec![
-                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/rewrite/games/registry.json")
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/games/registry.json")
             ],
             games_path: DATA_FOLDER.join("games")
         }
