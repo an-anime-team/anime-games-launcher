@@ -82,7 +82,7 @@ default = [
 
 [dependencies.tokio]
 package = "tokio"
-version = "1.48"
+version = "1.50"
 features = [
     "rt-multi-thread",
     "macros",
@@ -93,20 +93,14 @@ optional = true
 
 [dependencies.reqwest]
 package = "reqwest"
-version = "0.12"
-default-features = false
+version = "0.13"
 features = [
-    "charset",
-    "brotli",
-    "deflate",
     "gzip",
+    "brotli",
     "zstd",
-    "http2",
+    "deflate",
     "stream",
-    "socks",
-    "system-proxy",
-    "rustls-tls",
-    "rustls-tls-native-roots"
+    "socks"
 ]
 optional = true
 
