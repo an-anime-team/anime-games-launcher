@@ -122,10 +122,31 @@ impl SimpleAsyncComponent for LibraryPage {
 
     view! {
         #[root]
-        adw::ToastOverlay {
+        gtk::Box {
+            set_vexpand: true,
+            set_hexpand: true,
+
+            set_orientation: gtk::Orientation::Vertical,
+
+            adw::StatusPage {
+                set_vexpand: true,
+                set_hexpand: true,
+
+                set_icon_name: Some(consts::APP_ID),
+
+                set_title: i18n!("no_library_games_available")
+                    .unwrap_or("No games available"),
+
+                #[watch]
+                set_visible: model.cards_list.is_empty()
+            },
+
             adw::NavigationSplitView {
                 set_vexpand: true,
                 set_hexpand: true,
+
+                #[watch]
+                set_visible: !model.cards_list.is_empty(),
 
                 #[wrap(Some)]
                 set_sidebar = &adw::NavigationPage {

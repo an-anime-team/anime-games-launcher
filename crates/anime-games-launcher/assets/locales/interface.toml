@@ -163,6 +163,10 @@ pt = "Sobre o jogo"
 
 # ------------------------ Game library page ------------------------
 
+[no_library_games_available]
+en = "No games available"
+ru = "Нет доступных игр"
+
 [no_library_game_selected]
 en = "No game selected"
 ru = "Игра не выбрана"
