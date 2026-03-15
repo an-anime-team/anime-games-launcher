@@ -320,31 +320,36 @@ impl Api {
         env.raw_set("await", &self.r#await)?;
 
         // Some default lua functions.
-        env.raw_set("print", self.lua.globals().get::<LuaFunction>("print")?)?;
+        let globals = self.lua.globals();
 
-        env.raw_set("pairs", self.lua.globals().get::<LuaFunction>("pairs")?)?;
-        env.raw_set("ipairs", self.lua.globals().get::<LuaFunction>("ipairs")?)?;
-        env.raw_set("next", self.lua.globals().get::<LuaFunction>("next")?)?;
+        env.raw_set("print", globals.get::<LuaFunction>("print")?)?;
 
-        env.raw_set("assert", self.lua.globals().get::<LuaFunction>("assert")?)?;
-        env.raw_set("error", self.lua.globals().get::<LuaFunction>("error")?)?;
-        env.raw_set("pcall", self.lua.globals().get::<LuaFunction>("pcall")?)?;
-        env.raw_set("xpcall", self.lua.globals().get::<LuaFunction>("xpcall")?)?;
+        env.raw_set("pairs", globals.get::<LuaFunction>("pairs")?)?;
+        env.raw_set("ipairs", globals.get::<LuaFunction>("ipairs")?)?;
+        env.raw_set("next", globals.get::<LuaFunction>("next")?)?;
 
-        env.raw_set("tonumber", self.lua.globals().get::<LuaFunction>("tonumber")?)?;
-        env.raw_set("tostring", self.lua.globals().get::<LuaFunction>("tostring")?)?;
-        env.raw_set("type", self.lua.globals().get::<LuaFunction>("type")?)?;
-        env.raw_set("typeof", self.lua.globals().get::<LuaFunction>("typeof")?)?;
+        env.raw_set("assert", globals.get::<LuaFunction>("assert")?)?;
+        env.raw_set("error", globals.get::<LuaFunction>("error")?)?;
+        env.raw_set("pcall", globals.get::<LuaFunction>("pcall")?)?;
+        env.raw_set("xpcall", globals.get::<LuaFunction>("xpcall")?)?;
 
-        env.raw_set("getmetatable", self.lua.globals().get::<LuaFunction>("getmetatable")?)?;
-        env.raw_set("setmetatable", self.lua.globals().get::<LuaFunction>("setmetatable")?)?;
-        env.raw_set("rawget", self.lua.globals().get::<LuaFunction>("rawget")?)?;
-        env.raw_set("rawset", self.lua.globals().get::<LuaFunction>("rawset")?)?;
+        env.raw_set("tonumber", globals.get::<LuaFunction>("tonumber")?)?;
+        env.raw_set("tostring", globals.get::<LuaFunction>("tostring")?)?;
+        env.raw_set("type", globals.get::<LuaFunction>("type")?)?;
+        env.raw_set("typeof", globals.get::<LuaFunction>("typeof")?)?;
 
-        env.raw_set("table", self.lua.globals().get::<LuaValue>("table")?)?;
-        env.raw_set("string", self.lua.globals().get::<LuaValue>("string")?)?;
-        env.raw_set("math", self.lua.globals().get::<LuaValue>("math")?)?;
-        env.raw_set("coroutine", self.lua.globals().get::<LuaValue>("coroutine")?)?;
+        env.raw_set("getmetatable", globals.get::<LuaFunction>("getmetatable")?)?;
+        env.raw_set("setmetatable", globals.get::<LuaFunction>("setmetatable")?)?;
+        env.raw_set("rawget", globals.get::<LuaFunction>("rawget")?)?;
+        env.raw_set("rawset", globals.get::<LuaFunction>("rawset")?)?;
+
+        env.raw_set("table", globals.get::<LuaValue>("table")?)?;
+        env.raw_set("string", globals.get::<LuaValue>("string")?)?;
+        env.raw_set("number", globals.get::<LuaValue>("number")?)?;
+        env.raw_set("math", globals.get::<LuaValue>("math")?)?;
+        env.raw_set("coroutine", globals.get::<LuaValue>("coroutine")?)?;
+
+        drop(globals);
 
         let Ok(scope) = context.scope.read() else {
             return Err(LuaError::external("failed to lock module scope"));
