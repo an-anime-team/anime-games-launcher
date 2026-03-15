@@ -68,6 +68,14 @@ application's debug logger.
 dbg("test", 123, { a = { hello = "world", 1 }, 2 })
 ```
 
+You can also cast any lua value into a string using `stringify` function:
+
+```luau
+print(stringify({ 1, 2, 3 }))
+```
+
+Both `dbg` and `stringify` accept multiple arguments.
+
 ## Sleeping and repeated execution
 
 Runtime provides `sleep` function to wait for provided amount of time. It works

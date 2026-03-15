@@ -162,6 +162,7 @@ pub struct Api {
     lua: Lua,
 
     clone: LuaFunction,
+    stringify: LuaFunction,
     dbg: LuaFunction,
     sleep: LuaFunction,
     r#await: LuaFunction,
@@ -217,6 +218,16 @@ impl Api {
                 }
 
                 clone_value(lua, value)
+            })?,
+
+            stringify: options.lua.create_function(|_, values: LuaVariadic<LuaValue>| {
+                let mut results = LuaVariadic::with_capacity(values.len());
+
+                for value in values {
+                    results.push(format!("{value:#?}"));
+                }
+
+                Ok(results)
             })?,
 
             dbg: options.lua.create_function(|_, values: LuaVariadic<LuaValue>| {
@@ -315,6 +326,7 @@ impl Api {
         env.raw_set("versions", versions_table)?;
 
         env.raw_set("clone", &self.clone)?;
+        env.raw_set("stringify", &self.stringify)?;
         env.raw_set("dbg", &self.dbg)?;
         env.raw_set("sleep", &self.sleep)?;
         env.raw_set("await", &self.r#await)?;
