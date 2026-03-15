@@ -21,7 +21,7 @@ use relm4::prelude::*;
 
 use agl_games::manifest::GameManifest;
 
-use crate::{config, i18n};
+use crate::{consts, config, i18n};
 use crate::games::GameLock;
 use crate::ui::components::lazy_picture::ImagePath;
 use crate::ui::components::card::CardComponent;
@@ -108,6 +108,19 @@ impl SimpleAsyncComponent for StorePage {
                                         .unwrap_or_else(|| format!("Loaded {} games", model.games.len()))
                                         .as_str()
                                 }
+                            },
+
+                            adw::StatusPage {
+                                set_vexpand: true,
+                                set_hexpand: true,
+
+                                set_icon_name: Some(consts::APP_ID),
+
+                                set_title: i18n!("no_store_games_available")
+                                    .unwrap_or("No games available"),
+
+                                #[watch]
+                                set_visible: model.games_cards.is_empty()
                             },
 
                             model.games_cards.widget() {
