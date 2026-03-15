@@ -92,7 +92,13 @@ impl GameLock {
                 })?,
 
             scope: value.get("scope")
-                .map(ModuleScope::from_json)
+                .and_then(|scope| {
+                    if scope.is_null() {
+                        None
+                    } else {
+                        Some(ModuleScope::from_json(scope))
+                    }
+                })
         })
     }
 
