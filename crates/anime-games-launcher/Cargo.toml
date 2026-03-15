@@ -19,7 +19,7 @@ default = ["mimalloc"]
 glib-build-tools = "0.21.0"
 
 [dependencies.relm4]
-version = "0.10.0"
+version = "0.10.1"
 features = ["macros", "libadwaita"]
 
 [dependencies.gtk]
