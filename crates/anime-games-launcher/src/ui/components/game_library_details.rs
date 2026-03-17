@@ -495,16 +495,18 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::CallToolButton(index) => {
-                if let Some(button) = self.game_tools_buttons.get(index)
-                    && let Err(err) = button.call()
-                {
-                    tracing::error!(?err, "failed to call game tool button");
+                if let Some(button) = self.game_tools_buttons.get(index) {
+                    if let Err(err) = button.call() {
+                        tracing::error!(?err, "failed to call game tool button");
 
-                    dialogs::error(
-                        i18n!("failed_call_game_tool_button")
-                            .unwrap_or("Failed to call game tool button"),
-                        err.to_string()
-                    );
+                        dialogs::error(
+                            i18n!("failed_call_game_tool_button")
+                                .unwrap_or("Failed to call game tool button"),
+                            err.to_string()
+                        );
+                    }
+
+                    sender.input(GameLibraryDetailsInput::UpdateGameInfo);
                 }
             }
 
