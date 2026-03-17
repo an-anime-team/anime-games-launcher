@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -225,7 +225,7 @@ impl SimpleAsyncComponent for CardComponent {
                             }
 
                             title.chars()
-                                .take(max_chars.checked_sub(3).unwrap_or_default())
+                                .take(max_chars.saturating_sub(3))
                                 .chain("...".chars())
                                 .collect::<String>()
                         })

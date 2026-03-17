@@ -173,6 +173,19 @@ fn render_entry(
             widget.set_model(Some(&model));
             widget.set_selected(selected_index as u32);
 
+            if values.len() >= 10 {
+                widget.set_enable_search(true);
+                widget.set_search_match_mode(gtk::StringFilterMatchMode::Substring);
+
+                let expression = gtk::PropertyExpression::new(
+                    gtk::StringObject::static_type(),
+                    None::<gtk::Expression>,
+                    "string"
+                );
+
+                widget.set_expression(Some(expression));
+            }
+
             if let Some(name) = entry.name().cloned() {
                 let reactivity = entry.reactivity()
                     .copied()
