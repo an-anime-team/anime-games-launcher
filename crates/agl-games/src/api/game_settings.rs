@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -201,6 +201,15 @@ pub enum GameSettingsEntryFormat {
         /// Vector instead of a HashMap to preserve original order.
         values: Box<[(String, LocalizableString)]>,
 
+        /// Name of selected value.
+        selected: String
+    },
+
+    Selector {
+        /// Vector instead of a HashMap to preserve original order.
+        values: Box<[(String, LocalizableString)]>,
+
+        /// Name of selected value.
         selected: String
     },
 
@@ -241,6 +250,33 @@ impl GameSettingsEntryFormat {
                         table.sort_by(|a, b| {
                             b.1.default_translation()
                                 .cmp(a.1.default_translation())
+                        });
+
+                        Ok(table.into_boxed_slice())
+                    })?,
+
+                selected: value.get("selected")?
+            }),
+
+            "selector" => Ok(Self::Selector {
+                values: value.get::<LuaTable>("values")
+                    .and_then(|values| {
+                        let mut table = Vec::with_capacity(values.raw_len());
+
+                        values.for_each::<String, LuaValue>(|key, value| {
+                            table.push((
+                                key,
+                                LocalizableString::from_lua(&value)?
+                            ));
+
+                            Ok(())
+                        })?;
+
+                        // Returned lua table is not sorted properly so we're
+                        // kinda solving it here.
+                        table.sort_by(|a, b| {
+                            a.1.default_translation()
+                                .cmp(b.1.default_translation())
                         });
 
                         Ok(table.into_boxed_slice())

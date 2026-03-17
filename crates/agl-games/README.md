@@ -188,11 +188,11 @@ type ProgressReport = {
 };
 
 type SettingsGroup = {
-    // Title of the settings group.
-    title: LocalizableString;
+    // Optional title of the settings group.
+    title?: LocalizableString;
 
     // Optional description (subtitle) of the settings group.
-    description: LocalizableString;
+    description?: LocalizableString;
 
     // List of available settings entries.
     entries: SettingsEntry[]
@@ -232,6 +232,7 @@ type SettingsEntryVariant =
     | SettingsEntrySwitch
     | SettingsEntryText
     | SettingsEntryEnum
+    | SettingsEntrySelector
     | SettingsEntryExpandable;
 
 type SettingsEntrySwitch = {
@@ -246,6 +247,12 @@ type SettingsEntryText = {
 
 type SettingsEntryEnum = {
     format: 'enum';
+    values: { [name: string]: LocalizableString };
+    selected: string;
+};
+
+type SettingsEntrySelector = {
+    format: 'selector';
     values: { [name: string]: LocalizableString };
     selected: string;
 };

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -194,6 +194,74 @@ fn render_entry(
             }
 
             group_widget.add(&widget);
+        }
+
+        GameSettingsEntryFormat::Selector { values, selected } => {
+            let row = adw::ActionRow::new();
+            let selector = adw::ToggleGroup::new();
+
+            selector.set_valign(gtk::Align::Center);
+
+            row.add_suffix(&selector);
+
+            let title = match lang {
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
+            };
+
+            row.set_title(title);
+
+            if let Some(description) = entry.description() {
+                let description = match lang {
+                    Some(lang) => description.translate(lang),
+                    None => description.default_translation()
+                };
+
+                row.set_subtitle(description);
+            }
+
+            let mut selected_index = 0;
+
+            for (i, (key, value)) in values.iter().enumerate() {
+                let value = match lang {
+                    Some(lang) => value.translate(lang),
+                    None => value.default_translation()
+                };
+
+                let toggle = adw::Toggle::new();
+
+                toggle.set_label(Some(value));
+
+                selector.add(toggle);
+
+                if key == selected {
+                    selected_index = i;
+                }
+            }
+
+            selector.set_active(selected_index as u32);
+
+            if let Some(name) = entry.name().cloned() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
+
+                let values = values.clone();
+
+                selector.connect_active_notify(move |widget| {
+                    let selected = widget.active();
+
+                    if let Some((key, _)) = values.get(selected as usize) {
+                        listener.emit(GameSettingsWindowInput::SetStringProperty {
+                            name: name.clone(),
+                            value: key.to_owned(),
+                            reactivity
+                        });
+                    }
+                });
+            }
+
+            group_widget.add(&row);
         }
 
         GameSettingsEntryFormat::Expandable { entries } => {
