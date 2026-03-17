@@ -52,6 +52,8 @@ impl AsyncFactoryComponent for GameToolButtonFactory {
 
     view! {
         gtk::Button {
+            set_halign: gtk::Align::Start,
+
             add_css_class: "pill",
 
             #[watch]
