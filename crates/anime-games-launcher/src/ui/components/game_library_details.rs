@@ -262,7 +262,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                     model.game_tools_buttons_factory.widget() -> &gtk::FlowBox {
                         set_column_spacing: 4,
-                        set_row_spacing: 8
+                        set_row_spacing: 8,
+
+                        set_selection_mode: gtk::SelectionMode::None
                     }
                 }
             }
