@@ -22,7 +22,7 @@ use mlua::prelude::*;
 
 use agl_locale::string::LocalizableString;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GameSettingsGroup {
     title: Option<LocalizableString>,
     description: Option<LocalizableString>,
@@ -75,7 +75,7 @@ impl GameSettingsGroup {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GameSettingsEntry {
     name: Option<String>,
     title: LocalizableString,
@@ -187,7 +187,7 @@ impl FromStr for GameSettingsEntryReactivity {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GameSettingsEntryFormat {
     Switch {
         value: bool
@@ -195,6 +195,13 @@ pub enum GameSettingsEntryFormat {
 
     Text {
         value: String
+    },
+
+    Number {
+        min: Option<f64>,
+        max: Option<f64>,
+        step: Option<f64>,
+        value: f64
     },
 
     Enum {
@@ -228,6 +235,13 @@ impl GameSettingsEntryFormat {
             }),
 
             "text" => Ok(Self::Text {
+                value: value.get("value")?
+            }),
+
+            "number" => Ok(Self::Number {
+                min: value.get("min")?,
+                max: value.get("max")?,
+                step: value.get("step")?,
                 value: value.get("value")?
             }),
 

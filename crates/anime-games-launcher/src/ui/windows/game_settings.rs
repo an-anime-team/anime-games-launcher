@@ -134,6 +134,81 @@ fn render_entry(
             group_widget.add(&widget);
         }
 
+        GameSettingsEntryFormat::Number { min, max, step, value } => {
+            let min = (*min).unwrap_or(f64::MIN);
+            let max = (*max).unwrap_or(f64::MAX);
+            let step = (*step).unwrap_or(if max < 1.0 { max / 10.0 } else { 1.0 });
+
+            let adjustment = gtk::Adjustment::new(
+                *value,
+                min,
+                max,
+                step,
+                0.0,
+                0.0
+            );
+
+            fn digits_num(value: f64) -> u32 {
+                if !value.is_finite() {
+                    return 0;
+                }
+
+                let s = format!("{:.6}", value.abs());
+
+                let parts: Vec<&str> = s.split('.').collect();
+
+                if parts.len() != 2 {
+                    return 0;
+                }
+
+                let frac = parts[1].trim_end_matches('0');
+
+                if frac.is_empty() {
+                    0
+                } else {
+                    frac.len() as u32
+                }
+            }
+
+            let widget = adw::SpinRow::new(
+                Some(&adjustment),
+                step,
+                digits_num(step)
+            );
+
+            let title = match lang {
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
+            };
+
+            widget.set_title(title);
+
+            if let Some(description) = entry.description() {
+                let description = match lang {
+                    Some(lang) => description.translate(lang),
+                    None => description.default_translation()
+                };
+
+                widget.set_subtitle(description);
+            }
+
+            if let Some(name) = entry.name().cloned() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
+
+                widget.connect_changed(move |widget| {
+                    listener.emit(GameSettingsWindowInput::SetNumberProperty {
+                        name: name.clone(),
+                        value: widget.value(),
+                        reactivity
+                    });
+                });
+            }
+
+            group_widget.add(&widget);
+        }
+
         GameSettingsEntryFormat::Enum { values, selected } => {
             let widget = adw::ComboRow::new();
 
@@ -330,6 +405,12 @@ pub enum GameSettingsWindowInput {
         reactivity: GameSettingsEntryReactivity
     },
 
+    SetNumberProperty {
+        name: String,
+        value: f64,
+        reactivity: GameSettingsEntryReactivity
+    },
+
     UpdateCurrentGameLayout
 }
 
@@ -512,6 +593,28 @@ impl SimpleAsyncComponent for GameSettingsWindow {
             }
 
             GameSettingsWindowInput::SetStringProperty {
+                name,
+                value,
+                reactivity
+            } => {
+                if let Some(integration) = &self.game_integration {
+                    if let Err(err) = integration.set_property(name, value) {
+                        tracing::error!(?err, "failed to set game property value");
+
+                        dialogs::error(
+                            i18n!("failed_set_game_property")
+                                .unwrap_or("Failed to set game property value"),
+                            err.to_string()
+                        );
+
+                        return;
+                    }
+
+                    handle_reactivity(&reactivity, sender);
+                }
+            }
+
+            GameSettingsWindowInput::SetNumberProperty {
                 name,
                 value,
                 reactivity

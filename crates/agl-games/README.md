@@ -231,6 +231,7 @@ type SettingsEntryReactivity =
 type SettingsEntryVariant =
     | SettingsEntrySwitch
     | SettingsEntryText
+    | SettingsEntryNumber
     | SettingsEntryEnum
     | SettingsEntrySelector
     | SettingsEntryExpandable;
@@ -243,6 +244,14 @@ type SettingsEntrySwitch = {
 type SettingsEntryText = {
     format: 'text';
     value: string;
+};
+
+type SettingsEntryNumber = {
+    format: 'number';
+    min?: number;
+    max?: number;
+    step?: number;
+    value: number;
 };
 
 type SettingsEntryEnum = {
