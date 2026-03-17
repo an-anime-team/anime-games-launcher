@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ mod game_launch_info;
 mod actions_pipeline;
 mod pipeline_action;
 mod progress_report;
+mod tools_buttons;
 mod game_settings;
 
 pub use game_edition::*;
@@ -32,6 +33,7 @@ pub use game_launch_info::*;
 pub use actions_pipeline::*;
 pub use pipeline_action::*;
 pub use progress_report::*;
+pub use tools_buttons::*;
 pub use game_settings::*;
 
 use crate::platform::Platform;
@@ -48,6 +50,8 @@ pub struct GameIntegration {
     game_get_editions: Option<LuaFunction>,
     game_get_launch_info: LuaFunction,
     game_get_actions_pipeline: LuaFunction,
+
+    tools_get_buttons: Option<LuaFunction>,
 
     settings_get_property: Option<LuaFunction>,
     settings_set_property: Option<LuaFunction>,
@@ -82,6 +86,7 @@ impl GameIntegration {
         };
 
         let game = integration.get::<LuaTable>("game")?;
+        let tools = integration.get::<LuaTable>("tools").ok();
         let settings = integration.get::<LuaTable>("settings").ok();
 
         Ok(Self {
@@ -90,6 +95,10 @@ impl GameIntegration {
             game_get_editions: game.get("get_editions").ok(),
             game_get_launch_info: game.get("get_launch_info")?,
             game_get_actions_pipeline: game.get("get_actions_pipeline")?,
+
+            tools_get_buttons: tools.as_ref()
+                .map(|tools| tools.get("get_buttons"))
+                .transpose()?,
 
             settings_get_property: settings.as_ref()
                 .map(|settings| settings.get("get_property"))
@@ -154,6 +163,28 @@ impl GameIntegration {
                     ActionsPipeline::from_lua(self.lua.clone(), &pipeline)
                 }).transpose()
             })
+    }
+
+    /// Get list of tool buttons from the game integration module.
+    ///
+    /// Return `Ok(None)` if tools are not specified. Otherwise return list of
+    /// information about tool buttons.
+    pub fn get_buttons(
+        &self,
+        variant: &GameVariant
+    ) -> Result<Option<Box<[ToolButton]>>, LuaError> {
+        let Some(get_buttons) = &self.tools_get_buttons else {
+            return Ok(None);
+        };
+
+        let variant = variant.to_lua(&self.lua)?;
+
+        let buttons = get_buttons.call::<Vec<LuaTable>>(variant)?
+            .iter()
+            .map(ToolButton::from_lua)
+            .collect::<Result<Box<[ToolButton]>, LuaError>>()?;
+
+        Ok(Some(buttons))
     }
 
     /// Get settings param from the game integration module.

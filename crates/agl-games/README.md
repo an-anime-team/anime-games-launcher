@@ -187,6 +187,17 @@ type ProgressReport = {
     format?: (): LocalizableString;
 };
 
+type ToolButton = {
+    // Title of the button.
+    title: LocalizableString;
+
+    // Optional description (hint) of the button.
+    description?: LocalizableString;
+
+    // Lua function which will be executed when user clicks the button.
+    callback: (): void;
+};
+
 type SettingsGroup = {
     // Optional title of the settings group.
     title?: LocalizableString;
@@ -272,8 +283,6 @@ type SettingsEntryExpandable = {
 };
 
 type GameIntegration = {
-    version: number; // current version is `1`.
-
     game: {
         // Get list of available game editions for the provided platform.
         get_editions?: (platform: string): GameEdition[];
@@ -285,6 +294,11 @@ type GameIntegration = {
         // Get game actions pipeline if they're available. Return `null` if game
         // doesn't have any pipeline actions.
         get_actions_pipeline: (variant: GameVariant): ActionsPipeline | null;
+    };
+
+    tools: {
+        // Get list of extra UI buttons.
+        get_buttons?: (variant: GameVariant): ToolButton[];
     };
 
     settings?: {
