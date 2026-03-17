@@ -23,12 +23,8 @@ use adw::prelude::*;
 
 use agl_games::manifest::GameManifest;
 use agl_games::api::{
-    GameVariant,
-    GameIntegration,
-    ActionsPipeline,
-    GameLaunchInfo,
-    GameLaunchStatus,
-    GameSettingsGroup
+    ActionsPipeline, GameIntegration, GameLaunchInfo, GameLaunchStatus,
+    GameSettingsGroup, GameVariant, ToolButton
 };
 
 use crate::{consts, config, i18n};
@@ -38,6 +34,9 @@ use super::lazy_picture::{
     LazyPictureComponent, LazyPictureComponentMsg, ImagePath
 };
 use super::card::{CardComponent, CardComponentInput};
+use super::game_tools_buttons::{
+    GameToolButtonFactory, GameToolButtonInit, GameToolButtonOutput
+};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -51,6 +50,7 @@ pub enum GameLibraryDetailsInput {
 
     UpdateGameInfo,
     ScheduleGameActionsPipeline,
+    CallToolButton(usize),
     OpenGameSettingsWindow,
     LaunchGame
 }
@@ -80,6 +80,8 @@ pub struct GameLibraryDetails {
     card: AsyncController<CardComponent>,
     background: AsyncController<LazyPictureComponent>,
 
+    game_tools_buttons_factory: AsyncFactoryVecDeque<GameToolButtonFactory>,
+
     game_index: usize,
 
     game_title: Option<String>,
@@ -91,6 +93,7 @@ pub struct GameLibraryDetails {
 
     game_launch_info: Option<GameLaunchInfo>,
     game_actions_pipeline: Option<Arc<ActionsPipeline>>,
+    game_tools_buttons: Vec<ToolButton>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>
 }
 
@@ -255,6 +258,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             connect_clicked => GameLibraryDetailsInput::OpenGameSettingsWindow
                         }
+                    },
+
+                    model.game_tools_buttons_factory.widget() -> &gtk::FlowBox {
+                        set_column_spacing: 4,
+                        set_row_spacing: 8
                     }
                 }
             }
@@ -264,7 +272,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
     async fn init(
         _init: Self::Init,
         root: Self::Root,
-        _sender: AsyncComponentSender<Self>
+        sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             card: CardComponent::builder()
@@ -274,6 +282,15 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             background: LazyPictureComponent::builder()
                 .launch(LazyPictureComponent::default())
                 .detach(),
+
+            game_tools_buttons_factory: AsyncFactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |msg| {
+                    match msg {
+                        GameToolButtonOutput::Clicked(index)
+                            => GameLibraryDetailsInput::CallToolButton(index.current_index())
+                    }
+                }),
 
             game_index: 0,
 
@@ -286,6 +303,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             game_launch_info: None,
             game_actions_pipeline: None,
+            game_tools_buttons: vec![],
             game_settings_layout: None
         };
 
@@ -392,6 +410,60 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         }
                     }
 
+                    match integration.get_buttons(variant) {
+                        Ok(Some(buttons)) => {
+                            self.game_tools_buttons.clear();
+
+                            let mut guards = self.game_tools_buttons_factory.guard();
+
+                            guards.clear();
+
+                            let config = config::get();
+
+                            let lang = config.language().ok();
+
+                            for button in buttons {
+                                let title = match &lang {
+                                    Some(lang) => button.title().translate(lang),
+                                    None => button.title().default_translation()
+                                };
+
+                                let description = button.description()
+                                    .map(|description| {
+                                        match &lang {
+                                            Some(lang) => description.translate(lang),
+                                            None => description.default_translation()
+                                        }
+                                    });
+
+                                guards.push_back(GameToolButtonInit {
+                                    title: title.to_string(),
+                                    description: description.map(String::from)
+                                });
+
+                                self.game_tools_buttons.push(button);
+                            }
+                        }
+
+                        Ok(None) => {
+                            self.game_tools_buttons_factory.guard().clear();
+                            self.game_tools_buttons.clear();
+                        }
+
+                        Err(err) => {
+                            self.game_tools_buttons_factory.guard().clear();
+                            self.game_tools_buttons.clear();
+
+                            tracing::error!(?err, "failed to request game tools buttons");
+
+                            dialogs::error(
+                                i18n!("failed_request_game_tools_buttons")
+                                    .unwrap_or("Failed to request game tools buttons"),
+                                err.to_string()
+                            );
+                        }
+                    }
+
                     match integration.get_settings_layout(variant) {
                         Ok(layout) => self.game_settings_layout = layout,
 
@@ -419,6 +491,20 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         game_title: game_title.clone(),
                         actions_pipeline: actions_pipeline.clone()
                     });
+                }
+            }
+
+            GameLibraryDetailsInput::CallToolButton(index) => {
+                if let Some(button) = self.game_tools_buttons.get(index)
+                    && let Err(err) = button.call()
+                {
+                    tracing::error!(?err, "failed to call game tool button");
+
+                    dialogs::error(
+                        i18n!("failed_call_game_tool_button")
+                            .unwrap_or("Failed to call game tool button"),
+                        err.to_string()
+                    );
                 }
             }
 

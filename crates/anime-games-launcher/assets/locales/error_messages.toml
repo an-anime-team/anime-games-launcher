@@ -84,6 +84,14 @@ pt = "Falha ao requisitar pipeline de ações do jogo"
 
 # ------------------------ Game settings ------------------------
 
+[failed_request_game_tools_buttons]
+en = "Failed to request game tools buttons"
+ru = "Не удалось запросить список дополнительных инструментов для игры"
+
+[failed_call_game_tool_button]
+en = "Failed to call game tool button"
+ru = "Не удалось выполнить дополнительный игровой инструмент"
+
 [failed_request_game_settings_layout]
 en = "Failed to request game settings layout"
 ru = "Не удалось запросить список настроек игры"

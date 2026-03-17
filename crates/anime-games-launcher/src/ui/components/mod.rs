@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ pub mod graph;
 pub mod game_tags;
 pub mod maintainers_row;
 pub mod game_actions_pipeline;
+pub mod game_tools_buttons;
 
 pub mod game_store_details;
 pub mod game_library_details;
