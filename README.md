@@ -27,6 +27,7 @@
 
 <p align="center">
    <a href="https://discord.gg/ck37X6UWBp" target="_blank">Discord</a> /
+   <a href="https://zulip.dawn.wine" target="_blank">Zulip</a> /
    <a href="https://github.com/an-anime-team/game-integrations" target="_blank">Game integrations</a> /
    <a href="./repository/The Anime Games Launcher Developer Handbook.pdf" target="_blank">Developer Handbook</a>
 </p>
