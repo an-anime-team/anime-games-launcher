@@ -43,9 +43,11 @@ then follow the useful links to read up-to-date documentation.
 ## Useful links
 
 - [Packages manager documentation](./crates/agl-packages/README.md)
-- [Lua runtime documentation](./crates/agl-runtime/docs/README.md)
+- [Luau runtime documentation](./crates/agl-runtime/docs/README.md)
 - [Game integrations documentation](./crates/agl-games/README.md)
+- [Game integrations repository](https://github.com/an-anime-team/game-integrations)
 - [Launcher localization files](./crates/anime-games-launcher/assets/locales)
+- [Standard i18n package localization files](https://github.com/an-anime-team/game-integrations/tree/master/packages/i18n/locales)
 
 <br />
 
