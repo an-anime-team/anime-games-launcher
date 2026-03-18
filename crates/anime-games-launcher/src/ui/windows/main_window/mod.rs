@@ -790,6 +790,9 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Add store page games.
 
+            // Show featured games first.
+            paths.sort_by(|a, b| b.2.cmp(&a.2));
+
             tracing::debug!(?paths, "adding store page games");
 
             sender.input(MainWindowMsg::SetLoadingStatus(Some(
