@@ -6,7 +6,7 @@ on:
       - master
 
     paths:
-      - "*/src/**"
+      - "crates/*/src/**"
 
   release:
     types:
@@ -44,7 +44,7 @@ jobs:
           persist-credentials: false
 
       - name: Compile release build
-        run: cargo build --release --verbose
+        run: cargo build -p anime-games-launcher --release --verbose
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
