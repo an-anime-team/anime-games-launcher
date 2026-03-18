@@ -20,7 +20,7 @@
                     overlays = [ rust-overlay.overlays.default ];
                 };
 
-                config = pkgs.lib.importTOML ./Cargo.toml;
+                config = pkgs.lib.importTOML ./crates/anime-games-launcher/Cargo.toml;
 
             in {
                 packages.default = pkgs.rustPlatform.buildRustPackage {
