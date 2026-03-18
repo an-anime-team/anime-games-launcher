@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -64,6 +64,9 @@ impl SimpleAsyncComponent for PictureCarousel {
 
                 set_hexpand: true,
                 set_margin_all: 16,
+
+                #[watch]
+                set_visible: model.pictures.len() > 1,
 
                 gtk::Button {
                     set_halign: gtk::Align::Start,
