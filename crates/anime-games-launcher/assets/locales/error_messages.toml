@@ -48,6 +48,10 @@ ru = "Не удалось загрузить интеграцию игры {titl
 de = "Erstellen der Spielintegration für {title} ist gescheitert"
 pt = "Falha ao construir a integração do jogo {title}"
 
+[failed_collect_runtime_garbage]
+en = "Failed to collect luau runtime garbage"
+ru = "Не удалось собрать мусор в luau runtime"
+
 # ------------------------ Game store page ------------------------
 
 [failed_serialize_game_package_lock]

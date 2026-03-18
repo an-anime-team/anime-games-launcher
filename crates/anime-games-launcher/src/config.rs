@@ -126,6 +126,13 @@ pub struct Config {
     /// `runtime.memory_limit`
     pub runtime_memory_limit: usize,
 
+    /// Interval between luau runtime garbage collections, in milliseconds.
+    /// If `0` is set then garbage collection will be disabled. Default is
+    /// `30000`.
+    ///
+    /// `runtime.collect_garbage_interval`
+    pub runtime_collect_garbage_interval: Duration,
+
     /// Enable torrent API support. If disabled - no runtime module will be able
     /// to interact with it, and no background service will be started at all.
     ///
@@ -187,6 +194,7 @@ impl Default for Config {
             packages_temporary_path: DATA_FOLDER.join("packages").join("temporary"),
 
             runtime_memory_limit: 1024 * 1024 * 1024,
+            runtime_collect_garbage_interval: Duration::from_secs(30),
 
             runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
@@ -247,6 +255,7 @@ impl Config {
 
             [runtime]
             memory_limit = (self.runtime_memory_limit)
+            collect_garbage_interval = (self.runtime_collect_garbage_interval.as_millis() as u64)
 
             [runtime.torrent]
             enable = (self.runtime_torrent_enable)
@@ -400,6 +409,11 @@ impl Config {
             // `runtime.memory_limit`
             if let Some(memory_limit) = runtime.get("memory_limit").and_then(Toml::as_integer) {
                 config.runtime_memory_limit = memory_limit as usize;
+            }
+
+            // `runtime.collect_garbage_interval`
+            if let Some(interval) = runtime.get("collect_garbage_interval").and_then(Toml::as_integer) {
+                config.runtime_collect_garbage_interval = Duration::from_millis(interval as u64);
             }
 
             // `runtime.torrent.*`
