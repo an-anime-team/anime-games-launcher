@@ -119,6 +119,13 @@ impl Runtime {
         &self.lua
     }
 
+    /// Perform luau engine garbage collection.
+    pub fn collect_garbage(&self) -> Result<(), LuaError> {
+        self.lua.gc_collect()?;
+
+        Ok(())
+    }
+
     /// Try to create a luau module environment from provided permissions scope.
     fn create_env_from_scope(
         &self,
