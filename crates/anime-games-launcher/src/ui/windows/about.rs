@@ -72,7 +72,8 @@ impl SimpleAsyncComponent for AboutWindow {
             set_translator_credits: &[
                 "Русский, English — Nikita Podvirnyi https://github.com/krypt0nn",
                 "German — @caemputer https://github.com/caemputer",
-                "Portuguese — João Dias https://github.com/retrozinndev"
+                "Portuguese — João Dias https://github.com/retrozinndev",
+                "And other contributors"
             ].join("\n"),
 
             set_debug_info: &[
@@ -92,42 +93,37 @@ impl SimpleAsyncComponent for AboutWindow {
                 "<p>Added</p>",
 
                 "<ul>",
-                    "<li>'torrent.add' API got 'restart' option to restart already added torrents</li>",
-                    "<li>Added launcher localization using in-house 'agl-locale' crate; English, Russian, German and Portuguese languages are supported now</li>",
-                    "<li>Game integrations now can be returned by a function to support lazy loading</li>",
-                    "<li>Added task API with 'Promise' userdata type. If returned from runtime - the actual work happens in background and doesn't block lua engine thread</li>",
-                    "<li>Added 'await' runtime function to resolve different lua types, including functions, coroutines (threads), 'Promises' and more</li>",
-                    "<li>Added 'Bytes' userdata type to replace tables of numbers used to represent bytes on lua side. Most of runtime API methods were reworked to return and accept this custom type</li>",
-                    "<li>Added system API to query system-related information, currently local and UTC time, environment variables and binaries paths</li>",
+                    "<li>Added 'anirun' binary to test luau runtime packages and modules</li>",
+                    "<li>Added BSON format support in 'string.encode', 'string.decode' runtime APIs</li>",
+                    "<li>Added support for functions without output (without 'return' statements) in 'Promise.poll' runtime API</li>",
+                    "<li>Added custom user agent in all the HTTP requests, including downloader runtime API: 'User-Agent: anime-games-launcher/version'</li>",
+                    "<li>Added standard luau 'number' table to support advanced arithmetic functions in the luau runtime</li>",
+                    "<li>Added 'stringify' runtime API to convert lua objects to strings and return them back to the lua runtime side</li>",
+                    "<li>Added \"No games available\" status in store page</li>",
+                    "<li>Added 'str.lowercase', 'str.uppercase' and 'str.trim' runtime APIs to support unicode characters (standard lua functions work only with ASCII)</li>",
+                    "<li>Added 'selector' and 'number' game settings entry formats</li>",
+                    "<li>Added search bar to `enum` game settings entry if there's 10 or more values available</li>",
+                    "<li>Added `tools.get_buttons` game integration function. Now integrations can add their own buttons to the library details page for different needs</li>",
+                    "<li>Added launcher-side luau runtime garbage collection task, and related 'runtime.collect_garbage_interval' config</li>",
                 "</ul>",
 
                 "<p>Fixed</p>",
 
                 "<ul>",
-                    "<li>Actions pipeline execution graph now resets on window close</li>",
-                    "<li>Fixed vertical distance between store page game cards</li>",
-                    "<li>Fixed 'http.fetch' options parsing</li>",
-                    "<li>Process API now doesn't resolve the binary path and doesn't check for relative path</li>",
+                    "<li>Fixed 'hash.digitize_file' runtime API stack overflow</li>",
+                    "<li>Fixed 'POST' method name in HTTP runtime API</li>",
+                    "<li>Fixed game scope overwriting with default values in added games' manifests</li>",
+                    "<li>Fixed default image rendering in horizontal lazy loadable pictures</li>",
                 "</ul>",
 
                 "<p>Changed</p>",
 
                 "<ul>",
-                    "<li>Force torrent API to add global torrents list to each added torrent</li>",
-                    "<li>Display progress bar in actions pipeline window even if current progress is 0</li>",
-                    "<li>Updated lua engine version; 64 bit numbers should be supported now</li>",
-                    "<li>Changed required GTK4 and libadwaita versions to support older linux distros</li>",
-                    "<li>Add more environment variables to parse system language from</li>",
-                    "<li>Renamed network API to HTTP API</li>",
-                    "<li>Most of runtime API methods were promisified (reworked to return 'Promise') and perform actual work in background to not to block lua engine thread</li>",
-                    "<li>In-RAM memory buffers for some APIs were increased for better performance</li>",
-                    "<li>Sqlite API now can accept functions, coroutines (threads), 'Promise' and 'Bytes' types as query params (they will be resolved into actual values)</li>",
-                "</ul>",
-
-                "<p>Removed</p>",
-
-                "<ul>",
-                    "<li>Removed unused 'utils' and 'i18n' launcher modules</li>",
+                    "<li>Disable human panic in debug builds</li>",
+                    "<li>Return 'nil' in 'compression.read' runtime API if nothing to read</li>",
+                    "<li>Changed 'string.encode' and 'string.decode' runtime API args order</li>",
+                    "<li>In game details within the store page, carousel will now hide controls if there's only one picture available</li>",
+                    "<li>Featured games are now shown before non-featured games</li>",
                 "</ul>"
             ].join("\n")
         }

@@ -128,7 +128,7 @@ pub struct Config {
 
     /// Interval between luau runtime garbage collections, in milliseconds.
     /// If `0` is set then garbage collection will be disabled. Default is
-    /// `30000`.
+    /// `30000` (30 seconds).
     ///
     /// `runtime.collect_garbage_interval`
     pub runtime_collect_garbage_interval: Duration,

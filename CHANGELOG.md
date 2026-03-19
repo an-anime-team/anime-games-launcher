@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-rc1] - 19.03.2026
+
+### Added
+
+- Added `anirun` binary to test luau runtime packages and modules
+- Added BSON format support in `string.encode`, `string.decode` runtime APIs
+- Added support for functions without output (without `return` statements) in
+  `Promise.poll` runtime API
+- Added custom user agent in all the HTTP requests, including downloader runtime
+  API: `User-Agent: anime-games-launcher/<version>`. The HTTP runtime API can
+  overwrite this value, but downloader API cannot. All the launcher's own
+  requests will use this custom user agent too
+- Added standard luau `number` table to support advanced arithmetic functions
+  in the luau runtime. Global environment table building was slightly optimized
+  too
+- Added `stringify` runtime API to convert lua objects to strings and return
+  them back to the lua runtime side
+- Added "No games available" status in store page
+- Added `str.lowercase`, `str.uppercase` and `str.trim` runtime APIs to support
+  unicode characters (standard lua functions work only with ASCII)
+- Added `selector` and `number` game settings entry formats
+- Added search bar to `enum` game settings entry if there's 10 or more values
+  available
+- Added `tools.get_buttons` game integration function. Now integrations can add
+  their own buttons to the library details page for different needs, e.g.
+  "Delete game files", or "Open wine config". Clicking on these buttons will
+  reload game info after the button's callback is executed
+- Added launcher-side luau runtime garbage collection task, and related
+  `runtime.collect_garbage_interval` config. While luau engine itself should
+  perform garbage collection automatically, launcher will perform full
+  collection cycles from time to time. This can be disabled by settings this
+  config to `0`
+
+### Fixed
+
+- Fixed `hash.digitize_file` runtime API stack overflow
+- Fixed `POST` method name in HTTP runtime API
+- Fixed game scope overwriting with default values in added games' manifests
+- Fixed default image rendering in horizontal lazy loadable pictures. Previously
+  only vertical pictures (cards) had proper default image scaling and
+  positioning
+- Fixed tests and CI workflows
+
+### Changed
+
+- Disable human panic in debug builds
+- Return `nil` in `compression.read` runtime API if nothing to read
+- Changed `string.encode` and `string.decode` runtime API args order. Now
+  in all the similar APIs the algorithm name goes first, arguments go next
+- In game details within the store page, carousel will now hide controls if
+  there's only one picture available
+- Featured games are now shown before non-featured games
+
 ## [2.0.0-beta4] - 03.01.2026
 
 ### Added
