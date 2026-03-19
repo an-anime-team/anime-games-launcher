@@ -84,10 +84,15 @@ impl LocalizableString {
                 }
 
                 let mut english_value = "<no translation available>";
+                let mut variants = HashMap::with_capacity(1);
 
                 for (key, value) in values {
                     if key.language == lang.language {
-                        return value;
+                        if key.region == lang.region {
+                            return value;
+                        }
+
+                        variants.insert(key.region, value.as_str());
                     }
 
                     if key.language == "en" {
@@ -95,7 +100,25 @@ impl LocalizableString {
                     }
                 }
 
-                english_value
+                // Return English translation if there are no available
+                // translation variants on the requested language.
+                if variants.is_empty() {
+                    return english_value;
+                }
+
+                // Prioritize regional variant, then global variant if
+                // available, then any potential variant of the same language,
+                // and only then fallback to English.
+                variants.remove(&lang.region)
+                    .or_else(|| variants.remove(&None))
+                    .or_else(|| {
+                        if let Some(key) = variants.keys().next().copied() {
+                            variants.remove(&key)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or(english_value)
             }
         }
     }
