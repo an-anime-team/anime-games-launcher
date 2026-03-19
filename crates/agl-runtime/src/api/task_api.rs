@@ -324,7 +324,20 @@ impl LuaUserData for Promise {
                 }
 
                 PromiseValue::Task(handle) => {
-                    let get_value = tasks::block_on(handle)
+                    // FIXME: figure some better way to await tasks without
+                    //        spawning new threads...
+                    //        just calling block_on on them will crash the whole
+                    //        app because of some nested tokio runtimes thing...
+
+                    let handle = std::thread::spawn(move || {
+                        tasks::block_on(handle)
+                    });
+
+                    let get_value = handle
+                        .join()
+                        .map_err(|_| {
+                            LuaError::external("failed to execute task")
+                        })?
                         .map_err(|err| {
                             LuaError::external(format!("failed to execute task: {err}"))
                         })??;

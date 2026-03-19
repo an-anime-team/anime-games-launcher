@@ -20,9 +20,9 @@ use std::path::PathBuf;
 
 use mlua::prelude::*;
 
-use agl_core::export::tasks::tokio;
-use agl_core::export::network::reqwest;
+use agl_core::tasks;
 use agl_core::network::downloader::Downloader;
+use agl_core::export::network::reqwest;
 use agl_locale::string::LocalizableString;
 
 #[cfg(feature = "packages-support")]
@@ -114,109 +114,115 @@ fn simple_module() -> Result<(), RuntimeError> {
 }
 
 #[cfg(feature = "packages-support")]
-#[tokio::test]
-async fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
-    let downloader = Downloader::default();
-    let storage = Storage::open(get_test_dir("simple_package")?)?;
+#[test]
+fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
+    tasks::block_on(async move {
+        let downloader = Downloader::default();
+        let storage = Storage::open(get_test_dir("simple_package")?)?;
 
-    let lock = storage.install_packages(&downloader, [
-        format!("{TESTS_DIR_URL}/simple_package/package.json")
-    ]).await?;
+        let lock = storage.install_packages(&downloader, [
+            format!("{TESTS_DIR_URL}/simple_package/package.json")
+        ]).await?;
 
-    let runtime = get_runtime()?;
+        let runtime = get_runtime()?;
 
-    let paths = ModulePaths {
-        temp_folder: std::env::temp_dir(),
-        modules_folder: std::env::temp_dir(),
-        persistent_folder: std::env::temp_dir()
-    };
+        let paths = ModulePaths {
+            temp_folder: std::env::temp_dir(),
+            modules_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir()
+        };
 
-    let allow_list = AllowList::default();
+        let allow_list = AllowList::default();
 
-    runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
-    // Find some better and standardized way for querying loaded modules.
-    let Some(module) = runtime.get_value::<LuaTable>("p9ffktad8ns1g#module")? else {
-        panic!("missing loaded module value");
-    };
+        // Find some better and standardized way for querying loaded modules.
+        let Some(module) = runtime.get_value::<LuaTable>("j19332e198rda#module")? else {
+            panic!("missing loaded module value");
+        };
 
-    let module = module.raw_get::<LuaFunction>("value")?;
+        let module = module.raw_get::<LuaFunction>("value")?;
 
-    assert_eq!(module.call::<String>(())?, "Hello, World!\n");
+        assert_eq!(module.call::<String>(())?, "Hello, World!\n");
 
-    Ok(())
+        Ok(())
+    })
 }
 
 #[cfg(feature = "packages-support")]
-#[tokio::test]
-async fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
-    let downloader = Downloader::default();
-    let storage = Storage::open(get_test_dir("dependency_module")?)?;
+#[test]
+fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
+    tasks::block_on(async move {
+        let downloader = Downloader::default();
+        let storage = Storage::open(get_test_dir("dependency_module")?)?;
 
-    let lock = storage.install_packages(&downloader, [
-        format!("{TESTS_DIR_URL}/dependency_module/package.json")
-    ]).await?;
+        let lock = storage.install_packages(&downloader, [
+            format!("{TESTS_DIR_URL}/dependency_module/package.json")
+        ]).await?;
 
-    let runtime = get_runtime()?;
+        let runtime = get_runtime()?;
 
-    let paths = ModulePaths {
-        temp_folder: std::env::temp_dir(),
-        modules_folder: std::env::temp_dir(),
-        persistent_folder: std::env::temp_dir()
-    };
+        let paths = ModulePaths {
+            temp_folder: std::env::temp_dir(),
+            modules_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir()
+        };
 
-    let allow_list = AllowList::default();
+        let allow_list = AllowList::default();
 
-    runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
-    // Find some better and standardized way for querying loaded modules.
-    let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
-        panic!("missing loaded module value");
-    };
+        // Find some better and standardized way for querying loaded modules.
+        let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
+            panic!("missing loaded module value");
+        };
 
-    let module = module.raw_get::<LuaFunction>("value")?;
+        let module = module.raw_get::<LuaFunction>("value")?;
 
-    runtime.set_value("test", "World")?;
-    runtime.set_named_reference("hlm1n2jp72hbg#module", "test", "name")?;
+        runtime.set_value("test", "World")?;
+        runtime.set_named_reference("hlm1n2jp72hbg#module", "test", "name")?;
 
-    assert_eq!(module.call::<String>(())?, "Hello, World!");
+        assert_eq!(module.call::<String>(())?, "Hello, World!");
 
-    Ok(())
+        Ok(())
+    })
 }
 
 #[cfg(feature = "packages-support")]
-#[tokio::test]
-async fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
-    let downloader = Downloader::default();
-    let storage = Storage::open(get_test_dir("nested_package")?)?;
+#[test]
+fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
+    tasks::block_on(async move {
+        let downloader = Downloader::default();
+        let storage = Storage::open(get_test_dir("nested_package")?)?;
 
-    let lock = storage.install_packages(&downloader, [
-        format!("{TESTS_DIR_URL}/nested_package/package_1.json"),
-        format!("{TESTS_DIR_URL}/nested_package/package_2.json")
-    ]).await?;
+        let lock = storage.install_packages(&downloader, [
+            format!("{TESTS_DIR_URL}/nested_package/package_1.json"),
+            format!("{TESTS_DIR_URL}/nested_package/package_2.json")
+        ]).await?;
 
-    let runtime = get_runtime()?;
+        let runtime = get_runtime()?;
 
-    let paths = ModulePaths {
-        temp_folder: std::env::temp_dir(),
-        modules_folder: std::env::temp_dir(),
-        persistent_folder: std::env::temp_dir()
-    };
+        let paths = ModulePaths {
+            temp_folder: std::env::temp_dir(),
+            modules_folder: std::env::temp_dir(),
+            persistent_folder: std::env::temp_dir()
+        };
 
-    let allow_list = AllowList::default();
+        let allow_list = AllowList::default();
 
-    runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
-    // Find some better and standardized way for querying loaded modules.
-    let Some(module) = runtime.get_value::<LuaTable>("op5h5fuc7kqr4#module")? else {
-        panic!("missing loaded module value");
-    };
+        // Find some better and standardized way for querying loaded modules.
+        let Some(module) = runtime.get_value::<LuaTable>("op5h5fuc7kqr4#module")? else {
+            panic!("missing loaded module value");
+        };
 
-    let module = module.raw_get::<LuaFunction>("value")?;
+        let module = module.raw_get::<LuaFunction>("value")?;
 
-    assert_eq!(module.call::<String>(())?, "Counter: 1");
-    assert_eq!(module.call::<String>(())?, "Counter: 2");
-    assert_eq!(module.call::<String>(())?, "Counter: 3");
+        assert_eq!(module.call::<String>(())?, "Counter: 1");
+        assert_eq!(module.call::<String>(())?, "Counter: 2");
+        assert_eq!(module.call::<String>(())?, "Counter: 3");
 
-    Ok(())
+        Ok(())
+    })
 }
