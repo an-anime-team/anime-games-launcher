@@ -38,9 +38,16 @@ pub mod downloader_api;
 pub mod archive_api;
 pub mod hash_api;
 pub mod compression_api;
+
+#[cfg(feature = "sqlite-api")]
 pub mod sqlite_api;
+
+#[cfg(feature = "torrent-api")]
 pub mod torrent_api;
+
+#[cfg(feature = "portal-api")]
 pub mod portal_api;
+
 pub mod process_api;
 
 use crate::module::ModuleScope;
@@ -142,15 +149,19 @@ pub struct ApiOptions {
 
     /// BitTorrent server instance. If `None` is provided then the torrent API
     /// will be disabled for all the modules.
+    #[cfg(feature = "torrent-api")]
     pub torrent_server: Option<torrent_api::TorrentServer>,
 
     /// Callback used to display a toast message.
+    #[cfg(feature = "portal-api")]
     pub show_toast: Box<dyn Fn(portal_api::ToastOptions) + Send>,
 
     /// Callback used to display a system notification.
+    #[cfg(feature = "portal-api")]
     pub show_notification: Box<dyn Fn(portal_api::NotificationOptions) + Send>,
 
     /// Callback used to display a dialog.
+    #[cfg(feature = "portal-api")]
     pub show_dialog: Box<dyn Fn(portal_api::DialogOptions) + Send>,
 
     /// Callback used to translate localizable string.
@@ -177,9 +188,16 @@ pub struct Api {
     archive_api: archive_api::ArchiveApi,
     hash_api: hash_api::HashApi,
     compression_api: compression_api::CompressionApi,
+
+    #[cfg(feature = "sqlite-api")]
     sqlite_api: sqlite_api::SqliteApi,
+
+    #[cfg(feature = "torrent-api")]
     torrent_api: Option<torrent_api::TorrentApi>,
+
+    #[cfg(feature = "portal-api")]
     portal_api: portal_api::PortalApi,
+
     process_api: process_api::ProcessApi
 }
 
@@ -292,16 +310,23 @@ impl Api {
             archive_api: archive_api::ArchiveApi::new(options.lua.clone())?,
             hash_api: hash_api::HashApi::new(options.lua.clone())?,
             compression_api: compression_api::CompressionApi::new(options.lua.clone())?,
+
+            #[cfg(feature = "sqlite-api")]
             sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
+
+            #[cfg(feature = "torrent-api")]
             torrent_api: options.torrent_server.map(|server| {
                 torrent_api::TorrentApi::new(options.lua.clone(), server)
             }).transpose()?,
+
+            #[cfg(feature = "portal-api")]
             portal_api: portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
                 show_toast: options.show_toast,
                 show_notification: options.show_notification,
                 show_dialog: options.show_dialog,
                 translate: options.translate
             })?,
+
             process_api: process_api::ProcessApi::new(options.lua.clone())?,
 
             lua: options.lua
@@ -418,16 +443,19 @@ impl Api {
         }
 
         // Sqlite API.
+        #[cfg(feature = "sqlite-api")]
         if scope.allow_sqlite_api {
             env.raw_set("sqlite", self.sqlite_api.create_env(context)?)?;
         }
 
         // Torrent API.
+        #[cfg(feature = "torrent-api")]
         if let Some(torrent_api) = &self.torrent_api && scope.allow_torrent_api {
             env.raw_set("torrent", torrent_api.create_env(context)?)?;
         }
 
         // Portal API.
+        #[cfg(feature = "portal-api")]
         if scope.allow_portal_api {
             env.raw_set("portal", self.portal_api.create_env(context)?)?;
         }

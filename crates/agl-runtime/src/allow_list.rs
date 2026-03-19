@@ -76,10 +76,20 @@ impl AllowList {
         entry.allow_archive_api     |= scope.allow_archive_api;
         entry.allow_hash_api        |= scope.allow_hash_api;
         entry.allow_compression_api |= scope.allow_compression_api;
-        entry.allow_sqlite_api      |= scope.allow_sqlite_api;
-        entry.allow_torrent_api     |= scope.allow_torrent_api;
-        entry.allow_portal_api      |= scope.allow_portal_api;
-        entry.allow_process_api     |= scope.allow_process_api;
+
+        #[cfg(feature = "sqlite-api")] {
+            entry.allow_sqlite_api |= scope.allow_sqlite_api;
+        }
+
+        #[cfg(feature = "torrent-api")] {
+            entry.allow_torrent_api |= scope.allow_torrent_api;
+        }
+
+        #[cfg(feature = "portal-api")] {
+            entry.allow_portal_api |= scope.allow_portal_api;
+        }
+
+        entry.allow_process_api |= scope.allow_process_api;
 
         entry.sandbox_read_paths.extend(scope.sandbox_read_paths);
         entry.sandbox_write_paths.extend(scope.sandbox_write_paths);

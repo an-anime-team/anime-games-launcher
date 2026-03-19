@@ -15,9 +15,16 @@ tracing = [
 
 packages-support = ["dep:agl-packages"]
 
+sqlite-api = ["dep:rusqlite"]
+torrent-api = ["dep:librqbit"]
+portal-api = ["dep:rfd"]
+
 default = [
     "tracing",
-    "packages-support"
+    "packages-support",
+    "sqlite-api",
+    "torrent-api",
+    "portal-api"
 ]
 
 [dependencies.agl-core]
@@ -57,9 +64,15 @@ tracing = { version = "0.1", optional = true }
 
 # Luau engine
 bufreaderwriter = "0.2.4"
-rusqlite = { version = "0.39", features = ["bundled"] }
-librqbit = { version = "8.1", features = ["rust-tls"], default-features = false }
-rfd = "0.17"
+
+## SQLite API
+rusqlite = { version = "0.39", features = ["bundled"], optional = true }
+
+## Torrent API
+librqbit = { version = "8.1", features = ["rust-tls"], default-features = false, optional = true }
+
+## Portal API
+rfd = { version = "0.17", optional = true }
 
 time = { version = "0.3", features = ["local-offset", "formatting"] }
 

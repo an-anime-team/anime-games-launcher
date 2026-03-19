@@ -117,6 +117,7 @@ pub struct ModuleScope {
     /// This API allows module to work with a sqlite database.
     ///
     /// Default: `true`.
+    #[cfg(feature = "sqlite-api")]
     pub allow_sqlite_api: bool,
 
     /// Allow module to access torrent API.
@@ -125,6 +126,7 @@ pub struct ModuleScope {
     /// share files using DHT, magnet links and torrent files.
     ///
     /// Default: `true`.
+    #[cfg(feature = "torrent-api")]
     pub allow_torrent_api: bool,
 
     /// Allow module to access portal API.
@@ -133,6 +135,7 @@ pub struct ModuleScope {
     /// and open file/folder dialogs which can escape the filesystem sandbox.
     ///
     /// Default: `true`.
+    #[cfg(feature = "portal-api")]
     pub allow_portal_api: bool,
 
     /// Allow module to access process API.
@@ -174,10 +177,18 @@ impl Default for ModuleScope {
             allow_archive_api: true,
             allow_hash_api: true,
             allow_compression_api: true,
+
+            #[cfg(feature = "sqlite-api")]
             allow_sqlite_api: true,
+
+            #[cfg(feature = "torrent-api")]
             allow_torrent_api: true,
+
+            #[cfg(feature = "portal-api")]
             allow_portal_api: true,
+
             allow_process_api: false,
+
             sandbox_read_paths: vec![],
             sandbox_write_paths: vec![]
         }
@@ -186,23 +197,34 @@ impl Default for ModuleScope {
 
 impl ModuleScope {
     pub fn to_json(&self) -> Json {
+        let mut api_scope = json!({
+            "string": self.allow_string_api,
+            "path": self.allow_path_api,
+            "task": self.allow_task_api,
+            "system": self.allow_system_api,
+            "filesystem": self.allow_filesystem_api,
+            "http": self.allow_http_api,
+            "downloader": self.allow_downloader_api,
+            "archive": self.allow_archive_api,
+            "hash": self.allow_hash_api,
+            "compression": self.allow_compression_api,
+            "process": self.allow_process_api
+        });
+
+        #[cfg(feature = "sqlite-api")] {
+            api_scope["sqlite"] = json!(self.allow_sqlite_api);
+        }
+
+        #[cfg(feature = "torrent-api")] {
+            api_scope["torrent"] = json!(self.allow_torrent_api);
+        }
+
+        #[cfg(feature = "portal-api")] {
+            api_scope["portal"] = json!(self.allow_portal_api);
+        }
+
         json!({
-            "api": {
-                "string": self.allow_string_api,
-                "path": self.allow_path_api,
-                "task": self.allow_task_api,
-                "system": self.allow_system_api,
-                "filesystem": self.allow_filesystem_api,
-                "http": self.allow_http_api,
-                "downloader": self.allow_downloader_api,
-                "archive": self.allow_archive_api,
-                "hash": self.allow_hash_api,
-                "compression": self.allow_compression_api,
-                "sqlite": self.allow_sqlite_api,
-                "torrent": self.allow_torrent_api,
-                "portal": self.allow_portal_api,
-                "process": self.allow_process_api
-            },
+            "api": api_scope,
             "sandbox": {
                 "read_paths": self.sandbox_read_paths,
                 "write_paths": self.sandbox_write_paths
@@ -254,14 +276,17 @@ impl ModuleScope {
                 scope.allow_compression_api = allow;
             }
 
+            #[cfg(feature = "sqlite-api")]
             if let Some(allow) = api.get("sqlite").and_then(Json::as_bool) {
                 scope.allow_sqlite_api = allow;
             }
 
+            #[cfg(feature = "torrent-api")]
             if let Some(allow) = api.get("torrent").and_then(Json::as_bool) {
                 scope.allow_torrent_api = allow;
             }
 
+            #[cfg(feature = "portal-api")]
             if let Some(allow) = api.get("portal").and_then(Json::as_bool) {
                 scope.allow_portal_api = allow;
             }
