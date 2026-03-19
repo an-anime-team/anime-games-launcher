@@ -215,7 +215,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta4...next
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-rc1...next
+[2.0.0-rc1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta4...v2.0.0-rc1
 [2.0.0-beta4]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta3...v2.0.0-beta4
 [2.0.0-beta3]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta2...v2.0.0-beta3
 [2.0.0-beta2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...v2.0.0-beta2
