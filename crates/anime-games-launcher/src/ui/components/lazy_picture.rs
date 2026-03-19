@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -36,7 +36,14 @@ pub enum ImagePath {
     Resource(String),
 
     /// Lazily load image from the given URL.
-    LazyLoad(String)
+    LazyLoad {
+        /// URL of the image that should be downloaded and loaded.
+        url: String,
+
+        /// GTK resource path to the image that should be displayed until the
+        /// main image is downloaded and loaded.
+        lazy_path: String
+    }
 }
 
 impl ImagePath {
@@ -62,14 +69,30 @@ impl ImagePath {
         Self::Resource(format!("{APP_RESOURCE_PREFIX}/{}", path.as_ref()))
     }
 
-    /// Create new lazy loaded image.
+    /// Create new lazy loaded image with vertical (card) default image.
     ///
     /// ```
     /// ImagePath::lazy_load("https://example.com/image.png")
     /// ```
     #[inline]
-    pub fn lazy_load(url: impl ToString) -> Self {
-        Self::LazyLoad(url.to_string())
+    pub fn lazy_load_card(url: impl ToString) -> Self {
+        Self::LazyLoad {
+            url: url.to_string(),
+            lazy_path: format!("{APP_RESOURCE_PREFIX}/images/missing-card.png")
+        }
+    }
+
+    /// Create new lazy loaded image with horizontal (background) default image.
+    ///
+    /// ```
+    /// ImagePath::lazy_load("https://example.com/image.png")
+    /// ```
+    #[inline]
+    pub fn lazy_load_background(url: impl ToString) -> Self {
+        Self::LazyLoad {
+            url: url.to_string(),
+            lazy_path: format!("{APP_RESOURCE_PREFIX}/images/missing-background.png")
+        }
     }
 }
 
@@ -122,7 +145,7 @@ impl SimpleAsyncComponent for LazyPictureComponent {
             set_filename?: match &model.image {
                 Some(ImagePath::Path(path)) => Some(Some(path.to_path_buf())),
 
-                Some(ImagePath::LazyLoad(url)) => {
+                Some(ImagePath::LazyLoad { url, .. }) => {
                     let cache_path = cache::get_path(url);
 
                     let is_expired = cache::is_expired(
@@ -171,10 +194,8 @@ impl SimpleAsyncComponent for LazyPictureComponent {
             },
 
             #[watch]
-            set_resource?: if let Some(ImagePath::LazyLoad(_)) = &model.image {
-                // let path = format!("{APP_RESOURCE_PREFIX}/images/missing-card.png");
-
-                Some(Some("/moe/launcher/anime-games-launcher/images/missing-card.png"))
+            set_resource?: if let Some(ImagePath::LazyLoad { lazy_path, .. }) = &model.image {
+                Some(Some(lazy_path.as_str()))
             } else {
                 None
             }

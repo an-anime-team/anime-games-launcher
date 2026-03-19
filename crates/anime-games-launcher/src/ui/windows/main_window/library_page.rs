@@ -269,7 +269,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 };
 
                 let card_index = self.cards_list.guard().push_back(CardsListInit {
-                    image: ImagePath::LazyLoad(package.manifest.game.images.poster.clone()),
+                    image: ImagePath::lazy_load_card(&package.manifest.game.images.poster),
                     title: title.to_string(),
                     variants: editions.as_ref()
                         .map(|variants| {

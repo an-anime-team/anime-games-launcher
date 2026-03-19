@@ -350,12 +350,12 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                 // Set images.
                 self.card.emit(CardComponentInput::SetImage(
-                    Some(ImagePath::lazy_load(&manifest.game.images.poster))
+                    Some(ImagePath::lazy_load_card(&manifest.game.images.poster))
                 ));
 
                 self.carousel.emit(PictureCarouselMsg::SetImages(
                     manifest.game.images.slides.iter()
-                        .map(ImagePath::lazy_load)
+                        .map(ImagePath::lazy_load_background)
                         .collect()
                 ));
 

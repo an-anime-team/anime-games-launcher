@@ -197,7 +197,7 @@ impl SimpleAsyncComponent for StorePage {
                 };
 
                 let card = CardComponent::medium()
-                    .with_image(ImagePath::lazy_load(&manifest.game.images.poster))
+                    .with_image(ImagePath::lazy_load_card(&manifest.game.images.poster))
                     .with_title(title)
                     .with_clickable(true);
 

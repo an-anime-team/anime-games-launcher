@@ -329,7 +329,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 index
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
-                    ImagePath::LazyLoad(manifest.game.images.poster.clone())
+                    ImagePath::lazy_load_card(&manifest.game.images.poster)
                 )));
 
                 // Little trolling. I think you can sorry me.
@@ -338,7 +338,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 let background_image = if date.month() == time::Month::April && date.day() == 1 {
                     ImagePath::resource("images/april-fools.jpg")
                 } else {
-                    ImagePath::lazy_load(&manifest.game.images.background)
+                    ImagePath::lazy_load_background(&manifest.game.images.background)
                 };
 
                 self.background.emit(LazyPictureComponentMsg::SetImage(Some(background_image)));
