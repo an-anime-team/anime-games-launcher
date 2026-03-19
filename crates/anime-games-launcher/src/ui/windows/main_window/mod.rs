@@ -1058,8 +1058,6 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::CollectRuntimeGarbage => {
-                dbg!("collect garbage");
-
                 if let Err(err) = self.runtime.collect_garbage() {
                     tracing::error!(
                         ?err,
