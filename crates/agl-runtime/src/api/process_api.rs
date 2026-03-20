@@ -53,6 +53,37 @@ impl ProcessApi {
                 lua.create_function(move |lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
                     let module_folder = module_folder.clone();
 
+                    let args = args
+                        .map(|args| {
+                            args.sequence_values::<LuaString>()
+                                .map(|arg| Ok(arg?.to_string_lossy()))
+                                .collect::<Result<Vec<String>, LuaError>>()
+                        })
+                        .transpose()
+                        .map_err(|err| {
+                            LuaError::external("invalid arguments list format")
+                                .context(err)
+                        })?;
+
+                    let env = env
+                        .map(|env| {
+                            env.pairs::<LuaString, LuaString>()
+                                .map(|pair| {
+                                    let (key, value) = pair?;
+
+                                    Ok((
+                                        key.to_string_lossy(),
+                                        value.to_string_lossy()
+                                    ))
+                                })
+                                .collect::<Result<Vec<(String, String)>, LuaError>>()
+                        })
+                        .transpose()
+                        .map_err(|err| {
+                            LuaError::external("invalid environment table format")
+                                .context(err)
+                        })?;
+
                     let value = PromiseValue::from_blocking(move || {
                         let mut command = Command::new(binary);
 
@@ -69,21 +100,12 @@ impl ProcessApi {
 
                         // Apply command arguments.
                         if let Some(args) = args {
-                            for arg in args.sequence_values::<LuaString>() {
-                                command = command.arg(arg?.to_string_lossy());
-                            }
+                            command = command.args(args);
                         }
 
                         // Apply command environment.
                         if let Some(env) = env {
-                            for pair in env.pairs::<LuaString, LuaString>() {
-                                let (key, value) = pair?;
-
-                                command = command.env(
-                                    key.to_string_lossy(),
-                                    value.to_string_lossy()
-                                );
-                            }
+                            command = command.envs(env);
                         }
 
                         #[cfg(feature = "tracing")]
