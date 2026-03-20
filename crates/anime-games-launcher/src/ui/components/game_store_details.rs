@@ -99,6 +99,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
                         set_halign: gtk::Align::Start,
                         set_margin_bottom: 16,
 
+                        set_ellipsize: gtk::pango::EllipsizeMode::End,
+
                         add_css_class: "title-1",
 
                         set_selectable: true,
@@ -204,6 +206,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
+                                    set_ellipsize: gtk::pango::EllipsizeMode::End,
 
                                     add_css_class: "dim-label",
 
@@ -217,6 +220,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
+                                    set_ellipsize: gtk::pango::EllipsizeMode::End,
 
                                     add_css_class: "dim-label",
 

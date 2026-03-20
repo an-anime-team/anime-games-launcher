@@ -138,6 +138,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                     gtk::Label {
                         set_halign: gtk::Align::Start,
+                        set_ellipsize: gtk::pango::EllipsizeMode::End,
 
                         add_css_class: "title-1",
 

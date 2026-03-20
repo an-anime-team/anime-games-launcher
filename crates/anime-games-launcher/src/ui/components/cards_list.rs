@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -113,6 +113,8 @@ impl AsyncFactoryComponent for CardsList {
                     },
 
                     gtk::Label {
+                        set_ellipsize: gtk::pango::EllipsizeMode::End,
+
                         set_label: &self.title
                     }
                 },
@@ -250,12 +252,13 @@ impl AsyncFactoryComponent for CardVariantsList {
 
                 gtk::Label {
                     set_halign: gtk::Align::Start,
+                    set_ellipsize: gtk::pango::EllipsizeMode::End,
 
                     set_margin_top: 6,
                     set_margin_bottom: 6,
 
                     #[watch]
-                    set_label: &self.title,
+                    set_label: &self.title
                 }
             }
         }
