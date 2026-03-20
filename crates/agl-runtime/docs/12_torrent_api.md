@@ -9,6 +9,10 @@ be disabled by the user even if module has access to it.
 
 Note that torrent API doesn't remember previously added torrents.
 
+Also note that this API is planned to be removed in future in favor of a
+more general "sharing API", which will be powered by in-house dwshare protocol.
+There will be a transition period before completely removing the torrent API.
+
 | Function         | Description                                   |
 | ---------------- | --------------------------------------------- |
 | `torrent.create` | Create new torrent file.                      |
