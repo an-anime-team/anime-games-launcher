@@ -185,7 +185,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Create the app.
-    let app = RelmApp::new(consts::APP_ID);
+    let app = RelmApp::new(consts::APP_ID)
+        .with_args({
+            std::env::args()
+                .filter(|arg| arg != "--agl-debug")
+                .collect()
+        });
 
     // Show loading window.
     app.run_async::<ui::windows::main_window::MainWindow>(());

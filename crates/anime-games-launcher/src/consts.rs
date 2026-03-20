@@ -25,7 +25,7 @@ pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 lazy_static::lazy_static! {
-    pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--debug");
+    pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--agl-debug");
 
     pub static ref CURRENT_PLATFORM: Platform = {
         let platform = Platform::current();
