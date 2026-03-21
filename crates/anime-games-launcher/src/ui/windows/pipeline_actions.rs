@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -114,7 +114,10 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                     set_margin_bottom: 16,
 
                     #[watch]
-                    set_label?: &model.game_title
+                    set_label: match &model.game_title {
+                        Some(title) => title,
+                        None => ""
+                    }
                 },
 
                 adw::PreferencesPage {
@@ -130,7 +133,10 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
 
                     model.pipeline_actions.widget().clone() -> adw::PreferencesGroup {
                         #[watch]
-                        set_title?: &model.pipeline_title,
+                        set_title: match &model.pipeline_title {
+                            Some(title) => title,
+                            None => ""
+                        },
 
                         #[watch]
                         set_description: model.pipeline_description.as_deref()
