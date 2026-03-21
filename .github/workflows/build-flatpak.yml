@@ -1,0 +1,57 @@
+name: Build Flatpak
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      
+      - name: Resize icon
+        run: |
+          sudo apt-get install -y imagemagick
+          convert crates/anime-games-launcher/assets/images/icon.png -resize 512x512 crates/anime-games-launcher/assets/images/icon.png
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y flatpak flatpak-builder python3-tomlkit python3-aiohttp
+
+      - name: Add Flathub remote
+        run: |
+          sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install Flatpak SDK
+        run: |
+          sudo flatpak install -y flathub org.gnome.Platform/x86_64/49
+          sudo flatpak install -y flathub org.gnome.Sdk/x86_64/49
+          sudo flatpak install -y flathub runtime/org.freedesktop.Sdk.Extension.rust-stable/x86_64/25.08
+
+      - name: Generate Cargo sources
+        working-directory: .github/workflows/flatpak
+        run: |
+          ./flatpak-builder-tools/cargo/flatpak-cargo-generator.py ../../../Cargo.lock -o cargo-sources.json
+
+      - name: Build Flatpak
+        working-directory: .github/workflows/flatpak
+        run: |
+          flatpak-builder --repo=repo --force-clean build-dir moe.launcher.anime-games-launcher.yml
+
+      - name: Create Flatpak bundle
+        working-directory: .github/workflows/flatpak
+        run: |
+          flatpak build-bundle repo anime-games-launcher.flatpak moe.launcher.anime-games-launcher
+
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v7 
+        with:
+          name: anime-games-launcher.flatpak
+          path: .github/workflows/flatpak/anime-games-launcher.flatpak
