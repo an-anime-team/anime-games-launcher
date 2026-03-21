@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -52,13 +52,22 @@ impl AsyncFactoryComponent for GameActionsPipelineFactory {
         adw::ActionRow {
             set_title: &self.title,
 
+            add_suffix = &adw::Spinner {
+                #[watch]
+                set_visible: !self.is_finished
+                    && self.is_progress_visible
+                    && (self.progress_fraction == 0.0 && self.progress_text.is_empty())
+            },
+
             add_suffix = &gtk::ProgressBar {
                 set_valign: gtk::Align::Center,
 
                 set_show_text: true,
 
                 #[watch]
-                set_visible: !self.is_finished && self.is_progress_visible,
+                set_visible: !self.is_finished
+                    && self.is_progress_visible
+                    && (self.progress_fraction > 0.0 || !self.progress_text.is_empty()),
 
                 #[watch]
                 set_text: Some(&self.progress_text),
