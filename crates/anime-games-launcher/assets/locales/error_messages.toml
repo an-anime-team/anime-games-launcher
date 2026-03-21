@@ -56,11 +56,6 @@ de = "Erstellen der Spielintegration für {title} ist gescheitert"
 pt = "Falha ao construir a integração do jogo {title}"
 id = "Gagal membuat integrasi game {title}"
 
-[failed_collect_runtime_garbage]
-en = "Failed to collect luau runtime garbage"
-ru = "Не удалось собрать мусор в luau runtime"
-id = "Gagal mengumpulkan sampah runtime luau"
-
 # ------------------------ Game store page ------------------------
 
 [failed_serialize_game_package_lock]
@@ -95,7 +90,7 @@ id = "Gagal meminta informasi yang diperlukan untuk meluncurkan game"
 
 [failed_request_game_actions_pipeline]
 en = "Failed to request game actions pipeline"
-ru = "Не удалось запросить необходимую последовательность действий (actions pipeline) для игры"
+ru = "Не удалось запросить необходимую последовательность действий для игры"
 de = "Das Abfragen der Aktions-Pipeline des Spieles ist gescheitert"
 pt = "Falha ao requisitar pipeline de ações do jogo"
 id = "Gagal meminta instruksi yang diperlukan untuk memuat game"

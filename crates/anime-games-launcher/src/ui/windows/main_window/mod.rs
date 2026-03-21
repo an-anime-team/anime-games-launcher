@@ -99,8 +99,6 @@ pub enum MainWindowMsg {
 
     AddLibraryPageGame(GameLock),
 
-    CollectRuntimeGarbage,
-
     ShowToast(ToastOptions),
     ShowNotification(NotificationOptions),
     ShowDialog(DialogOptions),
@@ -459,19 +457,6 @@ impl SimpleAsyncComponent for MainWindow {
             "win",
             Some(&group.into_action_group())
         );
-
-        // Spawn runtime garbage collection task.
-        if !config.runtime_collect_garbage_interval.is_zero() {
-            let sender = sender.clone();
-
-            tasks::spawn(async move {
-                loop {
-                    tasks::sleep(config.runtime_collect_garbage_interval).await;
-
-                    sender.input(MainWindowMsg::CollectRuntimeGarbage);
-                }
-            });
-        }
 
         // Spawn startup task.
         let task = tasks::spawn(async move {
@@ -1055,21 +1040,6 @@ impl SimpleAsyncComponent for MainWindow {
                     package: game,
                     integration: game_integration
                 });
-            }
-
-            MainWindowMsg::CollectRuntimeGarbage => {
-                if let Err(err) = self.runtime.collect_garbage() {
-                    tracing::error!(
-                        ?err,
-                        "failed to collect luau runtime garbage"
-                    );
-
-                    dialogs::error(
-                        i18n!("failed_collect_runtime_garbage")
-                            .unwrap_or("Failed to collect luau runtime garbage"),
-                        err.to_string()
-                    );
-                }
             }
 
             MainWindowMsg::ShowToast(options) => {
