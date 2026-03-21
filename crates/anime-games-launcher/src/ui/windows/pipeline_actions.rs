@@ -36,6 +36,8 @@ use crate::ui::components::game_actions_pipeline::{
 const GRAPH_DIFF_INTERVAL: Duration = Duration::from_secs(1);
 const GRAPH_DIFF_PRECISION: f64 = 1_000_000.0;
 const GRAPH_POINTS_NUM: usize = 60;
+const GRAPH_WMA_SIZE: usize = 5;
+const GRAPH_WMA_DIVISOR: f64 = (GRAPH_WMA_SIZE as f64 + 1.0) / 2.0 * (GRAPH_WMA_SIZE as f64);
 
 #[derive(Debug, Clone)]
 pub enum PipelineActionsWindowInput {
@@ -262,7 +264,8 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
 
                             let last_update = Cell::new((
                                 Instant::now(),
-                                0.0
+                                0.0,
+                                [0.0; GRAPH_WMA_SIZE]
                             ));
 
                             action.before(move |progress| {
@@ -282,18 +285,28 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                         format!("{:.2}%", fraction * 100.0)
                                     });
 
-                                let (instant, last_fraction) = last_update.get();
+                                let (instant, last_fraction, mut deltas) = last_update.get();
 
                                 if instant.elapsed() > GRAPH_DIFF_INTERVAL {
                                     let curr_fraction = progress.fraction();
+                                    let mut wma_delta = (curr_fraction - last_fraction) * GRAPH_WMA_SIZE as f64;
+
+                                    for i in 0..(GRAPH_WMA_SIZE - 1) {
+                                        deltas[i] = deltas[i + 1];
+
+                                        wma_delta += deltas[i] * (i + 1) as f64;
+                                    }
+
+                                    deltas[GRAPH_WMA_SIZE - 1] = wma_delta / GRAPH_WMA_DIVISOR;
 
                                     sender.input(PipelineActionsWindowInput::AddGraphPoint(
-                                        ((curr_fraction - last_fraction) * GRAPH_DIFF_PRECISION) as u64
+                                        (deltas[GRAPH_WMA_SIZE - 1] * GRAPH_DIFF_PRECISION) as u64
                                     ));
 
                                     last_update.set((
                                         Instant::now(),
-                                        curr_fraction
+                                        curr_fraction,
+                                        deltas
                                     ));
                                 }
 
@@ -312,7 +325,8 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
 
                                 let last_update = Cell::new((
                                     Instant::now(),
-                                    0.0
+                                    0.0,
+                                    [0.0; GRAPH_WMA_SIZE]
                                 ));
 
                                 let result = action.perform(move |progress| {
@@ -332,18 +346,28 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                                             format!("{:.2}%", fraction * 100.0)
                                         });
 
-                                    let (instant, last_fraction) = last_update.get();
+                                    let (instant, last_fraction, mut deltas) = last_update.get();
 
                                     if instant.elapsed() > GRAPH_DIFF_INTERVAL {
                                         let curr_fraction = progress.fraction();
+                                        let mut wma_delta = (curr_fraction - last_fraction) * GRAPH_WMA_SIZE as f64;
+
+                                        for i in 0..(GRAPH_WMA_SIZE - 1) {
+                                            deltas[i] = deltas[i + 1];
+
+                                            wma_delta += deltas[i] * (i + 1) as f64;
+                                        }
+
+                                        deltas[GRAPH_WMA_SIZE - 1] = wma_delta / GRAPH_WMA_DIVISOR;
 
                                         sender.input(PipelineActionsWindowInput::AddGraphPoint(
-                                            ((curr_fraction - last_fraction) * GRAPH_DIFF_PRECISION) as u64
+                                            (deltas[GRAPH_WMA_SIZE - 1] * GRAPH_DIFF_PRECISION) as u64
                                         ));
 
                                         last_update.set((
                                             Instant::now(),
-                                            curr_fraction
+                                            curr_fraction,
+                                            deltas
                                         ));
                                     }
 
