@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.0] - 22.03.2026
+
 ### Added
 
 - Strings translations engine now respects regional language variants
@@ -32,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed automatic luau engine garbage collection from the launcher's side.
   It was causing a UI thread blocks
 
-## [2.0.0-rc1] - 19.03.2026
+## [v2.0.0-rc1] - 19.03.2026
 
 ### Added
 
@@ -85,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there's only one picture available
 - Featured games are now shown before non-featured games
 
-## [2.0.0-beta4] - 03.01.2026
+## [v2.0.0-beta4] - 03.01.2026
 
 ### Added
 
@@ -129,7 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed unused `utils` and `i18n` launcher modules
 
-## [2.0.0-beta3] - 24.12.2025
+## [v2.0.0-beta3] - 24.12.2025
 
 ### Added
 
@@ -141,7 +143,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improve actions pipeline graph drawing
 
-## [2.0.0-beta2] - 22.12.2025
+## [v2.0.0-beta2] - 22.12.2025
 
 ### Added
 
@@ -172,11 +174,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In many manifests `format` is expected instead of `version`. For now `version`
   is accepted as fallback field
 
-## [2.0.0-beta1] - 20.12.2025
+## [v2.0.0-beta1] - 20.12.2025
 
 🚀 Complete rework of the app
 
-## [2.0.0-alpha2] - 23.04.2025
+## [v2.0.0-alpha2] - 23.04.2025
 
 ### Added
 
@@ -207,18 +209,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed `update-unavailable` game status from the v1 games integrations standard
 
-## [2.0.0-alpha1] - 14.04.2025
+## [v2.0.0-alpha1] - 14.04.2025
 
 🚀 Complete rewrite, first public alpha release.
 
-## [1.0.2] - 21.01.2024
+## [v1.0.2] - 21.01.2024
 
 ### Changed
 
 - Fixed German
 - Replaced `v1_network_http_get` with more powerful `v1_network_fetch`
 
-## [1.0.1] - 20.01.2024
+## [v1.0.1] - 20.01.2024
 
 ### Added
 
@@ -234,20 +236,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated `v1_network_http_get` standard
 
-## [1.0.0] - 13.01.2024
+## [v1.0.0] - 13.01.2024
 
 🚀 Initial release
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-rc1...next
-[2.0.0-rc1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta4...v2.0.0-rc1
-[2.0.0-beta4]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta3...v2.0.0-beta4
-[2.0.0-beta3]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta2...v2.0.0-beta3
-[2.0.0-beta2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...v2.0.0-beta2
-[2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha2...v2.0.0-beta1
-[2.0.0-alpha2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha1...v2.0.0-alpha2
-[2.0.0-alpha1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.2...v2.0.0-alpha1
-[1.0.2]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/an-anime-team/anime-games-launcher/releases/tag/v1.0.0
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0...next
+[v2.0.0]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-rc1...v2.0.0
+[v2.0.0-rc1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta4...v2.0.0-rc1
+[v2.0.0-beta4]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta3...v2.0.0-beta4
+[v2.0.0-beta3]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta2...v2.0.0-beta3
+[v2.0.0-beta2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta1...v2.0.0-beta2
+[v2.0.0-beta1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha2...v2.0.0-beta1
+[v2.0.0-alpha2]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-alpha1...v2.0.0-alpha2
+[v2.0.0-alpha1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.2...v2.0.0-alpha1
+[v1.0.2]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.1...v1.0.2
+[v1.0.1]: https://github.com/an-anime-team/anime-games-launcher/compare/v1.0.0...v1.0.1
+[v1.0.0]: https://github.com/an-anime-team/anime-games-launcher/releases/tag/v1.0.0
