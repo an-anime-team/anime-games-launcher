@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Strings translations engine now respects regional language variants
+- Added Indonesian launcher translations
+- Added `--agl-debug` launcher launch flag to display trace logs in release
+  builds
+- Added spinner widget to the actions pipeline window if the current action has
+  no progress and no text
+
+### Fixed
+
+- Fixed `process.exec`'s `Promise` awaiting
+- Fixed rendering of long game titles
+- Fixed empty pipeline action description setting
+
+### Changed
+
+- Improved actions pipeline chart rendering. Now it uses 5-step WMA over the
+  points history
+
+### Removed
+
+- Removed automatic luau engine garbage collection from the launcher's side.
+  It was causing a UI thread blocks
+
 ## [2.0.0-rc1] - 19.03.2026
 
 ### Added
