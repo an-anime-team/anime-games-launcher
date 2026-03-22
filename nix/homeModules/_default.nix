@@ -1,9 +1,9 @@
-{ config
-, lib
-, pkgs
-, ...
-}:
-let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
   inherit
     (lib)
     mkIf
@@ -14,19 +14,16 @@ let
     optionals
     ;
   cfg = config.programs.agl;
-  tomlFormat = pkgs.formats.toml { };
-in
-{
+  tomlFormat = pkgs.formats.toml {};
+in {
   options.programs.agl = {
     enable = mkEnableOption "anime games launcher";
-    package = mkPackageOption pkgs "anime-games-launcher" { };
+    package = mkPackageOption pkgs "anime-games-launcher" {};
     anirun.enable = mkEnableOption "anirun";
-    anirun.package = mkPackageOption pkgs "anirun" { };
+    anirun.package = mkPackageOption pkgs "anirun" {};
 
     settings = mkOption {
       type = types.submodule {
-        freeformType = tomlFormat.type;
-
         options = {
           general = {
             language = mkOption {
@@ -47,7 +44,7 @@ in
                   description = "Proxy URL. If unset (`system`) - environment variable proxy is used.";
                 };
                 mode = mkOption {
-                  type = types.enum [ "http" "https" "all" "system" ];
+                  type = types.enum ["http" "https" "all" "system"];
                   default = "system";
                   description = "Proxy mode.";
                 };
@@ -137,7 +134,7 @@ in
               };
               trackers = mkOption {
                 type = types.listOf types.str;
-                default = [ ];
+                default = [];
                 description = "List of torrent trackers used by the torrent API.";
               };
               blocklist_url = mkOption {
@@ -164,15 +161,15 @@ in
           };
         };
       };
-      default = { };
+      default = {};
       description = "Configuration for anime-games-launcher.";
     };
   };
 
   config = mkIf cfg.enable {
-    home.packages = [ cfg.package ] ++ optionals cfg.anirun.enable [ cfg.anirun.package ];
+    home.packages = [cfg.package] ++ optionals cfg.anirun.enable [cfg.anirun.package];
 
-    xdg.configFile."anime-games-launcher/config.toml" = mkIf (cfg.settings != { }) {
+    xdg.configFile."anime-games-launcher/config.toml" = mkIf (cfg.settings != {}) {
       source = tomlFormat.generate "anime-games-launcher-config" cfg.settings;
     };
   };
