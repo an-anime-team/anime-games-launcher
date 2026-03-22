@@ -9,24 +9,33 @@
     };
   };
 
-  outputs =
-    { flakelight
-    , nixpkgs
-    , rust-overlay
-    , ...
-    }:
-    # flakelight automatically import everything in ./nixdir
+  outputs = {
+    flakelight,
+    nixpkgs,
+    rust-overlay,
+    ...
+  } @ inputs:
+  # flakelight automatically import everything in ./nixdir
     flakelight ./. {
       inputs.nixpkgs = nixpkgs;
       withOverlays = [
         rust-overlay.overlays.default
       ];
 
-      devShell.packages = { pkgs, ... }:
+      homeModules.default = {
+        pkgs,
+        lib,
+        ...
+      }: {
+        programs.agl.package = lib.mkDefault inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.anime-games-launcher;
+        programs.agl.anirun.package = lib.mkDefault inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.anirun;
+      };
+
+      devShell.packages = {pkgs, ...}:
         with pkgs; [
           (rust-bin.stable.latest.default.override
             {
-              extensions = [ "rust-src" ];
+              extensions = ["rust-src"];
             })
           gcc
           cmake
