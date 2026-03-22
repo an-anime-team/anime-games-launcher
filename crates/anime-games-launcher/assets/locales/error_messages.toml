@@ -1,0 +1,173 @@
+# ------------------------ Main window ------------------------
+
+[failed_execute_startup_task]
+en = "Failed to execute startup task"
+ru = "Не удалось выполнить задачу при запуске лаунчера"
+de = "Startaufgabe könnte nicht ausgeführt werden"
+pt = "Falha ao iniciar a tarefa de inicialização"
+id = "Gagal menjalankan aksi untuk memulai aplikasi"
+
+[failed_load_game_package]
+en = "Failed to load {title} game package"
+ru = "Не удалось загрузить игровой пакет {title}"
+de = "Spielpaket für {title} konnte nicht geladen werden"
+pt = "Falha ao carregar pacote do jogo {title}"
+id = "Gagal memuat paket untuk game {title}"
+
+[failed_find_locked_game_integration_title]
+en = "Failed to find game integration module in package lock"
+ru = "Не удалось найти модуль интеграции игры в lock файле игрового пакета"
+de = "Integrationsmodul konnte in der Paket-Lock-Datei nicht gefunden werden"
+pt = "Falha ao encontrar módulo de integração no package lock"
+id = "Gagal menemukan modul integrasi game dalam kunci paket"
+
+[failed_find_locked_game_integration_description]
+en = "Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken"
+ru = "Лаунчер попытался найти модуль интеграции для игры {title}, но его нет в lock файле игрового пакета. Вероятно lock файл сломан"
+de = "Das Integrationsmodul für {title} konnte nicht gefunden werden weil es in der Paket-Lock-Datei fehlt. Möglicherweise ist die Paket-Lock-Datei beschädigt"
+pt = "Houve uma tentativa de encontrar o módulo de integração de {title}, mas está faltando no package lock. Talvez o arquivo de lock esteja quebrado"
+id = "Mencoba menemukan modul integrasi untuk game {title}, tetapi tidak dapat ditemukan dalam kunci paket. Ada kemungkinan kunci paket rusak"
+
+[failed_read_runtime_game_integration]
+en = "Failed to read {title} game integration from the runtime"
+ru = "Не удалось прочесть интеграцию игры {title} из движка игровых пакетов"
+de = "Die Spielintegration für {title} konnte nicht aus der Runtime ausgelesen werden"
+pt = "Falha ao ler integração de {title} no runtime"
+id = "Gagal membaca integrasi game {title} dari runtime"
+
+[game_integration_module_missing_title]
+en = "Game integration module is missing in the runtime"
+ru = "Модуль интеграции игры отсутствует в движке игровых пакетов"
+de = "Das Spielintegrationsmodul fehlt in der Runtime"
+pt = "Módulo de integração está faltando no runtime"
+id = "Modul integrasi game tidak dapat ditemukan pada runtime"
+
+[game_integration_module_missing_description]
+en = "Attempted to load {title} game integration, but integration module is missing in the packages runtime"
+ru = "Лаунчер попытался загрузить игру {title}, но модуль интеграции отсутствует в движке игровых пакетов"
+de = "Die Spielintegration für {title} konnte nicht geladen werden weil diese in der Spiel-Runtime fehlt"
+pt = "Houve uma tentativa de carregar a integração do jogo {title}, mas o módulo está faltando no runtime do pacote"
+id = "Mencoba memuat integrasi game {title}, tetapi modul integrasi tidak dapat ditemukan dalam runtime paket"
+
+[failed_build_game_integration]
+en = "Failed to build {title} game integration"
+ru = "Не удалось загрузить интеграцию игры {title}"
+de = "Erstellen der Spielintegration für {title} ist gescheitert"
+pt = "Falha ao construir a integração do jogo {title}"
+id = "Gagal membuat integrasi game {title}"
+
+# ------------------------ Game store page ------------------------
+
+[failed_serialize_game_package_lock]
+en = "Failed to serialize game package lock"
+ru = "Не удалось сериализовать пакет интеграции игры"
+de = "Die Serialisierung der Spielpaketsperrdatei ist gescheitert"
+pt = "Falha ao serializar package lock do jogo"
+id = "Gagal melakukan serialisasi paket kunci untuk game"
+
+[failed_save_game_package_lock]
+en = "Failed to save game package lock"
+ru = "Не удалось сохранить пакет интеграции игры"
+de = "Die Spielpaketsperrdatei konnte nicht gespeichert werden"
+pt = "Falha ao salvar package lock do jogo"
+id = "Gagal menyimpan paket kunci untuk game"
+
+[failed_download_game_package]
+en = "Failed to download game package"
+ru = "Не удалось скачать пакет интеграции игры"
+de = "Das Spielpaket konnte nicht heruntergeladen werden"
+pt = "Falha ao baixar o pacote do jogo"
+id = "Gagal mengunduh paket untuk game"
+
+# ------------------------ Game library page ------------------------
+
+[failed_request_game_launch_info]
+en = "Failed to request game launch info"
+ru = "Не удалось запросить информацию для запуска игры"
+de = "Startinformationen konnten nicht abgefragt werden"
+pt = "Falha ao requisitar informações de execução do jogo"
+id = "Gagal meminta informasi yang diperlukan untuk meluncurkan game"
+
+[failed_request_game_actions_pipeline]
+en = "Failed to request game actions pipeline"
+ru = "Не удалось запросить необходимую последовательность действий для игры"
+de = "Das Abfragen der Aktions-Pipeline des Spieles ist gescheitert"
+pt = "Falha ao requisitar pipeline de ações do jogo"
+id = "Gagal meminta instruksi yang diperlukan untuk memuat game"
+
+# ------------------------ Game settings ------------------------
+
+[failed_request_game_tools_buttons]
+en = "Failed to request game tools buttons"
+ru = "Не удалось запросить список дополнительных инструментов для игры"
+id = "Gagal meminta tombol untuk peralatan game"
+
+[failed_call_game_tool_button]
+en = "Failed to call game tool button"
+ru = "Не удалось выполнить дополнительный игровой инструмент"
+id = "Gagal memanggil tombol untuk peralatan game"
+
+[failed_request_game_settings_layout]
+en = "Failed to request game settings layout"
+ru = "Не удалось запросить список настроек игры"
+de = "Layout der Spieleinstellungen konnte nicht abgefragt werden"
+pt = "Falha ao requisitar layout de configurações do jogo"
+id = "Gagal meminta layout untuk pengaturan game"
+
+[failed_render_game_settings]
+en = "Failed to render game settings"
+ru = "Не удалось загрузить страницу настроек игры"
+de = "Spieleinstellungen konnten nicht gerendert werden"
+pt = "Falha ao renderizar configurações do jogo"
+id = "Gagal menggambar pengaturan untuk game"
+
+[failed_update_game_settings_layout]
+en = "Failed to update game settings layout"
+ru = "Не удалось обновить список настроек игры"
+de = "Das Layouts der Spieleinstellungen konnte nicht aktualisiert werden"
+pt = "Falha ao atualizar layour de configurações do jogo"
+id = "Gagal memperbarui layout untuk pengaturan game"
+
+[failed_set_game_property]
+en = "Failed to set game property value"
+ru = "Не удалось обновить настройки игры"
+de = "Spieleigenschaft konnte nicht gesetzt werden"
+pt = "Falha ao definir valor de uma propriedade do jogo"
+id = "Gagal menentukan nilai properti dari game"
+
+[failed_perform_pipeline_action]
+en = "Failed to perform pipeline action"
+ru = "Не удалось выполнить последовательность действий (pipeline action)"
+de = "Die Pipeline-Action konnte nicht durchgeführt werden"
+pt = "Falha ao executar ação da pipeline"
+id = "Gagal menjalankan instruksi yang diperlukan untuk memuat game"
+
+[failed_kill_game_process]
+en = "Failed to kill running game process"
+ru = "Не удалось убить процесс игры"
+de = "Der Laufende Spielprozess konnten nicht beendet werden"
+pt = "Falha ao matar o processo em execução do jogo"
+id = "Gagal mematikan proses game yang sedang berjalan"
+
+# ------------------------ Portal API ------------------------
+
+[failed_execute_toast_action]
+en = "Failed to execute toast action"
+ru = "Не удалось выполнить действие во всплывающем уведомлении"
+de = "Toast-Aktion konnte nicht ausgeführt werden"
+pt = "Falha ao executar ação toast"
+id = "Gagal menjalankan aksi yang ada pada pop-up toast"
+
+[failed_show_system_notification]
+en = "Failed to show system notification"
+ru = "Не удалось отобразить системное уведомление"
+de = "Systembenachrichtigung konnte nicht angezeigt werden"
+pt = "Falha ao mostrar notificação do sistema"
+id = "Gagal menampilkan notifikasi dari sistem"
+
+[failed_execute_dialog_action]
+en = "Failed to execute dialog action"
+ru = "Не удалось выполнить действие диалогового окна"
+de = "Dialog-Aktion konnte nicht ausgeführt werden"
+pt = "Falha ao executar ação do diálogo"
+id = "Gagal menjalankan aksi yang ada pada dialog"

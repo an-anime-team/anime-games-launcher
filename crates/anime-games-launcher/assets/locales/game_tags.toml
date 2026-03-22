@@ -1,0 +1,143 @@
+# Gambling
+
+[game_tag_gambling_title]
+en = "Gambling"
+ru = "Азартные игры"
+de = "Glücksspiel"
+pt = "Apostas"
+id = "Perjudian"
+
+[game_tag_gambling_description]
+en = "Game has scenes of gambling or has game mechanics related to gambling (wishes, banners, etc.)"
+ru = "Игра содержит сцены с азартными играми или механики, связанные с азартными играми (например, баннеры с персонажами)"
+de = "Dieses Spiel beinhaltet Szenen mit Glücksspielen oder hat Glücksspielähnliche Spielmechaniken (Gacha, Lootboxen, etc.)"
+pt = "Jogo contém cenas de apostas ou possui mecânicas relacionadas à apostas (orações, banners e etc.)"
+id = "Game memuat konten yang memperagakan perjudian atau memiliki mekanisme yang berhubungan dengan perjudian (wishes, banner, dan lain-lain.)"
+
+# Payments
+
+[game_tag_payments_title]
+en = "Payments"
+ru = "Внутриигровые покупки"
+de = "Zahlungen"
+pt = "Transações"
+id = "Transaksi"
+
+[game_tag_payments_description]
+en = "Game can accept real money for in-game content"
+ru = "Игра может принимать реальные деньги для внутриигрового контента"
+de = "Das Spiel akzeptiert echtes Geld für Spielinhalte"
+pt = "O jogo pode aceitar dinheiro real por conteúdo no jogo"
+id = "Game menerima pembayaran menggunakan mata uang asli untuk membeli konten di dalam game"
+
+# Graphic violence
+
+[game_tag_graphic_violence_title]
+en = "Graphic Violence"
+ru = "Насилие"
+de = "Grafische Gewalt"
+pt = "Violência Gráfica"
+id = "Kekerasan"
+
+[game_tag_graphic_violence_description]
+en = "Game contains graphic violence"
+ru = "Игра содержит сцены насилия"
+de = "Das Spiel beinhaltet Szenen von grafischer Gewalt"
+pt = "Jogo possui violência representada graficalmente"
+id = "Game memuat konten yang menampilkan kekerasan"
+
+# Cooperative
+
+[game_tag_cooperative_title]
+en = "Cooperative"
+ru = "Кооператив"
+de = "Kooperativ"
+pt = "Cooperativo"
+id = "Kooperasi"
+
+[game_tag_cooperative_description]
+en = "Game has built-in multiplayer (cooperative) elements"
+ru = "Игра содержит элементы кооперации с другими игроками"
+de = "Das Spiel beinhaltet integrierte Mehrspieler-Koop-Elemente"
+pt = "O jogo possui elementos de multiplayer cooperativo"
+id = "Game memiliki elemen multiplayer (kerjasama)"
+
+# Social
+
+[game_tag_social_title]
+en = "Social"
+ru = "Социальная"
+de = "Sozial"
+pt = "Social"
+id = "Sosial"
+
+[game_tag_social_description]
+en = "Game has social features - online chat, VoIP, shared spaces, etc"
+ru = "Игра содержит социальные функции - онлайн чат, голосовое общение, общие комнаты и т.п."
+de = "Das Spiel bietet soziale Funktionen wie Text- oder Sprachchat, gemeinsame Räume, usw."
+pt = "O jogo possui funções sociais - conversas online, VoIP, espaços compartilhados e etc."
+id = "Game memiliki fitur sosial - online chat, VoIP, shared spaces, etc"
+
+# Controller
+
+[game_tag_controller_title]
+en = "Controller"
+ru = "Контроллер"
+de = "Controller"
+pt = "Controle"
+id = "Kontroller"
+
+[game_tag_controller_description]
+en = "Game has controllers support"
+ru = "Игра имеет поддержку контроллеров"
+de = "Das Spiel unterstützt Controller"
+pt = "O jogo possui suporte nativo à controles"
+id = "Game memiliki dukungan untuk kontroller"
+
+# Performance issues
+
+[game_tag_performance_issues_title]
+en = "Performance Issues"
+ru = "Проблемы с производительностью"
+de = "Leistungsprobleme"
+pt = "Problemas de Performance"
+id = "Masalah performa"
+
+[game_tag_performance_issues_description]
+en = "Game is known to have bad performance on some platforms"
+ru = "Игра имеет плохую производительность на некоторых платформах"
+de = "Das Spiel hat bekanntermaßen eine schlechte Leistung auf einigen Plattformen"
+pt = "O jogo é conhecido por ter problemas de performance em algumas plataformas"
+id = "Game diketahui memiliki performa yang buruk di beberapa platform"
+
+# Anti-cheat
+
+[game_tag_anti_cheat_title]
+en = "Anti-cheat"
+ru = "Анти-чит"
+de = "Anti-Cheat"
+pt = "Anti-trapaça"
+id = "Anti-Cheat"
+
+[game_tag_anti_cheat_description]
+en = "Game has an anti-cheat, either server- or client-side"
+ru = "Игра имеет клиентский или серверный анти-чит"
+de = "Das Spiel verwendet ein entweder server- oder clientseitiges Anti-Cheat"
+pt = "O jogo possui um mecanismo de anti-trapaças (anti-cheat), sendo no lado do servidor- ou cliente"
+id = "Game memiliki anti-cheat, baik pada sisi server ataupun sisi klien"
+
+# Workarounds
+
+[game_tag_workarounds_title]
+en = "Workarounds"
+ru = "Дополнительные компоненты"
+de = "Workarounds"
+pt = "Gambiarra"
+id = "Solusi sementara"
+
+[game_tag_workarounds_description]
+en = "Game cannot run on some platforms natively, but the integration package provides set of special utilities or game files modifications which make the game function. Note that this may violate its terms of service and result in taking actions on your account"
+ru = "Игра не может работать на некоторых платформах, однако модуль интеграции поставляет набор компонентов, необходимых для функционирования игры. Обратите внимание что это может нарушать правила пользования игрой и привести к потере вашего аккаунта"
+de = "Das Spiel läuft nicht nativ auf einigen Plattformen, weshalb das Integrationspaket zusätzlich noch spezielle Hilfsprogramme oder Modifikationen bereitstellt, um das Spiel zum Laufen zu bringen. Beachte jedoch, dass dies gegen die Nutzungsbedingungen des Spieles verstoßen könnte und zu Maßnahmen gegen deinen Account führen kann."
+pt = "O jogo não pode ser executado nativamente em algumas plataformas, mas o pacote de integração provê utilidades especiais ou arquivos modificados do jogo que permitem que o jogo funcione. Perceba que talvez isso viole os Termos de Serviço do jogo, podendo resultar em ações sobre sua conta."
+id = "Game tidak dapat dijalankan pada platform tertentu secara langsung, tetapi paket integrasi memberikan aplikasi khusus ataupun memodifikasi file pada game yang dapat membuatnya berfungsu. Patut dipahami bahwa hal tersebut mungkin melanggar ketentuan pelayanan (terms of service) dan dapat memunculkan tindakkan terhadap akun Anda"

@@ -1,0 +1,11 @@
+{
+    "inputs": {
+        "file": "example_file.txt"
+    },
+    "outputs": {
+        "module": {
+            "uri": "module.luau",
+            "hash": "j19332e198rda"
+        }
+    }
+}

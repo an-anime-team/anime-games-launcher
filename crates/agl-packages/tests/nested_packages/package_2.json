@@ -1,0 +1,8 @@
+{
+    "inputs": {
+        "package_3": {
+            "uri": "package_3.json",
+            "format": "package"
+        }
+    }
+}

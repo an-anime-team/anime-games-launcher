@@ -2,39 +2,59 @@ name: Check source code
 
 on:
   push:
-    branches: [ "master" ]
-    paths: [ "src/**" ]
+    branches:
+      - master
+      - next
+
+    paths:
+      - "crates/*/src/**"
 
   pull_request:
-    branches: [ "master" ]
-    paths: [ "src/**" ]
+    branches:
+      - master
+      - next
+
+    paths:
+      - "crates/*/src/**"
 
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
-jobs:   
+jobs:
   check_source_code:
     runs-on: ubuntu-latest
 
     container:
       image: ubuntu:devel
+
       env:
         DEBIAN_FRONTEND: noninteractive
 
     steps:
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           apt update
-          apt install -y libgtk-4-dev libadwaita-1-dev libluajit-5.1-dev liblua5.1-0-dev git curl build-essential
+          apt install -y git curl build-essential libgtk-4-dev libadwaita-1-dev
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install runtime dependencies
+        run: |
+          apt update
+          apt install -y tar zip p7zip-full gzip bzip2 zstd
+
+      - name: Download rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check source code
         run: cargo check --verbose
+
+      - name: Perform source code tests
+        run: cargo test --verbose

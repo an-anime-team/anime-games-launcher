@@ -1,0 +1,16 @@
+{
+    "inputs": {
+        "example_file": {
+            "uri": "example_file.txt",
+            "format": "file",
+            "hash": "dfhtkkli693ji"
+        }
+    },
+    "outputs": {
+        "example_file": {
+            "uri": "example_file.txt",
+            "format": "file",
+            "hash": "dfhtkkli693ji"
+        }
+    }
+}

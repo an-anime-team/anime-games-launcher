@@ -1,0 +1,90 @@
+[package]
+name = "agl-runtime"
+version = "0.1.0"
+authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
+license = "GPL-3.0-or-later"
+edition = "2024"
+publish = false
+
+[features]
+tracing = [
+    "dep:tracing",
+    "agl-core/tracing",
+    "agl-packages/tracing"
+]
+
+packages-support = ["dep:agl-packages"]
+
+sqlite-api = ["dep:rusqlite"]
+torrent-api = ["dep:librqbit"]
+portal-api = ["dep:rfd"]
+
+default = [
+    "tracing",
+    "packages-support",
+    "sqlite-api",
+    "torrent-api",
+    "portal-api"
+]
+
+[dependencies.agl-core]
+path = "../agl-core"
+default-features = false
+features = [
+    "tasks",
+    "network-all",
+    "archives-all",
+    "hashes-all",
+    "compression-all"
+]
+
+[dependencies.agl-packages]
+path = "../agl-packages"
+default-features = false
+optional = true
+
+[dependencies.mlua]
+version = "0.11"
+features = [
+    "luau-jit",
+    "async",
+    "serialize",
+    "send",
+    "error-send"
+]
+
+[dependencies]
+agl-locale = { path = "../agl-locale" }
+
+thiserror = "1.0"
+lazy_static = "1.5"
+
+# Tracing
+tracing = { version = "0.1", optional = true }
+
+# Luau engine
+bufreaderwriter = "0.2.4"
+
+## SQLite API
+rusqlite = { version = "0.39", features = ["bundled"], optional = true }
+
+## Torrent API
+librqbit = { version = "8.1", features = ["rust-tls"], default-features = false, optional = true }
+
+## Portal API
+rfd = { version = "0.17", optional = true }
+
+time = { version = "0.3", features = ["local-offset", "formatting"] }
+
+toml = "0.9"
+serde_json = "1.0"
+serde_yml = "0.0.12"
+bson = { version = "3.1", features = ["serde"] }
+
+rand = "0.9"
+seahash = "4.1"
+
+hex = "0.4"
+base32 = "0.5"
+base64 = "0.22"
+encoding_rs = "0.8"

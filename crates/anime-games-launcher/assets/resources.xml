@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/moe/launcher/anime-games-launcher">
+        <file>images/missing-card.png</file>
+        <file>images/missing-background.png</file>
+        <file>images/april-fools.jpg</file>
+    </gresource>
+
+    <gresource prefix="/moe/launcher/anime-games-launcher/icons/scalable/apps">
+        <file alias="moe.launcher.anime-games-launcher.png">images/icon.png</file>
+    </gresource>
+
+    <gresource prefix="/moe/launcher/anime-games-launcher/icons/scalable/actions">
+        <!-- Game tags -->
+
+        <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">images/icons/dice3-symbolic.svg</file> <!-- gambling -->
+        <file preprocess="xml-stripblanks" alias="money-symbolic.svg">images/icons/money-symbolic.svg</file> <!-- payments -->
+        <file preprocess="xml-stripblanks" alias="violence-symbolic.svg">images/icons/violence-symbolic.svg</file> <!-- graphic-violence / kill running game button -->
+        <file preprocess="xml-stripblanks" alias="system-users-symbolic.svg">images/icons/system-users-symbolic.svg</file> <!-- cooperative -->
+        <file preprocess="xml-stripblanks" alias="mail-unread-symbolic.svg">images/icons/mail-unread-symbolic.svg</file> <!-- social -->
+        <file preprocess="xml-stripblanks" alias="input-gaming-symbolic.svg">images/icons/input-gaming-symbolic.svg</file> <!-- controller / open library page game button -->
+        <file preprocess="xml-stripblanks" alias="speedometer4-symbolic.svg">images/icons/speedometer4-symbolic.svg</file> <!-- performance-issues -->
+        <file preprocess="xml-stripblanks" alias="background-app-ghost-symbolic.svg">images/icons/background-app-ghost-symbolic.svg</file> <!-- anti-cheat -->
+        <file preprocess="xml-stripblanks" alias="test-symbolic.svg">images/icons/test-symbolic.svg</file> <!-- workarounds -->
+
+        <!-- Pages -->
+
+        <file preprocess="xml-stripblanks" alias="shopping-cart-symbolic.svg">images/icons/shopping-cart-symbolic.svg</file> <!-- Store page -->
+        <file preprocess="xml-stripblanks" alias="applications-games-symbolic.svg">images/icons/applications-games-symbolic.svg</file> <!-- Library page -->
+
+        <!-- Interface -->
+
+        <file preprocess="xml-stripblanks" alias="globe-symbolic.svg">images/icons/globe-symbolic.svg</file> <!-- Game edition -->
+        <file preprocess="xml-stripblanks" alias="emblem-ok-symbolic.svg">images/icons/emblem-ok-symbolic.svg</file> <!-- Action finished -->
+        <file preprocess="xml-stripblanks" alias="media-playback-start-symbolic.svg">images/icons/media-playback-start-symbolic.svg</file> <!-- Launch game button -->
+        <file preprocess="xml-stripblanks" alias="settings-symbolic.svg">images/icons/settings-symbolic.svg</file> <!-- Settings button -->
+        <file preprocess="xml-stripblanks" alias="document-save-symbolic.svg">images/icons/document-save-symbolic.svg</file> <!-- Execute pipeline button / adding game button -->
+        <file preprocess="xml-stripblanks" alias="list-add-symbolic.svg">images/icons/list-add-symbolic.svg</file> <!-- Add game button -->
+        <file preprocess="xml-stripblanks" alias="go-previous-symbolic.svg">images/icons/go-previous-symbolic.svg</file> <!-- Close store page button / previous carousel picture button -->
+        <file preprocess="xml-stripblanks" alias="go-next-symbolic.svg">images/icons/go-next-symbolic.svg</file> <!-- Next carousel picture button -->
+        <file preprocess="xml-stripblanks" alias="open-menu-symbolic.svg">images/icons/open-menu-symbolic.svg</file> <!-- Hamburger menu button -->
+
+        <!-- Standard adwaita / gtk icons -->
+
+        <file preprocess="xml-stripblanks" alias="window-close-symbolic.svg">images/icons/window-close-symbolic.svg</file> <!-- Close window button -->
+        <file preprocess="xml-stripblanks" alias="external-link-symbolic.svg">images/icons/external-link-symbolic.svg</file> <!-- URL button (about window) -->
+        <file preprocess="xml-stripblanks" alias="adw-external-link-symbolic.svg">images/icons/external-link-symbolic.svg</file> <!-- URL button (about window) -->
+    </gresource>
+</gresources>

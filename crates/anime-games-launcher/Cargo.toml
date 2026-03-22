@@ -1,0 +1,64 @@
+[package]
+name = "anime-games-launcher"
+version = "2.0.0-rc1"
+description = "Anime Games Launcher"
+authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
+homepage = "https://github.com/an-anime-team/anime-games-launcher"
+repository = "https://github.com/an-anime-team/anime-games-launcher"
+license = "GPL-3.0-or-later"
+edition = "2024"
+build = "build.rs"
+publish = false
+
+[features]
+mimalloc = ["dep:mimalloc"]
+
+default = ["mimalloc"]
+
+[build-dependencies]
+glib-build-tools = "0.21.0"
+
+[dependencies.relm4]
+version = "0.10.1"
+features = ["macros", "libadwaita"]
+
+[dependencies.gtk]
+package = "gtk4"
+version = "0.10.3"
+features = ["v4_18"]
+
+[dependencies.adw]
+package = "libadwaita"
+version = "0.8.1"
+features = ["v1_7"]
+
+[dependencies.agl-core]
+path = "../agl-core"
+features = [
+    "tasks",
+    "network-all",
+    "tracing"
+]
+default-features = false
+
+[dependencies]
+agl-locale = { path = "../agl-locale", default-features = false }
+agl-packages = { path = "../agl-packages" }
+agl-runtime = { path = "../agl-runtime" }
+agl-games = { path = "../agl-games" }
+
+anyhow = "1.0"
+lazy_static = "1.5"
+toml = "0.9"
+serde_json = "1.0"
+
+time = "0.3"
+
+notify-rust = "4.11"
+
+tracing = "0.1"
+tracing-subscriber = "0.3"
+human-panic = "2.0"
+
+# Mimalloc
+mimalloc = { version = "0.1", optional = true }

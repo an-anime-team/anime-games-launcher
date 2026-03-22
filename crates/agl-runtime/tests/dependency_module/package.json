@@ -1,0 +1,14 @@
+{
+    "inputs": {
+        "module_1": {
+            "uri": "module_1.luau",
+            "hash": "hlm1n2jp72hbg"
+        }
+    },
+    "outputs": {
+        "module_2": {
+            "uri": "module_2.luau",
+            "hash": "4rrnaukmvtkl4"
+        }
+    }
+}

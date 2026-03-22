@@ -1,54 +1,55 @@
-| Main window | Game details |
-| :-: | :-: |
-| <picture><source media="(prefers-color-scheme: dark)" srcset="repository/main-dark.png"><img src="repository/main-light.png"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="repository/details-dark.png"><img src="repository/details-light.png"></picture> |
+<div align="center">
+   <img src="./repository/images/logo.png" width="480px" />
+</div>
+
+<table>
+   <tr>
+      <th align="center">
+         <img src="./repository/images/store-page.png" width="480px" />
+         <p>Store page</p>
+      </th>
+      <th align="center">
+         <img src="./repository/images/game-details.png" width="480px" />
+         <p>Game details</p>
+      </th>
+   </tr>
+   <tr>
+      <th align="center">
+         <img src="./repository/images/library-page.png" width="480px" />
+         <p>Library page</p>
+      </th>
+      <th align="center">
+         <img src="./repository/images/game-settings.png" width="480px" />
+         <p>Game settings</p>
+      </th>
+   </tr>
+</table>
 
 <p align="center">
-    <a href="https://discord.gg/ck37X6UWBp">Discord</a> ·
-    <a href="https://matrix.to/#/#an-anime-game:envs.net">Matrix</a>
+   <a href="https://discord.gg/ck37X6UWBp" target="_blank">Discord</a> /
+   <a href="https://zulip.dawn.wine" target="_blank">Zulip</a> /
+   <a href="https://github.com/an-anime-team/game-integrations" target="_blank">Game integrations</a> /
+   <a href="./repository/The Anime Games Launcher Developer Handbook.pdf" target="_blank">Developer Handbook</a>
 </p>
 
-<p align="center">
-    <b>PROOF OF CONCEPT - NOT FOR EVERYDAY USE</b></br>
-    Universal linux launcher for anime games
-</p>
+**Anime Games Launcher** is a fully community powered games launcher. It 
+provides a packages manager and special lua scripts runtime which can be used
+by external contributors to add games into the launcher.
 
-<br>
+If you want to add a game support to this launcher - please start by reading
+[The Anime Games Launcher Developer Handbook](./repository/The%20Anime%20Games%20Launcher%20Developer%20Handbook.pdf),
+then follow the useful links to read up-to-date documentation.
 
-# ♥️ Useful links
+## Useful links
 
-| Link | Description |
-| - | - |
-| [macOS launcher](https://github.com/3Shain/yet-another-anime-game-launcher) | Another launcher with special macOS-compatible components |
-| [Releases page](https://github.com/an-anime-team/anime-games-launcher/releases) | Launcher releases list |
-| [Changelog](CHANGELOG.md) | Launcher updates chronology |
-| [Integration guide](repository/integrations) | Games integration standard |
-| [Components repo](https://github.com/an-anime-team/components) | Repository with default wine and dxvk versions used in the launcher |
-| [Integrations repo](https://github.com/an-anime-team/game-integrations) | Repository with default games integrations used in the launcher |
+- [Packages manager documentation](./crates/agl-packages/README.md)
+- [Luau runtime documentation](./crates/agl-runtime/docs/README.md)
+- [Game integrations documentation](./crates/agl-games/README.md)
+- [Game integrations repository](https://github.com/an-anime-team/game-integrations)
+- [Launcher localization files](./crates/anime-games-launcher/assets/locales)
+- [Standard i18n package localization files](https://github.com/an-anime-team/game-integrations/tree/master/packages/i18n/locales)
 
-<br>
+<br />
 
-# 💻 Development
-
-| Folder | Description |
-| - | - |
-| src | Rust source code |
-| assets | App assets folder |
-| target/release | Release build of the app |
-
-## Clone repo
-
-```sh
-git clone https://github.com/an-anime-team/anime-games-launcher
-```
-
-## Run app
-
-```sh
-cargo run
-```
-
-## Build app
-
-```sh
-cargo build --release
-```
+The whole project and all its components listed in this repo are licensed 
+under [GPL-3.0-or-later](./LICENSE)

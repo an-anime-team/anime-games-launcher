@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// agl-packages
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+use std::str::FromStr;
+
+use agl_core::archives::ArchiveFormat;
+
+/// Format of an Anime Games Launcher package's input/output resource.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ResourceFormat {
+    /// Anime Games Launcher package manifest.
+    Package,
+
+    /// Arbitrary file.
+    File,
+
+    /// Arbitrary archive.
+    Archive
+}
+
+impl ResourceFormat {
+    /// Predict resource format from provided filename.
+    pub fn from_filename(name: impl AsRef<str>) -> Self {
+        let name = name.as_ref();
+
+        if name.ends_with("package.json") {
+            Self::Package
+        }
+
+        else if ArchiveFormat::from_filename(name).is_some() {
+            Self::Archive
+        }
+
+        else {
+            Self::File
+        }
+    }
+}
+
+impl std::fmt::Display for ResourceFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Package => f.write_str("package"),
+            Self::File    => f.write_str("file"),
+            Self::Archive => f.write_str("archive")
+        }
+    }
+}
+
+impl FromStr for ResourceFormat {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "package" => Ok(Self::Package),
+            "file"    => Ok(Self::File),
+            "archive" => Ok(Self::Archive),
+
+            _ => Err(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_filename() {
+        const NAMES: &[(&str, ResourceFormat)] = &[
+            ("package.json", ResourceFormat::Package),
+            ("././package.json", ResourceFormat::Package),
+
+            ("banana.json", ResourceFormat::File),
+            ("package.jsonc", ResourceFormat::File),
+            ("./../sus", ResourceFormat::File),
+
+            ("banana.tar", ResourceFormat::Archive),
+            ("banana.tar.gz", ResourceFormat::Archive),
+            ("banana.zip", ResourceFormat::Archive),
+            ("banana.7z", ResourceFormat::Archive)
+        ];
+
+        for (name, expected) in NAMES {
+            assert_eq!(ResourceFormat::from_filename(name), *expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn as_str() {
+        const FORMATS: &[(&str, ResourceFormat)] = &[
+            ("package", ResourceFormat::Package),
+            ("file", ResourceFormat::File),
+            ("archive", ResourceFormat::Archive)
+        ];
+
+        for (name, format) in FORMATS {
+            assert_eq!(&format.to_string(), name);
+            assert_eq!(ResourceFormat::from_str(name), Ok(*format));
+        }
+    }
+}
