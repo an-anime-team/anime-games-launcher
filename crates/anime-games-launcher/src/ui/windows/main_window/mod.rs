@@ -18,7 +18,8 @@
 
 use std::sync::Arc;
 use std::collections::HashMap;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::fs::File;
 
 use adw::prelude::*;
 
@@ -1234,7 +1235,29 @@ impl SimpleAsyncComponent for MainWindow {
                         command = command.envs(env);
                     }
 
-                    // TODO: pipe stdout/stderr to a log file.
+                    if let Some(log_file_path) = &game_launch_info.log_file {
+                        match File::create(log_file_path) {
+                            Ok(file) => {
+                                match file.try_clone() {
+                                    Ok(file_clone) => {
+                                        command = command
+                                            .stdout(Stdio::from(file))
+                                            .stderr(Stdio::from(file_clone));
+
+                                        tracing::info!(?log_file_path, "redirecting game stdout/stderr to log file");
+                                    }
+
+                                    Err(err) => {
+                                        tracing::warn!(?err, ?log_file_path, "failed to clone log file handle, stdout/stderr will not be redirected");
+                                    }
+                                }
+                            }
+
+                            Err(err) => {
+                                tracing::warn!(?err, ?log_file_path, "failed to create game log file, stdout/stderr will not be redirected");
+                            }
+                        }
+                    }
 
                     tracing::info!(?command, "launching game");
 

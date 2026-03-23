@@ -71,7 +71,11 @@ pub struct GameLaunchInfo {
     pub args: Option<Vec<String>>,
 
     /// Environment variables applied for the binary.
-    pub env: Option<HashMap<String, String>>
+    pub env: Option<HashMap<String, String>>,
+
+    /// Optional path to a file where stdout and stderr of the launched process
+    /// will be redirected.
+    pub log_file: Option<PathBuf>
 }
 
 impl Default for GameLaunchInfo {
@@ -81,7 +85,8 @@ impl Default for GameLaunchInfo {
             hint: None,
             binary: PathBuf::new(),
             args: None,
-            env: None
+            env: None,
+            log_file: None
         }
     }
 }
@@ -116,6 +121,10 @@ impl GameLaunchInfo {
             }
 
             table.raw_set("env", lua_env)?;
+        }
+
+        if let Some(log_file) = &self.log_file {
+            table.raw_set("log_file", lua.create_string(log_file.to_string_lossy().to_string())?)?;
         }
 
         Ok(table)
@@ -166,7 +175,11 @@ impl GameLaunchInfo {
                         .collect::<Result<HashMap<_, _>, LuaError>>()
                         .map(Some)
                 })
-                .unwrap_or(Ok(None))?
+                .unwrap_or(Ok(None))?,
+
+            log_file: value.get::<LuaString>("log_file")
+                .map(|p| Some(PathBuf::from(p.to_string_lossy().to_string())))
+                .unwrap_or(None)
         })
     }
 }
