@@ -94,37 +94,30 @@ impl SimpleAsyncComponent for AboutWindow {
                 "<p>Added</p>",
 
                 "<ul>",
-                    "<li>Added 'anirun' binary to test luau runtime packages and modules</li>",
-                    "<li>Added BSON format support in 'string.encode', 'string.decode' runtime APIs</li>",
-                    "<li>Added support for functions without output (without 'return' statements) in 'Promise.poll' runtime API</li>",
-                    "<li>Added custom user agent in all the HTTP requests, including downloader runtime API: 'User-Agent: anime-games-launcher/version'</li>",
-                    "<li>Added standard luau 'number' table to support advanced arithmetic functions in the luau runtime</li>",
-                    "<li>Added 'stringify' runtime API to convert lua objects to strings and return them back to the lua runtime side</li>",
-                    "<li>Added \"No games available\" status in store page</li>",
-                    "<li>Added 'str.lowercase', 'str.uppercase' and 'str.trim' runtime APIs to support unicode characters (standard lua functions work only with ASCII)</li>",
-                    "<li>Added 'selector' and 'number' game settings entry formats</li>",
-                    "<li>Added search bar to `enum` game settings entry if there's 10 or more values available</li>",
-                    "<li>Added `tools.get_buttons` game integration function. Now integrations can add their own buttons to the library details page for different needs</li>",
-                    "<li>Added launcher-side luau runtime garbage collection task, and related 'runtime.collect_garbage_interval' config</li>",
+                    "<li>Strings translations engine now respects regional language variants</li>",
+                    "<li>Added Indonesian launcher translations</li>",
+                    "<li>Added '--agl-debug' launcher launch flag to display trace logs in release builds</li>",
+                    "<li>Added spinner widget to the actions pipeline window if the current action has no progress and no text</li>",
                 "</ul>",
 
                 "<p>Fixed</p>",
 
                 "<ul>",
-                    "<li>Fixed 'hash.digitize_file' runtime API stack overflow</li>",
-                    "<li>Fixed 'POST' method name in HTTP runtime API</li>",
-                    "<li>Fixed game scope overwriting with default values in added games' manifests</li>",
-                    "<li>Fixed default image rendering in horizontal lazy loadable pictures</li>",
+                    "<li>Fixed 'process.exec'-s 'Promise' awaiting</li>",
+                    "<li>Fixed rendering of long game titles</li>",
+                    "<li>Fixed empty pipeline action description setting</li>",
                 "</ul>",
 
                 "<p>Changed</p>",
 
                 "<ul>",
-                    "<li>Disable human panic in debug builds</li>",
-                    "<li>Return 'nil' in 'compression.read' runtime API if nothing to read</li>",
-                    "<li>Changed 'string.encode' and 'string.decode' runtime API args order</li>",
-                    "<li>In game details within the store page, carousel will now hide controls if there's only one picture available</li>",
-                    "<li>Featured games are now shown before non-featured games</li>",
+                    "<li>Improved actions pipeline chart rendering. Now it uses 5-step WMA over the points history</li>",
+                "</ul>",
+
+                "<p>Removed</p>",
+
+                "<ul>",
+                    "<li>Removed automatic luau engine garbage collection from the launcher's side. It was causing a UI thread blocks</li>",
                 "</ul>"
             ].join("\n")
         }
