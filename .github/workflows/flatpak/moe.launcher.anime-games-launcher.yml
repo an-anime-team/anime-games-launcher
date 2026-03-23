@@ -1,0 +1,54 @@
+app-id: moe.launcher.anime-games-launcher
+command: moe.launcher.anime-games-launcher
+rename-desktop-file: anime-games-launcher.desktop
+
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --filesystem=/mnt 
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --device=all # Controllers
+  - --allow=devel # Required for Wine/Proton
+  - --allow=per-app-dev-shm # Required for pressure vessel
+  - --env=PATH=/app/bin:/app/utils/bin:/usr/bin:/usr/lib/extensions/vulkan/MangoHud/bin:/usr/lib/extensions/vulkan/gamescope/bin:/usr/lib/extensions/vulkan/OBSVkCapture/bin # mangohud, gamescope, obsvkcapture
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+
+modules:
+  - name: p7zip
+    buildsystem: simple
+    build-commands:
+      - make 7z install DEST_HOME=/app
+    sources:
+      - type: git
+        url: https://github.com/p7zip-project/p7zip
+        tag: v17.05
+  
+  - name: agl
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_HOME: ./cargo
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm775 target/release/anime-games-launcher /app/bin/moe.launcher.anime-games-launcher
+      - install -Dm644 crates/anime-games-launcher/assets/images/icon.png /app/share/icons/hicolor/512x512/apps/moe.launcher.anime-games-launcher.png
+      - desktop-file-install --dir=/app/share/applications --set-key=Exec --set-value=moe.launcher.anime-games-launcher
+        --set-key=Icon --set-value=moe.launcher.anime-games-launcher crates/anime-games-launcher/assets/anime-games-launcher.desktop
+      - mkdir -p /app/utils/
+    sources:
+      - type: dir
+        path: ../../..
+      - cargo-sources.json
