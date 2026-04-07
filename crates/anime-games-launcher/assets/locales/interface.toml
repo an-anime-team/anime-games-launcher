@@ -27,7 +27,7 @@ id = "Pengaturan"
 
 [creating_default_folders]
 en = "Creating default folders"
-it = "Creo le cartelle predefinite"
+it = "Creazione delle cartelle predefinite"
 ru = "Создание папок по умолчанию"
 de = "Erstelle Standardordner"
 pt = "Criando diretórios padrão"
@@ -35,7 +35,7 @@ id = "Membuat folder-folder bawaan"
 
 [fetching_packages_allow_lists]
 en = "Fetching packages allow lists"
-it = "Recupero le liste di pacchetti consentiti"
+it = "Recuperando le liste di pacchetti consentiti"
 ru = "Запрос белых списков пакетов"
 de = "Rufe Paket-Whitelisten auf"
 pt = "Adquirindo listas de permissão do pacote"
@@ -43,7 +43,7 @@ id = "Mengunduh daftar paket yang diizinkan"
 
 [fetching_games_registries]
 en = "Fetching games registries"
-it = "Recupero i registri dei giochi"
+it = "Recuperando i registri dei giochi"
 ru = "Запрос реестров игр"
 de = "Rufe Spielregister auf"
 pt = "Adquirindo registros do jogo"
@@ -51,7 +51,7 @@ id = "Mengunduh registrasi game"
 
 [fetching_games_manifests]
 en = "Fetching games manifests"
-it = "Recupero i manifest dei giochi"
+it = "Recuperando i manifest dei giochi"
 ru = "Запрос информации об играх"
 de = "Rufe Spielmanifste auf"
 pt = "Adquirindo manifestos do jogo"
@@ -59,7 +59,7 @@ id = "Mengunduh manifest untuk game"
 
 [loading_added_games]
 en = "Loading added games"
-it = "Carico i giochi aggiunti"
+it = "Caricamento dei giochi aggiunti"
 ru = "Загрузка добавленных игр"
 de = "Lade hinzugefügte Spiele"
 pt = "Carregando jogos adicionados"
@@ -67,7 +67,7 @@ id = "Memuat game ditambahankan"
 
 [loading_game_package]
 en = "Loading {title} game package"
-it = "Carico il pacchetto del gioco {title}"
+it = "Caricando il pacchetto del gioco {title}"
 ru = "Загрузка пакета игры {title}"
 de = "Lade das Spielpaket für {title}"
 pt = "Carregando pacote do jogo {title}"
@@ -75,7 +75,7 @@ id = "Memuat paket untuk game {title}"
 
 [updating_game_package]
 en = "Updating {title} game package"
-it = "Aggiorno il pacchetto del gioco {title}"
+it = "Aggiornando il pacchetto del gioco {title}"
 ru = "Обновление пакета игры {title}"
 de = "Aktualisiere das Spielpaket für {title}"
 pt = "Atualizando pacote do jogo {title}"
@@ -83,7 +83,7 @@ id = "Memperbarui paket untuk game {title}"
 
 [adding_store_page_games]
 en = "Adding store page games"
-it = "Aggiungo i giochi alla pagina del negozio"
+it = "Aggiunta dei giochi alla pagina del negozio"
 ru = "Добавление игр на страницу магазина"
 de = "Füge Spiele der Shopseite hinzu"
 pt = "Adicionando jogos à página da loja"
@@ -93,7 +93,7 @@ id = "Menambahkan halaman toko untuk game"
 
 [loading]
 en = "Loading"
-it = "Carico"
+it = "Caricamento"
 ru = "Загрузка"
 de = "Lade"
 pt = "Carregando"
