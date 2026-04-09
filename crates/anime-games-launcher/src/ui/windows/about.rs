@@ -74,6 +74,7 @@ impl SimpleAsyncComponent for AboutWindow {
                 "German — @caemputer https://github.com/caemputer",
                 "Portuguese — João Dias https://github.com/retrozinndev",
                 "Indonesian — @yumekarisu https://github.com/yumekarisu",
+                "Italian — Martino Papero https://github.com/martymarty004",
                 "And other contributors"
             ].join("\n"),
 
