@@ -149,6 +149,22 @@ it = "Caricati {number} giochi"
 
 # ------------------------ Game store page ------------------------
 
+[game_agreement_title]
+en = "Game integration agreement"
+ru = "Пользовательское соглашение для установки игры"
+
+[game_agreement_message]
+en = "<b>{game_title}</b> provides a user agreement. You have to agree with it in order to continue the game integration installation.\n\n{agreement}"
+ru = "<b>{game_title}</b> содержит пользовательское соглашение. Вы должны согласиться с ним для продолжения установки игры.\n\n{agreement}"
+
+[game_agreement_agree]
+en = "Agree"
+ru = "Согласен"
+
+[game_agreement_disagree]
+en = "Disagree"
+ru = "Не согласен"
+
 [game_add_to_library]
 en = "Add to library"
 ru = "Добавить в библиотеку"

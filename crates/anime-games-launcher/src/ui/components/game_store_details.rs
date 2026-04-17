@@ -74,6 +74,7 @@ pub struct GameStoreDetails {
     description: String,
     developer: String,
     publisher: String,
+    agreement: Option<String>,
 
     status: GameStatus
 }
@@ -104,6 +105,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                         add_css_class: "title-1",
 
                         set_selectable: true,
+                        set_focusable: false,
 
                         #[watch]
                         set_label: &model.title
@@ -143,6 +145,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     set_wrap: true,
                                     set_selectable: true,
+                                    set_focusable: false,
 
                                     set_halign: gtk::Align::Fill,
                                     set_justify: gtk::Justification::Fill,
@@ -211,6 +214,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     add_css_class: "dim-label",
 
                                     set_selectable: true,
+                                    set_focusable: false,
 
                                     #[watch]
                                     set_text: i18n!("game_developer", { name => &model.developer })
@@ -225,6 +229,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     add_css_class: "dim-label",
 
                                     set_selectable: true,
+                                    set_focusable: false,
 
                                     #[watch]
                                     set_text: i18n!("game_publisher", { name => &model.publisher })
@@ -305,6 +310,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
             developer: String::new(),
             publisher: String::new(),
             description: String::new(),
+            agreement: None,
 
             status: GameStatus::NotAdded
         };
@@ -344,6 +350,13 @@ impl SimpleAsyncComponent for GameStoreDetails {
                     None => manifest.game.publisher.default_translation()
                 };
 
+                let agreement = manifest.game.agreement.map(|agreement| {
+                    match &lang {
+                        Some(lang) => agreement.translate(lang).to_string(),
+                        None => agreement.default_translation().to_string()
+                    }
+                });
+
                 // Set text info.
                 self.manifest_url = manifest_url;
 
@@ -351,6 +364,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 self.description = description.to_string();
                 self.developer = developer.to_string();
                 self.publisher = publisher.to_string();
+                self.agreement = agreement;
 
                 // Set images.
                 self.card.emit(CardComponentInput::SetImage(
@@ -410,6 +424,81 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
             GameStoreDetailsInput::EmitClick if self.status == GameStatus::NotAdded => {
                 tracing::info!(url = ?self.manifest_url, "add game");
+
+                if let Some(agreement) = &self.agreement {
+                    let dialog = adw::AlertDialog::builder()
+                        .heading(
+                            i18n!("game_agreement_title")
+                                .unwrap_or("Game integration agreement")
+                        )
+                        .width_request(600)
+                        .height_request(400)
+                        .build();
+
+                    relm4::view! {
+                        widget = gtk::ScrolledWindow {
+                            set_hexpand: true,
+                            set_vexpand: true,
+
+                            gtk::Label {
+                                set_halign: gtk::Align::Fill,
+                                set_justify: gtk::Justification::Fill,
+
+                                set_hexpand: true,
+
+                                set_wrap: true,
+                                set_selectable: true,
+                                set_focusable: false,
+                                set_use_markup: true,
+
+                                set_markup: &i18n!("game_agreement_message", {
+                                    game_title => &self.title,
+                                    agreement => agreement
+                                }).unwrap_or(agreement.clone())
+                            }
+                        }
+                    }
+
+                    dialog.set_extra_child(Some(&widget));
+
+                    dialog.add_responses(&[
+                        ("disagree", i18n!("game_agreement_disagree").unwrap_or("Disagree")),
+                        ("agree", i18n!("game_agreement_agree").unwrap_or("Agree"))
+                    ]);
+
+                    dialog.set_response_appearance(
+                        "agree",
+                        adw::ResponseAppearance::Suggested
+                    );
+
+                    tracing::info!(
+                        url = ?self.manifest_url,
+                        ?agreement,
+                        "show game integration agreement"
+                    );
+
+                    let result = if let Some(window) = relm4::main_adw_application().active_window() {
+                        dialog.choose_future(Some(&window)).await
+                    } else {
+                        dialog.choose_future(None::<&adw::Window>).await
+                    };
+
+                    if result != "agree" {
+                        tracing::info!(
+                            url = ?self.manifest_url,
+                            "user has disagreed with the game integration agreement"
+                        );
+
+                        return;
+                    }
+
+                    else {
+                        tracing::info!(
+                            url = ?self.manifest_url,
+                            "user has agreed with the game integration agreement"
+                        );
+                    }
+                }
 
                 self.status = GameStatus::Adding;
 

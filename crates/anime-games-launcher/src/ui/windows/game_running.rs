@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -95,6 +95,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
 
                             add_suffix = &gtk::Label {
                                 set_selectable: true,
+                                set_focusable: false,
 
                                 #[watch]
                                 set_label: model.child.as_ref()

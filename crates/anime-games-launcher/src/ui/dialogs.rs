@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -69,6 +69,7 @@ pub fn error(title: impl ToString, body: impl ToString) {
                                 set_halign: gtk::Align::Start,
 
                                 set_selectable: true,
+                                set_focusable: false,
 
                                 set_label: backtrace.as_str()
                             }
@@ -83,7 +84,7 @@ pub fn error(title: impl ToString, body: impl ToString) {
         if let Some(window) = relm4::main_adw_application().active_window() {
             dialog.present(Some(&window));
         } else {
-            dialog.present(None as Option<&adw::Window>);
+            dialog.present(None::<&adw::Window>);
         }
     });
 }
@@ -136,6 +137,7 @@ pub fn critical_error(title: impl ToString, body: impl ToString) {
                                 set_halign: gtk::Align::Start,
 
                                 set_selectable: true,
+                                set_focusable: false,
 
                                 set_label: backtrace.as_str()
                             }
@@ -150,7 +152,7 @@ pub fn critical_error(title: impl ToString, body: impl ToString) {
         if let Some(window) = relm4::main_adw_application().active_window() {
             dialog.present(Some(&window));
         } else {
-            dialog.present(None as Option<&adw::Window>);
+            dialog.present(None::<&adw::Window>);
         }
     });
 }
