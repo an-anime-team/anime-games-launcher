@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added game integration agreements
+
 ## [v2.0.0] - 22.03.2026
 
 ### Added
