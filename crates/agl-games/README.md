@@ -52,7 +52,11 @@ name of its output that provides the game integration module.
             "payments",
             "anti-cheat",
             "workarounds"
-        ]
+        ],
+        "agreement": {
+            "en": "Example game agreement",
+            "ru": "Пример пользовательского соглашения для установки игры"
+        }
     },
     "package": {
         "url": "https://.../package.json",
@@ -86,6 +90,14 @@ List of available game tags:
 | `performance-issues` | Known performance issues on some platforms                   |
 | `anti-cheat`         | Client or server-side anti-cheat                             |
 | `workarounds`        | Game package provides modifications to run the game          |
+
+### Game integration agreement
+
+Each game integration can provide and optional "agreement" field. It can contain
+either a real game agreement message, a warning from the integration author,
+some kind of pre-requirements, instructions, or any other message that will be
+shown to the user prior adding the game into their library. The user will have
+to agree with it.
 
 ## Games registry
 
