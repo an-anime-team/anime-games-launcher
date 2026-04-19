@@ -153,6 +153,10 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             for entry in group.entries() {
                                 let entry_widget = adw::SwitchRow::new();
 
+                                if *consts::APP_DEBUG {
+                                    entry_widget.set_tooltip(entry.name());
+                                }
+
                                 let title = match lang.as_ref() {
                                     Some(lang) => entry.title().translate(lang),
                                     None => entry.title().default_translation()

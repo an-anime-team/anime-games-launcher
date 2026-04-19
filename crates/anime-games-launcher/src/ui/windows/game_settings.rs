@@ -59,6 +59,10 @@ fn render_entry(
         GameSettingsEntryFormat::Switch { value } => {
             let widget = adw::SwitchRow::new();
 
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                widget.set_tooltip(name);
+            }
+
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
                 None => entry.title().default_translation()
@@ -112,7 +116,11 @@ fn render_entry(
                     None => description.default_translation()
                 };
 
-                widget.set_tooltip(description);
+                if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                    widget.set_tooltip(&format!("[{name}] {description}"));
+                } else {
+                    widget.set_tooltip(description);
+                }
             }
 
             widget.set_text(value);
@@ -176,6 +184,10 @@ fn render_entry(
                 digits_num(step)
             );
 
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                widget.set_tooltip(name);
+            }
+
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
                 None => entry.title().default_translation()
@@ -211,6 +223,10 @@ fn render_entry(
 
         GameSettingsEntryFormat::Enum { values, selected } => {
             let widget = adw::ComboRow::new();
+
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                widget.set_tooltip(name);
+            }
 
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
@@ -291,6 +307,11 @@ fn render_entry(
             selector.set_valign(gtk::Align::Center);
 
             row.add_suffix(&selector);
+
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                row.set_tooltip(name);
+                selector.set_tooltip(name);
+            }
 
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
