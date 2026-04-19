@@ -116,6 +116,14 @@ ru = "Не удалось запросить список дополнитель
 id = "Gagal meminta tombol untuk peralatan game"
 it = "Impossibile richiedere i pulsanti degli strumenti del gioco"
 
+[failed_request_game_components_layout]
+en = "Failed to request game components layout"
+ru = "Не удалось запросить список компонентов игры"
+
+[failed_update_game_components_layout]
+en = "Failed to update game components layout"
+ru = "Не удалось обновить список компонентов игры"
+
 [failed_call_game_tool_button]
 en = "Failed to call game tool button"
 ru = "Не удалось выполнить дополнительный игровой инструмент"

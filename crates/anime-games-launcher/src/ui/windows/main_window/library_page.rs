@@ -22,12 +22,8 @@ use relm4::prelude::*;
 use adw::prelude::*;
 
 use agl_games::api::{
-    GameEdition,
-    GameVariant,
-    GameIntegration,
-    GameLaunchInfo,
-    ActionsPipeline,
-    GameSettingsGroup
+    ActionsPipeline, GameComponentsGroup, GameEdition, GameIntegration,
+    GameLaunchInfo, GameSettingsGroup, GameVariant
 };
 
 use crate::{consts, config, i18n};
@@ -74,6 +70,12 @@ pub enum LibraryPageInput {
         actions_pipeline: Arc<ActionsPipeline>
     },
 
+    OpenGameComponentsLayout {
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameComponentsGroup]>
+    },
+
     OpenGameSettingsWindow {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
@@ -92,6 +94,12 @@ pub enum LibraryPageOutput {
         game_index: usize,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
+    },
+
+    OpenGameComponentsWindow {
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameComponentsGroup]>
     },
 
     OpenGameSettingsWindow {
@@ -203,6 +211,9 @@ impl SimpleAsyncComponent for LibraryPage {
                 .forward(sender.input_sender(), |msg| match msg {
                     GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
                         => LibraryPageInput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
+
+                    GameLibraryDetailsOutput::OpenGameComponentsLayout { variant, integration, layout }
+                        => LibraryPageInput::OpenGameComponentsLayout { variant, integration, layout },
 
                     GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => LibraryPageInput::OpenGameSettingsWindow { variant, integration, layout },
@@ -343,6 +354,18 @@ impl SimpleAsyncComponent for LibraryPage {
                     game_index,
                     game_title,
                     actions_pipeline
+                });
+            }
+
+            LibraryPageInput::OpenGameComponentsLayout {
+                variant,
+                integration,
+                layout
+            } => {
+                let _ = sender.output(LibraryPageOutput::OpenGameComponentsWindow {
+                    variant,
+                    integration,
+                    layout
                 });
             }
 

@@ -23,8 +23,8 @@ use adw::prelude::*;
 
 use agl_games::manifest::GameManifest;
 use agl_games::api::{
-    ActionsPipeline, GameIntegration, GameLaunchInfo, GameLaunchStatus,
-    GameSettingsGroup, GameVariant, ToolButton
+    GameVariant, ActionsPipeline, GameIntegration, GameLaunchInfo,
+    GameLaunchStatus, GameComponentsGroup, GameSettingsGroup, ToolButton
 };
 
 use crate::{consts, config, i18n};
@@ -50,6 +50,7 @@ pub enum GameLibraryDetailsInput {
 
     UpdateGameInfo,
     ScheduleGameActionsPipeline,
+    OpenGameComponentsWindow,
     CallToolButton(usize),
     OpenGameSettingsWindow,
     LaunchGame
@@ -61,6 +62,12 @@ pub enum GameLibraryDetailsOutput {
         game_index: usize,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
+    },
+
+    OpenGameComponentsLayout {
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameComponentsGroup]>
     },
 
     OpenGameSettingsWindow {
@@ -93,6 +100,7 @@ pub struct GameLibraryDetails {
 
     game_launch_info: Option<GameLaunchInfo>,
     game_actions_pipeline: Option<Arc<ActionsPipeline>>,
+    game_components_layout: Option<Box<[GameComponentsGroup]>>,
     game_tools_buttons: Vec<ToolButton>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>
 }
@@ -259,6 +267,23 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             },
 
                             connect_clicked => GameLibraryDetailsInput::OpenGameSettingsWindow
+                        },
+
+                        gtk::Button {
+                            add_css_class: "pill",
+                            add_css_class: "destructive-action",
+
+                            #[watch]
+                            set_visible: model.game_components_layout.is_some(),
+
+                            adw::ButtonContent {
+                                set_icon_name: "user-trash-symbolic",
+
+                                set_label: i18n!("delete")
+                                    .unwrap_or("Delete")
+                            },
+
+                            connect_clicked => GameLibraryDetailsInput::OpenGameComponentsWindow
                         }
                     },
 
@@ -309,6 +334,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             game_launch_info: None,
             game_actions_pipeline: None,
+            game_components_layout: None,
             game_tools_buttons: vec![],
             game_settings_layout: None
         };
@@ -416,7 +442,31 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         }
                     }
 
-                    match integration.get_buttons(variant) {
+                    // Since currently components layout is used only to
+                    // allow users to *delete* them - we're not interested in
+                    // storing layout unless the components deletion function
+                    // is defined by the game integration.
+                    if integration.can_delete_components() {
+                        match integration.get_components_layout(variant) {
+                            Ok(layout) => self.game_components_layout = layout,
+
+                            Err(err) => {
+                                self.game_components_layout = None;
+
+                                tracing::error!(?err, "failed to request game components layout");
+
+                                dialogs::error(
+                                    i18n!("failed_request_game_components_layout")
+                                        .unwrap_or("Failed to request game components layout"),
+                                    err.to_string()
+                                );
+                            }
+                        }
+                    } else {
+                        self.game_components_layout = None;
+                    }
+
+                    match integration.get_tools_buttons(variant) {
                         Ok(Some(buttons)) => {
                             self.game_tools_buttons.clear();
 
@@ -496,6 +546,19 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         game_index: self.game_index,
                         game_title: game_title.clone(),
                         actions_pipeline: actions_pipeline.clone()
+                    });
+                }
+            }
+
+            GameLibraryDetailsInput::OpenGameComponentsWindow => {
+                if let Some(variant) = &self.game_variant
+                    && let Some(integration) = &self.game_integration
+                    && let Some(layout) = &self.game_components_layout
+                {
+                    let _ = sender.output(GameLibraryDetailsOutput::OpenGameComponentsLayout {
+                        variant: variant.clone(),
+                        integration: integration.clone(),
+                        layout: layout.clone()
                     });
                 }
             }

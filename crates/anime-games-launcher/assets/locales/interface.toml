@@ -281,3 +281,9 @@ de = "Beenden"
 pt = "Matar"
 id = "Matikan"
 it = "Termina"
+
+# ------------------------ Game components window ------------------------
+
+[game_components_title]
+en = "Game components"
+ru = "Компоненты игры"

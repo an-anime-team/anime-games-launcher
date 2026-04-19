@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -42,11 +42,8 @@ use agl_runtime::api::portal_api::{
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::api::{
-    GameVariant,
-    GameIntegration,
-    ActionsPipeline,
-    GameLaunchInfo,
-    GameSettingsGroup
+    GameVariant, GameIntegration, ActionsPipeline, GameLaunchInfo,
+    GameComponentsGroup, GameSettingsGroup
 };
 
 use crate::consts;
@@ -56,6 +53,11 @@ use crate::cache;
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::windows::about::AboutWindow;
+use crate::ui::windows::game_components::{
+    GameComponentsWindow,
+    GameComponentsWindowInput,
+    GameComponentsWindowOutput
+};
 use crate::ui::windows::game_settings::{
     GameSettingsWindow,
     GameSettingsWindowInput,
@@ -114,6 +116,12 @@ pub enum MainWindowMsg {
         actions_pipeline: Arc<ActionsPipeline>
     },
 
+    OpenGameComponentsWindow {
+        variant: GameVariant,
+        integration: Arc<GameIntegration>,
+        layout: Box<[GameComponentsGroup]>
+    },
+
     OpenGameSettingsWindow {
         variant: GameVariant,
         integration: Arc<GameIntegration>,
@@ -132,6 +140,7 @@ pub struct MainWindow {
     about_window: AsyncController<AboutWindow>,
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
+    game_components_window: AsyncController<GameComponentsWindow>,
     game_settings_window: AsyncController<GameSettingsWindow>,
     pipeline_actions_window: AsyncController<PipelineActionsWindow>,
     game_running_window: AsyncController<GameRunningWindow>,
@@ -155,6 +164,7 @@ impl std::fmt::Debug for MainWindow {
             .field("about_window", &self.about_window)
             .field("store_page", &self.store_page)
             .field("library_page", &self.library_page)
+            .field("game_components_window", &self.game_components_window)
             .field("game_settings_window", &self.game_settings_window)
             .field("pipeline_actions_window", &self.pipeline_actions_window)
             .field("game_running_window", &self.game_running_window)
@@ -396,11 +406,21 @@ impl SimpleAsyncComponent for MainWindow {
                     LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
                         => MainWindowMsg::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
 
+                    LibraryPageOutput::OpenGameComponentsWindow { variant, integration, layout }
+                        => MainWindowMsg::OpenGameComponentsWindow { variant, integration, layout },
+
                     LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
                         => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout },
 
                     LibraryPageOutput::LaunchGame { game_title, game_launch_info }
                         => MainWindowMsg::LaunchGame { game_title, game_launch_info }
+                }),
+
+            game_components_window: GameComponentsWindow::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    GameComponentsWindowOutput::ReloadGameInfo
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
 
             game_settings_window: GameSettingsWindow::builder()
@@ -1201,6 +1221,23 @@ impl SimpleAsyncComponent for MainWindow {
                     });
 
                     self.pipeline_actions_window.widget()
+                        .present(Some(window));
+                }
+            }
+
+            MainWindowMsg::OpenGameComponentsWindow {
+                variant,
+                integration,
+                layout
+            } => {
+                if let Some(window) = &self.window {
+                    self.game_components_window.emit(GameComponentsWindowInput::SetGame {
+                        variant,
+                        integration,
+                        layout
+                    });
+
+                    self.game_components_window.widget()
                         .present(Some(window));
                 }
             }

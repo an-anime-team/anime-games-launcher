@@ -500,7 +500,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 if let Some(window) = self.window.clone() {
                     let lang = config::get().language().ok();
 
-                    let pages = self.pages.drain(..).collect::<Vec<_>>();
+                    let pages = std::mem::take(&mut self.pages);
 
                     let page_widget = gtk::glib::spawn_future_local(async move {
                         for page in pages {
