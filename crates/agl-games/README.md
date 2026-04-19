@@ -294,6 +294,28 @@ type SettingsEntryExpandable = {
     entries: SettingsEntry[];
 };
 
+type ComponentsGroup = {
+    // Optional title of the components group.
+    title?: LocalizableString;
+
+    // Optional description (subtitle) of the components group.
+    description?: LocalizableString;
+
+    // List of available components entries.
+    entries: ComponentsEntry[]
+};
+
+type ComponentsEntry = {
+    // Name of the components entry.
+    name: string;
+
+    // Title of the components entry.
+    title: LocalizableString;
+
+    // Optional description (subtitle) of the components entry.
+    description?: LocalizableString;
+};
+
 type GameIntegration = {
     game: {
         // Get list of available game editions for the provided platform.
@@ -308,20 +330,40 @@ type GameIntegration = {
         get_actions_pipeline: (variant: GameVariant): ActionsPipeline | null;
     };
 
+    // Game components section can be used to define optional additions to the
+    // base game. For example, you could allow users to select what voiceovers
+    // should be available in addition to the main game content.
+    // 
+    // Currently game components can only be used to *delete* already available
+    // game content, so you need to use settings instead to control what
+    // should be installed in addition to the base game.
+    components?: {
+        // Get game components layout. These can be different game voiceovers,
+        // game DLCs, optional game runtime packages, or anything else.
+        get_layout: (variant: GameVariant): ComponentsGroup[];
+
+        // Optional function to delete given game component.
+        delete_component?: (
+            variant: GameVariant,
+            component: string,
+            updater: (updater: ProgressReport): void
+        ): void;
+    };
+
     tools: {
         // Get list of extra UI buttons.
         get_buttons?: (variant: GameVariant): ToolButton[];
     };
 
     settings?: {
+        // Get dynamic settings layout.
+        get_layout: (variant: GameVariant): SettingsGroup[];
+
         // Get property value.
         get_property: (name: string): any;
 
         // Set property value.
         set_property: (name: string, value: any): void;
-
-        // Get dynamic settings layout.
-        get_layout: (variant: GameVariant): SettingsGroup[];
     };
 };
 ```

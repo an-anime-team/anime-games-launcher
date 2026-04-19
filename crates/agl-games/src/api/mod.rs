@@ -24,6 +24,7 @@ mod game_launch_info;
 mod actions_pipeline;
 mod pipeline_action;
 mod progress_report;
+mod game_components;
 mod tools_buttons;
 mod game_settings;
 
@@ -33,6 +34,7 @@ pub use game_launch_info::*;
 pub use actions_pipeline::*;
 pub use pipeline_action::*;
 pub use progress_report::*;
+pub use game_components::*;
 pub use tools_buttons::*;
 pub use game_settings::*;
 
@@ -51,11 +53,14 @@ pub struct GameIntegration {
     game_get_launch_info: LuaFunction,
     game_get_actions_pipeline: LuaFunction,
 
+    components_get_layout: Option<LuaFunction>,
+    components_delete: Option<LuaFunction>,
+
     tools_get_buttons: Option<LuaFunction>,
 
+    settings_get_layout: Option<LuaFunction>,
     settings_get_property: Option<LuaFunction>,
-    settings_set_property: Option<LuaFunction>,
-    settings_get_layout: Option<LuaFunction>
+    settings_set_property: Option<LuaFunction>
 }
 
 impl GameIntegration {
@@ -86,6 +91,7 @@ impl GameIntegration {
         };
 
         let game = integration.get::<LuaTable>("game")?;
+        let components = integration.get::<LuaTable>("components").ok();
         let tools = integration.get::<LuaTable>("tools").ok();
         let settings = integration.get::<LuaTable>("settings").ok();
 
@@ -96,8 +102,27 @@ impl GameIntegration {
             game_get_launch_info: game.get("get_launch_info")?,
             game_get_actions_pipeline: game.get("get_actions_pipeline")?,
 
+            components_get_layout: components.as_ref()
+                .map(|components| components.get("get_layout"))
+                .transpose()?,
+
+            components_delete: components.as_ref()
+                .map(|components| {
+                    // It's currently allowed to not to define components
+                    // deletion function, i.e. game integration can list
+                    // game components but it's not required to allow users to
+                    // delete these components.
+                    components.get::<Option<LuaFunction>>("delete_component")
+                })
+                .transpose()?
+                .flatten(),
+
             tools_get_buttons: tools.as_ref()
                 .map(|tools| tools.get("get_buttons"))
+                .transpose()?,
+
+            settings_get_layout: settings.as_ref()
+                .map(|settings| settings.get("get_layout"))
                 .transpose()?,
 
             settings_get_property: settings.as_ref()
@@ -106,10 +131,6 @@ impl GameIntegration {
 
             settings_set_property: settings.as_ref()
                 .map(|settings| settings.get("set_property"))
-                .transpose()?,
-
-            settings_get_layout: settings.as_ref()
-                .map(|settings| settings.get("get_layout"))
                 .transpose()?
         })
     }
@@ -138,9 +159,10 @@ impl GameIntegration {
     /// Try to get params used to launch the game.
     pub fn get_launch_info(
         &self,
-        variant: &GameVariant
+        variant: impl AsRef<GameVariant>
     ) -> Result<Option<GameLaunchInfo>, LuaError> {
-        let variant = variant.to_lua(&self.lua)?;
+        let variant = variant.as_ref()
+            .to_lua(&self.lua)?;
 
         self.game_get_launch_info.call::<Option<LuaTable>>(variant)
             .and_then(|pipeline| {
@@ -153,9 +175,10 @@ impl GameIntegration {
     /// Try to get game actions pipeline.
     pub fn get_actions_pipeline(
         &self,
-        variant: &GameVariant
+        variant: impl AsRef<GameVariant>
     ) -> Result<Option<ActionsPipeline>, LuaError> {
-        let variant = variant.to_lua(&self.lua)?;
+        let variant = variant.as_ref()
+            .to_lua(&self.lua)?;
 
         self.game_get_actions_pipeline.call::<Option<LuaTable>>(variant)
             .and_then(|pipeline| {
@@ -165,19 +188,76 @@ impl GameIntegration {
             })
     }
 
+    /// Get game components layout.
+    ///
+    /// Return `Ok(None)` if components are not specified.
+    pub fn get_components_layout(
+        &self,
+        variant: impl AsRef<GameVariant>
+    ) -> Result<Option<Box<[GameComponentsGroup]>>, LuaError> {
+        let Some(get_layout) = &self.components_get_layout else {
+            return Ok(None);
+        };
+
+        let variant = variant.as_ref()
+            .to_lua(&self.lua)?;
+
+        get_layout.call::<Vec<LuaTable>>(variant)
+            .and_then(|groups| {
+                groups.iter()
+                    .map(GameComponentsGroup::from_lua)
+                    .collect::<Result<Box<[_]>, LuaError>>()
+            })
+            .map(Some)
+    }
+
+    /// Return `true` if game integration API defined a function to perform
+    /// game components deletion.
+    #[inline]
+    pub fn can_delete_components(&self) -> bool {
+        self.components_delete.is_some()
+    }
+
+    /// Delete a game component.
+    pub fn delete_component(
+        &self,
+        variant: impl AsRef<GameVariant>,
+        component: impl AsRef<str>,
+        progress: impl Fn(ProgressReport) + Send + 'static
+    ) -> Result<(), LuaError> {
+        let Some(delete_component) = &self.components_delete else {
+            return Ok(());
+        };
+
+        let progress = self.lua.create_function(move |_, report: LuaTable| {
+            progress(ProgressReport::from_lua(&report)?);
+
+            Ok(())
+        })?;
+
+        delete_component.call::<()>((
+            variant.as_ref().to_lua(&self.lua)?,
+            component.as_ref(),
+            progress
+        ))?;
+
+        Ok(())
+    }
+
     /// Get list of tool buttons from the game integration module.
     ///
     /// Return `Ok(None)` if tools are not specified. Otherwise return list of
     /// information about tool buttons.
-    pub fn get_buttons(
+    pub fn get_tools_buttons(
         &self,
-        variant: &GameVariant
+        variant: impl AsRef<GameVariant>
     ) -> Result<Option<Box<[ToolButton]>>, LuaError> {
         let Some(get_buttons) = &self.tools_get_buttons else {
             return Ok(None);
         };
 
-        let variant = variant.to_lua(&self.lua)?;
+        let variant = variant.as_ref()
+            .to_lua(&self.lua)?;
 
         let buttons = get_buttons.call::<Vec<LuaTable>>(variant)?
             .iter()
@@ -185,6 +265,29 @@ impl GameIntegration {
             .collect::<Result<Box<[ToolButton]>, LuaError>>()?;
 
         Ok(Some(buttons))
+    }
+
+    /// Get game settings layout.
+    ///
+    /// Return `Ok(None)` if settings are not specified.
+    pub fn get_settings_layout(
+        &self,
+        variant: impl AsRef<GameVariant>
+    ) -> Result<Option<Box<[GameSettingsGroup]>>, LuaError> {
+        let Some(get_layout) = &self.settings_get_layout else {
+            return Ok(None);
+        };
+
+        let variant = variant.as_ref()
+            .to_lua(&self.lua)?;
+
+        get_layout.call::<Vec<LuaTable>>(variant)
+            .and_then(|groups| {
+                groups.iter()
+                    .map(GameSettingsGroup::from_lua)
+                    .collect::<Result<Box<[_]>, LuaError>>()
+            })
+            .map(Some)
     }
 
     /// Get settings param from the game integration module.
@@ -215,25 +318,5 @@ impl GameIntegration {
         };
 
         set_property.call::<()>((name.as_ref(), value.into_lua(&self.lua)?))
-    }
-
-    /// Get game settings layout.
-    ///
-    /// Return `Ok(None)` if settings are not specified.
-    pub fn get_settings_layout(
-        &self,
-        variant: &GameVariant
-    ) -> Result<Option<Box<[GameSettingsGroup]>>, LuaError> {
-        let Some(get_layout) = &self.settings_get_layout else {
-            return Ok(None);
-        };
-
-        get_layout.call::<Vec<LuaTable>>(variant.to_lua(&self.lua)?)
-            .and_then(|groups| {
-                groups.iter()
-                    .map(GameSettingsGroup::from_lua)
-                    .collect::<Result<Box<[_]>, LuaError>>()
-            })
-            .map(Some)
     }
 }
