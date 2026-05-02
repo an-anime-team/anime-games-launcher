@@ -19,7 +19,7 @@ env:
 
 jobs:
   compile_ubuntu_build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
 
     container:
       image: ubuntu:devel
