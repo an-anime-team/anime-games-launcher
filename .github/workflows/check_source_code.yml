@@ -33,6 +33,21 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
 
     steps:
+      - name: Configure apt to keep downloaded packages
+        run: |
+          rm -f /etc/apt/apt.conf.d/docker-clean
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: apt-ubuntu-devel-check-${{ hashFiles('.github/workflows/check_source_code.yml') }}
+          restore-keys: |
+            apt-ubuntu-devel-check-
+
       - name: Install build dependencies
         run: |
           apt update
@@ -40,7 +55,6 @@ jobs:
 
       - name: Install runtime dependencies
         run: |
-          apt update
           apt install -y tar zip p7zip-full gzip bzip2 zstd
 
       - name: Download rust toolchain

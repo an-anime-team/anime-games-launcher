@@ -28,6 +28,21 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
 
     steps:
+      - name: Configure apt to keep downloaded packages
+        run: |
+          rm -f /etc/apt/apt.conf.d/docker-clean
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: apt-ubuntu-devel-release-${{ hashFiles('.github/workflows/compile_release_build.yml') }}
+          restore-keys: |
+            apt-ubuntu-devel-release-
+
       - name: Install build dependencies
         run: |
           apt update
