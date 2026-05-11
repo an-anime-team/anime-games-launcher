@@ -125,7 +125,13 @@ impl AsyncFactoryComponent for CardsList {
                     set_margin_bottom: 6,
 
                     #[watch]
-                    set_visible: self.show_variants
+                    set_visible: self.show_variants,
+
+                    connect_row_selected[sender] => move |_, row| {
+                        if row.is_some() {
+                            sender.input(CardsListInput::EmitClick);
+                        }
+                    }
                 }
             },
 
