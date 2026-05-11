@@ -89,7 +89,6 @@ impl AsyncFactoryComponent for CardsList {
     type ParentWidget = gtk::ListBox;
 
     view! {
-        #[root]
         gtk::ListBoxRow {
             #[watch]
             set_sensitive: !self.is_disabled,
@@ -125,7 +124,11 @@ impl AsyncFactoryComponent for CardsList {
                     set_margin_bottom: 6,
 
                     #[watch]
-                    set_visible: self.show_variants
+                    set_visible: self.show_variants,
+
+                    connect_row_activated[sender] => move |_, _| {
+                        sender.input(CardsListInput::EmitClick);
+                    }
                 }
             },
 
@@ -240,7 +243,6 @@ impl AsyncFactoryComponent for CardVariantsList {
     type ParentWidget = gtk::ListBox;
 
     view! {
-        #[root]
         gtk::ListBoxRow {
             gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,

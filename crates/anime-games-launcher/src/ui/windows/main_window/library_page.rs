@@ -162,14 +162,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
                     #[wrap(Some)]
                     set_child = model.cards_list.widget() {
-                        add_css_class: "navigation-sidebar",
-
-                        connect_row_activated[sender] => move |_, row| {
-                            sender.input(LibraryPageInput::SelectGameWithIndex {
-                                game: row.index() as usize,
-                                variant: None
-                            });
-                        }
+                        add_css_class: "navigation-sidebar"
                     }
                 },
 
