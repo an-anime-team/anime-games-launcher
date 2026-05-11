@@ -333,17 +333,26 @@ type GameIntegration = {
     // Game components section can be used to define optional additions to the
     // base game. For example, you could allow users to select what voiceovers
     // should be available in addition to the main game content.
-    // 
-    // Currently game components can only be used to *delete* already available
-    // game content, so you need to use settings instead to control what
-    // should be installed in addition to the base game.
     components?: {
         // Get game components layout. These can be different game voiceovers,
         // game DLCs, optional game runtime packages, or anything else.
         get_layout: (variant: GameVariant): ComponentsGroup[];
 
-        // Optional function to delete given game component.
-        delete_component?: (
+        // Check whether the given component is enabled.
+        get_enabled: (variant: GameVariant, component: string): boolean;
+
+        // Enable or disable given component by its name.
+        set_enabled: (
+            variant: GameVariant, 
+            component: string, 
+            enabled: boolean
+        ): void;
+
+        // Optional function to uninstall given component. If provided, then
+        // the launcher will try to use it when the user disabled any component.
+        // If not provided, then the actual logic should be implemented by you
+        // in the game actions pipeline.
+        uninstall?: (
             variant: GameVariant,
             component: string,
             updater: (updater: ProgressReport): void

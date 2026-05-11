@@ -54,7 +54,9 @@ pub struct GameIntegration {
     game_get_actions_pipeline: LuaFunction,
 
     components_get_layout: Option<LuaFunction>,
-    components_delete: Option<LuaFunction>,
+    components_get_enabled: Option<LuaFunction>,
+    components_set_enabled: Option<LuaFunction>,
+    components_uninstall: Option<LuaFunction>,
 
     tools_get_buttons: Option<LuaFunction>,
 
@@ -99,39 +101,57 @@ impl GameIntegration {
             lua,
 
             game_get_editions: game.get("get_editions").ok(),
-            game_get_launch_info: game.get("get_launch_info")?,
-            game_get_actions_pipeline: game.get("get_actions_pipeline")?,
+
+            game_get_launch_info: game.get("get_launch_info")
+                .context("game.get_launch_info API function must be specified")?,
+
+            game_get_actions_pipeline: game.get("get_actions_pipeline")
+                .context("game.get_actions_pipeline API function must be specified")?,
 
             components_get_layout: components.as_ref()
                 .map(|components| components.get("get_layout"))
-                .transpose()?,
+                .transpose()
+                .context("components.get_layout API function must be specified")?,
 
-            components_delete: components.as_ref()
+            components_get_enabled: components.as_ref()
+                .map(|components| components.get("get_enabled"))
+                .transpose()
+                .context("components.get_enabled API function must be specified")?,
+
+            components_set_enabled: components.as_ref()
+                .map(|components| components.get("set_enabled"))
+                .transpose()
+                .context("components.set_enabled API function must be specified")?,
+
+            components_uninstall: components.as_ref()
                 .map(|components| {
-                    // It's currently allowed to not to define components
-                    // deletion function, i.e. game integration can list
-                    // game components but it's not required to allow users to
-                    // delete these components.
-                    components.get::<Option<LuaFunction>>("delete_component")
+                    // Both can be accepted for now (word "delete" is reserved),
+                    // but only "uninstall" is the correct one.
+                    components.get::<Option<LuaFunction>>("uninstall")
+                        .or_else(|_| components.get::<Option<LuaFunction>>("delete"))
                 })
                 .transpose()?
                 .flatten(),
 
             tools_get_buttons: tools.as_ref()
                 .map(|tools| tools.get("get_buttons"))
-                .transpose()?,
+                .transpose()
+                .context("tools.get_buttons API function must be specified")?,
 
             settings_get_layout: settings.as_ref()
                 .map(|settings| settings.get("get_layout"))
-                .transpose()?,
+                .transpose()
+                .context("settings.get_layout API function must be specified")?,
 
             settings_get_property: settings.as_ref()
                 .map(|settings| settings.get("get_property"))
-                .transpose()?,
+                .transpose()
+                .context("settings.get_property API function must be specified")?,
 
             settings_set_property: settings.as_ref()
                 .map(|settings| settings.get("set_property"))
-                .transpose()?
+                .transpose()
+                .context("settings.set_property API function must be specified")?
         })
     }
 
@@ -211,11 +231,49 @@ impl GameIntegration {
             .map(Some)
     }
 
+    /// Check if given component is enabled.
+    ///
+    /// Return `Ok(None)` if there's no such component or function is not
+    /// specified.
+    pub fn get_component_enabled(
+        &self,
+        variant: impl AsRef<GameVariant>,
+        component: impl AsRef<str>
+    ) -> Result<Option<bool>, LuaError> {
+        let Some(get_enabled) = &self.components_get_enabled else {
+            return Ok(None);
+        };
+
+        get_enabled.call((
+            variant.as_ref().to_lua(&self.lua)?,
+            component.as_ref()
+        ))
+    }
+
+    pub fn set_component_enabled(
+        &self,
+        variant: impl AsRef<GameVariant>,
+        component: impl AsRef<str>,
+        enabled: bool
+    ) -> Result<(), LuaError> {
+        let Some(set_enabled) = &self.components_set_enabled else {
+            return Ok(());
+        };
+
+        set_enabled.call::<()>((
+            variant.as_ref().to_lua(&self.lua)?,
+            component.as_ref(),
+            enabled
+        ))?;
+
+        Ok(())
+    }
+
     /// Return `true` if game integration API defined a function to perform
     /// game components deletion.
     #[inline]
     pub fn can_delete_components(&self) -> bool {
-        self.components_delete.is_some()
+        self.components_uninstall.is_some()
     }
 
     /// Delete a game component.
@@ -225,7 +283,7 @@ impl GameIntegration {
         component: impl AsRef<str>,
         progress: impl Fn(ProgressReport) + Send + 'static
     ) -> Result<(), LuaError> {
-        let Some(delete_component) = &self.components_delete else {
+        let Some(delete_component) = &self.components_uninstall else {
             return Ok(());
         };
 
