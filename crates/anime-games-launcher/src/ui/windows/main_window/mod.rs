@@ -63,10 +63,10 @@ use crate::ui::windows::game_settings::{
     GameSettingsWindowInput,
     GameSettingsWindowOutput
 };
-use crate::ui::windows::pipeline_actions::{
-    PipelineActionsWindow,
-    PipelineActionsWindowInput,
-    PipelineActionsWindowOutput
+use crate::ui::windows::game_actions_pipeline::{
+    GameActionsPipelineWindow,
+    GameActionsPipelineWindowInput,
+    GameActionsPipelineWindowOutput
 };
 use crate::ui::windows::game_running::{GameRunningWindow, GameRunningWindowMsg};
 
@@ -142,7 +142,7 @@ pub struct MainWindow {
     library_page: AsyncController<LibraryPage>,
     game_components_window: AsyncController<GameComponentsWindow>,
     game_settings_window: AsyncController<GameSettingsWindow>,
-    pipeline_actions_window: AsyncController<PipelineActionsWindow>,
+    game_actions_pipeline_window: AsyncController<GameActionsPipelineWindow>,
     game_running_window: AsyncController<GameRunningWindow>,
 
     window: adw::ApplicationWindow,
@@ -166,7 +166,7 @@ impl std::fmt::Debug for MainWindow {
             .field("library_page", &self.library_page)
             .field("game_components_window", &self.game_components_window)
             .field("game_settings_window", &self.game_settings_window)
-            .field("pipeline_actions_window", &self.pipeline_actions_window)
+            .field("game_actions_pipeline_window", &self.game_actions_pipeline_window)
             .field("game_running_window", &self.game_running_window)
             .field("window", &self.window)
             .field("toast_overlay", &self.toast_overlay)
@@ -430,10 +430,10 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
 
-            pipeline_actions_window: PipelineActionsWindow::builder()
+            game_actions_pipeline_window: GameActionsPipelineWindow::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    PipelineActionsWindowOutput::UpdateGameInfo(_)
+                    GameActionsPipelineWindowOutput::UpdateGameInfo(_)
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
 
@@ -809,6 +809,7 @@ impl SimpleAsyncComponent for MainWindow {
             // Add store page games.
 
             // Show featured games first.
+            #[allow(clippy::unnecessary_sort_by)]
             paths.sort_by(|a, b| b.2.cmp(&a.2));
 
             tracing::debug!(?paths, "adding store page games");
@@ -1209,13 +1210,13 @@ impl SimpleAsyncComponent for MainWindow {
                 game_title,
                 actions_pipeline
             } => {
-                self.pipeline_actions_window.emit(PipelineActionsWindowInput::SetActionsPipeline {
+                self.game_actions_pipeline_window.emit(GameActionsPipelineWindowInput::SetActionsPipeline {
                     game_index,
                     game_title,
                     actions_pipeline
                 });
 
-                self.pipeline_actions_window.widget()
+                self.game_actions_pipeline_window.widget()
                     .present(Some(&self.window));
             }
 

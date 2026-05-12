@@ -21,7 +21,72 @@ use std::backtrace::Backtrace;
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use agl_core::tasks::sync::mpsc::channel as mpsc;
+
 use crate::i18n;
+
+/// Display a simple question dialog. It will show user a given message and
+/// render two buttons: "agree" and "disagree" (with given labels). The first
+/// button will be suggested over the second one. The function will return
+/// `true` if user chose the first button, `false` for second button or if the
+/// dialog was closed.
+pub async fn simple_question(
+    title: impl ToString,
+    body: impl ToString,
+    agree: impl ToString,
+    disagree: impl ToString
+) -> bool {
+    let title = title.to_string();
+    let body = body.to_string();
+    let agree = agree.to_string();
+    let disagree = disagree.to_string();
+
+    let (send, mut recv) = mpsc(1);
+
+    gtk::glib::MainContext::default().invoke(move || {
+        let dialog = adw::AlertDialog::builder()
+            .heading(title)
+            .body(body)
+            .build();
+
+        dialog.add_responses(&[
+            ("agree",    &agree),
+            ("disagree", &disagree)
+        ]);
+
+        {
+            let send = send.clone();
+
+            dialog.connect_response(Some("agree"), move |dialog, _| {
+                let _ = send.blocking_send(true);
+
+                dialog.close();
+            });
+        }
+
+        {
+            let send = send.clone();
+
+            dialog.connect_response(Some("disagree"), move |dialog, _| {
+                let _ = send.blocking_send(false);
+
+                dialog.close();
+            });
+        }
+
+        dialog.connect_closed(move |_| {
+            let _ = send.blocking_send(false);
+        });
+
+        if let Some(window) = relm4::main_adw_application().active_window() {
+            dialog.present(Some(&window));
+        } else {
+            dialog.present(None::<&adw::Window>);
+        }
+    });
+
+    recv.recv().await.unwrap_or(false)
+}
 
 /// Display error dialog. It will allow user to look through the given error,
 /// current thread's backtrace, and close the dialog to continue working with

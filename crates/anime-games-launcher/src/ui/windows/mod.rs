@@ -17,8 +17,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod main_window;
-pub mod about;
-pub mod pipeline_actions;
+pub mod game_actions_pipeline;
 pub mod game_components;
 pub mod game_settings;
 pub mod game_running;
+pub mod about;
