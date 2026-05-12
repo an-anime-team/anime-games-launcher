@@ -233,8 +233,7 @@ impl GameIntegration {
 
     /// Check if given component is enabled.
     ///
-    /// Return `Ok(None)` if there's no such component or function is not
-    /// specified.
+    /// Return `Ok(None)` if the function is not specified.
     pub fn get_component_enabled(
         &self,
         variant: impl AsRef<GameVariant>,
@@ -244,12 +243,13 @@ impl GameIntegration {
             return Ok(None);
         };
 
-        get_enabled.call((
+        get_enabled.call::<bool>((
             variant.as_ref().to_lua(&self.lua)?,
             component.as_ref()
-        ))
+        )).map(Some)
     }
 
+    /// Enable or disable given component name.
     pub fn set_component_enabled(
         &self,
         variant: impl AsRef<GameVariant>,
