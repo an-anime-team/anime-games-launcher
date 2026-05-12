@@ -330,6 +330,25 @@ type ComponentsEntry = {
     // 
     // Default value is `false`.
     locked?: boolean;
+
+    // Optional list of values displayed under the component. Can be used to
+    // display component statistics (e.g. actual / expected size on disk),
+    // its version, or any other information.
+    values?: ComponentEntryValue[];
+};
+
+type ComponentEntryValue = {
+    // Component value title.
+    title: LocalizableString;
+
+    // Component value.
+    value: LocalizableString;
+
+    // Optional component value description.
+    description?: LocalizableString;
+
+    // Component value status. Defines the color used for the value.
+    status?: 'normal' | 'warning' | 'danger' | 'success';
 };
 
 type GameIntegration = {
