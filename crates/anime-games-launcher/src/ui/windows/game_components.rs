@@ -36,13 +36,12 @@ use crate::ui::dialogs;
 #[derive(Debug, Clone, PartialEq)]
 struct ComponentState {
     pub checkbox_widget: gtk::CheckButton,
-    pub uninstall_widget: gtk::Button,
 
-    pub prev_value: bool,
-    pub curr_value: bool,
+    pub prev_state: bool,
+    pub curr_state: bool,
 
-    pub locked: bool,
-    pub values: Box<[GameComponentsEntryValue]>
+    pub is_locked: bool,
+    pub entry_values: Box<[GameComponentsEntryValue]>
 }
 
 #[derive(Debug)]
@@ -58,9 +57,7 @@ pub enum GameComponentsWindowInput {
     SetComponentState {
         component: String,
         enabled: bool
-    },
-
-    UninstallComponent(String)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -106,10 +103,16 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
                 #[local_ref]
                 footer_group -> adw::PreferencesGroup {
-                    gtk::Button {
-                        adw::ButtonContent {
-                            set_label: "penis"
-                        }
+                    adw::ButtonRow {
+                        add_css_class: "destructive-action",
+
+                        set_start_icon_name: Some("user-trash-symbolic"),
+
+                        set_title: i18n!("game_components_uninstall_all_title")
+                            .unwrap_or("Uninstall all"),
+
+                        set_tooltip: i18n!("game_components_uninstall_all_description")
+                            .unwrap_or("")
                     }
                 }
             }
@@ -193,22 +196,19 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             entry.name().to_string(),
                             ComponentState {
                                 checkbox_widget: gtk::CheckButton::new(),
-                                uninstall_widget: gtk::Button::new(),
 
-                                prev_value: is_enabled,
-                                curr_value: is_enabled,
+                                prev_state: is_enabled,
+                                curr_state: is_enabled,
 
-                                locked: entry.is_locked(),
+                                is_locked: entry.is_locked(),
 
-                                values: entry.values()
+                                entry_values: entry.values()
                                     .to_vec()
                                     .into_boxed_slice()
                             }
                         );
                     }
                 }
-
-                let can_delete_components = integration.can_delete_components();
 
                 // Render the GUI widgets for components.
                 let result = gtk::glib::spawn_future_local(async move {
@@ -270,12 +270,12 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                 }
 
                                 // Render component values.
-                                if component_state.values.is_empty() {
+                                if component_state.entry_values.is_empty() {
                                     entry_widget.set_enable_expansion(false);
                                 }
 
                                 else {
-                                    for value in &component_state.values {
+                                    for value in &component_state.entry_values {
                                         let value_row = adw::ActionRow::new();
 
                                         let title = match lang.as_ref() {
@@ -325,7 +325,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
                                 // Render checkbox & uninstall button OR a lock
                                 // icon for locked component.
-                                if component_state.locked {
+                                if component_state.is_locked {
                                     let icon_widget = gtk::Image::from_icon_name("system-lock-screen-symbolic");
 
                                     icon_widget.set_width_request(26);
@@ -334,11 +334,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                 }
 
                                 else {
-                                    let uninstall_widget_icon = adw::ButtonContent::new();
-
-                                    uninstall_widget_icon.set_icon_name("user-trash-symbolic");
-
-                                    component_state.checkbox_widget.set_active(component_state.curr_value);
+                                    component_state.checkbox_widget.set_active(component_state.curr_state);
 
                                     {
                                         let sender = sender.clone();
@@ -352,30 +348,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                         });
                                     }
 
-                                    component_state.uninstall_widget.set_valign(gtk::Align::Center);
-
-                                    component_state.uninstall_widget.add_css_class("flat");
-                                    component_state.uninstall_widget.add_css_class("destructive-action");
-
-                                    component_state.uninstall_widget.set_child(Some(&uninstall_widget_icon));
-                                    component_state.uninstall_widget.set_visible(component_state.curr_value);
-
-                                    {
-                                        let sender = sender.clone();
-                                        let component_name = component_name.clone();
-
-                                        component_state.uninstall_widget.connect_clicked(move |_| {
-                                            sender.input(GameComponentsWindowInput::UninstallComponent(
-                                                component_name.clone()
-                                            ));
-                                        });
-                                    }
-
                                     entry_widget.add_prefix(&component_state.checkbox_widget);
-
-                                    if can_delete_components {
-                                        entry_widget.add_suffix(&component_state.uninstall_widget);
-                                    }
                                 }
 
                                 group_widget.add(&entry_widget);
@@ -453,21 +426,9 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 enabled
             } => {
                 if let Some(component_state) = self.entries.get_mut(&component) {
-                    component_state.curr_value = enabled;
+                    component_state.curr_state = enabled;
 
                     component_state.checkbox_widget.set_active(enabled);
-                    component_state.uninstall_widget.set_visible(enabled);
-                }
-            }
-
-            GameComponentsWindowInput::UninstallComponent(component) => {
-                if let Some(component_state) = self.entries.get_mut(&component) {
-                    component_state.curr_value = false;
-
-                    component_state.checkbox_widget.set_active(false);
-                    component_state.uninstall_widget.set_visible(false);
-
-                    // TODO
                 }
             }
         }
