@@ -25,19 +25,24 @@ use adw::prelude::*;
 use agl_games::api::{
     GameVariant,
     GameIntegration,
-    GameComponentsGroup
+    GameComponentsGroup,
+    GameComponentsEntryValue,
+    GameComponentEntryValueStatus
 };
 
 use crate::{consts, config, i18n};
 use crate::ui::dialogs;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 struct ComponentState {
     pub checkbox_widget: gtk::CheckButton,
     pub uninstall_widget: gtk::Button,
 
     pub prev_value: bool,
-    pub curr_value: bool
+    pub curr_value: bool,
+
+    pub locked: bool,
+    pub values: Box<[GameComponentsEntryValue]>
 }
 
 #[derive(Debug)]
@@ -50,8 +55,12 @@ pub enum GameComponentsWindowInput {
 
     UpdateCurrentGameLayout,
 
-    EmitSwitchComponentState(String),
-    EmitUninstallComponent(String)
+    SetComponentState {
+        component: String,
+        enabled: bool
+    },
+
+    UninstallComponent(String)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,6 +72,7 @@ pub enum GameComponentsWindowOutput {
 pub struct GameComponentsWindow {
     window: adw::PreferencesDialog,
     page: adw::PreferencesPage,
+    footer_group: adw::PreferencesGroup,
 
     groups: Vec<adw::PreferencesGroup>,
     entries: HashMap<String, ComponentState>,
@@ -89,16 +99,19 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
             add_css_class?: consts::APP_DEBUG.then_some("devel"),
 
-            #[wrap(Some)]
-            set_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-
-                adw::HeaderBar {
-                    add_css_class: "flat"
-                },
+            #[local_ref]
+            add = page -> adw::PreferencesPage {
+                set_description: i18n!("game_components_description")
+                    .unwrap_or(""),
 
                 #[local_ref]
-                page -> adw::PreferencesPage,
+                footer_group -> adw::PreferencesGroup {
+                    gtk::Button {
+                        adw::ButtonContent {
+                            set_label: "penis"
+                        }
+                    }
+                }
             }
         }
     }
@@ -111,6 +124,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
         let model = Self {
             window: root.clone(),
             page: adw::PreferencesPage::new(),
+            footer_group: adw::PreferencesGroup::new(),
 
             // Some random capacity values I took from my head.
             groups: Vec::with_capacity(2),
@@ -121,6 +135,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
         };
 
         let page = &model.page;
+        let footer_group = &model.footer_group;
 
         let widgets = view_output!();
 
@@ -141,6 +156,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 let lang = config::get().language().ok();
 
                 let page = self.page.clone();
+                let footer_group = self.footer_group.clone();
 
                 let groups = std::mem::take(&mut self.groups);
                 let mut entries = HashMap::new();
@@ -180,7 +196,13 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                 uninstall_widget: gtk::Button::new(),
 
                                 prev_value: is_enabled,
-                                curr_value: is_enabled
+                                curr_value: is_enabled,
+
+                                locked: entry.is_locked(),
+
+                                values: entry.values()
+                                    .to_vec()
+                                    .into_boxed_slice()
                             }
                         );
                     }
@@ -193,6 +215,8 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                     for group in groups {
                         page.remove(&group);
                     }
+
+                    page.remove(&footer_group);
 
                     let mut groups = Vec::with_capacity(layout.len());
 
@@ -223,38 +247,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             if let Some(component_state) = entries.get(entry.name()) {
                                 let component_name = entry.name().to_string();
 
-                                let entry_widget = adw::ActionRow::new();
-                                let uninstall_widget_icon = adw::ButtonContent::new();
-
-                                uninstall_widget_icon.set_icon_name("user-trash-symbolic");
-
-                                component_state.checkbox_widget.set_sensitive(false);
-                                component_state.checkbox_widget.set_active(component_state.curr_value);
-
-                                component_state.uninstall_widget.set_valign(gtk::Align::Center);
-
-                                component_state.uninstall_widget.add_css_class("flat");
-                                component_state.uninstall_widget.add_css_class("destructive-action");
-
-                                component_state.uninstall_widget.set_child(Some(&uninstall_widget_icon));
-                                component_state.uninstall_widget.set_visible(component_state.curr_value);
-
-                                {
-                                    let sender = sender.clone();
-                                    let component_name = component_name.clone();
-
-                                    component_state.uninstall_widget.connect_clicked(move |_| {
-                                        sender.input(GameComponentsWindowInput::EmitUninstallComponent(
-                                            component_name.clone()
-                                        ));
-                                    });
-                                }
-
-                                entry_widget.add_prefix(&component_state.checkbox_widget);
-
-                                if can_delete_components {
-                                    entry_widget.add_suffix(&component_state.uninstall_widget);
-                                }
+                                let entry_widget = adw::ExpanderRow::new();
 
                                 if *consts::APP_DEBUG {
                                     entry_widget.set_tooltip(entry.name());
@@ -276,15 +269,114 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                     entry_widget.set_subtitle(description);
                                 }
 
-                                let sender = sender.clone();
+                                // Render component values.
+                                if component_state.values.is_empty() {
+                                    entry_widget.set_enable_expansion(false);
+                                }
 
-                                entry_widget.set_activatable(true);
+                                else {
+                                    for value in &component_state.values {
+                                        let value_row = adw::ActionRow::new();
 
-                                entry_widget.connect_activated(move |_| {
-                                    sender.input(GameComponentsWindowInput::EmitSwitchComponentState(
-                                        component_name.clone()
-                                    ));
-                                });
+                                        let title = match lang.as_ref() {
+                                            Some(lang) => value.title().translate(lang),
+                                            None => value.title().default_translation()
+                                        };
+
+                                        value_row.set_title(title);
+
+                                        if let Some(description) = value.description() {
+                                            let description = match lang.as_ref() {
+                                                Some(lang) => description.translate(lang),
+                                                None => description.default_translation()
+                                            };
+
+                                            value_row.set_subtitle(description);
+                                        }
+
+                                        let value_label = match lang.as_ref() {
+                                            Some(lang) => value.value().translate(lang),
+                                            None => value.value().default_translation()
+                                        };
+
+                                        let value_widget = gtk::Label::new(Some(value_label));
+
+                                        match value.status() {
+                                            GameComponentEntryValueStatus::Normal => (),
+
+                                            GameComponentEntryValueStatus::Warning => {
+                                                value_widget.add_css_class("warning");
+                                            }
+
+                                            GameComponentEntryValueStatus::Danger => {
+                                                value_widget.add_css_class("error");
+                                            }
+
+                                            GameComponentEntryValueStatus::Success => {
+                                                value_widget.add_css_class("success");
+                                            }
+                                        }
+
+                                        value_row.add_suffix(&value_widget);
+
+                                        entry_widget.add_row(&value_row);
+                                    }
+                                }
+
+                                // Render checkbox & uninstall button OR a lock
+                                // icon for locked component.
+                                if component_state.locked {
+                                    let icon_widget = gtk::Image::from_icon_name("system-lock-screen-symbolic");
+
+                                    icon_widget.set_width_request(26);
+
+                                    entry_widget.add_prefix(&icon_widget);
+                                }
+
+                                else {
+                                    let uninstall_widget_icon = adw::ButtonContent::new();
+
+                                    uninstall_widget_icon.set_icon_name("user-trash-symbolic");
+
+                                    component_state.checkbox_widget.set_active(component_state.curr_value);
+
+                                    {
+                                        let sender = sender.clone();
+                                        let component_name = component_name.clone();
+
+                                        component_state.checkbox_widget.connect_toggled(move |checkbox| {
+                                            sender.input(GameComponentsWindowInput::SetComponentState {
+                                                component: component_name.clone(),
+                                                enabled: checkbox.is_active()
+                                            });
+                                        });
+                                    }
+
+                                    component_state.uninstall_widget.set_valign(gtk::Align::Center);
+
+                                    component_state.uninstall_widget.add_css_class("flat");
+                                    component_state.uninstall_widget.add_css_class("destructive-action");
+
+                                    component_state.uninstall_widget.set_child(Some(&uninstall_widget_icon));
+                                    component_state.uninstall_widget.set_visible(component_state.curr_value);
+
+                                    {
+                                        let sender = sender.clone();
+                                        let component_name = component_name.clone();
+
+                                        component_state.uninstall_widget.connect_clicked(move |_| {
+                                            sender.input(GameComponentsWindowInput::UninstallComponent(
+                                                component_name.clone()
+                                            ));
+                                        });
+                                    }
+
+                                    entry_widget.add_prefix(&component_state.checkbox_widget);
+
+                                    if can_delete_components {
+                                        entry_widget.add_suffix(&component_state.uninstall_widget);
+                                    }
+                                }
 
                                 group_widget.add(&entry_widget);
                             }
@@ -292,6 +384,8 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
                         groups.push(group_widget);
                     }
+
+                    page.add(&footer_group);
 
                     (groups, entries)
                 }).await;
@@ -354,16 +448,19 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 }
             }
 
-            GameComponentsWindowInput::EmitSwitchComponentState(component) => {
+            GameComponentsWindowInput::SetComponentState {
+                component,
+                enabled
+            } => {
                 if let Some(component_state) = self.entries.get_mut(&component) {
-                    component_state.curr_value = !component_state.curr_value;
+                    component_state.curr_value = enabled;
 
-                    component_state.checkbox_widget.set_active(component_state.curr_value);
-                    component_state.uninstall_widget.set_visible(component_state.curr_value);
+                    component_state.checkbox_widget.set_active(enabled);
+                    component_state.uninstall_widget.set_visible(enabled);
                 }
             }
 
-            GameComponentsWindowInput::EmitUninstallComponent(component) => {
+            GameComponentsWindowInput::UninstallComponent(component) => {
                 if let Some(component_state) = self.entries.get_mut(&component) {
                     component_state.curr_value = false;
 

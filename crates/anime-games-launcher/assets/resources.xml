@@ -34,6 +34,7 @@
         <file preprocess="xml-stripblanks" alias="emblem-ok-symbolic.svg">images/icons/emblem-ok-symbolic.svg</file> <!-- Action finished -->
         <file preprocess="xml-stripblanks" alias="media-playback-start-symbolic.svg">images/icons/media-playback-start-symbolic.svg</file> <!-- Launch game button -->
         <file preprocess="xml-stripblanks" alias="application-x-addon-symbolic.svg">images/icons/application-x-addon-symbolic.svg</file> <!-- Components button -->
+        <file preprocess="xml-stripblanks" alias="system-lock-screen-symbolic.svg">images/icons/system-lock-screen-symbolic.svg</file> <!-- Locked component -->
         <file preprocess="xml-stripblanks" alias="settings-symbolic.svg">images/icons/settings-symbolic.svg</file> <!-- Settings button -->
         <file preprocess="xml-stripblanks" alias="user-trash-symbolic.svg">images/icons/user-trash-symbolic.svg</file> <!-- Delete button -->
         <file preprocess="xml-stripblanks" alias="document-save-symbolic.svg">images/icons/document-save-symbolic.svg</file> <!-- Execute pipeline button / adding game button -->
