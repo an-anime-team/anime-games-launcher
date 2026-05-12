@@ -487,7 +487,9 @@ pub enum GameSettingsWindowOutput {
 #[derive(Debug, Clone)]
 pub struct GameSettingsWindow {
     window: adw::PreferencesDialog,
-    pages: Vec<adw::PreferencesPage>,
+    page: adw::PreferencesPage,
+
+    groups: Vec<adw::PreferencesGroup>,
 
     game_variant: Option<GameVariant>,
     game_integration: Option<Arc<GameIntegration>>
@@ -508,7 +510,10 @@ impl SimpleAsyncComponent for GameSettingsWindow {
             set_content_height: 600,
             set_search_enabled: true,
 
-            add_css_class?: consts::APP_DEBUG.then_some("devel")
+            add_css_class?: consts::APP_DEBUG.then_some("devel"),
+
+            #[local_ref]
+            add = page -> adw::PreferencesPage,
         }
     }
 
@@ -519,11 +524,16 @@ impl SimpleAsyncComponent for GameSettingsWindow {
     ) -> AsyncComponentParts<Self> {
         let model = Self {
             window: root.clone(),
-            pages: Vec::with_capacity(1),
+            page: adw::PreferencesPage::new(),
+
+            // Some random capacity value I took from my head.
+            groups: Vec::with_capacity(2),
 
             game_variant: None,
             game_integration: None
         };
+
+        let page = &model.page;
 
         let widgets = view_output!();
 
@@ -562,19 +572,16 @@ impl SimpleAsyncComponent for GameSettingsWindow {
             } => {
                 let lang = config::get().language().ok();
 
-                let window = self.window.clone();
-                let pages = std::mem::take(&mut self.pages);
+                let page = self.page.clone();
 
-                let page_widget = gtk::glib::spawn_future_local(async move {
-                    for page in pages {
-                        window.remove(&page);
+                let mut groups = std::mem::take(&mut self.groups);
 
-                        drop(page);
+                let groups = gtk::glib::spawn_future_local(async move {
+                    for group in groups.drain(..) {
+                        page.remove(&group);
                     }
 
-                    let page_widget = adw::PreferencesPage::new();
-
-                    window.add(&page_widget);
+                    let mut groups = Vec::with_capacity(layout.len());
 
                     for group in layout {
                         let group_widget = adw::PreferencesGroup::new();
@@ -597,7 +604,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                             group_widget.set_description(Some(description));
                         }
 
-                        page_widget.add(&group_widget);
+                        page.add(&group_widget);
 
                         for entry in group.entries() {
                             render_entry(
@@ -607,13 +614,15 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                                 sender.input_sender().clone()
                             );
                         }
+
+                        groups.push(group_widget);
                     }
 
-                    page_widget
+                    groups
                 }).await;
 
-                match page_widget {
-                    Ok(page_widget) => self.pages.push(page_widget),
+                match groups {
+                    Ok(groups) => self.groups = groups,
 
                     Err(err) => {
                         tracing::error!(?err, "failed to render game settings");
