@@ -34,6 +34,7 @@ use crate::ui::dialogs;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct ComponentState {
     pub checkbox_widget: gtk::CheckButton,
+    pub uninstall_widget: gtk::Button,
 
     pub prev_value: bool,
     pub curr_value: bool
@@ -49,7 +50,8 @@ pub enum GameComponentsWindowInput {
 
     UpdateCurrentGameLayout,
 
-    EmitSwitchComponentState(String)
+    EmitSwitchComponentState(String),
+    EmitUninstallComponent(String)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -87,8 +89,17 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
             add_css_class?: consts::APP_DEBUG.then_some("devel"),
 
-            #[local_ref]
-            add = page -> adw::PreferencesPage,
+            #[wrap(Some)]
+            set_child = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+
+                adw::HeaderBar {
+                    add_css_class: "flat"
+                },
+
+                #[local_ref]
+                page -> adw::PreferencesPage,
+            }
         }
     }
 
@@ -166,6 +177,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             entry.name().to_string(),
                             ComponentState {
                                 checkbox_widget: gtk::CheckButton::new(),
+                                uninstall_widget: gtk::Button::new(),
 
                                 prev_value: is_enabled,
                                 curr_value: is_enabled
@@ -173,6 +185,8 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         );
                     }
                 }
+
+                let can_delete_components = integration.can_delete_components();
 
                 // Render the GUI widgets for components.
                 let result = gtk::glib::spawn_future_local(async move {
@@ -206,15 +220,41 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         page.add(&group_widget);
 
                         for entry in group.entries() {
-                            if let Some(entry_state) = entries.get(entry.name()) {
+                            if let Some(component_state) = entries.get(entry.name()) {
+                                let component_name = entry.name().to_string();
+
                                 let entry_widget = adw::ActionRow::new();
+                                let uninstall_widget_icon = adw::ButtonContent::new();
 
-                                entry_state.checkbox_widget.set_sensitive(false);
-                                entry_state.checkbox_widget.set_active(entry_state.curr_value);
+                                uninstall_widget_icon.set_icon_name("user-trash-symbolic");
 
-                                entry_widget.add_prefix(&entry_state.checkbox_widget);
+                                component_state.checkbox_widget.set_sensitive(false);
+                                component_state.checkbox_widget.set_active(component_state.curr_value);
 
-                                entry_widget.set_activatable(true);
+                                component_state.uninstall_widget.set_valign(gtk::Align::Center);
+
+                                component_state.uninstall_widget.add_css_class("flat");
+                                component_state.uninstall_widget.add_css_class("destructive-action");
+
+                                component_state.uninstall_widget.set_child(Some(&uninstall_widget_icon));
+                                component_state.uninstall_widget.set_visible(component_state.curr_value);
+
+                                {
+                                    let sender = sender.clone();
+                                    let component_name = component_name.clone();
+
+                                    component_state.uninstall_widget.connect_clicked(move |_| {
+                                        sender.input(GameComponentsWindowInput::EmitUninstallComponent(
+                                            component_name.clone()
+                                        ));
+                                    });
+                                }
+
+                                entry_widget.add_prefix(&component_state.checkbox_widget);
+
+                                if can_delete_components {
+                                    entry_widget.add_suffix(&component_state.uninstall_widget);
+                                }
 
                                 if *consts::APP_DEBUG {
                                     entry_widget.set_tooltip(entry.name());
@@ -237,11 +277,12 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                 }
 
                                 let sender = sender.clone();
-                                let component = entry.name().to_string();
+
+                                entry_widget.set_activatable(true);
 
                                 entry_widget.connect_activated(move |_| {
                                     sender.input(GameComponentsWindowInput::EmitSwitchComponentState(
-                                        component.clone()
+                                        component_name.clone()
                                     ));
                                 });
 
@@ -318,6 +359,18 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                     component_state.curr_value = !component_state.curr_value;
 
                     component_state.checkbox_widget.set_active(component_state.curr_value);
+                    component_state.uninstall_widget.set_visible(component_state.curr_value);
+                }
+            }
+
+            GameComponentsWindowInput::EmitUninstallComponent(component) => {
+                if let Some(component_state) = self.entries.get_mut(&component) {
+                    component_state.curr_value = false;
+
+                    component_state.checkbox_widget.set_active(false);
+                    component_state.uninstall_widget.set_visible(false);
+
+                    // TODO
                 }
             }
         }
