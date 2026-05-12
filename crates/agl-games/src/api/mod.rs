@@ -56,6 +56,7 @@ pub struct GameIntegration {
     components_get_layout: Option<LuaFunction>,
     components_get_enabled: Option<LuaFunction>,
     components_set_enabled: Option<LuaFunction>,
+    components_install: Option<LuaFunction>,
     components_uninstall: Option<LuaFunction>,
 
     tools_get_buttons: Option<LuaFunction>,
@@ -122,6 +123,16 @@ impl GameIntegration {
                 .map(|components| components.get("set_enabled"))
                 .transpose()
                 .context("components.set_enabled API function must be specified")?,
+
+            components_install: components.as_ref()
+                .map(|components| {
+                    // Both can be accepted for now (word "download" is
+                    // reserved), but only "install" is the correct one.
+                    components.get::<Option<LuaFunction>>("install")
+                        .or_else(|_| components.get::<Option<LuaFunction>>("download"))
+                })
+                .transpose()?
+                .flatten(),
 
             components_uninstall: components.as_ref()
                 .map(|components| {
@@ -269,21 +280,14 @@ impl GameIntegration {
         Ok(())
     }
 
-    /// Return `true` if game integration API defined a function to perform
-    /// game components deletion.
-    #[inline]
-    pub fn can_delete_components(&self) -> bool {
-        self.components_uninstall.is_some()
-    }
-
-    /// Delete a game component.
-    pub fn delete_component(
+    /// Install a game component.
+    pub fn install_component(
         &self,
         variant: impl AsRef<GameVariant>,
         component: impl AsRef<str>,
         progress: impl Fn(ProgressReport) + Send + 'static
     ) -> Result<(), LuaError> {
-        let Some(delete_component) = &self.components_uninstall else {
+        let Some(install_component) = &self.components_install else {
             return Ok(());
         };
 
@@ -293,7 +297,33 @@ impl GameIntegration {
             Ok(())
         })?;
 
-        delete_component.call::<()>((
+        install_component.call::<()>((
+            variant.as_ref().to_lua(&self.lua)?,
+            component.as_ref(),
+            progress
+        ))?;
+
+        Ok(())
+    }
+
+    /// Uninstall a game component.
+    pub fn uninstall_component(
+        &self,
+        variant: impl AsRef<GameVariant>,
+        component: impl AsRef<str>,
+        progress: impl Fn(ProgressReport) + Send + 'static
+    ) -> Result<(), LuaError> {
+        let Some(uninstall_component) = &self.components_uninstall else {
+            return Ok(());
+        };
+
+        let progress = self.lua.create_function(move |_, report: LuaTable| {
+            progress(ProgressReport::from_lua(&report)?);
+
+            Ok(())
+        })?;
+
+        uninstall_component.call::<()>((
             variant.as_ref().to_lua(&self.lua)?,
             component.as_ref(),
             progress

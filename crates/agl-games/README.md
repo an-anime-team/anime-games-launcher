@@ -321,12 +321,25 @@ type ComponentsEntry = {
     // Optional description (subtitle) of the components entry.
     description?: LocalizableString;
 
-    // Whether the component is locked. Locked components cannot be disabled or
-    // uninstalled unless the complete game uninstall has been called. For
-    // example, a base game can be considered a locked component: you provide
-    // it not to allow user to enable or disable it (since it's required to
-    // run the game), but to allow the launcher to uninstall the game files when
-    // the full game uninstall button was pressed.
+    // Whether the component is locked. If set to `true`, then the software
+    // implementations of this API should avoid setting enabled/disabled state
+    // for this component (it should always be considered as "enabled").
+    // Therefore, underlying state handling code can always assume a locked
+    // component is enabled so you don't need to store this information
+    // anywhere.
+    // 
+    // Locked components still can be "enabled" or "disabled" if you want to
+    // implement this logic, and locked components still can be "installed"
+    // and "uninstalled".
+    // 
+    // Upstream software implementations for this API can use "uninstall"
+    // functions on components to uninstall the game. For example, you can
+    // provide a "Base game" "component" with locked state so it's always
+    // enabled, and an "uninstall" function call would delete all the game
+    // files. The upstream software implementation could use this behavior to
+    // implement an "Uninstall all" button to delete all the components provided
+    // by a game integration, which is, if implemented properly, equivalent of
+    // an "Uninstall game data" button.
     // 
     // Default value is `false`.
     locked?: boolean;
@@ -383,10 +396,22 @@ type GameIntegration = {
             enabled: boolean
         ): void;
 
-        // Optional function to uninstall given component. If provided, then
-        // the launcher will try to use it when the user disabled any component.
-        // If not provided, then the actual logic should be implemented by you
-        // in the game actions pipeline.
+        // Optional function to install given component. When provided the
+        // launcher will try to use it when the user enables a component. The
+        // component can become enabled without calling this function, so you
+        // should not rely on it completely and always use the actions pipeline
+        // to verify game components.
+        install?: (
+            variant: GameVariant,
+            component: string,
+            updater: (updater: ProgressReport): void
+        ): void;
+
+        // Optional function to uninstall given component. When provided the
+        // launcher will try to use it when the user disables a component. The
+        // component can become disabled without calling this function, so you
+        // should not rely on it completely and always use the actions pipeline
+        // to verify game components.
         uninstall?: (
             variant: GameVariant,
             component: string,
