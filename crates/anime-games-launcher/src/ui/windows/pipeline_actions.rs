@@ -78,7 +78,7 @@ pub struct PipelineActionsWindow {
     graph: AsyncController<Graph>,
     pipeline_actions: AsyncFactoryVecDeque<GameActionsPipelineFactory>,
 
-    window: Option<adw::Dialog>,
+    window: adw::Dialog,
 
     game_index: Option<usize>,
     game_title: Option<String>,
@@ -95,7 +95,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
 
     view! {
         #[root]
-        _window = adw::Dialog {
+        adw::Dialog {
             set_size_request: (800, 600),
             set_can_close: false,
 
@@ -156,7 +156,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
         let accent_color = adw::StyleManager::default()
             .accent_color_rgba();
 
-        let mut model = Self {
+        let model = Self {
             graph: Graph::builder()
                 .launch(GraphInit {
                     width: 600,
@@ -174,7 +174,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                 .launch_default()
                 .detach(),
 
-            window: None,
+            window: root.clone(),
 
             game_index: None,
             game_title: None,
@@ -184,8 +184,6 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
         };
 
         let widgets = view_output!();
-
-        model.window = Some(widgets._window.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -467,9 +465,7 @@ impl SimpleAsyncComponent for PipelineActionsWindow {
                     let _ = sender.output(PipelineActionsWindowOutput::UpdateGameInfo(index));
                 }
 
-                if let Some(window) = &self.window {
-                    window.force_close();
-                }
+                self.window.force_close();
             }
         }
     }

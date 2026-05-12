@@ -145,7 +145,7 @@ pub struct MainWindow {
     pipeline_actions_window: AsyncController<PipelineActionsWindow>,
     game_running_window: AsyncController<GameRunningWindow>,
 
-    window: Option<adw::ApplicationWindow>,
+    window: adw::ApplicationWindow,
     toast_overlay: adw::ToastOverlay,
     view_stack: adw::ViewStack,
 
@@ -197,7 +197,7 @@ impl SimpleAsyncComponent for MainWindow {
 
     view! {
         #[root]
-        _window = adw::ApplicationWindow {
+        adw::ApplicationWindow {
             set_title: Some("Anime Games Launcher"),
             set_size_request: (1200, 800),
 
@@ -382,7 +382,7 @@ impl SimpleAsyncComponent for MainWindow {
             translate
         }).expect("failed to initialize packages runtime");
 
-        let mut model = Self {
+        let model = Self {
             about_window: AboutWindow::builder()
                 .launch(())
                 .detach(),
@@ -441,7 +441,7 @@ impl SimpleAsyncComponent for MainWindow {
                 .launch(())
                 .detach(),
 
-            window: None,
+            window: root.clone(),
             toast_overlay: adw::ToastOverlay::new(),
             view_stack: adw::ViewStack::new(),
 
@@ -460,8 +460,6 @@ impl SimpleAsyncComponent for MainWindow {
 
         let widgets = view_output!();
 
-        model.window = Some(widgets._window.clone());
-
         // Connect hamburger menu buttons.
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
 
@@ -473,7 +471,7 @@ impl SimpleAsyncComponent for MainWindow {
             }));
         }
 
-        widgets._window.insert_action_group(
+        model.window.insert_action_group(
             "win",
             Some(&group.into_action_group())
         );
@@ -882,9 +880,7 @@ impl SimpleAsyncComponent for MainWindow {
     ) {
         match message {
             MainWindowMsg::OpenAboutWindow => {
-                if let Some(window) = &self.window {
-                    self.about_window.widget().present(Some(window));
-                }
+                self.about_window.widget().present(Some(&self.window));
             }
 
             MainWindowMsg::SetLoadingStatus(status) => self.loading_status = status,
@@ -1193,7 +1189,7 @@ impl SimpleAsyncComponent for MainWindow {
                     });
                 }
 
-                dialog.present(self.window.as_ref());
+                dialog.present(Some(&self.window));
             }
 
             MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,
@@ -1213,16 +1209,14 @@ impl SimpleAsyncComponent for MainWindow {
                 game_title,
                 actions_pipeline
             } => {
-                if let Some(window) = &self.window {
-                    self.pipeline_actions_window.emit(PipelineActionsWindowInput::SetActionsPipeline {
-                        game_index,
-                        game_title,
-                        actions_pipeline
-                    });
+                self.pipeline_actions_window.emit(PipelineActionsWindowInput::SetActionsPipeline {
+                    game_index,
+                    game_title,
+                    actions_pipeline
+                });
 
-                    self.pipeline_actions_window.widget()
-                        .present(Some(window));
-                }
+                self.pipeline_actions_window.widget()
+                    .present(Some(&self.window));
             }
 
             MainWindowMsg::OpenGameComponentsWindow {
@@ -1230,16 +1224,14 @@ impl SimpleAsyncComponent for MainWindow {
                 integration,
                 layout
             } => {
-                if let Some(window) = &self.window {
-                    self.game_components_window.emit(GameComponentsWindowInput::SetGame {
-                        variant,
-                        integration,
-                        layout
-                    });
+                self.game_components_window.emit(GameComponentsWindowInput::SetGame {
+                    variant,
+                    integration,
+                    layout
+                });
 
-                    self.game_components_window.widget()
-                        .present(Some(window));
-                }
+                self.game_components_window.widget()
+                    .present(Some(&self.window));
             }
 
             MainWindowMsg::OpenGameSettingsWindow {
@@ -1247,47 +1239,43 @@ impl SimpleAsyncComponent for MainWindow {
                 integration,
                 layout
             } => {
-                if let Some(window) = &self.window {
-                    self.game_settings_window.emit(GameSettingsWindowInput::SetGame {
-                        variant,
-                        integration,
-                        layout
-                    });
+                self.game_settings_window.emit(GameSettingsWindowInput::SetGame {
+                    variant,
+                    integration,
+                    layout
+                });
 
-                    self.game_settings_window.widget()
-                        .present(Some(window));
-                }
+                self.game_settings_window.widget()
+                    .present(Some(&self.window));
             }
 
             MainWindowMsg::LaunchGame { game_title, game_launch_info } => {
-                if let Some(window) = &self.window {
-                    let mut command = &mut Command::new(&game_launch_info.binary);
+                let mut command = &mut Command::new(&game_launch_info.binary);
 
-                    if let Some(args) = &game_launch_info.args {
-                        command = command.args(args);
+                if let Some(args) = &game_launch_info.args {
+                    command = command.args(args);
+                }
+
+                if let Some(env) = &game_launch_info.env {
+                    command = command.envs(env);
+                }
+
+                // TODO: pipe stdout/stderr to a log file.
+
+                tracing::info!(?command, "launching game");
+
+                match command.spawn() {
+                    Ok(child) => {
+                        self.game_running_window.emit(GameRunningWindowMsg::SetChild {
+                            game_title,
+                            child
+                        });
+
+                        self.game_running_window.widget()
+                            .present(Some(&self.window));
                     }
 
-                    if let Some(env) = &game_launch_info.env {
-                        command = command.envs(env);
-                    }
-
-                    // TODO: pipe stdout/stderr to a log file.
-
-                    tracing::info!(?command, "launching game");
-
-                    match command.spawn() {
-                        Ok(child) => {
-                            self.game_running_window.emit(GameRunningWindowMsg::SetChild {
-                                game_title,
-                                child
-                            });
-
-                            self.game_running_window.widget()
-                                .present(Some(window));
-                        }
-
-                        Err(err) => tracing::error!(?err, "failed to launch game")
-                    }
+                    Err(err) => tracing::error!(?err, "failed to launch game")
                 }
             }
 

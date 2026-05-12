@@ -442,7 +442,7 @@ pub enum GameSettingsWindowOutput {
 
 #[derive(Debug, Clone)]
 pub struct GameSettingsWindow {
-    window: Option<adw::PreferencesDialog>,
+    window: adw::PreferencesDialog,
     pages: Vec<adw::PreferencesPage>,
 
     game_variant: Option<GameVariant>,
@@ -457,7 +457,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
     view! {
         #[root]
-        _window = adw::PreferencesDialog {
+        adw::PreferencesDialog {
             set_title: i18n!("settings").unwrap_or("Settings"),
 
             set_content_width: 800,
@@ -473,8 +473,8 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let mut model = Self {
-            window: None,
+        let model = Self {
+            window: root.clone(),
             pages: Vec::with_capacity(1),
 
             game_variant: None,
@@ -482,8 +482,6 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         };
 
         let widgets = view_output!();
-
-        model.window = Some(widgets._window.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -518,77 +516,76 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 integration,
                 layout
             } => {
-                if let Some(window) = self.window.clone() {
-                    let lang = config::get().language().ok();
+                let lang = config::get().language().ok();
 
-                    let pages = std::mem::take(&mut self.pages);
+                let window = self.window.clone();
+                let pages = std::mem::take(&mut self.pages);
 
-                    let page_widget = gtk::glib::spawn_future_local(async move {
-                        for page in pages {
-                            window.remove(&page);
+                let page_widget = gtk::glib::spawn_future_local(async move {
+                    for page in pages {
+                        window.remove(&page);
 
-                            drop(page);
+                        drop(page);
+                    }
+
+                    let page_widget = adw::PreferencesPage::new();
+
+                    window.add(&page_widget);
+
+                    for group in layout {
+                        let group_widget = adw::PreferencesGroup::new();
+
+                        if let Some(title) = group.title() {
+                            let title = match lang.as_ref() {
+                                Some(lang) => title.translate(lang),
+                                None => title.default_translation()
+                            };
+
+                            group_widget.set_title(title);
                         }
 
-                        let page_widget = adw::PreferencesPage::new();
+                        if let Some(description) = group.description() {
+                            let description = match lang.as_ref() {
+                                Some(lang) => description.translate(lang),
+                                None => description.default_translation()
+                            };
 
-                        window.add(&page_widget);
-
-                        for group in layout {
-                            let group_widget = adw::PreferencesGroup::new();
-
-                            if let Some(title) = group.title() {
-                                let title = match lang.as_ref() {
-                                    Some(lang) => title.translate(lang),
-                                    None => title.default_translation()
-                                };
-
-                                group_widget.set_title(title);
-                            }
-
-                            if let Some(description) = group.description() {
-                                let description = match lang.as_ref() {
-                                    Some(lang) => description.translate(lang),
-                                    None => description.default_translation()
-                                };
-
-                                group_widget.set_description(Some(description));
-                            }
-
-                            page_widget.add(&group_widget);
-
-                            for entry in group.entries() {
-                                render_entry(
-                                    ParentWidget::Group(&group_widget),
-                                    entry,
-                                    lang.as_ref(),
-                                    sender.input_sender().clone()
-                                );
-                            }
+                            group_widget.set_description(Some(description));
                         }
 
-                        page_widget
-                    }).await;
+                        page_widget.add(&group_widget);
 
-                    match page_widget {
-                        Ok(page_widget) => self.pages.push(page_widget),
-
-                        Err(err) => {
-                            tracing::error!(?err, "failed to render game settings");
-
-                            dialogs::error(
-                                i18n!("failed_render_game_settings")
-                                    .unwrap_or("Failed to render game settings"),
-                                err.to_string()
+                        for entry in group.entries() {
+                            render_entry(
+                                ParentWidget::Group(&group_widget),
+                                entry,
+                                lang.as_ref(),
+                                sender.input_sender().clone()
                             );
-
-                            return;
                         }
                     }
 
-                    self.game_variant = Some(variant);
-                    self.game_integration = Some(integration);
+                    page_widget
+                }).await;
+
+                match page_widget {
+                    Ok(page_widget) => self.pages.push(page_widget),
+
+                    Err(err) => {
+                        tracing::error!(?err, "failed to render game settings");
+
+                        dialogs::error(
+                            i18n!("failed_render_game_settings")
+                                .unwrap_or("Failed to render game settings"),
+                            err.to_string()
+                        );
+
+                        return;
+                    }
                 }
+
+                self.game_variant = Some(variant);
+                self.game_integration = Some(integration);
             }
 
             GameSettingsWindowInput::SetBoolProperty {
@@ -671,9 +668,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                         }
 
                         Ok(None) => {
-                            if let Some(window) = &self.window {
-                                window.close();
-                            }
+                            self.window.close();
                         }
 
                         Err(err) => {

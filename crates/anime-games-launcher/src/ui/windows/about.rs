@@ -29,7 +29,7 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AboutWindow;
 
 #[relm4::component(pub, async)]
@@ -39,6 +39,7 @@ impl SimpleAsyncComponent for AboutWindow {
     type Output = ();
 
     view! {
+        #[root]
         adw::AboutDialog {
             set_application_name: "Anime Games Launcher",
             set_application_icon: consts::APP_ID,

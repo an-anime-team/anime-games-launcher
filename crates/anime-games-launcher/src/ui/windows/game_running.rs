@@ -44,7 +44,7 @@ pub enum GameRunningWindowMsg {
 
 #[derive(Debug)]
 pub struct GameRunningWindow {
-    window: Option<adw::Dialog>,
+    window: adw::Dialog,
 
     game_title: Option<String>,
 
@@ -63,7 +63,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
 
     view! {
         #[root]
-        _window = adw::Dialog {
+        adw::Dialog {
             set_size_request: (400, 260),
             set_can_close: false,
 
@@ -146,8 +146,8 @@ impl SimpleAsyncComponent for GameRunningWindow {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let mut model = Self {
-            window: None,
+        let model = Self {
+            window: root.clone(),
             game_title: None,
             child: None,
             running_since: None,
@@ -156,8 +156,6 @@ impl SimpleAsyncComponent for GameRunningWindow {
         };
 
         let widgets = view_output!();
-
-        model.window = Some(widgets._window.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -222,9 +220,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
             }
 
             GameRunningWindowMsg::Close => {
-                if let Some(window) = &self.window {
-                    window.force_close();
-                }
+                self.window.force_close();
             }
         }
     }
