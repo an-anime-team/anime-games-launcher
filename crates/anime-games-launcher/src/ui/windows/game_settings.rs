@@ -142,6 +142,50 @@ fn render_entry(
             group_widget.add(&widget);
         }
 
+        GameSettingsEntryFormat::SecretText { value } => {
+            let widget = adw::PasswordEntryRow::new();
+
+            widget.set_show_apply_button(true);
+
+            let title = match lang {
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
+            };
+
+            widget.set_title(title);
+
+            if let Some(description) = entry.description() {
+                let description = match lang {
+                    Some(lang) => description.translate(lang),
+                    None => description.default_translation()
+                };
+
+                if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                    widget.set_tooltip(&format!("[{name}] {description}"));
+                } else {
+                    widget.set_tooltip(description);
+                }
+            }
+
+            widget.set_text(value);
+
+            if let Some(name) = entry.name().cloned() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
+
+                widget.connect_apply(move |widget| {
+                    listener.emit(GameSettingsWindowInput::SetStringProperty {
+                        name: name.clone(),
+                        value: widget.text().to_string(),
+                        reactivity
+                    });
+                });
+            }
+
+            group_widget.add(&widget);
+        }
+
         GameSettingsEntryFormat::Number { min, max, step, value } => {
             let min = (*min).unwrap_or(f64::MIN);
             let max = (*max).unwrap_or(f64::MAX);
