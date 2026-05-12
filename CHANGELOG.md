@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added game integration agreements
+- Added new settings entry format for secrets (e.g. passwords)
 
 ### Fixed
 
 - Selectable strings are not highlighted, focused or selected by default anymore
+- Game variants are now properly selected and propagated to the lua side
 
 ## [v2.0.0] - 22.03.2026
 
