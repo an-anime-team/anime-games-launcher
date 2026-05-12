@@ -574,10 +574,10 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
                 let page = self.page.clone();
 
-                let mut groups = std::mem::take(&mut self.groups);
+                let groups = std::mem::take(&mut self.groups);
 
                 let groups = gtk::glib::spawn_future_local(async move {
-                    for group in groups.drain(..) {
+                    for group in groups {
                         page.remove(&group);
                     }
 
@@ -622,6 +622,8 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 }).await;
 
                 match groups {
+                    // Store groups *only if we've rendered them*. Otherwise we
+                    // will keep the window *blank*.
                     Ok(groups) => self.groups = groups,
 
                     Err(err) => {
@@ -637,6 +639,9 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                     }
                 }
 
+                // Store game variant and integration object in any case so that
+                // the window will be able to refresh it and try to render the
+                // settings again.
                 self.game_variant = Some(variant);
                 self.game_integration = Some(integration);
             }

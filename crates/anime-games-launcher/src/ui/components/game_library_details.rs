@@ -257,6 +257,22 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             add_css_class: "pill",
 
                             #[watch]
+                            set_visible: model.game_components_layout.is_some(),
+
+                            adw::ButtonContent {
+                                set_icon_name: "application-x-addon-symbolic",
+
+                                set_label: i18n!("components")
+                                    .unwrap_or("Components")
+                            },
+
+                            connect_clicked => GameLibraryDetailsInput::OpenGameComponentsWindow
+                        },
+
+                        gtk::Button {
+                            add_css_class: "pill",
+
+                            #[watch]
                             set_visible: model.game_settings_layout.is_some(),
 
                             adw::ButtonContent {
@@ -267,23 +283,6 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             },
 
                             connect_clicked => GameLibraryDetailsInput::OpenGameSettingsWindow
-                        },
-
-                        gtk::Button {
-                            add_css_class: "pill",
-                            add_css_class: "destructive-action",
-
-                            #[watch]
-                            set_visible: model.game_components_layout.is_some(),
-
-                            adw::ButtonContent {
-                                set_icon_name: "user-trash-symbolic",
-
-                                set_label: i18n!("delete")
-                                    .unwrap_or("Delete")
-                            },
-
-                            connect_clicked => GameLibraryDetailsInput::OpenGameComponentsWindow
                         }
                     },
 
@@ -442,28 +441,20 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         }
                     }
 
-                    // Since currently components layout is used only to
-                    // allow users to *delete* them - we're not interested in
-                    // storing layout unless the components deletion function
-                    // is defined by the game integration.
-                    if integration.can_delete_components() {
-                        match integration.get_components_layout(variant) {
-                            Ok(layout) => self.game_components_layout = layout,
+                    match integration.get_components_layout(variant) {
+                        Ok(layout) => self.game_components_layout = layout,
 
-                            Err(err) => {
-                                self.game_components_layout = None;
+                        Err(err) => {
+                            self.game_components_layout = None;
 
-                                tracing::error!(?err, "failed to request game components layout");
+                            tracing::error!(?err, "failed to request game components layout");
 
-                                dialogs::error(
-                                    i18n!("failed_request_game_components_layout")
-                                        .unwrap_or("Failed to request game components layout"),
-                                    err.to_string()
-                                );
-                            }
+                            dialogs::error(
+                                i18n!("failed_request_game_components_layout")
+                                    .unwrap_or("Failed to request game components layout"),
+                                err.to_string()
+                            );
                         }
-                    } else {
-                        self.game_components_layout = None;
                     }
 
                     match integration.get_tools_buttons(variant) {

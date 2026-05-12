@@ -64,6 +64,14 @@ pt = "Falha ao construir a integração do jogo {title}"
 id = "Gagal membuat integrasi game {title}"
 it = "Impossibile compilare l'integrazione del gioco {title}"
 
+[failed_kill_game_process]
+en = "Failed to kill running game process"
+ru = "Не удалось убить процесс игры"
+de = "Der Laufende Spielprozess konnten nicht beendet werden"
+pt = "Falha ao matar o processo em execução do jogo"
+id = "Gagal mematikan proses game yang sedang berjalan"
+it = "Impossibile terminare il processo di gioco in esecuzione"
+
 # ------------------------ Game store page ------------------------
 
 [failed_serialize_game_package_lock]
@@ -108,13 +116,7 @@ pt = "Falha ao requisitar pipeline de ações do jogo"
 id = "Gagal meminta instruksi yang diperlukan untuk memuat game"
 it = "Impossibile richiedere la pipeline delle azioni del gioco"
 
-# ------------------------ Game settings ------------------------
-
-[failed_request_game_tools_buttons]
-en = "Failed to request game tools buttons"
-ru = "Не удалось запросить список дополнительных инструментов для игры"
-id = "Gagal meminta tombol untuk peralatan game"
-it = "Impossibile richiedere i pulsanti degli strumenti del gioco"
+# ------------------------ Game components ------------------------
 
 [failed_request_game_components_layout]
 en = "Failed to request game components layout"
@@ -123,6 +125,18 @@ ru = "Не удалось запросить список компонентов
 [failed_update_game_components_layout]
 en = "Failed to update game components layout"
 ru = "Не удалось обновить список компонентов игры"
+
+[failed_render_game_components]
+en = "Failed to render game components"
+ru = "Не удалось загрузить страницу компонентов игры"
+
+# ------------------------ Game settings ------------------------
+
+[failed_request_game_tools_buttons]
+en = "Failed to request game tools buttons"
+ru = "Не удалось запросить список дополнительных инструментов для игры"
+id = "Gagal meminta tombol untuk peralatan game"
+it = "Impossibile richiedere i pulsanti degli strumenti del gioco"
 
 [failed_call_game_tool_button]
 en = "Failed to call game tool button"
@@ -162,6 +176,8 @@ pt = "Falha ao definir valor de uma propriedade do jogo"
 id = "Gagal menentukan nilai properti dari game"
 it = "Impossibile impostare il valore della proprietà del gioco"
 
+# ------------------------ Pipeline actions window ------------------------
+
 [failed_perform_pipeline_action]
 en = "Failed to perform pipeline action"
 ru = "Не удалось выполнить последовательность действий (pipeline action)"
@@ -169,14 +185,6 @@ de = "Die Pipeline-Action konnte nicht durchgeführt werden"
 pt = "Falha ao executar ação da pipeline"
 id = "Gagal menjalankan instruksi yang diperlukan untuk memuat game"
 it = "Impossibile eseguire l'azione della pipeline"
-
-[failed_kill_game_process]
-en = "Failed to kill running game process"
-ru = "Не удалось убить процесс игры"
-de = "Der Laufende Spielprozess konnten nicht beendet werden"
-pt = "Falha ao matar o processo em execução do jogo"
-id = "Gagal mematikan proses game yang sedang berjalan"
-it = "Impossibile terminare il processo di gioco in esecuzione"
 
 # ------------------------ Portal API ------------------------
 

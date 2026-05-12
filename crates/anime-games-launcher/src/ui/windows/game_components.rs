@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use relm4::prelude::*;
@@ -30,6 +31,14 @@ use agl_games::api::{
 use crate::{consts, config, i18n};
 use crate::ui::dialogs;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ComponentState {
+    pub checkbox_widget: gtk::CheckButton,
+
+    pub prev_value: bool,
+    pub curr_value: bool
+}
+
 #[derive(Debug)]
 pub enum GameComponentsWindowInput {
     SetGame {
@@ -38,7 +47,9 @@ pub enum GameComponentsWindowInput {
         layout: Box<[GameComponentsGroup]>
     },
 
-    UpdateCurrentGameLayout
+    UpdateCurrentGameLayout,
+
+    EmitSwitchComponentState(String)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -48,9 +59,11 @@ pub enum GameComponentsWindowOutput {
 
 #[derive(Debug, Clone)]
 pub struct GameComponentsWindow {
-    window: Option<adw::PreferencesDialog>,
-    pages: Vec<adw::PreferencesPage>,
-    entries: Vec<(String, adw::SwitchRow)>,
+    window: adw::PreferencesDialog,
+    page: adw::PreferencesPage,
+
+    groups: Vec<adw::PreferencesGroup>,
+    entries: HashMap<String, ComponentState>,
 
     game_variant: Option<GameVariant>,
     game_integration: Option<Arc<GameIntegration>>
@@ -64,7 +77,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
     view! {
         #[root]
-        _window = adw::PreferencesDialog {
+        adw::PreferencesDialog {
             set_title: i18n!("game_components_title")
                 .unwrap_or("Game components"),
 
@@ -72,7 +85,10 @@ impl SimpleAsyncComponent for GameComponentsWindow {
             set_content_height: 600,
             set_search_enabled: true,
 
-            add_css_class?: consts::APP_DEBUG.then_some("devel")
+            add_css_class?: consts::APP_DEBUG.then_some("devel"),
+
+            #[local_ref]
+            add = page -> adw::PreferencesPage,
         }
     }
 
@@ -81,18 +97,21 @@ impl SimpleAsyncComponent for GameComponentsWindow {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let mut model = Self {
-            window: None,
-            pages: Vec::with_capacity(1),
-            entries: Vec::new(),
+        let model = Self {
+            window: root.clone(),
+            page: adw::PreferencesPage::new(),
+
+            // Some random capacity values I took from my head.
+            groups: Vec::with_capacity(2),
+            entries: HashMap::with_capacity(5),
 
             game_variant: None,
             game_integration: None
         };
 
-        let widgets = view_output!();
+        let page = &model.page;
 
-        model.window = Some(widgets._window.clone());
+        let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
@@ -108,50 +127,94 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 integration,
                 layout
             } => {
-                if let Some(window) = self.window.clone() {
-                    let lang = config::get().language().ok();
+                let lang = config::get().language().ok();
 
-                    let pages = std::mem::take(&mut self.pages);
+                let page = self.page.clone();
 
-                    self.entries.clear();
+                let groups = std::mem::take(&mut self.groups);
+                let mut entries = HashMap::new();
 
-                    let result = gtk::glib::spawn_future_local(async move {
-                        for page in pages {
-                            window.remove(&page);
+                self.entries.clear();
 
-                            drop(page);
+                // Prepare components hashmap for info that needs time to fetch.
+                for group in &layout {
+                    for entry in group.entries() {
+                        let is_enabled = match integration.get_component_enabled(
+                            &variant,
+                            entry.name()
+                        ) {
+                            // Theoretically we should never receive `None` here
+                            // since the games API guarantees get/set_enabled
+                            // to be defined, but we will fallback to "enabled"
+                            // for every component just in case.
+                            Ok(result) => result.unwrap_or(true),
+
+                            Err(err) => {
+                                tracing::error!(?err, "failed to render game components");
+
+                                dialogs::error(
+                                    i18n!("failed_render_game_components")
+                                        .unwrap_or("Failed to render game components"),
+                                    err.to_string()
+                                );
+
+                                return;
+                            }
+                        };
+
+                        entries.insert(
+                            entry.name().to_string(),
+                            ComponentState {
+                                checkbox_widget: gtk::CheckButton::new(),
+
+                                prev_value: is_enabled,
+                                curr_value: is_enabled
+                            }
+                        );
+                    }
+                }
+
+                // Render the GUI widgets for components.
+                let result = gtk::glib::spawn_future_local(async move {
+                    for group in groups {
+                        page.remove(&group);
+                    }
+
+                    let mut groups = Vec::with_capacity(layout.len());
+
+                    for group in layout {
+                        let group_widget = adw::PreferencesGroup::new();
+
+                        if let Some(title) = group.title() {
+                            let title = match lang.as_ref() {
+                                Some(lang) => title.translate(lang),
+                                None => title.default_translation()
+                            };
+
+                            group_widget.set_title(title);
                         }
 
-                        let page_widget = adw::PreferencesPage::new();
-                        let mut entries = Vec::new();
+                        if let Some(description) = group.description() {
+                            let description = match lang.as_ref() {
+                                Some(lang) => description.translate(lang),
+                                None => description.default_translation()
+                            };
 
-                        window.add(&page_widget);
+                            group_widget.set_description(Some(description));
+                        }
 
-                        for group in layout {
-                            let group_widget = adw::PreferencesGroup::new();
+                        page.add(&group_widget);
 
-                            if let Some(title) = group.title() {
-                                let title = match lang.as_ref() {
-                                    Some(lang) => title.translate(lang),
-                                    None => title.default_translation()
-                                };
+                        for entry in group.entries() {
+                            if let Some(entry_state) = entries.get(entry.name()) {
+                                let entry_widget = adw::ActionRow::new();
 
-                                group_widget.set_title(title);
-                            }
+                                entry_state.checkbox_widget.set_sensitive(false);
+                                entry_state.checkbox_widget.set_active(entry_state.curr_value);
 
-                            if let Some(description) = group.description() {
-                                let description = match lang.as_ref() {
-                                    Some(lang) => description.translate(lang),
-                                    None => description.default_translation()
-                                };
+                                entry_widget.add_prefix(&entry_state.checkbox_widget);
 
-                                group_widget.set_description(Some(description));
-                            }
-
-                            page_widget.add(&group_widget);
-
-                            for entry in group.entries() {
-                                let entry_widget = adw::SwitchRow::new();
+                                entry_widget.set_activatable(true);
 
                                 if *consts::APP_DEBUG {
                                     entry_widget.set_tooltip(entry.name());
@@ -173,40 +236,51 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                     entry_widget.set_subtitle(description);
                                 }
 
-                                group_widget.add(&entry_widget);
+                                let sender = sender.clone();
+                                let component = entry.name().to_string();
 
-                                entries.push((
-                                    entry.name().to_string(),
-                                    entry_widget
-                                ));
+                                entry_widget.connect_activated(move |_| {
+                                    sender.input(GameComponentsWindowInput::EmitSwitchComponentState(
+                                        component.clone()
+                                    ));
+                                });
+
+                                group_widget.add(&entry_widget);
                             }
                         }
 
-                        (page_widget, entries)
-                    }).await;
-
-                    match result {
-                        Ok((page_widget, entries)) => {
-                            self.pages.push(page_widget);
-                            self.entries = entries;
-                        }
-
-                        Err(err) => {
-                            tracing::error!(?err, "failed to render game settings");
-
-                            dialogs::error(
-                                i18n!("failed_render_game_settings")
-                                    .unwrap_or("Failed to render game settings"),
-                                err.to_string()
-                            );
-
-                            return;
-                        }
+                        groups.push(group_widget);
                     }
 
-                    self.game_variant = Some(variant);
-                    self.game_integration = Some(integration);
+                    (groups, entries)
+                }).await;
+
+                match result {
+                    // Store groups and entries *only if we've rendered them*.
+                    // Otherwise we will keep the window *blank*.
+                    Ok((groups, entries)) => {
+                        self.groups = groups;
+                        self.entries = entries;
+                    }
+
+                    Err(err) => {
+                        tracing::error!(?err, "failed to render game components");
+
+                        dialogs::error(
+                            i18n!("failed_render_game_components")
+                                .unwrap_or("Failed to render game components"),
+                            err.to_string()
+                        );
+
+                        return;
+                    }
                 }
+
+                // Store game variant and integration object in any case so that
+                // the window will be able to refresh it and try to render the
+                // components again.
+                self.game_variant = Some(variant);
+                self.game_integration = Some(integration);
             }
 
             GameComponentsWindowInput::UpdateCurrentGameLayout => {
@@ -223,9 +297,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         }
 
                         Ok(None) => {
-                            if let Some(window) = &self.window {
-                                window.close();
-                            }
+                            self.window.close();
                         }
 
                         Err(err) => {
@@ -238,6 +310,14 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             );
                         }
                     }
+                }
+            }
+
+            GameComponentsWindowInput::EmitSwitchComponentState(component) => {
+                if let Some(component_state) = self.entries.get_mut(&component) {
+                    component_state.curr_value = !component_state.curr_value;
+
+                    component_state.checkbox_widget.set_active(component_state.curr_value);
                 }
             }
         }
