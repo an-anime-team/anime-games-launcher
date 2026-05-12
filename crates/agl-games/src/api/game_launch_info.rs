@@ -47,9 +47,9 @@ impl FromStr for GameLaunchStatus {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "normal"  | "default"   => Ok(Self::Normal),
-            "warning" | "warn"      => Ok(Self::Warning),
-            "danger"  | "dangerous" => Ok(Self::Danger),
+            "normal"  | "default"             => Ok(Self::Normal),
+            "warning" | "warn"                => Ok(Self::Warning),
+            "danger"  | "dangerous" | "error" => Ok(Self::Danger),
 
             _ => Err(())
         }
