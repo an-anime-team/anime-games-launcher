@@ -197,6 +197,10 @@ pub enum GameSettingsEntryFormat {
         value: String
     },
 
+    SecretText {
+        value: String
+    },
+
     Number {
         min: Option<f64>,
         max: Option<f64>,
@@ -235,6 +239,12 @@ impl GameSettingsEntryFormat {
             }),
 
             "text" => Ok(Self::Text {
+                value: value.get("value")?
+            }),
+
+            // All three values are supported although only "secret_text" is
+            // considered standard.
+            "secret_text" | "secret" | "password" => Ok(Self::SecretText {
                 value: value.get("value")?
             }),
 

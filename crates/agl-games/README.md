@@ -254,6 +254,7 @@ type SettingsEntryReactivity =
 type SettingsEntryVariant =
     | SettingsEntrySwitch
     | SettingsEntryText
+    | SettingsEntrySecretText
     | SettingsEntryNumber
     | SettingsEntryEnum
     | SettingsEntrySelector
@@ -266,6 +267,11 @@ type SettingsEntrySwitch = {
 
 type SettingsEntryText = {
     format: 'text';
+    value: string;
+};
+
+type SettingsEntrySecretText = {
+    format: 'secret_text';
     value: string;
 };
 
