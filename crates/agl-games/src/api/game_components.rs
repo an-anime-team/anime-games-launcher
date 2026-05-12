@@ -77,7 +77,8 @@ impl GameComponentsGroup {
 pub struct GameComponentsEntry {
     name: String,
     title: LocalizableString,
-    description: Option<LocalizableString>
+    description: Option<LocalizableString>,
+    locked: bool
 }
 
 impl GameComponentsEntry {
@@ -96,7 +97,11 @@ impl GameComponentsEntry {
                         Ok(Some(LocalizableString::from_lua(&desc)?))
                     }
                 })
-                .unwrap_or(Ok(None))?
+                .unwrap_or(Ok(None))?,
+
+            locked: value.get::<Option<bool>>("locked").ok()
+                .flatten()
+                .unwrap_or(false)
         })
     }
 
@@ -113,5 +118,10 @@ impl GameComponentsEntry {
     #[inline(always)]
     pub const fn description(&self) -> Option<&LocalizableString> {
         self.description.as_ref()
+    }
+
+    #[inline(always)]
+    pub const fn is_locked(&self) -> bool {
+        self.locked
     }
 }

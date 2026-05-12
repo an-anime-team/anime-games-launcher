@@ -320,6 +320,16 @@ type ComponentsEntry = {
 
     // Optional description (subtitle) of the components entry.
     description?: LocalizableString;
+
+    // Whether the component is locked. Locked components cannot be disabled or
+    // uninstalled unless the complete game uninstall has been called. For
+    // example, a base game can be considered a locked component: you provide
+    // it not to allow user to enable or disable it (since it's required to
+    // run the game), but to allow the launcher to uninstall the game files when
+    // the full game uninstall button was pressed.
+    // 
+    // Default value is `false`.
+    locked?: boolean;
 };
 
 type GameIntegration = {
