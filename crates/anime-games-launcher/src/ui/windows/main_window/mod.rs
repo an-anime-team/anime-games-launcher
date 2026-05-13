@@ -61,7 +61,8 @@ use crate::ui::windows::game_components::{
 use crate::ui::windows::game_apply_components::{
     GameApplyComponentsWindow,
     GameApplyComponentsWindowInput,
-    GameApplyComponentsWindowOutput
+    GameApplyComponentsWindowOutput,
+    ApplyComponentInfo
 };
 use crate::ui::windows::game_settings::{
     GameSettingsWindow,
@@ -119,6 +120,15 @@ pub enum MainWindowMsg {
         game_index: usize,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
+    },
+
+    ScheduleApplyGameComponents {
+        game_variant: GameVariant,
+        game_integration: Arc<GameIntegration>,
+        game_index: usize,
+        game_title: String,
+        install_components: Box<[ApplyComponentInfo]>,
+        uninstall_components: Box<[ApplyComponentInfo]>
     },
 
     OpenGameComponentsWindow {
@@ -1233,6 +1243,27 @@ impl SimpleAsyncComponent for MainWindow {
                 });
 
                 self.game_actions_pipeline_window.widget()
+                    .present(Some(&self.window));
+            }
+
+            MainWindowMsg::ScheduleApplyGameComponents {
+                game_variant,
+                game_integration,
+                game_index,
+                game_title,
+                install_components,
+                uninstall_components
+            } => {
+                self.game_apply_components_window.emit(GameApplyComponentsWindowInput::SetComponents {
+                    game_variant,
+                    game_integration,
+                    game_index,
+                    game_title,
+                    install_components,
+                    uninstall_components
+                });
+
+                self.game_apply_components_window.widget()
                     .present(Some(&self.window));
             }
 

@@ -31,20 +31,20 @@ use crate::ui::components::graph_progress_group::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ComponentInfo {
+pub struct ApplyComponentInfo {
     pub name: String,
     pub title: String
 }
 
 #[derive(Debug, Clone)]
 pub enum GameApplyComponentsWindowInput {
-    SetActionsPipeline {
+    SetComponents {
         game_variant: GameVariant,
         game_integration: Arc<GameIntegration>,
         game_index: usize,
         game_title: String,
-        install_components: Box<[ComponentInfo]>,
-        uninstall_components: Box<[ComponentInfo]>
+        install_components: Box<[ApplyComponentInfo]>,
+        uninstall_components: Box<[ApplyComponentInfo]>
     },
 
     MarkStarted {
@@ -150,7 +150,7 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            GameApplyComponentsWindowInput::SetActionsPipeline {
+            GameApplyComponentsWindowInput::SetComponents {
                 game_variant,
                 game_integration,
                 game_index,

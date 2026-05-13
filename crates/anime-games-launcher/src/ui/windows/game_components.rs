@@ -104,14 +104,31 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 #[local_ref]
                 footer_group -> adw::PreferencesGroup {
                     adw::ButtonRow {
+                        #[watch]
+                        set_visible: model.entries.values()
+                            .any(|component| component.prev_state != component.curr_state),
+
+                        add_css_class: "suggested-action",
+
+                        set_start_icon_name: Some("document-save-symbolic"),
+
+                        set_title: i18n!("game_components_apply_changes_button_title")
+                            .unwrap_or("Apply components changes")
+                    },
+
+                    adw::ButtonRow {
+                        #[watch]
+                        set_visible: model.entries.values()
+                            .all(|component| component.prev_state == component.curr_state),
+
                         add_css_class: "destructive-action",
 
                         set_start_icon_name: Some("user-trash-symbolic"),
 
-                        set_title: i18n!("game_components_uninstall_all_title")
+                        set_title: i18n!("game_components_uninstall_all_button_title")
                             .unwrap_or("Uninstall all"),
 
-                        set_tooltip: i18n!("game_components_uninstall_all_description")
+                        set_tooltip: i18n!("game_components_uninstall_all_button_description")
                             .unwrap_or("")
                     }
                 }
