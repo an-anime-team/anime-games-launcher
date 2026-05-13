@@ -19,6 +19,7 @@
 pub mod main_window;
 pub mod game_actions_pipeline;
 pub mod game_components;
+pub mod game_apply_components;
 pub mod game_settings;
 pub mod game_running;
 pub mod about;

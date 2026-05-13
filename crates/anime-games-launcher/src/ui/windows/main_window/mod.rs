@@ -58,6 +58,11 @@ use crate::ui::windows::game_components::{
     GameComponentsWindowInput,
     GameComponentsWindowOutput
 };
+use crate::ui::windows::game_apply_components::{
+    GameApplyComponentsWindow,
+    GameApplyComponentsWindowInput,
+    GameApplyComponentsWindowOutput
+};
 use crate::ui::windows::game_settings::{
     GameSettingsWindow,
     GameSettingsWindowInput,
@@ -141,6 +146,7 @@ pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
     game_components_window: AsyncController<GameComponentsWindow>,
+    game_apply_components_window: AsyncController<GameApplyComponentsWindow>,
     game_settings_window: AsyncController<GameSettingsWindow>,
     game_actions_pipeline_window: AsyncController<GameActionsPipelineWindow>,
     game_running_window: AsyncController<GameRunningWindow>,
@@ -160,11 +166,12 @@ pub struct MainWindow {
 
 impl std::fmt::Debug for MainWindow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LibraryPage")
+        f.debug_struct("MainWindow")
             .field("about_window", &self.about_window)
             .field("store_page", &self.store_page)
             .field("library_page", &self.library_page)
             .field("game_components_window", &self.game_components_window)
+            .field("game_apply_components_window", &self.game_apply_components_window)
             .field("game_settings_window", &self.game_settings_window)
             .field("game_actions_pipeline_window", &self.game_actions_pipeline_window)
             .field("game_running_window", &self.game_running_window)
@@ -423,6 +430,14 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
 
+            game_apply_components_window: GameApplyComponentsWindow::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    // FIXME: this is a hack
+                    GameApplyComponentsWindowOutput::UpdateGameInfo(_)
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                }),
+
             game_settings_window: GameSettingsWindow::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
@@ -433,6 +448,7 @@ impl SimpleAsyncComponent for MainWindow {
             game_actions_pipeline_window: GameActionsPipelineWindow::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
+                    // FIXME: this is a hack
                     GameActionsPipelineWindowOutput::UpdateGameInfo(_)
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
