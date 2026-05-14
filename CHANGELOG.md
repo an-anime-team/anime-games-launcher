@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Actions in the actions pipeline window now properly render their descriptions
 - Fixed a bug when the game library details window was updated 3 times instead
   of 1
+- Fixed automatic game selection on the library page if "open in library" button
+  on the game store page was clicked
 
 ### Changed
 
