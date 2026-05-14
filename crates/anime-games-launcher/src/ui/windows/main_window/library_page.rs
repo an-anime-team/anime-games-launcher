@@ -391,6 +391,26 @@ impl SimpleAsyncComponent for LibraryPage {
 
             LibraryPageInput::SelectGame { name, edition } => {
                 if let Some(game_info) = self.games.get(&name) {
+                    let variant_index = edition.as_ref()
+                        .and_then(|edition| {
+                            game_info.editions.as_ref()
+                                .and_then(|editions| {
+                                    editions.iter()
+                                        .position(|value| &value.name == edition)
+                                })
+                        });
+
+                    let card_row = self.cards_list.widget()
+                        .row_at_index(game_info.card_index.current_index() as i32);
+
+                    self.cards_list.widget()
+                        .select_row(card_row.as_ref());
+
+                    self.cards_list.send(
+                        game_info.card_index.current_index(),
+                        CardsListInput::Select(variant_index)
+                    );
+
                     self.game_details.emit(GameLibraryDetailsInput::SetGame {
                         name,
                         manifest: game_info.package.manifest.clone(),

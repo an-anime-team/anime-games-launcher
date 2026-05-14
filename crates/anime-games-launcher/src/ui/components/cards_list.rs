@@ -51,6 +51,7 @@ impl CardsListInit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardsListInput {
     EmitClick,
+    Select(Option<usize>),
     ShowVariants,
     HideVariants,
     HideVariantsExcept(DynamicIndex),
@@ -211,6 +212,17 @@ impl AsyncFactoryComponent for CardsList {
                     });
 
                     self.show_variants = false;
+                }
+            }
+
+            CardsListInput::Select(variant) => {
+                let _ = sender.output(CardsListOutput::HideOtherVariants(self.index.clone()));
+
+                if let Some(variant) = variant
+                    && let Some(variant_row) = self.variants.widget()
+                        .row_at_index(variant as i32)
+                {
+                    self.variants.widget().select_row(Some(&variant_row));
                 }
             }
 
