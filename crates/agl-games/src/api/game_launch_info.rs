@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ impl FromStr for GameLaunchStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GameLaunchInfo {
     /// Status of the game launch button.
     pub status: GameLaunchStatus,
@@ -71,7 +71,13 @@ pub struct GameLaunchInfo {
     pub args: Option<Vec<String>>,
 
     /// Environment variables applied for the binary.
-    pub env: Option<HashMap<String, String>>
+    pub env: Option<HashMap<String, String>>,
+
+    /// Process stdout handler.
+    pub stdout: Option<LuaFunction>,
+
+    /// Process stderr handler.
+    pub stderr: Option<LuaFunction>
 }
 
 impl Default for GameLaunchInfo {
@@ -81,14 +87,16 @@ impl Default for GameLaunchInfo {
             hint: None,
             binary: PathBuf::new(),
             args: None,
-            env: None
+            env: None,
+            stdout: None,
+            stderr: None
         }
     }
 }
 
 impl GameLaunchInfo {
     pub fn to_lua(&self, lua: &Lua) -> Result<LuaTable, LuaError> {
-        let table = lua.create_table_with_capacity(0, 5)?;
+        let table = lua.create_table_with_capacity(0, 7)?;
 
         table.raw_set("status", lua.create_string(self.status.to_string())?)?;
 
@@ -116,6 +124,14 @@ impl GameLaunchInfo {
             }
 
             table.raw_set("env", lua_env)?;
+        }
+
+        if let Some(stdout) = &self.stdout {
+            table.raw_set("stdout", stdout)?;
+        }
+
+        if let Some(stderr) = &self.stderr {
+            table.raw_set("stderr", stderr)?;
         }
 
         Ok(table)
@@ -166,7 +182,13 @@ impl GameLaunchInfo {
                         .collect::<Result<HashMap<_, _>, LuaError>>()
                         .map(Some)
                 })
-                .unwrap_or(Ok(None))?
+                .unwrap_or(Ok(None))?,
+
+            stdout: value.get::<Option<LuaFunction>>("stdout")
+                .context("invalid game stdout handler format")?,
+
+            stderr: value.get::<Option<LuaFunction>>("stderr")
+                .context("invalid game stderr handler format")?
         })
     }
 }

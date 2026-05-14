@@ -141,8 +141,8 @@ type GameVariant = {
 };
 
 type GameLaunchInfo = {
-    // Game launching status.
-    status: 'normal' | 'warning' | 'danger';
+    // Optional game launching status.
+    status?: 'normal' | 'warning' | 'danger';
 
     // A text displayed on the game launching button.
     hint?: LocalizableString;
@@ -150,11 +150,19 @@ type GameLaunchInfo = {
     // Path to the game binary.
     binary: string;
 
-    // Args passed to the binary.
-    args: string[];
+    // Optional args passed to the binary.
+    args?: string[];
 
-    // Table of environment variables.
-    env: { [key: string]: string };
+    // Optional table of environment variables.
+    env?: { [key: string]: string };
+
+    // Optional stdout handler. If provided, the spawned process's stdout will
+    // be copied to the given handler function.
+    stdout?: (buf: Bytes): void;
+
+    // Optional stderr handler. If provided, the spawned process's stderr will
+    // be copied to the given handler function.
+    stderr?: (buf: Bytes): void;
 };
 
 type ActionsPipeline = {
