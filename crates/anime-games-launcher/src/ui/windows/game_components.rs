@@ -393,6 +393,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                 }
 
                                 else {
+                                    component_state.checkbox_widget.set_valign(gtk::Align::Center);
                                     component_state.checkbox_widget.set_active(component_state.curr_state);
 
                                     {
