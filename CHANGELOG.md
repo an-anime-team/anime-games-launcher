@@ -11,11 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added game integration agreements
 - Added new settings entry format for secrets (e.g. passwords)
+- Added optional game components system which required a big rewrite of the
+  launcher's backend code
 
 ### Fixed
 
 - Selectable strings are not highlighted, focused or selected by default anymore
 - Game variants are now properly selected and propagated to the lua side
+- Actions in the actions pipeline window now properly render their descriptions
+- Fixed a bug when the game library details window was updated 3 times instead
+  of 1
 
 ## [v2.0.0] - 22.03.2026
 
