@@ -16,9 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+use std::io::Read;
 use std::collections::HashMap;
-use std::process::Command;
+use std::sync::Arc;
+use std::process::{Command, Stdio};
 
 use adw::prelude::*;
 
@@ -35,6 +36,7 @@ use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
 use agl_runtime::api::ApiOptions;
+use agl_runtime::api::bytes::Bytes;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 use agl_runtime::api::portal_api::{
     ToastOptions, NotificationOptions, DialogOptions, DialogButtonStatus
@@ -1383,12 +1385,66 @@ impl SimpleAsyncComponent for MainWindow {
                     command = command.envs(env);
                 }
 
-                // TODO: pipe stdout/stderr to a log file.
+                if game_launch_info.stdout.is_some() {
+                    command = command.stdout(Stdio::piped());
+                } else {
+                    command = command.stdout(Stdio::inherit());
+                }
+
+                if game_launch_info.stderr.is_some() {
+                    command = command.stderr(Stdio::piped());
+                } else {
+                    command = command.stderr(Stdio::inherit());
+                }
 
                 tracing::info!(?command, "launching game");
 
                 match command.spawn() {
-                    Ok(child) => {
+                    Ok(mut child) => {
+                        // Stdout handler.
+                        if let Some(handler) = game_launch_info.stdout
+                            && let Some(mut stdout) = child.stdout.take()
+                        {
+                            tasks::spawn_blocking(move || {
+                                let mut buf = [0; 1024];
+
+                                while let Ok(n) = stdout.read(&mut buf) {
+                                    if n == 0 {
+                                        break;
+                                    }
+
+                                    let bytes = Bytes::new(
+                                        buf[..n].to_vec()
+                                            .into_boxed_slice()
+                                    );
+
+                                    let _ = handler.call::<()>(bytes);
+                                }
+                            });
+                        }
+
+                        // Stderr handler.
+                        if let Some(handler) = game_launch_info.stderr
+                            && let Some(mut stderr) = child.stderr.take()
+                        {
+                            tasks::spawn_blocking(move || {
+                                let mut buf = [0; 1024];
+
+                                while let Ok(n) = stderr.read(&mut buf) {
+                                    if n == 0 {
+                                        break;
+                                    }
+
+                                    let bytes = Bytes::new(
+                                        buf[..n].to_vec()
+                                            .into_boxed_slice()
+                                    );
+
+                                    let _ = handler.call::<()>(bytes);
+                                }
+                            });
+                        }
+
                         self.game_running_window.emit(GameRunningWindowMsg::SetChild {
                             game_title,
                             child
