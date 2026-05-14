@@ -3,11 +3,13 @@
 [continue]
 en = "Continue"
 ru = "Продолжить"
+de = "Fortfahren"
 id = "Lanjut"
 
 [cancel]
 en = "Cancel"
 ru = "Отменить"
+de = "Abbrechen"
 id = "Batal"
 
 [close]
@@ -21,6 +23,7 @@ it = "Chiudi"
 [backtrace]
 en = "Backtrace"
 ru = "Очередь вызовов"
+de = "Backtrace"
 pt = "Backtrace"
 id = "Backtrace"
 it = "Backtrace"
@@ -28,6 +31,7 @@ it = "Backtrace"
 [components]
 en = "Components"
 ru = "Компоненты"
+de = "Komponenten"
 id = "Komponen"
 
 [settings]
@@ -167,21 +171,25 @@ it = "Caricati {number} giochi"
 [game_agreement_title]
 en = "Game integration agreement"
 ru = "Пользовательское соглашение для установки игры"
+de = "Spielintegrationsvereinbarung"
 id = "Perjanjian untuk pemasangan dan integrasi Gim"
 
 [game_agreement_message]
 en = "<b>{game_title}</b> provides a user agreement. You have to agree with it in order to continue the game integration installation.\n\n{agreement}"
 ru = "<b>{game_title}</b> содержит пользовательское соглашение. Вы должны согласиться с ним для продолжения установки игры.\n\n{agreement}"
+de = "<b>{game_title}</b> schreibt eine Nutzungsvereinbarung vor. Du musst dieser zustimmen, um fortzufahren.\n\n{agreement}"
 id = "<b>{game_title}</b> memberikan perjanjian pengunaan gim. Anda harus setuju dengan perjanjian tersebut untuk melanjutkan pemasangan inegrasi gim.\n\n{agreement}"
 
 [game_agreement_agree]
 en = "Agree"
 ru = "Согласен"
+de = "Akzeptieren"
 id = "Setuju"
 
 [game_agreement_disagree]
 en = "Disagree"
 ru = "Не согласен"
+de = "Ablehnen"
 id = "Tidak Setuju"
 
 [game_add_to_library]
@@ -253,12 +261,14 @@ it = "Informazioni sul gioco"
 [no_store_games_available]
 en = "No games available"
 ru = "Нет доступных игр"
+de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
 
 [no_library_games_available]
 en = "No games available"
 ru = "Нет доступных игр"
+de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
 
@@ -306,54 +316,65 @@ it = "Termina"
 [game_components_title]
 en = "Game components"
 ru = "Компоненты игры"
+de = "Spielkomponenten"
 id = "Komponen Gim"
 
 [game_components_description]
 en = "You can enable or disable different game components. The launcher will suggest applying your changes to the game by installing or uninstalling toggled components. You can also fully uninstall the game using the \"Uninstall all\" button."
 ru = "Вы можете включать и выключать различные компоненты игры. Лаунчер предложит применить ваши изменения игры через установку или удаление выбранных компонентов. Вы также можете полностью удалить игру при нажатии на кнопку \"Удалить всё\"."
+de = "Du kannst verschiedene Spielkomponenten aktivieren oder deaktivieren. Der Launcher schlägt vor, deine Änderungen am Spiel anzuwenden durch Installation oder Deinstallation von Komponenten. Du kannst auch das Spiel vollständig löschen mit dem \"Alle deinstallieren\" Knopf."
 id = "Anda dapat menyalakan atau mematikan bermacam komponen gim. Peluncur aplikasi akan menyarankan untuk menerapkan perubahan anda kepada gim dengan memasang atau mencopot pemasangan untuk komponen yang dirubah. Anda juga dapat sepenuhnya mencopot gim dengan menggunakan tombol \"Copot semua\""
 
 [game_components_apply_changes_button_title]
 en = "Apply changes"
 ru = "Применить изменения"
+de = "Änderungen anwenden"
 id = "Terapkan perubahan"
 
 [game_components_uninstall_all_button_title]
 en = "Uninstall all"
 ru = "Удалить всё"
+de = "Alle deinstallieren"
 id = "Copot semua"
 
 [game_components_uninstall_all_button_description]
 en = "Uninstall every available component and hide the game from your games library"
 ru = "Удалить все доступные компоненты и скрыть игру из вашей библиотеки игр"
+de = "Deinstalliert alle verfügbaren Komponenten und verberge das Spiel in deiner Bibliothek"
 id = "Copot semua komponen tersedia dan semunyikan gim dari daftar gim anda"
 
 [game_components_uninstall_all_approve_dialog_title]
 en = "Uninstall all game components?"
 ru = "Удалить все компоненты игры?"
+de = "Alle Spielkomponenten deinstallieren?"
 id = "Copot semua komponen gim?"
 
 [game_components_uninstall_all_approve_dialog_message]
 en = "This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"
 ru = "Это действие удалит все компоненты игры, а также саму игру из вашей библиотеки. При согласии вы не сможете восстановить игру без полной её переустановки через страницу магазина игр. Вы хотите продолжить?"
+de = "Diese Aktion wird alle Spielkomponenten deinstallieren und dieses Spiel aus deiner Bibliothek löschen. Du wirst das Spiel nicht mehr wiederherstellen können ohne über den Shop wieder zu installieren. Möchtest du fortfahren?"
 id = "Aksi ini akan mencopot semua komponen gim dan menghapus gim dari daftar gim anda. Setelah menyetujui anda tidak akan dapat mengembalikan gim tanpa menmasang ulang dari halaman toko gim. Apa anda ingin melanjutkan?"
 
 [game_components_apply_changes_title]
 en = "Apply components changes"
 ru = "Применение изменений компонентов"
+de = "Komponentenänderungen anwenden"
 id = "Terapkan perubahan komponen"
 
 [game_components_uninstall_all_title]
 en = "Uninstall game components"
 ru = "Удаление компонентов игры"
+de = "Spielkomponenten deinstallieren"
 id = "Copot komponen gim"
 
 [game_component_install_title]
 en = "Install {component}"
 ru = "Установка {component}"
+de = "{component} installieren"
 id = "Pasang {component}"
 
 [game_component_uninstall_title]
 en = "Uninstall {component}"
 ru = "Удаление {component}"
+de = "{component} deinstallieren"
 id = "Copot {component}"
