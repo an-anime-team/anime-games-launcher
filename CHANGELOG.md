@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug when the game library details window was updated 3 times instead
   of 1
 
+### Changed
+
+- HTTP API headers are now case-insensitive
+
 ## [v2.0.0] - 22.03.2026
 
 ### Added
