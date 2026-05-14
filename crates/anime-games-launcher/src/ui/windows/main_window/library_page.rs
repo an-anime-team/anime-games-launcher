@@ -101,6 +101,8 @@ pub enum LibraryPageInput {
     OpenGameComponentsWindow {
         integration: Arc<GameIntegration>,
         variant: GameVariant,
+        game_name: String,
+        game_title: String,
         layout: Box<[GameComponentsGroup]>
     },
 
@@ -125,14 +127,16 @@ pub enum LibraryPageOutput {
     },
 
     OpenGameComponentsWindow {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
+        game_name: String,
+        game_title: String,
         layout: Box<[GameComponentsGroup]>
     },
 
     OpenGameSettingsWindow {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -234,8 +238,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline }
                         => LibraryPageInput::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline },
 
-                    GameLibraryDetailsOutput::OpenGameComponentsWindow { integration, variant, layout }
-                        => LibraryPageInput::OpenGameComponentsWindow { integration, variant, layout },
+                    GameLibraryDetailsOutput::OpenGameComponentsWindow { integration, variant, game_name, game_title, layout }
+                        => LibraryPageInput::OpenGameComponentsWindow { integration, variant, game_name, game_title, layout },
 
                     GameLibraryDetailsOutput::OpenGameSettingsWindow { integration, variant, layout }
                         => LibraryPageInput::OpenGameSettingsWindow { integration, variant, layout },
@@ -418,11 +422,15 @@ impl SimpleAsyncComponent for LibraryPage {
             LibraryPageInput::OpenGameComponentsWindow {
                 integration,
                 variant,
+                game_name,
+                game_title,
                 layout
             } => {
                 let _ = sender.output(LibraryPageOutput::OpenGameComponentsWindow {
-                    variant,
                     integration,
+                    variant,
+                    game_name,
+                    game_title,
                     layout
                 });
             }
@@ -433,8 +441,8 @@ impl SimpleAsyncComponent for LibraryPage {
                 layout
             } => {
                 let _ = sender.output(LibraryPageOutput::OpenGameSettingsWindow {
-                    variant,
                     integration,
+                    variant,
                     layout
                 });
             }

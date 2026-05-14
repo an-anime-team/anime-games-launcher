@@ -41,6 +41,8 @@ pub enum GameApplyComponentsWindowInput {
     SetComponents {
         game_variant: GameVariant,
         game_integration: Arc<GameIntegration>,
+        game_name: String,
+        game_title: String,
         install_components: Box<[ApplyComponentInfo]>,
         uninstall_components: Box<[ApplyComponentInfo]>
     },
@@ -64,7 +66,7 @@ pub enum GameApplyComponentsWindowInput {
 
 #[derive(Debug, Clone)]
 pub enum GameApplyComponentsWindowOutput {
-    UpdateGameInfo(usize)
+    UpdateGameInfo(String)
 }
 
 #[derive(Debug)]
@@ -73,7 +75,7 @@ pub struct GameApplyComponentsWindow {
 
     window: adw::Dialog,
 
-    game_index: Option<usize>,
+    game_name: Option<String>,
     game_title: Option<String>
 }
 
@@ -133,7 +135,7 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
 
             window: root.clone(),
 
-            game_index: None,
+            game_name: None,
             game_title: None
         };
 
@@ -151,6 +153,8 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
             GameApplyComponentsWindowInput::SetComponents {
                 game_variant,
                 game_integration,
+                game_name,
+                game_title,
                 install_components,
                 uninstall_components
             } => {
@@ -159,8 +163,8 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);
 
-                // self.game_index = Some(game_index);
-                // self.game_title = Some(game_title);
+                self.game_name = Some(game_name);
+                self.game_title = Some(game_title);
 
                 let mut actions = Vec::new();
 
@@ -232,7 +236,7 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                             }
                         };
 
-                        let result = if is_install {
+                        let mut result = if is_install {
                             game_integration.install_component(
                                 &game_variant,
                                 &name,
@@ -245,6 +249,16 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                                 updater
                             )
                         };
+
+                        // If we've successfully installed/uninstalled the
+                        // component then save its enabled/disabled state.
+                        if result.is_ok() {
+                            result = game_integration.set_component_enabled(
+                                &game_variant,
+                                &name,
+                                is_install
+                            );
+                        }
 
                         if let Err(err) = result {
                             tracing::error!(
@@ -305,9 +319,9 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);
 
-                if let Some(index) = self.game_index {
+                if let Some(game_name) = &self.game_name {
                     let _ = sender.output(GameApplyComponentsWindowOutput::UpdateGameInfo(
-                        index
+                        game_name.clone()
                     ));
                 }
 

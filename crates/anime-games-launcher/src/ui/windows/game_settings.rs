@@ -453,8 +453,8 @@ fn render_entry(
 #[derive(Debug)]
 pub enum GameSettingsWindowInput {
     SetGame {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -491,8 +491,8 @@ pub struct GameSettingsWindow {
 
     groups: Vec<adw::PreferencesGroup>,
 
-    game_variant: Option<GameVariant>,
-    game_integration: Option<Arc<GameIntegration>>
+    game_integration: Option<Arc<GameIntegration>>,
+    game_variant: Option<GameVariant>
 }
 
 #[relm4::component(pub, async)]
@@ -566,13 +566,16 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
         match msg {
             GameSettingsWindowInput::SetGame {
-                variant,
                 integration,
+                variant,
                 layout
             } => {
                 let lang = config::get().language().ok();
 
                 let page = self.page.clone();
+
+                self.game_integration = Some(integration);
+                self.game_variant = Some(variant);
 
                 let groups = std::mem::take(&mut self.groups);
 
@@ -634,16 +637,8 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                                 .unwrap_or("Failed to render game settings"),
                             err.to_string()
                         );
-
-                        return;
                     }
                 }
-
-                // Store game variant and integration object in any case so that
-                // the window will be able to refresh it and try to render the
-                // settings again.
-                self.game_variant = Some(variant);
-                self.game_integration = Some(integration);
             }
 
             GameSettingsWindowInput::SetBoolProperty {

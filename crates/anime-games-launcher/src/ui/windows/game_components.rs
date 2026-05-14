@@ -51,8 +51,10 @@ struct ComponentState {
 #[derive(Debug)]
 pub enum GameComponentsWindowInput {
     SetGame {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
+        game_name: String,
+        game_title: String,
         layout: Box<[GameComponentsGroup]>
     },
 
@@ -72,6 +74,8 @@ pub enum GameComponentsWindowOutput {
     ApplyChanges {
         game_integration: Arc<GameIntegration>,
         game_variant: GameVariant,
+        game_name: String,
+        game_title: String,
         install_components: Box<[ApplyComponentInfo]>,
         uninstall_components: Box<[ApplyComponentInfo]>
     }
@@ -86,8 +90,11 @@ pub struct GameComponentsWindow {
     groups: Vec<adw::PreferencesGroup>,
     entries: HashMap<String, ComponentState>,
 
+    game_integration: Option<Arc<GameIntegration>>,
     game_variant: Option<GameVariant>,
-    game_integration: Option<Arc<GameIntegration>>
+
+    game_name: Option<String>,
+    game_title: Option<String>
 }
 
 #[relm4::component(pub, async)]
@@ -167,7 +174,10 @@ impl SimpleAsyncComponent for GameComponentsWindow {
             entries: HashMap::with_capacity(5),
 
             game_variant: None,
-            game_integration: None
+            game_integration: None,
+
+            game_name: None,
+            game_title: None
         };
 
         let page = &model.page;
@@ -185,8 +195,10 @@ impl SimpleAsyncComponent for GameComponentsWindow {
     ) {
         match msg {
             GameComponentsWindowInput::SetGame {
-                variant,
                 integration,
+                variant,
+                game_name,
+                game_title,
                 layout
             } => {
                 let lang = config::get().language().ok();
@@ -249,6 +261,12 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         );
                     }
                 }
+
+                self.game_integration = Some(integration);
+                self.game_variant = Some(variant);
+
+                self.game_name = Some(game_name);
+                self.game_title = Some(game_title);
 
                 // Render the GUI widgets for components.
                 let result = gtk::glib::spawn_future_local(async move {
@@ -414,27 +432,23 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                 .unwrap_or("Failed to render game components"),
                             err.to_string()
                         );
-
-                        return;
                     }
                 }
-
-                // Store game variant and integration object in any case so that
-                // the window will be able to refresh it and try to render the
-                // components again.
-                self.game_variant = Some(variant);
-                self.game_integration = Some(integration);
             }
 
             GameComponentsWindowInput::UpdateCurrentGameLayout => {
-                if let Some(variant) = &self.game_variant &&
-                    let Some(integration) = &self.game_integration
+                if let Some(integration) = &self.game_integration
+                    && let Some(variant) = &self.game_variant
+                    && let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
                 {
                     match integration.get_components_layout(variant) {
                         Ok(Some(layout)) => {
                             sender.input(GameComponentsWindowInput::SetGame {
-                                variant: variant.clone(),
                                 integration: integration.clone(),
+                                variant: variant.clone(),
+                                game_name: game_name.clone(),
+                                game_title: game_title.clone(),
                                 layout
                             });
                         }
@@ -468,8 +482,10 @@ impl SimpleAsyncComponent for GameComponentsWindow {
             }
 
             GameComponentsWindowInput::EmitApplyChanges => {
-                if let Some(game_variant) = self.game_variant.clone()
-                    && let Some(game_integration) = self.game_integration.clone()
+                if let Some(game_integration) = &self.game_integration
+                    && let Some(game_variant) = &self.game_variant
+                    && let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
                 {
                     let install_components = self.entries.iter()
                         .filter(|(_, component)| {
@@ -496,16 +512,22 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         .collect::<Box<[_]>>();
 
                     let _ = sender.output(GameComponentsWindowOutput::ApplyChanges {
-                        game_integration,
-                        game_variant,
+                        game_integration: game_integration.clone(),
+                        game_variant: game_variant.clone(),
+                        game_name: game_name.clone(),
+                        game_title: game_title.clone(),
                         install_components,
                         uninstall_components
                     });
+
+                    self.window.close();
                 }
             }
 
             GameComponentsWindowInput::EmitUninstallAll => {
                 // TODO
+
+                self.window.close();
             }
         }
     }

@@ -52,7 +52,8 @@ use crate::ui::dialogs;
 use crate::ui::windows::about::AboutWindow;
 use crate::ui::windows::game_components::{
     GameComponentsWindow,
-    GameComponentsWindowInput
+    GameComponentsWindowInput,
+    GameComponentsWindowOutput
 };
 use crate::ui::windows::game_apply_components::{
     GameApplyComponentsWindow,
@@ -131,23 +132,25 @@ pub enum MainWindowMsg {
     },
 
     ScheduleApplyGameComponents {
-        game_variant: GameVariant,
         game_integration: Arc<GameIntegration>,
-        game_index: usize,
+        game_variant: GameVariant,
+        game_name: String,
         game_title: String,
         install_components: Box<[ApplyComponentInfo]>,
         uninstall_components: Box<[ApplyComponentInfo]>
     },
 
     OpenGameComponentsWindow {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
+        game_name: String,
+        game_title: String,
         layout: Box<[GameComponentsGroup]>
     },
 
     OpenGameSettingsWindow {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -431,8 +434,8 @@ impl SimpleAsyncComponent for MainWindow {
                     LibraryPageOutput::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline }
                         => MainWindowMsg::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline },
 
-                    LibraryPageOutput::OpenGameComponentsWindow { integration, variant, layout }
-                        => MainWindowMsg::OpenGameComponentsWindow { integration, variant, layout },
+                    LibraryPageOutput::OpenGameComponentsWindow { integration, variant, game_name, game_title, layout }
+                        => MainWindowMsg::OpenGameComponentsWindow { integration, variant, game_name, game_title, layout },
 
                     LibraryPageOutput::OpenGameSettingsWindow { integration, variant, layout }
                         => MainWindowMsg::OpenGameSettingsWindow { integration, variant, layout },
@@ -443,20 +446,23 @@ impl SimpleAsyncComponent for MainWindow {
 
             game_components_window: GameComponentsWindow::builder()
                 .launch(())
-                .detach(),
-                // .forward(sender.input_sender(), |msg| match msg {
-                //     GameComponentsWindowOutput::ApplyChanges {
-                //         game_variant,
-                //         game_integration,
-                //         install_components,
-                //         uninstall_components
-                //     } => MainWindowMsg::ScheduleApplyGameComponents {
-                //         game_variant,
-                //         game_integration,
-                //         install_components,
-                //         uninstall_components
-                //     }
-                // }),
+                .forward(sender.input_sender(), |msg| match msg {
+                    GameComponentsWindowOutput::ApplyChanges {
+                        game_integration,
+                        game_variant,
+                        game_name,
+                        game_title,
+                        install_components,
+                        uninstall_components
+                    } => MainWindowMsg::ScheduleApplyGameComponents {
+                        game_variant,
+                        game_integration,
+                        game_name,
+                        game_title,
+                        install_components,
+                        uninstall_components
+                    }
+                }),
 
             game_apply_components_window: GameApplyComponentsWindow::builder()
                 .launch(())
@@ -1295,7 +1301,7 @@ impl SimpleAsyncComponent for MainWindow {
             MainWindowMsg::ScheduleApplyGameComponents {
                 game_variant,
                 game_integration,
-                game_index,
+                game_name,
                 game_title,
                 install_components,
                 uninstall_components
@@ -1303,6 +1309,8 @@ impl SimpleAsyncComponent for MainWindow {
                 self.game_apply_components_window.emit(GameApplyComponentsWindowInput::SetComponents {
                     game_variant,
                     game_integration,
+                    game_name,
+                    game_title,
                     install_components,
                     uninstall_components
                 });
@@ -1312,13 +1320,17 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::OpenGameComponentsWindow {
-                variant,
                 integration,
+                variant,
+                game_name,
+                game_title,
                 layout
             } => {
                 self.game_components_window.emit(GameComponentsWindowInput::SetGame {
-                    variant,
                     integration,
+                    variant,
+                    game_name,
+                    game_title,
                     layout
                 });
 
@@ -1327,8 +1339,8 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::OpenGameSettingsWindow {
-                variant,
                 integration,
+                variant,
                 layout
             } => {
                 self.game_settings_window.emit(GameSettingsWindowInput::SetGame {

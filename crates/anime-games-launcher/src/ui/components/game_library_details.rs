@@ -74,6 +74,8 @@ pub enum GameLibraryDetailsOutput {
     OpenGameComponentsWindow {
         integration: Arc<GameIntegration>,
         variant: GameVariant,
+        game_name: String,
+        game_title: String,
         layout: Box<[GameComponentsGroup]>
     },
 
@@ -545,11 +547,15 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             GameLibraryDetailsInput::OpenGameComponentsWindow => {
                 if let Some(integration) = &self.game_integration
                     && let Some(variant) = &self.game_variant
+                    && let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
                     && let Some(layout) = &self.game_components_layout
                 {
                     let _ = sender.output(GameLibraryDetailsOutput::OpenGameComponentsWindow {
                         variant: variant.clone(),
                         integration: integration.clone(),
+                        game_name: game_name.clone(),
+                        game_title: game_title.clone(),
                         layout: layout.clone()
                     });
                 }
