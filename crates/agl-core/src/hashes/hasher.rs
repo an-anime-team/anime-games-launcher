@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-core
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -85,18 +85,6 @@ pub enum Hasher {
 
     #[cfg(feature = "hashes-sha3")]
     Shake_256(sha3::Shake256),
-
-    #[cfg(feature = "hashes-sha3")]
-    TurboShake_128(sha3::TurboShake128),
-
-    #[cfg(feature = "hashes-sha3")]
-    TurboShake_256(sha3::TurboShake256),
-
-    #[cfg(feature = "hashes-sha3")]
-    CShake_128(sha3::CShake128),
-
-    #[cfg(feature = "hashes-sha3")]
-    CShake_256(sha3::CShake256),
 
     #[cfg(feature = "hashes-sha3")]
     Keccak_224(sha3::Keccak224),
@@ -206,26 +194,6 @@ impl Hasher {
 
             #[cfg(feature = "hashes-sha3")]
             HashAlgorithm::Shake_256 => Self::Shake_256(Default::default()),
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::TurboShake_128 => {
-                Self::TurboShake_128(sha3::TurboShake128::from_core(sha3::TurboShake128Core::new(0)))
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::TurboShake_256 => {
-                Self::TurboShake_256(sha3::TurboShake256::from_core(sha3::TurboShake256Core::new(0)))
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::CShake_128 => {
-                Self::CShake_128(sha3::CShake128::from_core(sha3::CShake128Core::new(&[])))
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::CShake_256 => {
-                Self::CShake_256(sha3::CShake256::from_core(sha3::CShake256Core::new(&[])))
-            }
 
             #[cfg(feature = "hashes-sha3")]
             HashAlgorithm::Keccak_224 => Self::Keccak_224(Default::default()),
@@ -497,38 +465,6 @@ impl Hasher {
             }
 
             #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::TurboShake_128 => {
-                let seed = get_seed::<1>(seed)[0];
-
-                let hasher = sha3::TurboShake128::from_core(sha3::TurboShake128Core::new(seed));
-
-                Self::TurboShake_128(hasher)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::TurboShake_256 => {
-                let seed = get_seed::<1>(seed)[0];
-
-                let hasher = sha3::TurboShake256::from_core(sha3::TurboShake256Core::new(seed));
-
-                Self::TurboShake_256(hasher)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::CShake_128 => {
-                let hasher = sha3::CShake128::from_core(sha3::CShake128Core::new(seed));
-
-                Self::CShake_128(hasher)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            HashAlgorithm::CShake_256 => {
-                let hasher = sha3::CShake256::from_core(sha3::CShake256Core::new(seed));
-
-                Self::CShake_256(hasher)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
             HashAlgorithm::Keccak_224 => {
                 use sha3::Digest;
 
@@ -701,18 +637,6 @@ impl Hasher {
 
             #[cfg(feature = "hashes-sha3")]
             Self::Shake_256(_) => HashAlgorithm::Shake_256,
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_128(_) => HashAlgorithm::TurboShake_128,
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_256(_) => HashAlgorithm::TurboShake_256,
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_128(_) => HashAlgorithm::CShake_128,
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_256(_) => HashAlgorithm::CShake_256,
 
             #[cfg(feature = "hashes-sha3")]
             Self::Keccak_224(_) => HashAlgorithm::Keccak_224,
@@ -948,34 +872,6 @@ impl Hasher {
 
             #[cfg(feature = "hashes-sha3")]
             Self::Shake_256(hasher) => {
-                use sha3::digest::ExtendableOutput;
-
-                (hasher.finalize_boxed(32), None)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_128(hasher) => {
-                use sha3::digest::ExtendableOutput;
-
-                (hasher.finalize_boxed(16), None)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_256(hasher) => {
-                use sha3::digest::ExtendableOutput;
-
-                (hasher.finalize_boxed(32), None)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_128(hasher) => {
-                use sha3::digest::ExtendableOutput;
-
-                (hasher.finalize_boxed(16), None)
-            }
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_256(hasher) => {
                 use sha3::digest::ExtendableOutput;
 
                 (hasher.finalize_boxed(32), None)
@@ -1232,26 +1128,6 @@ impl std::fmt::Debug for Hasher {
                 .finish(),
 
             #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_128(hasher) => f.debug_struct("Hasher")
-                .field("inner", hasher)
-                .finish(),
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_256(hasher) => f.debug_struct("Hasher")
-                .field("inner", hasher)
-                .finish(),
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_128(hasher) => f.debug_struct("Hasher")
-                .field("inner", hasher)
-                .finish(),
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_256(hasher) => f.debug_struct("Hasher")
-                .field("inner", hasher)
-                .finish(),
-
-            #[cfg(feature = "hashes-sha3")]
             Self::Keccak_224(hasher) => f.debug_struct("Hasher")
                 .field("inner", hasher)
                 .finish(),
@@ -1414,73 +1290,175 @@ impl Write for Hasher {
             }
 
             #[cfg(feature = "hashes-md5")]
-            Self::Md5(hasher) => hasher.write(buf),
+            Self::Md5(hasher) => {
+                use md5::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha1")]
-            Self::Sha1(hasher) => hasher.write(buf),
+            Self::Sha1(hasher) => {
+                use sha1::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha2")]
-            Self::Sha2_224(hasher) => hasher.write(buf),
+            Self::Sha2_224(hasher) => {
+                use sha2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha2")]
-            Self::Sha2_256(hasher) => hasher.write(buf),
+            Self::Sha2_256(hasher) => {
+                use sha2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha2")]
-            Self::Sha2_384(hasher) => hasher.write(buf),
+            Self::Sha2_384(hasher) => {
+                use sha2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha2")]
-            Self::Sha2_512(hasher) => hasher.write(buf),
+            Self::Sha2_512(hasher) => {
+                use sha2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha2")]
-            Self::Sha2_512_224(hasher) => hasher.write(buf),
+            Self::Sha2_512_224(hasher) => {
+                use sha2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha2")]
-            Self::Sha2_512_256(hasher) => hasher.write(buf),
+            Self::Sha2_512_256(hasher) => {
+                use sha2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Shake_128(hasher) => hasher.write(buf),
+            Self::Shake_128(hasher) => {
+                use sha3::digest::Update;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Shake_256(hasher) => hasher.write(buf),
+            Self::Shake_256(hasher) => {
+                use sha3::digest::Update;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_128(hasher) => hasher.write(buf),
+            Self::Keccak_224(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_256(hasher) => hasher.write(buf),
+            Self::Keccak_256(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::CShake_128(hasher) => hasher.write(buf),
+            Self::Keccak_256_Full(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::CShake_256(hasher) => hasher.write(buf),
+            Self::Keccak_384(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Keccak_224(hasher) => hasher.write(buf),
+            Self::Keccak_512(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Keccak_256(hasher) => hasher.write(buf),
+            Self::Sha3_224(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Keccak_256_Full(hasher) => hasher.write(buf),
+            Self::Sha3_256(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Keccak_384(hasher) => hasher.write(buf),
+            Self::Sha3_384(hasher) => {
+                use sha3::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-sha3")]
-            Self::Keccak_512(hasher) => hasher.write(buf),
+            Self::Sha3_512(hasher) => {
+                use sha3::Digest;
 
-            #[cfg(feature = "hashes-sha3")]
-            Self::Sha3_224(hasher) => hasher.write(buf),
+                hasher.update(buf);
 
-            #[cfg(feature = "hashes-sha3")]
-            Self::Sha3_256(hasher) => hasher.write(buf),
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::Sha3_384(hasher) => hasher.write(buf),
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::Sha3_512(hasher) => hasher.write(buf),
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-blake2")]
             Self::Blake2s(hasher) => hasher.write(buf),

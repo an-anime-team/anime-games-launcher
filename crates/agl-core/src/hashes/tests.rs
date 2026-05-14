@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-core
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -282,41 +282,6 @@ fn sha3() -> std::io::Result<()> {
         &[252, 192, 171, 184, 224, 227, 254, 37, 88, 16, 216, 209, 209, 253,
             182, 156, 156, 244, 139, 33, 192, 46, 106, 182, 59, 9, 172, 133,
             175, 75, 109, 162]
-    )?;
-
-    // FIXME: investigate these.
-
-    // test(
-    //     HashAlgorithm::TurboShake_128,
-    //     &[1, 2, 3],
-    //     &[],
-    //     &[]
-    // )?;
-
-    // test(
-    //     HashAlgorithm::TurboShake_256,
-    //     &[1, 2, 3],
-    //     &[],
-    //     &[]
-    // )?;
-
-    test(
-        HashAlgorithm::CShake_128,
-        &[1, 2, 3],
-        &[43, 245, 230, 222, 230, 7, 159, 173, 96, 79, 87, 49, 148, 186, 132,
-            38],
-        &[240, 65, 21, 127, 228, 158, 86, 17, 41, 245, 66, 158, 50, 60, 25, 189]
-    )?;
-
-    test(
-        HashAlgorithm::CShake_256,
-        &[1, 2, 3],
-        &[179, 190, 151, 191, 217, 120, 131, 58, 101, 88, 140, 234, 232, 163,
-            76, 245, 158, 149, 88, 90, 246, 32, 99, 230, 184, 157, 7, 137, 243,
-            114, 66, 78],
-        &[58, 137, 96, 39, 180, 76, 115, 31, 3, 61, 27, 16, 204, 181, 237, 110,
-            32, 127, 99, 109, 3, 135, 228, 155, 97, 93, 240, 88, 112, 130, 243,
-            54]
     )?;
 
     test(
