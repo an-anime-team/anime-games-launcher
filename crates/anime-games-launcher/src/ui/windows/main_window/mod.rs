@@ -435,10 +435,20 @@ impl SimpleAsyncComponent for MainWindow {
 
             game_components_window: GameComponentsWindow::builder()
                 .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    GameComponentsWindowOutput::ReloadGameInfo
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
-                }),
+                .detach(),
+                // .forward(sender.input_sender(), |msg| match msg {
+                //     GameComponentsWindowOutput::ApplyChanges {
+                //         game_variant,
+                //         game_integration,
+                //         install_components,
+                //         uninstall_components
+                //     } => MainWindowMsg::ScheduleApplyGameComponents {
+                //         game_variant,
+                //         game_integration,
+                //         install_components,
+                //         uninstall_components
+                //     }
+                // }),
 
             game_apply_components_window: GameApplyComponentsWindow::builder()
                 .launch(())
@@ -1257,8 +1267,6 @@ impl SimpleAsyncComponent for MainWindow {
                 self.game_apply_components_window.emit(GameApplyComponentsWindowInput::SetComponents {
                     game_variant,
                     game_integration,
-                    game_index,
-                    game_title,
                     install_components,
                     uninstall_components
                 });

@@ -41,8 +41,6 @@ pub enum GameApplyComponentsWindowInput {
     SetComponents {
         game_variant: GameVariant,
         game_integration: Arc<GameIntegration>,
-        game_index: usize,
-        game_title: String,
         install_components: Box<[ApplyComponentInfo]>,
         uninstall_components: Box<[ApplyComponentInfo]>
     },
@@ -153,8 +151,6 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
             GameApplyComponentsWindowInput::SetComponents {
                 game_variant,
                 game_integration,
-                game_index,
-                game_title,
                 install_components,
                 uninstall_components
             } => {
@@ -163,8 +159,8 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);
 
-                self.game_index = Some(game_index);
-                self.game_title = Some(game_title);
+                // self.game_index = Some(game_index);
+                // self.game_title = Some(game_title);
 
                 let mut actions = Vec::new();
 

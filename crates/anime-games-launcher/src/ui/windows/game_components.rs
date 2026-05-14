@@ -30,12 +30,16 @@ use agl_games::api::{
     GameComponentEntryValueStatus
 };
 
+use super::game_apply_components::ApplyComponentInfo;
+
 use crate::{consts, config, i18n};
 use crate::ui::dialogs;
 
 #[derive(Debug, Clone, PartialEq)]
 struct ComponentState {
     pub checkbox_widget: gtk::CheckButton,
+
+    pub title: String,
 
     pub prev_state: bool,
     pub curr_state: bool,
@@ -57,12 +61,20 @@ pub enum GameComponentsWindowInput {
     SetComponentState {
         component: String,
         enabled: bool
-    }
+    },
+
+    EmitApplyChanges,
+    EmitUninstallAll
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub enum GameComponentsWindowOutput {
-    ReloadGameInfo
+    ApplyChanges {
+        game_variant: GameVariant,
+        game_integration: Arc<GameIntegration>,
+        install_components: Box<[ApplyComponentInfo]>,
+        uninstall_components: Box<[ApplyComponentInfo]>
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +125,9 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         set_start_icon_name: Some("document-save-symbolic"),
 
                         set_title: i18n!("game_components_apply_changes_button_title")
-                            .unwrap_or("Apply components changes")
+                            .unwrap_or("Apply components changes"),
+
+                        connect_activated => GameComponentsWindowInput::EmitApplyChanges
                     },
 
                     adw::ButtonRow {
@@ -129,7 +143,9 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             .unwrap_or("Uninstall all"),
 
                         set_tooltip: i18n!("game_components_uninstall_all_button_description")
-                            .unwrap_or("")
+                            .unwrap_or(""),
+
+                        connect_activated => GameComponentsWindowInput::EmitUninstallAll
                     }
                 }
             }
@@ -209,10 +225,17 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                             }
                         };
 
+                        let title = match lang.as_ref() {
+                            Some(lang) => entry.title().translate(lang),
+                            None => entry.title().default_translation()
+                        };
+
                         entries.insert(
                             entry.name().to_string(),
                             ComponentState {
                                 checkbox_widget: gtk::CheckButton::new(),
+
+                                title: title.to_string(),
 
                                 prev_state: is_enabled,
                                 curr_state: is_enabled,
@@ -270,12 +293,7 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                                     entry_widget.set_tooltip(entry.name());
                                 }
 
-                                let title = match lang.as_ref() {
-                                    Some(lang) => entry.title().translate(lang),
-                                    None => entry.title().default_translation()
-                                };
-
-                                entry_widget.set_title(title);
+                                entry_widget.set_title(&component_state.title);
 
                                 if let Some(description) = entry.description() {
                                     let description = match lang.as_ref() {
@@ -447,6 +465,47 @@ impl SimpleAsyncComponent for GameComponentsWindow {
 
                     component_state.checkbox_widget.set_active(enabled);
                 }
+            }
+
+            GameComponentsWindowInput::EmitApplyChanges => {
+                if let Some(game_variant) = self.game_variant.clone()
+                    && let Some(game_integration) = self.game_integration.clone()
+                {
+                    let install_components = self.entries.iter()
+                        .filter(|(_, component)| {
+                            !component.prev_state && component.curr_state
+                        })
+                        .map(|(name, component)| {
+                            ApplyComponentInfo {
+                                name: name.clone(),
+                                title: component.title.clone()
+                            }
+                        })
+                        .collect::<Box<[_]>>();
+
+                    let uninstall_components = self.entries.iter()
+                        .filter(|(_, component)| {
+                            component.prev_state && !component.curr_state
+                        })
+                        .map(|(name, component)| {
+                            ApplyComponentInfo {
+                                name: name.clone(),
+                                title: component.title.clone()
+                            }
+                        })
+                        .collect::<Box<[_]>>();
+
+                    sender.output(GameComponentsWindowOutput::ApplyChanges {
+                        game_variant,
+                        game_integration,
+                        install_components,
+                        uninstall_components
+                    });
+                }
+            }
+
+            GameComponentsWindowInput::EmitUninstallAll => {
+                // TODO
             }
         }
     }
