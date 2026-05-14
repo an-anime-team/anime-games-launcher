@@ -27,7 +27,7 @@ use agl_games::api::{
     GameLaunchInfo, GameSettingsGroup, GameVariant
 };
 
-use crate::{consts, config, i18n};
+use crate::{consts, config, games, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
@@ -60,6 +60,9 @@ pub enum LibraryPageInput {
         /// Loaded game integration object.
         integration: Arc<GameIntegration>
     },
+
+    /// Delete game package for the given game name.
+    DeleteGamePackage(String),
 
     SelectGame {
         /// Unique game name. A game package lock filename is expected be used.
@@ -341,6 +344,49 @@ impl SimpleAsyncComponent for LibraryPage {
                     editions,
                     card_index
                 });
+            }
+
+            LibraryPageInput::DeleteGamePackage(name) => {
+                let config = config::get();
+
+                if let Some(game_info) = self.games.remove(&name) {
+                    let lang = config.language();
+
+                    let title = match &lang {
+                        Ok(lang) => game_info.package.manifest.game.title.translate(lang),
+                        Err(_) => game_info.package.manifest.game.title.default_translation()
+                    };
+
+                    tracing::debug!(
+                        ?name,
+                        manifest_url = ?game_info.package.url,
+                        ?title,
+                        "deleting game package"
+                    );
+
+                    self.cards_list.guard()
+                        .remove(game_info.card_index.current_index());
+
+                    self.game_details.emit(GameLibraryDetailsInput::Clear);
+
+                    let path = config.games_path.join(games::get_name(&game_info.package.url));
+
+                    if path.exists() && let Err(err) = std::fs::remove_file(path) {
+                        tracing::error!(
+                            ?err,
+                            ?name,
+                            manifest_url = ?game_info.package.url,
+                            ?title,
+                            "failed to delete game package"
+                        );
+
+                        dialogs::error(
+                            i18n!("failed_delete_game_package", { title => title })
+                                .unwrap_or_else(|| format!("Failed to delete {title} game package")),
+                            err.to_string()
+                        );
+                    }
+                }
             }
 
             LibraryPageInput::SelectGame { name, edition } => {

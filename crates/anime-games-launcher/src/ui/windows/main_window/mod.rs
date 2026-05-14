@@ -116,6 +116,9 @@ pub enum MainWindowMsg {
         lock: GameLock
     },
 
+    /// Delete game package for the given game name.
+    DeleteGamePackage(String),
+
     ShowToast(ToastOptions),
     ShowNotification(NotificationOptions),
     ShowDialog(DialogOptions),
@@ -134,10 +137,15 @@ pub enum MainWindowMsg {
     ScheduleApplyGameComponents {
         game_integration: Arc<GameIntegration>,
         game_variant: GameVariant,
+
         game_name: String,
         game_title: String,
+
         install_components: Box<[ApplyComponentInfo]>,
-        uninstall_components: Box<[ApplyComponentInfo]>
+        uninstall_components: Box<[ApplyComponentInfo]>,
+
+        /// Delete game package after applying these components.
+        delete_game_package: bool
     },
 
     OpenGameComponentsWindow {
@@ -453,14 +461,16 @@ impl SimpleAsyncComponent for MainWindow {
                         game_name,
                         game_title,
                         install_components,
-                        uninstall_components
+                        uninstall_components,
+                        delete_game_package
                     } => MainWindowMsg::ScheduleApplyGameComponents {
                         game_variant,
                         game_integration,
                         game_name,
                         game_title,
                         install_components,
-                        uninstall_components
+                        uninstall_components,
+                        delete_game_package
                     }
                 }),
 
@@ -469,7 +479,10 @@ impl SimpleAsyncComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     // FIXME: this is a hack
                     GameApplyComponentsWindowOutput::UpdateGameInfo(_)
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo,
+
+                    GameApplyComponentsWindowOutput::DeleteGamePackage(name)
+                        => MainWindowMsg::DeleteGamePackage(name)
                 }),
 
             game_settings_window: GameSettingsWindow::builder()
@@ -1134,6 +1147,10 @@ impl SimpleAsyncComponent for MainWindow {
                 });
             }
 
+            MainWindowMsg::DeleteGamePackage(name) => {
+                self.library_page.emit(LibraryPageInput::DeleteGamePackage(name));
+            }
+
             MainWindowMsg::ShowToast(options) => {
                 let lang = config::get().language();
 
@@ -1304,7 +1321,8 @@ impl SimpleAsyncComponent for MainWindow {
                 game_name,
                 game_title,
                 install_components,
-                uninstall_components
+                uninstall_components,
+                delete_game_package
             } => {
                 self.game_apply_components_window.emit(GameApplyComponentsWindowInput::SetComponents {
                     game_variant,
@@ -1312,7 +1330,8 @@ impl SimpleAsyncComponent for MainWindow {
                     game_name,
                     game_title,
                     install_components,
-                    uninstall_components
+                    uninstall_components,
+                    delete_game_package
                 });
 
                 self.game_apply_components_window.widget()

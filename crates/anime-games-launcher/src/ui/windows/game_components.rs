@@ -74,10 +74,15 @@ pub enum GameComponentsWindowOutput {
     ApplyChanges {
         game_integration: Arc<GameIntegration>,
         game_variant: GameVariant,
+
         game_name: String,
         game_title: String,
+
         install_components: Box<[ApplyComponentInfo]>,
-        uninstall_components: Box<[ApplyComponentInfo]>
+        uninstall_components: Box<[ApplyComponentInfo]>,
+
+        /// Delete game package after applying components changes.
+        delete_game_package: bool
     }
 }
 
@@ -514,10 +519,14 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                     let _ = sender.output(GameComponentsWindowOutput::ApplyChanges {
                         game_integration: game_integration.clone(),
                         game_variant: game_variant.clone(),
+
                         game_name: game_name.clone(),
                         game_title: game_title.clone(),
+
                         install_components,
-                        uninstall_components
+                        uninstall_components,
+
+                        delete_game_package: false
                     });
 
                     self.window.close();
@@ -525,9 +534,35 @@ impl SimpleAsyncComponent for GameComponentsWindow {
             }
 
             GameComponentsWindowInput::EmitUninstallAll => {
-                // TODO
+                if let Some(game_integration) = &self.game_integration
+                    && let Some(game_variant) = &self.game_variant
+                    && let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
+                {
+                    let uninstall_components = self.entries.iter()
+                        .map(|(name, component)| {
+                            ApplyComponentInfo {
+                                name: name.clone(),
+                                title: component.title.clone()
+                            }
+                        })
+                        .collect::<Box<[_]>>();
 
-                self.window.close();
+                    let _ = sender.output(GameComponentsWindowOutput::ApplyChanges {
+                        game_integration: game_integration.clone(),
+                        game_variant: game_variant.clone(),
+
+                        game_name: game_name.clone(),
+                        game_title: game_title.clone(),
+
+                        install_components: Box::new([]),
+                        uninstall_components,
+
+                        delete_game_package: true
+                    });
+
+                    self.window.close();
+                }
             }
         }
     }

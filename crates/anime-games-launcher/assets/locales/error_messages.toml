@@ -116,6 +116,10 @@ pt = "Falha ao requisitar pipeline de ações do jogo"
 id = "Gagal meminta instruksi yang diperlukan untuk memuat game"
 it = "Impossibile richiedere la pipeline delle azioni del gioco"
 
+[failed_delete_game_package]
+en = "Failed to delete {title} game package"
+ru = "Не удалось удалить пакет игры {title}"
+
 # ------------------------ Game components ------------------------
 
 [failed_request_game_components_layout]

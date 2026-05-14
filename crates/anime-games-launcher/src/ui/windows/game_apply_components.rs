@@ -41,10 +41,15 @@ pub enum GameApplyComponentsWindowInput {
     SetComponents {
         game_variant: GameVariant,
         game_integration: Arc<GameIntegration>,
+
         game_name: String,
         game_title: String,
+
         install_components: Box<[ApplyComponentInfo]>,
-        uninstall_components: Box<[ApplyComponentInfo]>
+        uninstall_components: Box<[ApplyComponentInfo]>,
+
+        /// Delete game package after applying these components.
+        delete_game_package: bool
     },
 
     MarkStarted {
@@ -66,7 +71,8 @@ pub enum GameApplyComponentsWindowInput {
 
 #[derive(Debug, Clone)]
 pub enum GameApplyComponentsWindowOutput {
-    UpdateGameInfo(String)
+    UpdateGameInfo(String),
+    DeleteGamePackage(String)
 }
 
 #[derive(Debug)]
@@ -127,7 +133,7 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
         let model = Self {
             graph_group: GraphProgressGroup::builder()
                 .launch(GraphProgressGroupInit {
-                    title: i18n!("game_apply_components_changes_title")
+                    title: i18n!("game_components_apply_changes_title")
                         .map(String::from),
                     description: None
                 })
@@ -156,15 +162,30 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                 game_name,
                 game_title,
                 install_components,
-                uninstall_components
+                uninstall_components,
+                delete_game_package
             } => {
                 let lang = config::get().language().ok();
 
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);
 
-                self.game_name = Some(game_name);
+                self.game_name = Some(game_name.clone());
                 self.game_title = Some(game_title);
+
+                if delete_game_package {
+                    self.graph_group.emit(GraphProgressGroupMsg::SetTitle(Some(
+                        i18n!("game_components_uninstall_all_title")
+                            .map(String::from)
+                            .unwrap_or_else(|| String::from("Uninstall game components"))
+                    )));
+                } else {
+                    self.graph_group.emit(GraphProgressGroupMsg::SetTitle(Some(
+                        i18n!("game_components_apply_changes_title")
+                            .map(String::from)
+                            .unwrap_or_else(|| String::from("Apply components changes"))
+                    )));
+                }
 
                 let mut actions = Vec::new();
 
@@ -285,6 +306,12 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                         sender.input(GameApplyComponentsWindowInput::MarkFinished {
                             name
                         });
+                    }
+
+                    if delete_game_package {
+                        let _ = sender.output(GameApplyComponentsWindowOutput::DeleteGamePackage(
+                            game_name
+                        ));
                     }
 
                     sender.input(GameApplyComponentsWindowInput::EmitClose);

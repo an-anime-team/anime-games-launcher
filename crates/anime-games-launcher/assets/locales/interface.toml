@@ -308,9 +308,13 @@ ru = "Удалить всё"
 en = "Uninstall every available component and hide the game from your games library"
 ru = "Удалить все доступные компоненты и скрыть игру из вашей библиотеки игр"
 
-[game_apply_components_changes_title]
+[game_components_apply_changes_title]
 en = "Apply components changes"
 ru = "Применение изменений компонентов"
+
+[game_components_uninstall_all_title]
+en = "Uninstall game components"
+ru = "Удаление компонентов игры"
 
 [game_component_install_title]
 en = "Install {component}"

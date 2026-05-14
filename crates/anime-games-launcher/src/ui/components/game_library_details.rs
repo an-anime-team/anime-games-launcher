@@ -41,6 +41,8 @@ use super::game_tools_buttons::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum GameLibraryDetailsInput {
+    Clear,
+
     SetGame {
         /// Unique game name. A game package lock filename is expected be used.
         name: String,
@@ -356,6 +358,24 @@ impl SimpleAsyncComponent for GameLibraryDetails {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
+            GameLibraryDetailsInput::Clear => {
+                self.game_tools_buttons_factory.guard().clear();
+
+                self.game_name = None;
+                self.game_title = None;
+                self.game_developer = None;
+                self.game_publisher = None;
+
+                self.game_integration = None;
+                self.game_variant = None;
+
+                self.game_launch_info = None;
+                self.game_actions_pipeline = None;
+                self.game_components_layout = None;
+                self.game_tools_buttons = vec![];
+                self.game_settings_layout = None;
+            }
+
             GameLibraryDetailsInput::SetGame {
                 name,
                 manifest,
