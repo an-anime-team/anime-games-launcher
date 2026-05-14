@@ -357,7 +357,7 @@ impl SimpleAsyncComponent for LibraryPage {
                         Err(_) => game_info.package.manifest.game.title.default_translation()
                     };
 
-                    tracing::debug!(
+                    tracing::info!(
                         ?name,
                         manifest_url = ?game_info.package.url,
                         ?title,
