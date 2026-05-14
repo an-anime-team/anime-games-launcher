@@ -1,5 +1,13 @@
 # ------------------------ General ------------------------
 
+[continue]
+en = "Continue"
+ru = "Продолжить"
+
+[cancel]
+en = "Cancel"
+ru = "Отменить"
+
 [close]
 en = "Close"
 ru = "Закрыть"
@@ -323,3 +331,11 @@ ru = "Установка {component}"
 [game_component_uninstall_title]
 en = "Uninstall {component}"
 ru = "Удаление {component}"
+
+[game_components_uninstall_all_approve_dialog_title]
+en = "Uninstall all game components?"
+ru = "Удалить все компоненты игры?"
+
+[game_components_uninstall_all_approve_dialog_message]
+en = "This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"
+ru = "Это действие удалит все компоненты игры, а также саму игру из вашей библиотеки. При согласии вы не сможете восстановить игру без полной её переустановки через страницу магазина игр. Вы хотите продолжить?"

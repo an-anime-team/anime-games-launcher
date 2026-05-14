@@ -542,11 +542,20 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 {
                     let handle = tasks::spawn_blocking(move || {
                         dialogs::present(
-                            "Uninstall all game components?",
-                            "This action will uninstall every game component and delete the game package. This action cannot be reverted without reinstalling the game from the store page. Do you want to continue?",
+                            i18n!("game_components_uninstall_all_approve_dialog_title")
+                                .unwrap_or("Uninstall all game components?"),
+                            i18n!("game_components_uninstall_all_approve_dialog_message")
+                                .unwrap_or("This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"),
                             [
-                                dialogs::DialogAction::new("continue", "Continue").as_destructive(),
-                                dialogs::DialogAction::new("cancel", "Cancel")
+                                dialogs::DialogAction::new(
+                                    "continue",
+                                    i18n!("continue").unwrap_or("Continue")
+                                ).as_destructive(),
+
+                                dialogs::DialogAction::new(
+                                    "cancel",
+                                    i18n!("cancel").unwrap_or("Cancel")
+                                )
                             ]
                         )
                     });
