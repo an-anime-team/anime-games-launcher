@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
@@ -30,10 +32,23 @@ use crate::ui::components::game_store_details::{
     GameStoreDetails, GameStoreDetailsInput, GameStoreDetailsOutput
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct StoreGameInfo {
+    /// Game manifest URL.
+    pub manifest_url: String,
+
+    /// Game manifest.
+    pub manifest: GameManifest,
+
+    /// Dynamic index of the game card in the UI.
+    pub card_index: DynamicIndex
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorePageInput {
     AddGame {
+        name: String,
         manifest_url: String,
         manifest: GameManifest
     },
@@ -41,7 +56,11 @@ pub enum StorePageInput {
     OpenGameDetails(DynamicIndex),
     CloseGameDetails,
 
-    AddLibraryPageGame(GameLock),
+    AddLibraryPageGame {
+        name: String,
+        lock: GameLock
+    },
+
     ShowLibraryGameWithUrl(String)
 }
 
@@ -49,7 +68,10 @@ pub enum StorePageInput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorePageOutput {
     SetShowBack(bool),
-    AddLibraryPageGame(GameLock),
+    AddLibraryPageGame {
+        name: String,
+        lock: GameLock
+    },
     ShowLibraryGameWithUrl(String)
 }
 
@@ -58,7 +80,7 @@ pub struct StorePage {
     games_cards: AsyncFactoryVecDeque<CardsGrid>,
     game_details: AsyncController<GameStoreDetails>,
 
-    games: Vec<(String, GameManifest)>,
+    games: HashMap<String, StoreGameInfo>,
 
     show_game_details: bool
 }
@@ -163,15 +185,15 @@ impl SimpleAsyncComponent for StorePage {
             game_details: GameStoreDetails::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    GameStoreDetailsOutput::AddLibraryPageGame(game)
-                        => StorePageInput::AddLibraryPageGame(game),
+                    GameStoreDetailsOutput::AddLibraryPageGame { name, lock }
+                        => StorePageInput::AddLibraryPageGame { name, lock },
 
                     GameStoreDetailsOutput::ShowLibraryGameWithUrl(url)
                         => StorePageInput::ShowLibraryGameWithUrl(url)
 
                 }),
 
-            games: Vec::new(),
+            games: HashMap::new(),
 
             show_game_details: false
         };
@@ -187,7 +209,23 @@ impl SimpleAsyncComponent for StorePage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            StorePageInput::AddGame { manifest_url, manifest } => {
+            StorePageInput::AddGame { name, manifest_url, manifest } => {
+                if self.games.contains_key(&name) {
+                    tracing::warn!(
+                        ?name,
+                        ?manifest_url,
+                        "attempted to add a game to the store page that is already added"
+                    );
+
+                    return;
+                }
+
+                tracing::debug!(
+                    ?name,
+                    ?manifest_url,
+                    "adding store page game"
+                );
+
                 let config = config::get();
                 let lang = config.language().ok();
 
@@ -201,13 +239,24 @@ impl SimpleAsyncComponent for StorePage {
                     .with_title(title)
                     .with_clickable(true);
 
-                self.games_cards.guard().push_back(card);
+                let card_index = self.games_cards.guard()
+                    .push_back(card);
 
-                self.games.push((manifest_url, manifest));
+                self.games.insert(name, StoreGameInfo {
+                    manifest_url,
+                    manifest,
+                    card_index
+                });
             }
 
             StorePageInput::OpenGameDetails(index) => {
-                let Some((manifest_url, manifest)) = self.games.get(index.current_index()) else {
+                let result = self.games.iter()
+                    .find(|(_, game_info)| {
+                        game_info.card_index.current_index()
+                            == index.current_index()
+                    });
+
+                let Some((game_name, game_info)) = result else {
                     tracing::warn!(
                         index = index.current_index(),
                         length = self.games.len(),
@@ -218,8 +267,9 @@ impl SimpleAsyncComponent for StorePage {
                 };
 
                 self.game_details.emit(GameStoreDetailsInput::SetGameInfo {
-                    manifest_url: manifest_url.clone(),
-                    manifest: manifest.clone()
+                    name: game_name.clone(),
+                    manifest_url: game_info.manifest_url.clone(),
+                    manifest: game_info.manifest.clone()
                 });
 
                 self.show_game_details = true;
@@ -227,8 +277,11 @@ impl SimpleAsyncComponent for StorePage {
 
             StorePageInput::CloseGameDetails => self.show_game_details = false,
 
-            StorePageInput::AddLibraryPageGame(game) => {
-                let _ = sender.output(StorePageOutput::AddLibraryPageGame(game));
+            StorePageInput::AddLibraryPageGame { name, lock } => {
+                let _ = sender.output(StorePageOutput::AddLibraryPageGame {
+                    name,
+                    lock
+                });
             }
 
             StorePageInput::ShowLibraryGameWithUrl(url) => {

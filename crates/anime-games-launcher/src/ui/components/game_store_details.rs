@@ -44,6 +44,7 @@ pub enum GameStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsInput {
     SetGameInfo {
+        name: String,
         manifest_url: String,
         manifest: GameManifest
     },
@@ -57,7 +58,11 @@ pub enum GameStoreDetailsInput {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsOutput {
-    AddLibraryPageGame(GameLock),
+    AddLibraryPageGame {
+        name: String,
+        lock: GameLock
+    },
+
     ShowLibraryGameWithUrl(String)
 }
 
@@ -68,6 +73,7 @@ pub struct GameStoreDetails {
     tags: AsyncFactoryVecDeque<GameTagFactory>,
     maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
 
+    name: String,
     manifest_url: String,
 
     title: String,
@@ -304,6 +310,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 .launch_default()
                 .detach(),
 
+            name: String::new(),
             manifest_url: String::new(),
 
             title: String::new(),
@@ -326,7 +333,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            GameStoreDetailsInput::SetGameInfo { manifest_url, manifest } => {
+            GameStoreDetailsInput::SetGameInfo {
+                name,
+                manifest_url,
+                manifest
+            } => {
                 let config = config::get();
                 let lang = config.language().ok();
 
@@ -358,6 +369,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 });
 
                 // Set text info.
+                self.name = name;
                 self.manifest_url = manifest_url;
 
                 self.title = title.to_string();
@@ -514,6 +526,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 };
 
                 {
+                    let name = self.name.clone();
                     let url = self.manifest_url.clone();
 
                     tasks::spawn(async move {
@@ -561,7 +574,10 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     return;
                                 }
 
-                                let _ = sender.output(GameStoreDetailsOutput::AddLibraryPageGame(lock));
+                                let _ = sender.output(GameStoreDetailsOutput::AddLibraryPageGame {
+                                    name,
+                                    lock
+                                });
 
                                 sender.input(GameStoreDetailsInput::UpdateGameStatus);
                             }

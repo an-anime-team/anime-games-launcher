@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use relm4::prelude::*;
@@ -38,7 +39,7 @@ use crate::ui::components::game_library_details::{
 };
 
 #[derive(Debug, Clone)]
-struct GameInfo {
+struct LoadedGameInfo {
     pub package: GameLock,
     pub integration: Arc<GameIntegration>,
     pub editions: Option<Box<[GameEdition]>>,
@@ -49,15 +50,42 @@ struct GameInfo {
 #[derive(Debug, Clone)]
 pub enum LibraryPageInput {
     AddGame {
+        /// Unique game name (internal identifier). A game package lock filename
+        /// is expected to be used, though any unique value is suitable.
+        name: String,
+
+        /// Loaded game package info.
         package: GameLock,
+
+        /// Loaded game integration object.
         integration: Arc<GameIntegration>
     },
 
-    SelectGameWithUrl(String),
+    SelectGame {
+        /// Unique game name. A game package lock filename is expected be used.
+        name: String,
 
-    SelectGameWithIndex {
-        game: usize,
-        variant: Option<usize>
+        /// Optional game edition name. If possible - this edition will be
+        /// selected for this game.
+        edition: Option<String>
+    },
+
+    SelectGameFromList {
+        /// Dynamic index of the game card on the library page.
+        game_card_index: DynamicIndex,
+
+        /// Optional dynamic index of the game edition on the library page.
+        game_edition_index: Option<DynamicIndex>
+    },
+
+    SelectGameWithUrl {
+        /// URL to the game integration package. This event will try to find
+        /// a loaded game with the same URL and select it.
+        game_package_url: String,
+
+        /// Optional game edition name. If possible - this edition will be
+        /// selected for this game.
+        edition: Option<String>
     },
 
     CollapseGamesExceptIndex(DynamicIndex),
@@ -65,20 +93,20 @@ pub enum LibraryPageInput {
     UpdateSelectedGameInfo,
 
     ScheduleGameActionsPipeline {
-        game_index: usize,
+        game_name: String,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    OpenGameComponentsLayout {
-        variant: GameVariant,
+    OpenGameComponentsWindow {
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameComponentsGroup]>
     },
 
     OpenGameSettingsWindow {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -91,7 +119,7 @@ pub enum LibraryPageInput {
 #[derive(Debug, Clone)]
 pub enum LibraryPageOutput {
     ScheduleGameActionsPipeline {
-        game_index: usize,
+        game_name: String,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
@@ -119,7 +147,8 @@ pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameLibraryDetails>,
 
-    games: Vec<GameInfo>
+    /// Table of loaded games where the key is the game name (package filename).
+    games: HashMap<String, LoadedGameInfo>
 }
 
 #[relm4::component(pub, async)]
@@ -188,10 +217,10 @@ impl SimpleAsyncComponent for LibraryPage {
             cards_list: AsyncFactoryVecDeque::builder()
                 .launch_default()
                 .forward(sender.input_sender(), |msg| match msg {
-                    CardsListOutput::Selected { card, variant } => {
-                        LibraryPageInput::SelectGameWithIndex {
-                            game: card.current_index(),
-                            variant: variant.map(|variant| variant.current_index())
+                    CardsListOutput::Selected { card_index, variant_index } => {
+                        LibraryPageInput::SelectGameFromList {
+                            game_card_index: card_index,
+                            game_edition_index: variant_index
                         }
                     }
 
@@ -202,20 +231,20 @@ impl SimpleAsyncComponent for LibraryPage {
             game_details: GameLibraryDetails::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
-                        => LibraryPageInput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
+                    GameLibraryDetailsOutput::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline }
+                        => LibraryPageInput::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline },
 
-                    GameLibraryDetailsOutput::OpenGameComponentsLayout { variant, integration, layout }
-                        => LibraryPageInput::OpenGameComponentsLayout { variant, integration, layout },
+                    GameLibraryDetailsOutput::OpenGameComponentsWindow { integration, variant, layout }
+                        => LibraryPageInput::OpenGameComponentsWindow { integration, variant, layout },
 
-                    GameLibraryDetailsOutput::OpenGameSettingsWindow { variant, integration, layout }
-                        => LibraryPageInput::OpenGameSettingsWindow { variant, integration, layout },
+                    GameLibraryDetailsOutput::OpenGameSettingsWindow { integration, variant, layout }
+                        => LibraryPageInput::OpenGameSettingsWindow { integration, variant, layout },
 
                     GameLibraryDetailsOutput::LaunchGame { game_title, game_launch_info }
                         => LibraryPageInput::LaunchGame { game_title, game_launch_info }
                 }),
 
-            games: Vec::new()
+            games: HashMap::new()
         };
 
         model.cards_list.widget().connect_row_selected(|_, row| {
@@ -235,8 +264,20 @@ impl SimpleAsyncComponent for LibraryPage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            LibraryPageInput::AddGame { package, integration } => {
+            LibraryPageInput::AddGame { name, package, integration } => {
+                if self.games.contains_key(&name) {
+                    tracing::warn!(
+                        ?name,
+                        url = package.url,
+                        title = package.manifest.game.title.default_translation(),
+                        "attempted to load a game package for a game that is already registered"
+                    );
+
+                    return;
+                }
+
                 tracing::debug!(
+                    ?name,
                     url = package.url,
                     title = package.manifest.game.title.default_translation(),
                     "loading game package"
@@ -257,6 +298,7 @@ impl SimpleAsyncComponent for LibraryPage {
                     Err(err) => {
                         tracing::error!(
                             ?err,
+                            ?name,
                             url = package.url,
                             title = package.manifest.game.title.default_translation(),
                             "failed to request game integration editions"
@@ -289,7 +331,7 @@ impl SimpleAsyncComponent for LibraryPage {
                         })
                 });
 
-                self.games.push(GameInfo {
+                self.games.insert(name, LoadedGameInfo {
                     package,
                     integration,
                     editions,
@@ -297,36 +339,59 @@ impl SimpleAsyncComponent for LibraryPage {
                 });
             }
 
-            LibraryPageInput::SelectGameWithUrl(url) => {
-                for game_info in &self.games {
-                    if game_info.package.url == url {
-                        sender.input(LibraryPageInput::SelectGameWithIndex {
-                            game: game_info.card_index.current_index(),
-                            variant: None
-                        });
-
-                        break;
-                    }
+            LibraryPageInput::SelectGame { name, edition } => {
+                if let Some(game_info) = self.games.get(&name) {
+                    self.game_details.emit(GameLibraryDetailsInput::SetGame {
+                        name,
+                        manifest: game_info.package.manifest.clone(),
+                        integration: game_info.integration.clone(),
+                        variant: GameVariant {
+                            platform: *consts::CURRENT_PLATFORM,
+                            edition
+                        }
+                    });
                 }
             }
 
-            LibraryPageInput::SelectGameWithIndex { game, variant } => {
-                let game_info = self.games.iter()
-                    .find(|game_info| game_info.card_index.current_index() == game);
+            LibraryPageInput::SelectGameFromList {
+                game_card_index,
+                game_edition_index
+            } => {
+                let result = self.games.iter()
+                    .find(|(_, game_info)| {
+                        game_info.card_index.current_index()
+                            == game_card_index.current_index()
+                    });
 
-                if let Some(game_info) = game_info {
-                    let edition = variant.and_then(|variant| {
+                if let Some((game_name, game_info)) = result {
+                    let edition = game_edition_index.and_then(|edition| {
                         game_info.editions.as_ref()
-                            .and_then(|editions| editions.get(variant))
+                            .and_then(|editions| editions.get(edition.current_index()))
                             .map(|edition| edition.name.clone())
                     });
 
                     self.game_details.emit(GameLibraryDetailsInput::SetGame {
+                        name: game_name.clone(),
                         manifest: game_info.package.manifest.clone(),
-                        edition,
                         integration: game_info.integration.clone(),
-                        index: game
+                        variant: GameVariant {
+                            platform: *consts::CURRENT_PLATFORM,
+                            edition
+                        }
                     });
+                }
+            }
+
+            LibraryPageInput::SelectGameWithUrl { game_package_url, edition } => {
+                for (game_name, game_info) in &self.games {
+                    if game_info.package.url == game_package_url {
+                        sender.input(LibraryPageInput::SelectGame {
+                            name: game_name.clone(),
+                            edition
+                        });
+
+                        break;
+                    }
                 }
             }
 
@@ -339,20 +404,20 @@ impl SimpleAsyncComponent for LibraryPage {
             }
 
             LibraryPageInput::ScheduleGameActionsPipeline {
-                game_index,
+                game_name,
                 game_title,
                 actions_pipeline
             } => {
                 let _ = sender.output(LibraryPageOutput::ScheduleGameActionsPipeline {
-                    game_index,
+                    game_name,
                     game_title,
                     actions_pipeline
                 });
             }
 
-            LibraryPageInput::OpenGameComponentsLayout {
-                variant,
+            LibraryPageInput::OpenGameComponentsWindow {
                 integration,
+                variant,
                 layout
             } => {
                 let _ = sender.output(LibraryPageOutput::OpenGameComponentsWindow {
@@ -363,8 +428,8 @@ impl SimpleAsyncComponent for LibraryPage {
             }
 
             LibraryPageInput::OpenGameSettingsWindow {
-                variant,
                 integration,
+                variant,
                 layout
             } => {
                 let _ = sender.output(LibraryPageOutput::OpenGameSettingsWindow {

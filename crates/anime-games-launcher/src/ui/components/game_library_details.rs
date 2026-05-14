@@ -42,10 +42,17 @@ use super::game_tools_buttons::{
 #[derive(Debug)]
 pub enum GameLibraryDetailsInput {
     SetGame {
+        /// Unique game name. A game package lock filename is expected be used.
+        name: String,
+
+        /// Game manifest (static info).
         manifest: GameManifest,
-        edition: Option<String>,
+
+        /// Game integration object.
         integration: Arc<GameIntegration>,
-        index: usize
+
+        /// Selected game variant info.
+        variant: GameVariant
     },
 
     UpdateGameInfo,
@@ -59,20 +66,20 @@ pub enum GameLibraryDetailsInput {
 #[derive(Debug, Clone)]
 pub enum GameLibraryDetailsOutput {
     ScheduleGameActionsPipeline {
-        game_index: usize,
+        game_name: String,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    OpenGameComponentsLayout {
-        variant: GameVariant,
+    OpenGameComponentsWindow {
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameComponentsGroup]>
     },
 
     OpenGameSettingsWindow {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -89,8 +96,7 @@ pub struct GameLibraryDetails {
 
     game_tools_buttons_factory: AsyncFactoryVecDeque<GameToolButtonFactory>,
 
-    game_index: usize,
-
+    game_name: Option<String>,
     game_title: Option<String>,
     game_developer: Option<String>,
     game_publisher: Option<String>,
@@ -322,8 +328,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     }
                 }),
 
-            game_index: 0,
-
+            game_name: None,
             game_title: None,
             game_developer: None,
             game_publisher: None,
@@ -350,10 +355,10 @@ impl SimpleAsyncComponent for GameLibraryDetails {
     ) {
         match msg {
             GameLibraryDetailsInput::SetGame {
+                name,
                 manifest,
-                edition,
                 integration,
-                index
+                variant
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::lazy_load_card(&manifest.game.images.poster)
@@ -389,18 +394,13 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     None => manifest.game.publisher.default_translation()
                 };
 
-                self.game_index = index;
-
+                self.game_name = Some(name);
                 self.game_title = Some(title.to_string());
                 self.game_developer = Some(developer.to_string());
                 self.game_publisher = Some(publisher.to_string());
 
                 self.game_integration = Some(integration);
-
-                self.game_variant = Some(GameVariant {
-                    platform: *consts::CURRENT_PLATFORM,
-                    edition
-                });
+                self.game_variant = Some(variant);
 
                 sender.input(GameLibraryDetailsInput::UpdateGameInfo);
             }
@@ -530,11 +530,12 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::ScheduleGameActionsPipeline => {
-                if let Some(game_title) = &self.game_title
+                if let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
                     && let Some(actions_pipeline) = &self.game_actions_pipeline
                 {
                     let _ = sender.output(GameLibraryDetailsOutput::ScheduleGameActionsPipeline {
-                        game_index: self.game_index,
+                        game_name: game_name.clone(),
                         game_title: game_title.clone(),
                         actions_pipeline: actions_pipeline.clone()
                     });
@@ -542,11 +543,11 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::OpenGameComponentsWindow => {
-                if let Some(variant) = &self.game_variant
-                    && let Some(integration) = &self.game_integration
+                if let Some(integration) = &self.game_integration
+                    && let Some(variant) = &self.game_variant
                     && let Some(layout) = &self.game_components_layout
                 {
-                    let _ = sender.output(GameLibraryDetailsOutput::OpenGameComponentsLayout {
+                    let _ = sender.output(GameLibraryDetailsOutput::OpenGameComponentsWindow {
                         variant: variant.clone(),
                         integration: integration.clone(),
                         layout: layout.clone()
@@ -571,8 +572,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::OpenGameSettingsWindow => {
-                if let Some(variant) = &self.game_variant
-                    && let Some(integration) = &self.game_integration
+                if let Some(integration) = &self.game_integration
+                    && let Some(variant) = &self.game_variant
                     && let Some(layout) = &self.game_settings_layout
                 {
                     let _ = sender.output(GameLibraryDetailsOutput::OpenGameSettingsWindow {

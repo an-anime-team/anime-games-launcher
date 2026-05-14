@@ -33,7 +33,7 @@ use crate::ui::components::graph_progress_group::{
 #[derive(Debug, Clone)]
 pub enum GameActionsPipelineWindowInput {
     SetActionsPipeline {
-        game_index: usize,
+        game_name: String,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
@@ -57,7 +57,7 @@ pub enum GameActionsPipelineWindowInput {
 
 #[derive(Debug, Clone)]
 pub enum GameActionsPipelineWindowOutput {
-    UpdateGameInfo(usize)
+    UpdateGameInfo(String)
 }
 
 #[derive(Debug)]
@@ -66,7 +66,7 @@ pub struct GameActionsPipelineWindow {
 
     window: adw::Dialog,
 
-    game_index: Option<usize>,
+    game_name: Option<String>,
     game_title: Option<String>
 }
 
@@ -125,7 +125,7 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
 
             window: root.clone(),
 
-            game_index: None,
+            game_name: None,
             game_title: None
         };
 
@@ -141,7 +141,7 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
     ) {
         match msg {
             GameActionsPipelineWindowInput::SetActionsPipeline {
-                game_index,
+                game_name,
                 game_title,
                 actions_pipeline
             } => {
@@ -167,7 +167,7 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                 self.graph_group.emit(GraphProgressGroupMsg::SetTitle(Some(title.to_string())));
                 self.graph_group.emit(GraphProgressGroupMsg::SetDescription(description));
 
-                self.game_index = Some(game_index);
+                self.game_name = Some(game_name);
                 self.game_title = Some(game_title);
 
                 let mut actions = Vec::new();
@@ -335,9 +335,9 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);
 
-                if let Some(index) = self.game_index {
+                if let Some(name) = &self.game_name {
                     let _ = sender.output(GameActionsPipelineWindowOutput::UpdateGameInfo(
-                        index
+                        name.clone()
                     ));
                 }
 

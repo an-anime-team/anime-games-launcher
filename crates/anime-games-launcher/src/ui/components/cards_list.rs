@@ -60,8 +60,8 @@ pub enum CardsListInput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardsListOutput {
     Selected {
-        card: DynamicIndex,
-        variant: Option<DynamicIndex>
+        card_index: DynamicIndex,
+        variant_index: Option<DynamicIndex>
     },
 
     HideOtherVariants(DynamicIndex)
@@ -191,14 +191,14 @@ impl AsyncFactoryComponent for CardsList {
                         }
                     }
 
-                    let variant = self.variants.widget()
+                    let variant_index = self.variants.widget()
                         .selected_row()
                         .and_then(|row| self.variants.get(row.index() as usize))
                         .map(|variant| variant.index.clone());
 
                     let _ = sender.output(CardsListOutput::Selected {
-                        card: self.index.clone(),
-                        variant
+                        card_index: self.index.clone(),
+                        variant_index
                     });
 
                     self.show_variants = true;
@@ -206,8 +206,8 @@ impl AsyncFactoryComponent for CardsList {
 
                 else {
                     let _ = sender.output(CardsListOutput::Selected {
-                        card: self.index.clone(),
-                        variant: None
+                        card_index: self.index.clone(),
+                        variant_index: None
                     });
 
                     self.show_variants = false;

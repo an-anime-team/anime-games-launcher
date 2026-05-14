@@ -70,8 +70,8 @@ pub enum GameComponentsWindowInput {
 #[derive(Debug, Clone)]
 pub enum GameComponentsWindowOutput {
     ApplyChanges {
-        game_variant: GameVariant,
         game_integration: Arc<GameIntegration>,
+        game_variant: GameVariant,
         install_components: Box<[ApplyComponentInfo]>,
         uninstall_components: Box<[ApplyComponentInfo]>
     }
@@ -495,9 +495,9 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                         })
                         .collect::<Box<[_]>>();
 
-                    sender.output(GameComponentsWindowOutput::ApplyChanges {
-                        game_variant,
+                    let _ = sender.output(GameComponentsWindowOutput::ApplyChanges {
                         game_integration,
+                        game_variant,
                         install_components,
                         uninstall_components
                     });
