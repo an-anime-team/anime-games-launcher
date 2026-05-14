@@ -19,6 +19,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use agl_core::tasks;
 use relm4::prelude::*;
 use adw::prelude::*;
 
@@ -539,29 +540,50 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                     && let Some(game_name) = &self.game_name
                     && let Some(game_title) = &self.game_title
                 {
-                    let uninstall_components = self.entries.iter()
-                        .map(|(name, component)| {
-                            ApplyComponentInfo {
-                                name: name.clone(),
-                                title: component.title.clone()
-                            }
-                        })
-                        .collect::<Box<[_]>>();
-
-                    let _ = sender.output(GameComponentsWindowOutput::ApplyChanges {
-                        game_integration: game_integration.clone(),
-                        game_variant: game_variant.clone(),
-
-                        game_name: game_name.clone(),
-                        game_title: game_title.clone(),
-
-                        install_components: Box::new([]),
-                        uninstall_components,
-
-                        delete_game_package: true
+                    let handle = tasks::spawn_blocking(move || {
+                        dialogs::present(
+                            "Uninstall all game components?",
+                            "This action will uninstall every game component and delete the game package. This action cannot be reverted without reinstalling the game from the store page. Do you want to continue?",
+                            [
+                                dialogs::DialogAction::new("continue", "Continue").as_destructive(),
+                                dialogs::DialogAction::new("cancel", "Cancel")
+                            ]
+                        )
                     });
 
-                    self.window.close();
+                    if let Ok(Some(response)) = handle.await
+                        && response == "continue"
+                    {
+                        tracing::info!(
+                            ?game_name,
+                            ?game_title,
+                            "schedule game uninstallation"
+                        );
+
+                        let uninstall_components = self.entries.iter()
+                            .map(|(name, component)| {
+                                ApplyComponentInfo {
+                                    name: name.clone(),
+                                    title: component.title.clone()
+                                }
+                            })
+                            .collect::<Box<[_]>>();
+
+                        let _ = sender.output(GameComponentsWindowOutput::ApplyChanges {
+                            game_integration: game_integration.clone(),
+                            game_variant: game_variant.clone(),
+
+                            game_name: game_name.clone(),
+                            game_title: game_title.clone(),
+
+                            install_components: Box::new([]),
+                            uninstall_components,
+
+                            delete_game_package: true
+                        });
+
+                        self.window.close();
+                    }
                 }
             }
         }

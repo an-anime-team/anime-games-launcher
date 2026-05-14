@@ -293,8 +293,8 @@ en = "Game components"
 ru = "Компоненты игры"
 
 [game_components_description]
-en = "You can enable or disable different game components by clicking on them - the game integration will automatically suggest you to download or delete them. If it's supported by the game integration you can also download or delete a component manually."
-ru = "Вы можете включать и выключать различные компоненты игры нажимая на них - интеграция игры автоматически предложит установить или удалить их. Если это поддерживается интеграцией игры вы также можете установить или удалить компонент вручную."
+en = "You can enable or disable different game components. The launcher will suggest applying your changes to the game by installing or uninstalling toggled components. You can also fully uninstall the game using the \"Uninstall all\" button."
+ru = "Вы можете включать и выключать различные компоненты игры. Лаунчер предложит применить ваши изменения игры через установку или удаление выбранных компонентов. Вы также можете полностью удалить игру при нажатии на кнопку \"Удалить всё\"."
 
 [game_components_apply_changes_button_title]
 en = "Apply components changes"
