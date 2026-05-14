@@ -119,24 +119,29 @@ it = "Impossibile richiedere la pipeline delle azioni del gioco"
 [failed_delete_game_package]
 en = "Failed to delete {title} game package"
 ru = "Не удалось удалить пакет игры {title}"
+id = "Gagal untuk menghapus paket gim {title}"
 
 # ------------------------ Game components ------------------------
 
 [failed_request_game_components_layout]
 en = "Failed to request game components layout"
 ru = "Не удалось запросить список компонентов игры"
+id = "Gagal untuk memesan susunan komponen gim"
 
 [failed_update_game_components_layout]
 en = "Failed to update game components layout"
 ru = "Не удалось обновить список компонентов игры"
+id = "Gagal untuk memperbaharui susunan komponen gim"
 
 [failed_render_game_components]
 en = "Failed to render game components"
 ru = "Не удалось загрузить страницу компонентов игры"
+id = "Gagal untuk menampilkan komponen gim"
 
 [failed_apply_game_component]
 en = "Failed to apply game component"
 ru = "Не удалось применить компонент игры"
+id = "Gagal untuk menerapkan komponen gim"
 
 # ------------------------ Game settings ------------------------
 

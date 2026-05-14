@@ -3,10 +3,12 @@
 [continue]
 en = "Continue"
 ru = "Продолжить"
+id = "Lanjut"
 
 [cancel]
 en = "Cancel"
 ru = "Отменить"
+id = "Batal"
 
 [close]
 en = "Close"
@@ -26,6 +28,7 @@ it = "Backtrace"
 [components]
 en = "Components"
 ru = "Компоненты"
+id = "Komponen"
 
 [settings]
 en = "Settings"
@@ -299,43 +302,54 @@ it = "Termina"
 [game_components_title]
 en = "Game components"
 ru = "Компоненты игры"
+id = "Komponen Gim"
 
 [game_components_description]
 en = "You can enable or disable different game components. The launcher will suggest applying your changes to the game by installing or uninstalling toggled components. You can also fully uninstall the game using the \"Uninstall all\" button."
 ru = "Вы можете включать и выключать различные компоненты игры. Лаунчер предложит применить ваши изменения игры через установку или удаление выбранных компонентов. Вы также можете полностью удалить игру при нажатии на кнопку \"Удалить всё\"."
+id = "Anda dapat menyalakan atau mematikan bermacam komponen gim. Peluncur aplikasi akan menyarankan untuk menerapkan perubahan anda kepada gim dengan memasang atau mencopot pemasangan untuk komponen yang dirubah. Anda juga dapat sepenuhnya mencopot gim dengan menggunakan tombol \"Copot semua\""
 
 [game_components_apply_changes_button_title]
 en = "Apply changes"
 ru = "Применить изменения"
+id = "Terapkan perubahan"
 
 [game_components_uninstall_all_button_title]
 en = "Uninstall all"
 ru = "Удалить всё"
+id = "Copot semua"
 
 [game_components_uninstall_all_button_description]
 en = "Uninstall every available component and hide the game from your games library"
 ru = "Удалить все доступные компоненты и скрыть игру из вашей библиотеки игр"
+id = "Copot semua komponen tersedia dan semunyikan gim dari daftar gim anda"
 
 [game_components_uninstall_all_approve_dialog_title]
 en = "Uninstall all game components?"
 ru = "Удалить все компоненты игры?"
+id = "Copot semua komponen gim?"
 
 [game_components_uninstall_all_approve_dialog_message]
 en = "This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"
 ru = "Это действие удалит все компоненты игры, а также саму игру из вашей библиотеки. При согласии вы не сможете восстановить игру без полной её переустановки через страницу магазина игр. Вы хотите продолжить?"
+id = "Aksi ini akan mencopot semua komponen gim dan menghapus gim dari daftar gim anda. Setelah menyetujui anda tidak akan dapat mengembalikan gim tanpa menmasang ulang dari halaman toko gim. Apa anda ingin melanjutkan?"
 
 [game_components_apply_changes_title]
 en = "Apply components changes"
 ru = "Применение изменений компонентов"
+id = "Terapkan perubahan komponen"
 
 [game_components_uninstall_all_title]
 en = "Uninstall game components"
 ru = "Удаление компонентов игры"
+id = "Copot komponen gim"
 
 [game_component_install_title]
 en = "Install {component}"
 ru = "Установка {component}"
+id = "Pasang {component}"
 
 [game_component_uninstall_title]
 en = "Uninstall {component}"
 ru = "Удаление {component}"
+id = "Copot {component}"
