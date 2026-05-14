@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -29,6 +29,16 @@ pub struct GameVariant {
 }
 
 impl GameVariant {
+    /// Build new game variant from the `Platform::current()` value and the
+    /// given game edition name.
+    #[inline]
+    pub fn new(edition: Option<String>) -> Option<Self> {
+        Some(Self {
+            platform: Platform::current()?,
+            edition
+        })
+    }
+
     pub fn to_lua(&self, lua: &Lua) -> Result<LuaTable, LuaError> {
         let table = lua.create_table_with_capacity(0, 2)?;
 
