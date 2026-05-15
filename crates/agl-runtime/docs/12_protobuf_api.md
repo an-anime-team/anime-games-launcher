@@ -5,11 +5,12 @@ representing complex data structures in a binary format, efficiently compressing
 and aligning it. This API allows you to read protobuf schemas, encode and decode
 messages.
 
-| Function          | Description                                             |
-| ----------------- | ------------------------------------------------------- |
-| `protobuf.create` | Create protobuf object from provided `.proto` schema.   |
-| `protobuf.encode` | Encode lua value into `Bytes` using protobuf schema.    |
-| `protobuf.decode` | Decode `Bytes` into a lua object using protobuf schema. |
+| Function            | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| `protobuf.create`   | Create protobuf object from provided `.proto` schema.   |
+| `protobuf.messages` | List available protobuf messages names.                 |
+| `protobuf.encode`   | Encode lua value into `Bytes` using protobuf schema.    |
+| `protobuf.decode`   | Decode `Bytes` into a lua object using protobuf schema. |
 
 ## `protobuf.create(schema: string) -> Protobuf`
 
@@ -28,6 +29,14 @@ local schema = protobuf.create([[
         string email = 3;
     }
 ]])
+```
+
+## `protobuf.messages(schema: Protobuf) -> string[]`
+
+List names of all the messages available in a protobuf schema.
+
+```luau
+dbg(protobuf.messages(schema)) -- ["Person"]
 ```
 
 ## `protobuf.encode(schema: Protobuf, message: string, values: table) -> Bytes`

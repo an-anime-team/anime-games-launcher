@@ -332,6 +332,40 @@ impl FromLua for Protobuf {
 
 impl LuaUserData for Protobuf {
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+        methods.add_function("create", |lua: &Lua, schema: String| {
+            let pool = create_pool(schema)
+                .map_err(LuaError::external)?;
+
+            Self::from(pool).into_lua(lua)
+        });
+
+        methods.add_method("messages", |_lua: &Lua, schema: &Self, _: ()| {
+            Ok(schema.all_messages()
+                .map(|message| message.name().to_string())
+                .collect::<Vec<String>>())
+        });
+
+        methods.add_method("encode", |_lua: &Lua, schema: &Self, (message, values): (String, LuaTable)| {
+            let Some(message) = schema.get_message_by_name(&message) else {
+                return Err(LuaError::external("no such message"));
+            };
+
+            let message = DynamicMessage::new(message);
+
+            protobuf_encode(message, values)
+        });
+
+        methods.add_method("decode", |lua: &Lua, schema: &Self, (message, value): (String, Bytes)| {
+            let Some(message) = schema.get_message_by_name(&message) else {
+                return Err(LuaError::external("no such message"));
+            };
+
+            let message = DynamicMessage::decode(message, value.as_slice())
+                .map_err(LuaError::external)?;
+
+            protobuf_decode(lua, message)
+        });
+
         methods.add_method("as_bytes", |_lua: &Lua, protobuf: &Self, _: ()| {
             Ok(Bytes::new(protobuf.encode_to_vec().into_boxed_slice()))
         });
@@ -388,6 +422,7 @@ pub struct ProtobufApi {
     lua: Lua,
 
     protobuf_create: LuaFunction,
+    protobuf_messages: LuaFunction,
     protobuf_encode: LuaFunction,
     protobuf_decode: LuaFunction
 }
@@ -401,6 +436,12 @@ impl ProtobufApi {
 
                 Protobuf::from(pool)
                     .into_lua(lua)
+            })?,
+
+            protobuf_messages: lua.create_function(move |_lua: &Lua, schema: Protobuf| {
+                Ok(schema.all_messages()
+                    .map(|message| message.name().to_string())
+                    .collect::<Vec<String>>())
             })?,
 
             protobuf_encode: lua.create_function(move |_lua: &Lua, (schema, message, values): (Protobuf, String, LuaTable)| {
@@ -430,9 +471,10 @@ impl ProtobufApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 3)?;
+        let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("create", &self.protobuf_create)?;
+        env.raw_set("messages", &self.protobuf_messages)?;
         env.raw_set("encode", &self.protobuf_encode)?;
         env.raw_set("decode", &self.protobuf_decode)?;
 
