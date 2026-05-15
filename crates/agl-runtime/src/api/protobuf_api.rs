@@ -53,15 +53,40 @@ fn create_pool(schema: String) -> Result<DescriptorPool, protox::Error> {
         .map_err(|err| protox::Error::new(err.to_string()))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ProtobufField {
+    /// Single `Kind` value.
+    Single(Kind),
+
+    /// List of `Kind` values (`Vec<Kind>`). It should be impossible to have
+    /// nested lists or maps according to the protobuf standard.
+    List(Kind),
+
+    /// Map of `Kind` values (`HashMap<MapKey, Kind>`). It should be impossible
+    /// to have nested lists or maps according to the protobuf standard.
+    Map(Kind)
+}
+
+impl ProtobufField {
+    #[inline(always)]
+    pub const fn kind(&self) -> &Kind {
+        match self {
+            Self::Single(kind) |
+            Self::List(kind) |
+            Self::Map(kind) => kind
+        }
+    }
+}
+
 fn lua_to_protobuf_value(
     value: LuaValue,
-    field_kind: Option<&Kind>
+    field: Option<&ProtobufField>
 ) -> Result<ProtobufValue, LuaError> {
     match value {
         LuaValue::String(value) => Ok(ProtobufValue::String(value.to_string_lossy().to_string())),
 
         LuaValue::Number(value) => {
-            match field_kind {
+            match field.map(|field| field.kind()) {
                 Some(Kind::Int32)    => Ok(ProtobufValue::I32(value as i32)),
                 Some(Kind::Int64)    => Ok(ProtobufValue::I64(value as i64)),
                 Some(Kind::Uint32)   => Ok(ProtobufValue::U32(value as u32)),
@@ -86,7 +111,7 @@ fn lua_to_protobuf_value(
         }
 
         LuaValue::Integer(value) => {
-            match field_kind {
+            match field.map(|field| field.kind()) {
                 Some(Kind::Int32)    => Ok(ProtobufValue::I32(value as i32)),
                 Some(Kind::Int64)    => Ok(ProtobufValue::I64(value)),
                 Some(Kind::Uint32)   => Ok(ProtobufValue::U32(value as u32)),
@@ -113,43 +138,77 @@ fn lua_to_protobuf_value(
         LuaValue::Boolean(value) => Ok(ProtobufValue::Bool(value)),
 
         LuaValue::Table(values) => {
-            let total_len = values.pairs::<LuaValue, LuaValue>().count();
-            let sequence_len = values.sequence_values::<LuaValue>().count();
+            match field {
+                Some(field) if let Kind::Message(message) = field.kind() => {
+                    match field {
+                        ProtobufField::Single(_) => {
+                            let message = DynamicMessage::new(message.clone());
 
-            if total_len == sequence_len {
-                let mut list = Vec::with_capacity(total_len);
+                            Ok(ProtobufValue::Message(protobuf_encode(message, values)?))
+                        }
 
-                for value in values.sequence_values::<LuaValue>() {
-                    list.push(lua_to_protobuf_value(value?, field_kind)?);
+                        ProtobufField::List(_) => {
+                            let message = DynamicMessage::new(message.clone());
+
+                            let mut list = Vec::with_capacity(values.raw_len());
+
+                            for value in values.sequence_values::<LuaTable>() {
+                                let value = protobuf_encode(message.clone(), value?)?;
+
+                                list.push(ProtobufValue::Message(value));
+                            }
+
+                            Ok(ProtobufValue::List(list))
+                        }
+
+                        ProtobufField::Map(_) => {
+                            let message = DynamicMessage::new(message.clone());
+
+                            Ok(ProtobufValue::Message(protobuf_encode(message, values)?))
+                        }
+                    }
                 }
 
-                Ok(ProtobufValue::List(list))
-            }
+                _ => {
+                    let total_len = values.pairs::<LuaValue, LuaValue>().count();
+                    let sequence_len = values.sequence_values::<LuaValue>().count();
 
-            else {
-                let mut map = HashMap::with_capacity(total_len);
+                    if total_len == sequence_len {
+                        let mut list = Vec::with_capacity(total_len);
 
-                for pair in values.pairs::<LuaValue, LuaValue>() {
-                    let (key, value) = pair?;
+                        for value in values.sequence_values::<LuaValue>() {
+                            list.push(lua_to_protobuf_value(value?, field)?);
+                        }
 
-                    let key = match key {
-                        LuaValue::String(value)  => MapKey::String(value.to_string_lossy().to_string()),
-                        LuaValue::Number(value)  => MapKey::I64(value as i64),
-                        LuaValue::Integer(value) => MapKey::I64(value),
-                        LuaValue::Boolean(value) => MapKey::Bool(value),
+                        Ok(ProtobufValue::List(list))
+                    }
 
-                        _ => return Err(LuaError::external("invalid protobuf map key")
-                            .context(format!("{key:#?}")))
-                    };
+                    else {
+                        let mut map = HashMap::with_capacity(total_len);
 
-                    map.insert(key, lua_to_protobuf_value(value, field_kind)?);
+                        for pair in values.pairs::<LuaValue, LuaValue>() {
+                            let (key, value) = pair?;
+
+                            let key = match key {
+                                LuaValue::String(value)  => MapKey::String(value.to_string_lossy().to_string()),
+                                LuaValue::Number(value)  => MapKey::I64(value as i64),
+                                LuaValue::Integer(value) => MapKey::I64(value),
+                                LuaValue::Boolean(value) => MapKey::Bool(value),
+
+                                _ => return Err(LuaError::external("invalid protobuf map key")
+                                    .context(format!("{key:#?}")))
+                            };
+
+                            map.insert(key, lua_to_protobuf_value(value, field)?);
+                        }
+
+                        Ok(ProtobufValue::Map(map))
+                    }
                 }
-
-                Ok(ProtobufValue::Map(map))
             }
         }
 
-        LuaValue::Function(function) => lua_to_protobuf_value(function.call::<LuaValue>(())?, field_kind),
+        LuaValue::Function(function) => lua_to_protobuf_value(function.call::<LuaValue>(())?, field),
 
         LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Bytes") => {
             let bytes = object.call_method::<Vec<u8>>("as_table", ())?;
@@ -211,6 +270,10 @@ fn protobuf_to_lua_value(
             Ok(LuaValue::UserData(lua.create_userdata(bytes)?))
         }
 
+        ProtobufValue::Message(message) => {
+            Ok(LuaValue::Table(protobuf_decode(lua, message.clone())?))
+        }
+
         _ => Err(LuaError::external("can't coerce protobuf value to a lua value")
             .context(value))
     }
@@ -221,27 +284,51 @@ fn protobuf_to_lua_value(
 fn protobuf_encode(
     mut message: DynamicMessage,
     values: LuaTable
-) -> Result<Bytes, LuaError> {
+) -> Result<DynamicMessage, LuaError> {
     for pair in values.pairs::<LuaValue, LuaValue>() {
         let (name, value) = pair?;
 
         if !value.is_nil() && !value.is_null() {
             match name {
                 LuaValue::Integer(index) => {
-                    let value = match message.descriptor().get_field(index as u32 + 1) {
-                        Some(field) => lua_to_protobuf_value(value, Some(&field.kind()))?,
-                        None =>  lua_to_protobuf_value(value, None)?
-                    };
+                    let field = message.descriptor()
+                        .get_field(index as u32 + 1)
+                        .map(|field| {
+                            let field = if field.is_list() {
+                                ProtobufField::List(field.kind())
+                            } else if field.is_map() {
+                                ProtobufField::Map(field.kind())
+                            } else {
+                                ProtobufField::Single(field.kind())
+                            };
+
+                            Some(field)
+                        })
+                        .unwrap_or(None);
+
+                    let value = lua_to_protobuf_value(value, field.as_ref())?;
 
                     message.try_set_field_by_number(index as u32 + 1, value)
                         .map_err(LuaError::external)?;
                 }
 
                 LuaValue::String(name) => {
-                    let value = match message.descriptor().get_field_by_name(&name.to_string_lossy()) {
-                        Some(field) => lua_to_protobuf_value(value, Some(&field.kind()))?,
-                        None => lua_to_protobuf_value(value, None)?
-                    };
+                    let field = message.descriptor()
+                        .get_field_by_name(&name.to_string_lossy())
+                        .map(|field| {
+                            let field = if field.is_list() {
+                                ProtobufField::List(field.kind())
+                            } else if field.is_map() {
+                                ProtobufField::Map(field.kind())
+                            } else {
+                                ProtobufField::Single(field.kind())
+                            };
+
+                            Some(field)
+                        })
+                        .unwrap_or(None);
+
+                    let value = lua_to_protobuf_value(value, field.as_ref())?;
 
                     message.try_set_field_by_name(&name.to_string_lossy(), value)
                         .map_err(LuaError::external)?;
@@ -253,7 +340,7 @@ fn protobuf_encode(
         }
     }
 
-    Ok(Bytes::new(message.encode_to_vec().into_boxed_slice()))
+    Ok(message)
 }
 
 /// Decode given protobuf `DynamicMessage` into a lua table values.
@@ -261,14 +348,42 @@ fn protobuf_decode(
     lua: &Lua,
     message: DynamicMessage
 ) -> Result<LuaTable, LuaError> {
-    let values = lua.create_table()?;
+    let len = message.fields().count();
+
+    let values = lua.create_table_with_capacity(0, len)?;
+    let mut names = Vec::with_capacity(len);
 
     for (field, value) in message.fields() {
         let value = protobuf_to_lua_value(lua, value)?;
 
         values.raw_set(field.name(), &value)?;
-        values.raw_push(value)?;
+        names.push(field.name().to_string());
     }
+
+    // Allow reading values by both names and field numbers.
+    let metatable = lua.create_table_with_capacity(0, 1)?;
+
+    metatable.raw_set("__index", lua.create_function(move |_lua: &Lua, (values, key): (LuaTable, LuaValue)| {
+        match key {
+            LuaValue::String(name) => values.raw_get(name),
+
+            LuaValue::Integer(number) => {
+                if number.is_negative() || number == 0 {
+                    return Ok(LuaValue::Nil);
+                }
+
+                let Some(name) = names.get(number as usize - 1) else {
+                    return Ok(LuaValue::Nil);
+                };
+
+                values.raw_get(name.as_str())
+            }
+
+            _ => Ok(LuaValue::Nil)
+        }
+    })?)?;
+
+    values.set_metatable(Some(metatable))?;
 
     Ok(values)
 }
@@ -352,7 +467,11 @@ impl LuaUserData for Protobuf {
 
             let message = DynamicMessage::new(message);
 
-            protobuf_encode(message, values)
+            let message = protobuf_encode(message, values)?
+                .encode_to_vec()
+                .into_boxed_slice();
+
+            Ok(Bytes::new(message))
         });
 
         methods.add_method("decode", |lua: &Lua, schema: &Self, (message, value): (String, Bytes)| {
@@ -451,7 +570,11 @@ impl ProtobufApi {
 
                 let message = DynamicMessage::new(message);
 
-                protobuf_encode(message, values)
+                let message = protobuf_encode(message, values)?
+                    .encode_to_vec()
+                    .into_boxed_slice();
+
+                Ok(Bytes::new(message))
             })?,
 
             protobuf_decode: lua.create_function(move |lua: &Lua, (schema, message, value): (Protobuf, String, Bytes)| {
