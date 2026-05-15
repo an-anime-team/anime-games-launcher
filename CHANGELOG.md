@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new settings entry format for secrets (e.g. passwords)
 - Added optional game components system which required a big rewrite of the
   launcher's backend code
+- Added Protobuf API to the lua runtime
 
 ### Fixed
 
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of 1
 - Fixed automatic game selection on the library page if "open in library" button
   on the game store page was clicked
+- Fixed system language identification
 
 ### Changed
 
