@@ -84,18 +84,18 @@ fn lua_to_protobuf_value(
 ) -> Result<ProtobufValue, LuaError> {
     match value {
         LuaValue::String(value) => {
-            match field.map(|field| field.kind()) {
-                Some(Kind::Enum(kind)) => {
-                    for variant in kind.values() {
-                        if variant.name() == value.to_string_lossy() {
-                            return Ok(ProtobufValue::EnumNumber(variant.number()));
-                        }
+            if let Some(Kind::Enum(kind)) = field.map(|field| field.kind()) {
+                for variant in kind.values() {
+                    if variant.name() == value.to_string_lossy() {
+                        return Ok(ProtobufValue::EnumNumber(variant.number()));
                     }
-
-                    Err(LuaError::external("invalid enum variant"))
                 }
 
-                _ => Ok(ProtobufValue::String(value.to_string_lossy().to_string()))
+                Err(LuaError::external("invalid enum variant"))
+            }
+
+            else {
+                Ok(ProtobufValue::String(value.to_string_lossy().to_string()))
             }
         }
 
@@ -241,7 +241,8 @@ fn lua_to_protobuf_value(
 
 fn protobuf_to_lua_value(
     lua: &Lua,
-    value: &ProtobufValue
+    value: &ProtobufValue,
+    field: &ProtobufField
 ) -> Result<LuaValue, LuaError> {
     match value {
         ProtobufValue::String(value) => Ok(LuaValue::String(lua.create_string(value)?)),
@@ -257,7 +258,7 @@ fn protobuf_to_lua_value(
             let list = lua.create_table_with_capacity(values.len(), 0)?;
 
             for value in values {
-                list.raw_push(protobuf_to_lua_value(lua, value)?)?;
+                list.raw_push(protobuf_to_lua_value(lua, value, field)?)?;
             }
 
             Ok(LuaValue::Table(list))
@@ -276,7 +277,7 @@ fn protobuf_to_lua_value(
                     MapKey::Bool(value)   => LuaValue::Boolean(*value)
                 };
 
-                list.raw_set(key, protobuf_to_lua_value(lua, value)?)?;
+                list.raw_set(key, protobuf_to_lua_value(lua, value, field)?)?;
             }
 
             Ok(LuaValue::Table(list))
@@ -288,7 +289,21 @@ fn protobuf_to_lua_value(
             Ok(LuaValue::UserData(lua.create_userdata(bytes)?))
         }
 
-        ProtobufValue::EnumNumber(value) => Ok(LuaValue::Integer(*value as i64)),
+        ProtobufValue::EnumNumber(value) => {
+            if let Some(kind) = field.kind().as_enum() {
+                for variant in kind.values() {
+                    if variant.number() == *value {
+                        return Ok(LuaValue::String(lua.create_string(variant.name())?));
+                    }
+                }
+
+                Err(LuaError::external("invalid enum variant"))
+            }
+
+            else {
+                Ok(LuaValue::Integer(*value as i64))
+            }
+        }
 
         ProtobufValue::Message(message) => {
             Ok(LuaValue::Table(protobuf_decode(lua, message.clone())?))
@@ -371,7 +386,15 @@ fn protobuf_decode(
     let mut names = Vec::with_capacity(len);
 
     for (field, value) in message.fields() {
-        let value = protobuf_to_lua_value(lua, value)?;
+        let field_kind = if field.is_list() {
+            ProtobufField::List(field.kind())
+        } else if field.is_map() {
+            ProtobufField::Map(field.kind())
+        } else {
+            ProtobufField::Single(field.kind())
+        };
+
+        let value = protobuf_to_lua_value(lua, value, &field_kind)?;
 
         values.raw_set(field.name(), &value)?;
         names.push(field.name().to_string());
