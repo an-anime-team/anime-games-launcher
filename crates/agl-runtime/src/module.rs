@@ -117,8 +117,15 @@ pub struct ModuleScope {
     /// This API allows module to work with a sqlite database.
     ///
     /// Default: `true`.
-    #[cfg(feature = "sqlite-api")]
     pub allow_sqlite_api: bool,
+
+    /// Allow module to access protobuf API.
+    ///
+    /// This API allows module to create, encode and decode protobuf messages.
+    ///
+    /// Default: `true`.
+    #[cfg(feature = "protobuf-api")]
+    pub allow_protobuf_api: bool,
 
     /// Allow module to access torrent API.
     ///
@@ -181,6 +188,9 @@ impl Default for ModuleScope {
             #[cfg(feature = "sqlite-api")]
             allow_sqlite_api: true,
 
+            #[cfg(feature = "protobuf-api")]
+            allow_protobuf_api: true,
+
             #[cfg(feature = "torrent-api")]
             allow_torrent_api: true,
 
@@ -213,6 +223,10 @@ impl ModuleScope {
 
         #[cfg(feature = "sqlite-api")] {
             api_scope["sqlite"] = json!(self.allow_sqlite_api);
+        }
+
+        #[cfg(feature = "protobuf-api")] {
+            api_scope["protobuf"] = json!(self.allow_protobuf_api);
         }
 
         #[cfg(feature = "torrent-api")] {
@@ -279,6 +293,11 @@ impl ModuleScope {
             #[cfg(feature = "sqlite-api")]
             if let Some(allow) = api.get("sqlite").and_then(Json::as_bool) {
                 scope.allow_sqlite_api = allow;
+            }
+
+            #[cfg(feature = "protobuf-api")]
+            if let Some(allow) = api.get("protobuf").and_then(Json::as_bool) {
+                scope.allow_protobuf_api = allow;
             }
 
             #[cfg(feature = "torrent-api")]

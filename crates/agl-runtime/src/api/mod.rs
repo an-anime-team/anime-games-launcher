@@ -24,8 +24,6 @@ use mlua::prelude::*;
 use agl_core::export::network::reqwest;
 use agl_core::tasks;
 
-// TODO: add tests.
-
 pub mod bytes;
 
 pub mod string_api;
@@ -41,6 +39,9 @@ pub mod compression_api;
 
 #[cfg(feature = "sqlite-api")]
 pub mod sqlite_api;
+
+#[cfg(feature = "protobuf-api")]
+pub mod protobuf_api;
 
 #[cfg(feature = "torrent-api")]
 pub mod torrent_api;
@@ -192,6 +193,9 @@ pub struct Api {
     #[cfg(feature = "sqlite-api")]
     sqlite_api: sqlite_api::SqliteApi,
 
+    #[cfg(feature = "protobuf-api")]
+    protobuf_api: protobuf_api::ProtobufApi,
+
     #[cfg(feature = "torrent-api")]
     torrent_api: Option<torrent_api::TorrentApi>,
 
@@ -313,6 +317,9 @@ impl Api {
 
             #[cfg(feature = "sqlite-api")]
             sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
+
+            #[cfg(feature = "protobuf-api")]
+            protobuf_api: protobuf_api::ProtobufApi::new(options.lua.clone())?,
 
             #[cfg(feature = "torrent-api")]
             torrent_api: options.torrent_server.map(|server| {
@@ -446,6 +453,12 @@ impl Api {
         #[cfg(feature = "sqlite-api")]
         if scope.allow_sqlite_api {
             env.raw_set("sqlite", self.sqlite_api.create_env(context)?)?;
+        }
+
+        // Protobuf API.
+        #[cfg(feature = "protobuf-api")]
+        if scope.allow_protobuf_api {
+            env.raw_set("protobuf", self.protobuf_api.create_env()?)?;
         }
 
         // Torrent API.

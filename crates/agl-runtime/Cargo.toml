@@ -16,12 +16,14 @@ tracing = [
 packages-support = ["dep:agl-packages"]
 
 sqlite-api = ["dep:rusqlite"]
+protobuf-api = ["dep:protox", "dep:prost-reflect"]
 torrent-api = ["dep:librqbit"]
 portal-api = ["dep:rfd"]
 
 default = [
     "tracing",
     "packages-support",
+    "protobuf-api",
     "sqlite-api",
     "torrent-api",
     "portal-api"
@@ -67,6 +69,10 @@ bufrw = "0.2.0"
 
 ## SQLite API
 rusqlite = { version = "0.39", features = ["bundled"], optional = true }
+
+## Protobuf API
+protox = { version = "0.9", optional = true }
+prost-reflect = { version = "0.16", optional = true }
 
 ## Torrent API
 librqbit = { version = "8.1", features = ["rust-tls"], default-features = false, optional = true }
