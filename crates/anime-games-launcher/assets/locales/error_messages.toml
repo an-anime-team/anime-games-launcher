@@ -121,6 +121,7 @@ en = "Failed to delete {title} game package"
 ru = "Не удалось удалить пакет игры {title}"
 de = "Spielpaket für {title} konnte nicht gelöscht werden"
 id = "Gagal untuk menghapus paket gim {title}"
+it = "Impossibile eliminare il pacchetto del gioco {title}"
 
 # ------------------------ Game components ------------------------
 
@@ -129,24 +130,28 @@ en = "Failed to request game components layout"
 ru = "Не удалось запросить список компонентов игры"
 de = "Anfrage des Spielkomponentenlayouts ist fehlgeschlagen"
 id = "Gagal untuk memesan susunan komponen gim"
+it = "Impossibile richiedere il layout dei componenti del gioco"
 
 [failed_update_game_components_layout]
 en = "Failed to update game components layout"
 ru = "Не удалось обновить список компонентов игры"
 de = "Aktualisierung des Spielkomponentenlayouts ist fehlgeschlagen"
 id = "Gagal untuk memperbaharui susunan komponen gim"
+it = "Impossibile aggiornare il layout dei componenti del gioco"
 
 [failed_render_game_components]
 en = "Failed to render game components"
 ru = "Не удалось загрузить страницу компонентов игры"
 de = "Rendern der Spielkomponente ist fehlgeschlagen"
 id = "Gagal untuk menampilkan komponen gim"
+it = "Impossibile visualizzare i componenti del gioco"
 
 [failed_apply_game_component]
 en = "Failed to apply game component"
 ru = "Не удалось применить компонент игры"
 de = "Spielkomponente konnte nicht angewendet werden"
 id = "Gagal untuk menerapkan komponen gim"
+it = "Impossibile aggiungere il componente al gioco"
 
 # ------------------------ Game settings ------------------------
 
