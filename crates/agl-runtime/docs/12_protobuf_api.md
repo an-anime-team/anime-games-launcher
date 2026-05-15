@@ -19,28 +19,38 @@ decode binary data.
 
 ```luau
 -- Define a simple protobuf schema for one single message called "Person"
-local schema = protobuf.create([["
-    edition = "2024";
+local schema = protobuf.create([[
+    syntax = "proto3";
 
     message Person {
         string name = 1;
         int32 id = 2;
         string email = 3;
     }
-"]])
+]])
 ```
 
-## `protobuf.encode(schema: Protobuf, message: string, value: table) -> Bytes`
+## `protobuf.encode(schema: Protobuf, message: string, values: table) -> Bytes`
 
 Encode given lua value into the given message format using given protobuf
 schema.
 
+Since every protobuf message has indexed fields - it's possible to encode a
+protobuf message from either a key-value table, or a sequential values table.
+
 ```luau
--- Encode a "Person" message using provided values
+-- Encode a "Person" message using provided named values
 local encoded_value = protobuf.encode(schema, "Person", {
     name = "KRypt0n_",
     id = 1,
     email = "krypt0nn@vk.com"
+})
+
+-- Encode a "Person" message using provided indexed values
+local encoded_value = protobuf.encode(schema, "Person", {
+    "KRypt0n_",
+    1,
+    "krypt0nn@vk.com"
 })
 
 dbg(encoded_value)

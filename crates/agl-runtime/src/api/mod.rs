@@ -24,8 +24,6 @@ use mlua::prelude::*;
 use agl_core::export::network::reqwest;
 use agl_core::tasks;
 
-// TODO: add tests.
-
 pub mod bytes;
 
 pub mod string_api;
