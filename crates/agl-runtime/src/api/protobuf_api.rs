@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashMap;
+
 use mlua::prelude::*;
 
 use protox::file::{File, FileResolver};
@@ -110,15 +112,53 @@ fn lua_to_protobuf_value(
 
         LuaValue::Boolean(value) => Ok(ProtobufValue::Bool(value)),
 
+        LuaValue::Table(values) => {
+            let total_len = values.raw_len();
+            let sequence_len = values.sequence_values::<LuaValue>().count();
+
+            if sequence_len == total_len {
+                let mut list = Vec::with_capacity(sequence_len);
+
+                for value in values.sequence_values::<LuaValue>() {
+                    list.push(lua_to_protobuf_value(value?, field_kind)?);
+                }
+
+                Ok(ProtobufValue::List(list))
+            }
+
+            else {
+                let mut map = HashMap::with_capacity(values.raw_len());
+
+                for pair in values.pairs::<LuaValue, LuaValue>() {
+                    let (key, value) = pair?;
+
+                    let key = match key {
+                        LuaValue::String(value)  => MapKey::String(value.to_string_lossy().to_string()),
+                        LuaValue::Number(value)  => MapKey::I64(value as i64),
+                        LuaValue::Integer(value) => MapKey::I64(value),
+                        LuaValue::Boolean(value) => MapKey::Bool(value),
+
+                        _ => return Err(LuaError::external("invalid protobuf map key")
+                            .context(format!("{key:#?}")))
+                    };
+
+                    map.insert(key, lua_to_protobuf_value(value, field_kind)?);
+                }
+
+                Ok(ProtobufValue::Map(map))
+            }
+        }
+
         LuaValue::Function(function) => lua_to_protobuf_value(function.call::<LuaValue>(())?, field_kind),
 
         LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Bytes") => {
-            let bytes = object.call::<Vec<u8>>("as_table")?;
+            let bytes = object.call_method::<Vec<u8>>("as_table", ())?;
 
             Ok(ProtobufValue::Bytes(bytes.into()))
         }
 
-        _ => Err(LuaError::external("can't coerce lua value to a protobuf value"))
+        _ => Err(LuaError::external("can't coerce lua value to a protobuf value")
+            .context(format!("{value:#?}")))
     }
 }
 
@@ -128,10 +168,12 @@ fn protobuf_to_lua_value(
 ) -> Result<LuaValue, LuaError> {
     match value {
         ProtobufValue::String(value) => Ok(LuaValue::String(lua.create_string(value)?)),
-        ProtobufValue::F32(value)    => Ok(LuaValue::Number(*value as f64)),
-        ProtobufValue::F64(value)    => Ok(LuaValue::Number(*value)),
         ProtobufValue::I32(value)    => Ok(LuaValue::Integer(*value as i64)),
         ProtobufValue::I64(value)    => Ok(LuaValue::Integer(*value)),
+        ProtobufValue::U32(value)    => Ok(LuaValue::Integer(*value as i64)),
+        ProtobufValue::U64(value)    => Ok(LuaValue::Integer(*value as i64)),
+        ProtobufValue::F32(value)    => Ok(LuaValue::Number(*value as f64)),
+        ProtobufValue::F64(value)    => Ok(LuaValue::Number(*value)),
         ProtobufValue::Bool(value)   => Ok(LuaValue::Boolean(*value)),
 
         ProtobufValue::List(values) => {
@@ -169,7 +211,8 @@ fn protobuf_to_lua_value(
             Ok(LuaValue::UserData(lua.create_userdata(bytes)?))
         }
 
-        _ => Err(LuaError::external("can't coerce protobuf value to a lua value"))
+        _ => Err(LuaError::external("can't coerce protobuf value to a lua value")
+            .context(value))
     }
 }
 
@@ -179,31 +222,34 @@ fn protobuf_encode(
     mut message: DynamicMessage,
     values: LuaTable
 ) -> Result<Bytes, LuaError> {
-    for (number, value) in values.sequence_values::<LuaValue>().enumerate() {
-        let value = value?;
-
-        if !value.is_nil() && !value.is_null() {
-            let value = match message.descriptor().get_field(number as u32 + 1) {
-                Some(field) => lua_to_protobuf_value(value, Some(&field.kind()))?,
-                None =>  lua_to_protobuf_value(value, None)?
-            };
-
-            message.try_set_field_by_number(number as u32 + 1, value)
-                .map_err(LuaError::external)?;
-        }
-    }
-
-    for pair in values.pairs::<String, LuaValue>() {
+    for pair in values.pairs::<LuaValue, LuaValue>() {
         let (name, value) = pair?;
 
         if !value.is_nil() && !value.is_null() {
-            let value = match message.descriptor().get_field_by_name(&name) {
-                Some(field) => lua_to_protobuf_value(value, Some(&field.kind()))?,
-                None => lua_to_protobuf_value(value, None)?
-            };
+            match name {
+                LuaValue::Integer(index) => {
+                    let value = match message.descriptor().get_field(index as u32 + 1) {
+                        Some(field) => lua_to_protobuf_value(value, Some(&field.kind()))?,
+                        None =>  lua_to_protobuf_value(value, None)?
+                    };
 
-            message.try_set_field_by_name(&name, value)
-                .map_err(LuaError::external)?;
+                    message.try_set_field_by_number(index as u32 + 1, value)
+                        .map_err(LuaError::external)?;
+                }
+
+                LuaValue::String(name) => {
+                    let value = match message.descriptor().get_field_by_name(&name.to_string_lossy()) {
+                        Some(field) => lua_to_protobuf_value(value, Some(&field.kind()))?,
+                        None => lua_to_protobuf_value(value, None)?
+                    };
+
+                    message.try_set_field_by_name(&name.to_string_lossy(), value)
+                        .map_err(LuaError::external)?;
+                }
+
+                _ => return Err(LuaError::external("invalid protobuf values index type")
+                    .context(format!("{name:#?}")))
+            }
         }
     }
 
@@ -367,8 +413,15 @@ impl ProtobufApi {
                 protobuf_encode(message, values)
             })?,
 
-            protobuf_decode: lua.create_function(move |_lua: &Lua, _: ()| {
-                Ok(())
+            protobuf_decode: lua.create_function(move |lua: &Lua, (schema, message, value): (Protobuf, String, Bytes)| {
+                let Some(message) = schema.get_message_by_name(&message) else {
+                    return Err(LuaError::external("no such message"));
+                };
+
+                let message = DynamicMessage::decode(message, value.as_slice())
+                    .map_err(LuaError::external)?;
+
+                protobuf_decode(lua, message)
             })?,
 
             lua
