@@ -113,11 +113,11 @@ fn lua_to_protobuf_value(
         LuaValue::Boolean(value) => Ok(ProtobufValue::Bool(value)),
 
         LuaValue::Table(values) => {
-            let total_len = values.raw_len();
+            let total_len = values.pairs::<LuaValue, LuaValue>().count();
             let sequence_len = values.sequence_values::<LuaValue>().count();
 
-            if sequence_len == total_len {
-                let mut list = Vec::with_capacity(sequence_len);
+            if total_len == sequence_len {
+                let mut list = Vec::with_capacity(total_len);
 
                 for value in values.sequence_values::<LuaValue>() {
                     list.push(lua_to_protobuf_value(value?, field_kind)?);
@@ -127,7 +127,7 @@ fn lua_to_protobuf_value(
             }
 
             else {
-                let mut map = HashMap::with_capacity(values.raw_len());
+                let mut map = HashMap::with_capacity(total_len);
 
                 for pair in values.pairs::<LuaValue, LuaValue>() {
                     let (key, value) = pair?;
