@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-locale
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -40,7 +40,25 @@ lazy_static::lazy_static! {
             .or_else(|| std::env::var("LC_ALL").ok())
             .unwrap_or_else(|| String::from("en"));
 
+        // Strip down unnecessary info ("en_US.UTF-8").
+        let (lang, _) = lang.split_once('.')
+            .unwrap_or((lang.as_str(), ""));
+
         lang.parse::<LanguageIdentifier>()
+            .or_else(|_| {
+                // "en-us", "en_US", ..
+                lang.chars()
+                    .take(5)
+                    .collect::<String>()
+                    .parse::<LanguageIdentifier>()
+            })
+            .or_else(|_| {
+                // "en"
+                lang.chars()
+                    .take(2)
+                    .collect::<String>()
+                    .parse::<LanguageIdentifier>()
+            })
             .unwrap_or_else(|_| ENGLISH_LANG.clone())
     };
 
