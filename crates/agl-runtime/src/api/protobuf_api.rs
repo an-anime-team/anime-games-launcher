@@ -100,6 +100,8 @@ fn lua_to_protobuf_value(
                 Some(Kind::Float)    => Ok(ProtobufValue::F32(value as f32)),
                 Some(Kind::Double)   => Ok(ProtobufValue::F64(value)),
 
+                Some(Kind::Enum(_)) => Ok(ProtobufValue::EnumNumber(value as i32)),
+
                 _ => {
                     if value.is_finite() && (value as f32 as f64) == value {
                         Ok(ProtobufValue::F32(value as f32))
@@ -124,6 +126,8 @@ fn lua_to_protobuf_value(
                 Some(Kind::Sfixed64) => Ok(ProtobufValue::I64(value)),
                 Some(Kind::Float)    => Ok(ProtobufValue::F32(value as f32)),
                 Some(Kind::Double)   => Ok(ProtobufValue::F64(value as f64)),
+
+                Some(Kind::Enum(_)) => Ok(ProtobufValue::EnumNumber(value as i32)),
 
                 _ => {
                     if value.abs() <= i32::MAX as i64 {
@@ -270,12 +274,11 @@ fn protobuf_to_lua_value(
             Ok(LuaValue::UserData(lua.create_userdata(bytes)?))
         }
 
+        ProtobufValue::EnumNumber(value) => Ok(LuaValue::Integer(*value as i64)),
+
         ProtobufValue::Message(message) => {
             Ok(LuaValue::Table(protobuf_decode(lua, message.clone())?))
         }
-
-        _ => Err(LuaError::external("can't coerce protobuf value to a lua value")
-            .context(value))
     }
 }
 
