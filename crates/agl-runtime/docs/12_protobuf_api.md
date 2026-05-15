@@ -23,10 +23,16 @@ decode binary data.
 local schema = protobuf.create([[
     syntax = "proto3";
 
+    enum Status {
+        INACTIVE = 0;
+        ACTIVE   = 1;
+    }
+
     message Person {
-        string name = 1;
-        int32 id = 2;
-        string email = 3;
+        int32 id      = 1;
+        string name   = 2;
+        string email  = 3;
+        Status status = 4;
     }
 ]])
 ```
@@ -50,16 +56,18 @@ protobuf message from either a key-value table, or a sequential values table.
 ```luau
 -- Encode a "Person" message using provided named values
 local encoded_value = protobuf.encode(schema, "Person", {
-    name = "KRypt0n_",
-    id = 1,
-    email = "krypt0nn@vk.com"
+    id     = 1,
+    name   = "KRypt0n_",
+    email  = "krypt0nn@vk.com",
+    status = "ACTIVE" -- number "1" would work too
 })
 
 -- Encode a "Person" message using provided indexed values
 local encoded_value = protobuf.encode(schema, "Person", {
-    "KRypt0n_",
     1,
-    "krypt0nn@vk.com"
+    "KRypt0n_",
+    "krypt0nn@vk.com",
+    1 -- string "ACTIVE" would work too
 })
 
 dbg(encoded_value)
@@ -73,7 +81,8 @@ Decode given binary data using given message format and protobuf schema.
 -- Decode a "Person" message
 local decoded_value = protobuf.decode(schema, "Person", encoded_value)
 
-print(` Name: {decoded_value.name}`)  -- "KRypt0n_"
-print(`   Id: {decoded_value.id}`)    -- "1"
-print(`Email: {decoded_value.email}`) -- "krypt0nn@vk.com"
+print(`  Name: {decoded_value.name}`)   -- "KRypt0n_"
+print(`    Id: {decoded_value.id}`)     -- "1"
+print(` Email: {decoded_value.email}`)  -- "krypt0nn@vk.com"
+print(`Status: {decoded_value.status}`) -- "ACTIVE"
 ```

@@ -324,7 +324,7 @@ fn protobuf_encode(
             match name {
                 LuaValue::Integer(index) => {
                     let field = message.descriptor()
-                        .get_field(index as u32 + 1)
+                        .get_field(index as u32)
                         .map(|field| {
                             let field = if field.is_list() {
                                 ProtobufField::List(field.kind())
@@ -340,7 +340,7 @@ fn protobuf_encode(
 
                     let value = lua_to_protobuf_value(value, field.as_ref())?;
 
-                    message.try_set_field_by_number(index as u32 + 1, value)
+                    message.try_set_field_by_number(index as u32, value)
                         .map_err(LuaError::external)?;
                 }
 
