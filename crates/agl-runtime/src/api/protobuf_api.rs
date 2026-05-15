@@ -83,7 +83,21 @@ fn lua_to_protobuf_value(
     field: Option<&ProtobufField>
 ) -> Result<ProtobufValue, LuaError> {
     match value {
-        LuaValue::String(value) => Ok(ProtobufValue::String(value.to_string_lossy().to_string())),
+        LuaValue::String(value) => {
+            match field.map(|field| field.kind()) {
+                Some(Kind::Enum(kind)) => {
+                    for variant in kind.values() {
+                        if variant.name() == value.to_string_lossy() {
+                            return Ok(ProtobufValue::EnumNumber(variant.number()));
+                        }
+                    }
+
+                    Err(LuaError::external("invalid enum variant"))
+                }
+
+                _ => Ok(ProtobufValue::String(value.to_string_lossy().to_string()))
+            }
+        }
 
         LuaValue::Number(value) => {
             match field.map(|field| field.kind()) {
