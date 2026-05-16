@@ -6,6 +6,7 @@ ru = "Продолжить"
 de = "Fortfahren"
 id = "Lanjut"
 it = "Continua"
+pt = "Continuar"
 
 [cancel]
 en = "Cancel"
@@ -13,6 +14,7 @@ ru = "Отменить"
 de = "Abbrechen"
 id = "Batal"
 it = "Annulla"
+pt = "Cancelar"
 
 [close]
 en = "Close"
@@ -36,6 +38,7 @@ ru = "Компоненты"
 de = "Komponenten"
 id = "Komponen"
 it = "Componenti"
+pt = "Componentes"
 
 [settings]
 en = "Settings"
@@ -177,6 +180,7 @@ ru = "Пользовательское соглашение для устано�
 de = "Spielintegrationsvereinbarung"
 id = "Perjanjian untuk pemasangan dan integrasi Gim"
 it = "Accordo per l'integrazione del gioco"
+pt = "Acordo da integração de jogo"
 
 [game_agreement_message]
 en = "<b>{game_title}</b> provides a user agreement. You have to agree with it in order to continue the game integration installation.\n\n{agreement}"
@@ -184,6 +188,7 @@ ru = "<b>{game_title}</b> содержит пользовательское со
 de = "<b>{game_title}</b> schreibt eine Nutzungsvereinbarung vor. Du musst dieser zustimmen, um fortzufahren.\n\n{agreement}"
 id = "<b>{game_title}</b> memberikan perjanjian pengunaan gim. Anda harus setuju dengan perjanjian tersebut untuk melanjutkan pemasangan inegrasi gim.\n\n{agreement}"
 it = "<b>{game_title}</b> fornisce un accordo utente. Devi accettarlo per continuare l'installazione dell'integrazione del gioco.\n\n{agreement}"
+pt = "<b>{game_title}</b> possui um acordo de usuário. Você deve concordar com o acordo para continuar com a instalação da integração de jogo.\n\n{agreement}"
 
 [game_agreement_agree]
 en = "Agree"
@@ -191,6 +196,7 @@ ru = "Согласен"
 de = "Akzeptieren"
 id = "Setuju"
 it = "Accetta"
+pt = "Concordo"
 
 [game_agreement_disagree]
 en = "Disagree"
@@ -198,6 +204,7 @@ ru = "Не согласен"
 de = "Ablehnen"
 id = "Tidak Setuju"
 it = "Rifiuta"
+pt = "Discordo"
 
 [game_add_to_library]
 en = "Add to library"
@@ -271,6 +278,7 @@ ru = "Нет доступных игр"
 de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
+pt = "Nenhum jogo disponível"
 
 [no_library_games_available]
 en = "No games available"
@@ -278,6 +286,7 @@ ru = "Нет доступных игр"
 de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
+pt = "Nenhum jogo na biblioteca"
 
 [no_library_game_selected]
 en = "No game selected"
