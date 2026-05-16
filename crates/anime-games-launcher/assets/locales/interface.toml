@@ -314,6 +314,7 @@ it = "Processo di gioco"
 
 [game_running_for]
 en = "Running for"
+ru = "Игра запущена"
 de = "Läuft seit"
 pt = "Executando por"
 id = "Berjalan selama"
