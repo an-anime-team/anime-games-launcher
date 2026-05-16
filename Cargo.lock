@@ -19,7 +19,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agl-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "blake2",
  "blake3",
@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "agl-games"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "agl-locale",
  "lazy_static",
@@ -57,7 +57,7 @@ dependencies = [
 
 [[package]]
 name = "agl-locale"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "lazy_static",
  "mlua",
@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "agl-runtime"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "agl-core",
  "agl-locale",
@@ -163,7 +163,7 @@ dependencies = [
 
 [[package]]
 name = "anime-games-launcher"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "agl-core",
  "agl-games",
@@ -188,7 +188,7 @@ dependencies = [
 
 [[package]]
 name = "anirun"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "agl-core",
  "agl-locale",
