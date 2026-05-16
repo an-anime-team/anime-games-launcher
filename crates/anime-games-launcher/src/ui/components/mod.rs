@@ -18,15 +18,16 @@
 
 pub mod lazy_picture;
 pub mod card;
-pub mod picture_carousel;
-pub mod cards_list;
-pub mod cards_grid;
-
 pub mod graph;
-pub mod game_tags;
-pub mod maintainers_row;
-pub mod game_actions_pipeline;
-pub mod game_tools_buttons;
+pub mod progress_bar_group;
+pub mod graph_progress_group;
 
 pub mod game_store_details;
+pub mod picture_carousel;
+pub mod game_tags;
+pub mod maintainers_row;
+
 pub mod game_library_details;
+pub mod cards_list;
+pub mod cards_grid;
+pub mod game_tools_buttons;

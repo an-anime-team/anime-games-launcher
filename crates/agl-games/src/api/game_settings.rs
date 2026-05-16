@@ -123,27 +123,27 @@ impl GameSettingsEntry {
         })
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn name(&self) -> Option<&String> {
         self.name.as_ref()
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn title(&self) -> &LocalizableString {
         &self.title
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn description(&self) -> Option<&LocalizableString> {
         self.description.as_ref()
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn reactivity(&self) -> Option<&GameSettingsEntryReactivity> {
         self.reactivity.as_ref()
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn entry(&self) -> &GameSettingsEntryFormat {
         &self.entry
     }
@@ -197,6 +197,10 @@ pub enum GameSettingsEntryFormat {
         value: String
     },
 
+    SecretText {
+        value: String
+    },
+
     Number {
         min: Option<f64>,
         max: Option<f64>,
@@ -235,6 +239,12 @@ impl GameSettingsEntryFormat {
             }),
 
             "text" => Ok(Self::Text {
+                value: value.get("value")?
+            }),
+
+            // All three values are supported although only "secret_text" is
+            // considered standard.
+            "secret_text" | "secret" | "password" => Ok(Self::SecretText {
                 value: value.get("value")?
             }),
 

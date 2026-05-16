@@ -44,6 +44,7 @@ pub enum GameStatus {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsInput {
     SetGameInfo {
+        name: String,
         manifest_url: String,
         manifest: GameManifest
     },
@@ -57,7 +58,11 @@ pub enum GameStoreDetailsInput {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsOutput {
-    AddLibraryPageGame(GameLock),
+    AddLibraryPageGame {
+        name: String,
+        lock: GameLock
+    },
+
     ShowLibraryGameWithUrl(String)
 }
 
@@ -68,12 +73,14 @@ pub struct GameStoreDetails {
     tags: AsyncFactoryVecDeque<GameTagFactory>,
     maintainers: AsyncFactoryVecDeque<MaintainersRowFactory>,
 
+    name: String,
     manifest_url: String,
 
     title: String,
     description: String,
     developer: String,
     publisher: String,
+    agreement: Option<String>,
 
     status: GameStatus
 }
@@ -104,6 +111,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                         add_css_class: "title-1",
 
                         set_selectable: true,
+                        set_focusable: false,
 
                         #[watch]
                         set_label: &model.title
@@ -143,6 +151,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     set_wrap: true,
                                     set_selectable: true,
+                                    set_focusable: false,
 
                                     set_halign: gtk::Align::Fill,
                                     set_justify: gtk::Justification::Fill,
@@ -211,6 +220,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     add_css_class: "dim-label",
 
                                     set_selectable: true,
+                                    set_focusable: false,
 
                                     #[watch]
                                     set_text: i18n!("game_developer", { name => &model.developer })
@@ -225,6 +235,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     add_css_class: "dim-label",
 
                                     set_selectable: true,
+                                    set_focusable: false,
 
                                     #[watch]
                                     set_text: i18n!("game_publisher", { name => &model.publisher })
@@ -299,12 +310,14 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 .launch_default()
                 .detach(),
 
+            name: String::new(),
             manifest_url: String::new(),
 
             title: String::new(),
             developer: String::new(),
             publisher: String::new(),
             description: String::new(),
+            agreement: None,
 
             status: GameStatus::NotAdded
         };
@@ -320,7 +333,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            GameStoreDetailsInput::SetGameInfo { manifest_url, manifest } => {
+            GameStoreDetailsInput::SetGameInfo {
+                name,
+                manifest_url,
+                manifest
+            } => {
                 let config = config::get();
                 let lang = config.language().ok();
 
@@ -344,13 +361,22 @@ impl SimpleAsyncComponent for GameStoreDetails {
                     None => manifest.game.publisher.default_translation()
                 };
 
+                let agreement = manifest.game.agreement.map(|agreement| {
+                    match &lang {
+                        Some(lang) => agreement.translate(lang).to_string(),
+                        None => agreement.default_translation().to_string()
+                    }
+                });
+
                 // Set text info.
+                self.name = name;
                 self.manifest_url = manifest_url;
 
                 self.title = title.to_string();
                 self.description = description.to_string();
                 self.developer = developer.to_string();
                 self.publisher = publisher.to_string();
+                self.agreement = agreement;
 
                 // Set images.
                 self.card.emit(CardComponentInput::SetImage(
@@ -411,6 +437,81 @@ impl SimpleAsyncComponent for GameStoreDetails {
             GameStoreDetailsInput::EmitClick if self.status == GameStatus::NotAdded => {
                 tracing::info!(url = ?self.manifest_url, "add game");
 
+                if let Some(agreement) = &self.agreement {
+                    let dialog = adw::AlertDialog::builder()
+                        .heading(
+                            i18n!("game_agreement_title")
+                                .unwrap_or("Game integration agreement")
+                        )
+                        .width_request(500)
+                        .height_request(340)
+                        .build();
+
+                    relm4::view! {
+                        widget = gtk::ScrolledWindow {
+                            set_hexpand: true,
+                            set_vexpand: true,
+
+                            gtk::Label {
+                                set_halign: gtk::Align::Fill,
+                                set_justify: gtk::Justification::Fill,
+
+                                set_hexpand: true,
+
+                                set_wrap: true,
+                                set_selectable: true,
+                                set_focusable: false,
+                                set_use_markup: true,
+
+                                set_markup: &i18n!("game_agreement_message", {
+                                    game_title => &self.title,
+                                    agreement => agreement
+                                }).unwrap_or(agreement.clone())
+                            }
+                        }
+                    }
+
+                    dialog.set_extra_child(Some(&widget));
+
+                    dialog.add_responses(&[
+                        ("disagree", i18n!("game_agreement_disagree").unwrap_or("Disagree")),
+                        ("agree", i18n!("game_agreement_agree").unwrap_or("Agree"))
+                    ]);
+
+                    dialog.set_response_appearance(
+                        "agree",
+                        adw::ResponseAppearance::Suggested
+                    );
+
+                    tracing::info!(
+                        url = ?self.manifest_url,
+                        ?agreement,
+                        "show game integration agreement"
+                    );
+
+                    let result = if let Some(window) = relm4::main_adw_application().active_window() {
+                        dialog.choose_future(Some(&window)).await
+                    } else {
+                        dialog.choose_future(None::<&adw::Window>).await
+                    };
+
+                    if result != "agree" {
+                        tracing::info!(
+                            url = ?self.manifest_url,
+                            "user has disagreed with the game integration agreement"
+                        );
+
+                        return;
+                    }
+
+                    else {
+                        tracing::info!(
+                            url = ?self.manifest_url,
+                            "user has agreed with the game integration agreement"
+                        );
+                    }
+                }
+
                 self.status = GameStatus::Adding;
 
                 let config = config::get();
@@ -425,6 +526,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 };
 
                 {
+                    let name = self.name.clone();
                     let url = self.manifest_url.clone();
 
                     tasks::spawn(async move {
@@ -472,7 +574,10 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     return;
                                 }
 
-                                let _ = sender.output(GameStoreDetailsOutput::AddLibraryPageGame(lock));
+                                let _ = sender.output(GameStoreDetailsOutput::AddLibraryPageGame {
+                                    name,
+                                    lock
+                                });
 
                                 sender.input(GameStoreDetailsInput::UpdateGameStatus);
                             }

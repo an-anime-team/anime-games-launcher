@@ -23,16 +23,16 @@ use super::lazy_picture::{LazyPictureComponent, ImagePath};
 use super::card::CardSize;
 
 #[derive(Debug)]
-pub struct PictureCarousel {
-    pictures: AsyncFactoryVecDeque<PictureCarouselFactory>
-}
-
-#[derive(Debug)]
 pub enum PictureCarouselMsg {
     SetImages(Vec<ImagePath>),
 
     NavigateLeft,
     NavigateRight
+}
+
+#[derive(Debug)]
+pub struct PictureCarousel {
+    pictures: AsyncFactoryVecDeque<PictureCarouselFactory>
 }
 
 #[relm4::component(pub, async)]

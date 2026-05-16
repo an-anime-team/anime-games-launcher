@@ -51,6 +51,7 @@ impl CardsListInit {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardsListInput {
     EmitClick,
+    Select(Option<usize>),
     ShowVariants,
     HideVariants,
     HideVariantsExcept(DynamicIndex),
@@ -60,8 +61,8 @@ pub enum CardsListInput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardsListOutput {
     Selected {
-        card: DynamicIndex,
-        variant: Option<DynamicIndex>
+        card_index: DynamicIndex,
+        variant_index: Option<DynamicIndex>
     },
 
     HideOtherVariants(DynamicIndex)
@@ -89,7 +90,6 @@ impl AsyncFactoryComponent for CardsList {
     type ParentWidget = gtk::ListBox;
 
     view! {
-        #[root]
         gtk::ListBoxRow {
             #[watch]
             set_sensitive: !self.is_disabled,
@@ -125,7 +125,11 @@ impl AsyncFactoryComponent for CardsList {
                     set_margin_bottom: 6,
 
                     #[watch]
-                    set_visible: self.show_variants
+                    set_visible: self.show_variants,
+
+                    connect_row_activated[sender] => move |_, _| {
+                        sender.input(CardsListInput::EmitClick);
+                    }
                 }
             },
 
@@ -188,14 +192,14 @@ impl AsyncFactoryComponent for CardsList {
                         }
                     }
 
-                    let variant = self.variants.widget()
+                    let variant_index = self.variants.widget()
                         .selected_row()
                         .and_then(|row| self.variants.get(row.index() as usize))
                         .map(|variant| variant.index.clone());
 
                     let _ = sender.output(CardsListOutput::Selected {
-                        card: self.index.clone(),
-                        variant
+                        card_index: self.index.clone(),
+                        variant_index
                     });
 
                     self.show_variants = true;
@@ -203,11 +207,22 @@ impl AsyncFactoryComponent for CardsList {
 
                 else {
                     let _ = sender.output(CardsListOutput::Selected {
-                        card: self.index.clone(),
-                        variant: None
+                        card_index: self.index.clone(),
+                        variant_index: None
                     });
 
                     self.show_variants = false;
+                }
+            }
+
+            CardsListInput::Select(variant) => {
+                let _ = sender.output(CardsListOutput::HideOtherVariants(self.index.clone()));
+
+                if let Some(variant) = variant
+                    && let Some(variant_row) = self.variants.widget()
+                        .row_at_index(variant as i32)
+                {
+                    self.variants.widget().select_row(Some(&variant_row));
                 }
             }
 
@@ -240,7 +255,6 @@ impl AsyncFactoryComponent for CardVariantsList {
     type ParentWidget = gtk::ListBox;
 
     view! {
-        #[root]
         gtk::ListBoxRow {
             gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,

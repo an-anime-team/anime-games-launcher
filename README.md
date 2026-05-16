@@ -40,6 +40,17 @@ If you want to add a game support to this launcher - please start by reading
 [The Anime Games Launcher Developer Handbook](./repository/The%20Anime%20Games%20Launcher%20Developer%20Handbook.pdf),
 then follow the useful links to read up-to-date documentation.
 
+## Installation
+
+We're currently not planning to expand the distributions support since the
+launcher, while being functional, lacks community support for different games.
+We will work on wider distributions support once more games will be supported.
+
+| Package                                                            | Distributions                                   |
+| ------------------------------------------------------------------ | ----------------------------------------------- |
+| [Flatpak](https://github.com/an-anime-team/agl-flatpak)            | Fedora Workstation, etc.                        |
+| [AUR](https://aur.archlinux.org/packages/anime-games-launcher-bin) | Arch Linux, CachyOS, Manjaro, EndeavourOS, etc. |
+
 ## Useful links
 
 - [Packages manager documentation](./crates/agl-packages/README.md)

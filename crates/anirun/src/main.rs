@@ -258,6 +258,14 @@ struct CliModuleScope {
     #[arg(long)]
     pub sqlite_api: Option<bool>,
 
+    /// Allow module to access protobuf API.
+    ///
+    /// This API allows module to create, encode and decode protobuf messages.
+    ///
+    /// Default: `true`.
+    #[arg(long)]
+    pub protobuf_api: Option<bool>,
+
     /// Allow module to access torrent API.
     ///
     /// This API allows module to work with BitTorrent protocol, download and
@@ -319,6 +327,7 @@ impl From<CliModuleScope> for ModuleScope {
             allow_hash_api: value.hash_api.unwrap_or(true),
             allow_compression_api: value.compression_api.unwrap_or(true),
             allow_sqlite_api: value.sqlite_api.unwrap_or(true),
+            allow_protobuf_api: value.protobuf_api.unwrap_or(true),
             allow_torrent_api: value.torrent_api.unwrap_or(false),
             allow_portal_api: value.portal_api.unwrap_or(true),
             allow_process_api: value.process_api.unwrap_or(false),

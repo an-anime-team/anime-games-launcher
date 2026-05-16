@@ -1,6 +1,6 @@
 [package]
 name = "agl-games"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
 license = "GPL-3.0-or-later"
 edition = "2024"

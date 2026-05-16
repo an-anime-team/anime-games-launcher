@@ -30,7 +30,7 @@ type Response = {
     // True if request succeeded (status 200 - 299).
     is_ok: boolean;
 
-    // Table of response headers.
+    // Table of response headers. Headers lookups are case-insensitive.
     headers: [key: string]: string;
 
     // Body of the response.
@@ -58,7 +58,7 @@ type LazyResponse = {
     // True if request succeeded (status 200 - 299).
     is_ok: boolean;
 
-    // Table of response headers.
+    // Table of response headers. Headers lookups are case-insensitive.
     headers: [key: string]: string;
 
     // Request handle.

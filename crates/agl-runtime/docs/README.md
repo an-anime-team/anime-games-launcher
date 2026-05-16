@@ -181,6 +181,7 @@ List of all available APIs:
 | Archive API    | `archive`    | Archives extraction.                           |
 | Hash API       | `hash`       | Hash values calculation.                       |
 | SQLite API     | `sqlite`     | SQLite databases management.                   |
+| Protobuf API   | `protobuf`   | Protobuf messages encoding and decoding.       |
 | Torrent API    | `torrent`    | BitTorrent protocol.                           |
 | Portal API     | `portal`     | Sandboxed application and system interactions. |
 | Process API    | `process`    | Binaries execution.                            |

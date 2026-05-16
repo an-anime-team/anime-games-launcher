@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -60,12 +60,34 @@ pub enum GameInfoDeserializeError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameInfo {
+    /// Game title.
     pub title: LocalizableString,
+
+    /// Game description.
     pub description: LocalizableString,
+
+    /// Short information about the game's developer. Normally displayed in
+    /// a single line with limited width.
     pub developer: LocalizableString,
+
+    /// Short information about the game's publisher. Normally displayed in
+    /// a single line with limited width.
     pub publisher: LocalizableString,
+
+    /// Information about the game's images (icon, background, etc.).
     pub images: GameImages,
-    pub tags: HashSet<GameTag>
+
+    /// List of game tags.
+    pub tags: HashSet<GameTag>,
+
+    /// Information displayed to the user before adding this game to their
+    /// library. Can be a license agreement, a warning message, contain
+    /// instructions, or be used in any other way.
+    ///
+    /// The user can either accept this agreement and then the game integration
+    /// will be installed and displayed in their library page, or decline it
+    /// so the game integration will not be installed.
+    pub agreement: Option<LocalizableString>
 }
 
 impl GameInfo {
@@ -78,7 +100,9 @@ impl GameInfo {
             "images": self.images.to_json(),
             "tags": self.tags.iter()
                 .map(|tag| tag.to_string())
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
+            "agreement": self.agreement.as_ref()
+                .map(LocalizableString::to_json)
         })
     }
 
@@ -126,7 +150,10 @@ impl GameInfo {
                         })
                         .collect::<HashSet<_>>()
                 })
-                .unwrap_or_default()
+                .unwrap_or_default(),
+
+            agreement: value.get("agreement")
+                .and_then(LocalizableString::from_json)
         })
     }
 }

@@ -59,6 +59,10 @@ fn render_entry(
         GameSettingsEntryFormat::Switch { value } => {
             let widget = adw::SwitchRow::new();
 
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                widget.set_tooltip(name);
+            }
+
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
                 None => entry.title().default_translation()
@@ -112,7 +116,55 @@ fn render_entry(
                     None => description.default_translation()
                 };
 
-                widget.set_tooltip(description);
+                if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                    widget.set_tooltip(&format!("[{name}] {description}"));
+                } else {
+                    widget.set_tooltip(description);
+                }
+            }
+
+            widget.set_text(value);
+
+            if let Some(name) = entry.name().cloned() {
+                let reactivity = entry.reactivity()
+                    .copied()
+                    .unwrap_or_default();
+
+                widget.connect_apply(move |widget| {
+                    listener.emit(GameSettingsWindowInput::SetStringProperty {
+                        name: name.clone(),
+                        value: widget.text().to_string(),
+                        reactivity
+                    });
+                });
+            }
+
+            group_widget.add(&widget);
+        }
+
+        GameSettingsEntryFormat::SecretText { value } => {
+            let widget = adw::PasswordEntryRow::new();
+
+            widget.set_show_apply_button(true);
+
+            let title = match lang {
+                Some(lang) => entry.title().translate(lang),
+                None => entry.title().default_translation()
+            };
+
+            widget.set_title(title);
+
+            if let Some(description) = entry.description() {
+                let description = match lang {
+                    Some(lang) => description.translate(lang),
+                    None => description.default_translation()
+                };
+
+                if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                    widget.set_tooltip(&format!("[{name}] {description}"));
+                } else {
+                    widget.set_tooltip(description);
+                }
             }
 
             widget.set_text(value);
@@ -176,6 +228,10 @@ fn render_entry(
                 digits_num(step)
             );
 
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                widget.set_tooltip(name);
+            }
+
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
                 None => entry.title().default_translation()
@@ -211,6 +267,10 @@ fn render_entry(
 
         GameSettingsEntryFormat::Enum { values, selected } => {
             let widget = adw::ComboRow::new();
+
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                widget.set_tooltip(name);
+            }
 
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
@@ -291,6 +351,11 @@ fn render_entry(
             selector.set_valign(gtk::Align::Center);
 
             row.add_suffix(&selector);
+
+            if let Some(name) = entry.name() && *consts::APP_DEBUG {
+                row.set_tooltip(name);
+                selector.set_tooltip(name);
+            }
 
             let title = match lang {
                 Some(lang) => entry.title().translate(lang),
@@ -388,8 +453,8 @@ fn render_entry(
 #[derive(Debug)]
 pub enum GameSettingsWindowInput {
     SetGame {
-        variant: GameVariant,
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -421,11 +486,13 @@ pub enum GameSettingsWindowOutput {
 
 #[derive(Debug, Clone)]
 pub struct GameSettingsWindow {
-    window: Option<adw::PreferencesDialog>,
-    pages: Vec<adw::PreferencesPage>,
+    window: adw::PreferencesDialog,
+    page: adw::PreferencesPage,
 
-    game_variant: Option<GameVariant>,
-    game_integration: Option<Arc<GameIntegration>>
+    groups: Vec<adw::PreferencesGroup>,
+
+    game_integration: Option<Arc<GameIntegration>>,
+    game_variant: Option<GameVariant>
 }
 
 #[relm4::component(pub, async)]
@@ -436,14 +503,17 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
     view! {
         #[root]
-        _window = adw::PreferencesDialog {
+        adw::PreferencesDialog {
             set_title: i18n!("settings").unwrap_or("Settings"),
 
             set_content_width: 800,
             set_content_height: 600,
             set_search_enabled: true,
 
-            add_css_class?: consts::APP_DEBUG.then_some("devel")
+            add_css_class?: consts::APP_DEBUG.then_some("devel"),
+
+            #[local_ref]
+            add = page -> adw::PreferencesPage,
         }
     }
 
@@ -452,17 +522,20 @@ impl SimpleAsyncComponent for GameSettingsWindow {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let mut model = Self {
-            window: None,
-            pages: Vec::with_capacity(1),
+        let model = Self {
+            window: root.clone(),
+            page: adw::PreferencesPage::new(),
+
+            // Some random capacity value I took from my head.
+            groups: Vec::with_capacity(2),
 
             game_variant: None,
             game_integration: None
         };
 
-        let widgets = view_output!();
+        let page = &model.page;
 
-        model.window = Some(widgets._window.clone());
+        let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
@@ -493,80 +566,78 @@ impl SimpleAsyncComponent for GameSettingsWindow {
 
         match msg {
             GameSettingsWindowInput::SetGame {
-                variant,
                 integration,
+                variant,
                 layout
             } => {
-                if let Some(window) = self.window.clone() {
-                    let lang = config::get().language().ok();
+                let lang = config::get().language().ok();
 
-                    let pages = self.pages.drain(..).collect::<Vec<_>>();
+                let page = self.page.clone();
 
-                    let page_widget = gtk::glib::spawn_future_local(async move {
-                        for page in pages {
-                            window.remove(&page);
+                self.game_integration = Some(integration);
+                self.game_variant = Some(variant);
 
-                            drop(page);
-                        }
+                let groups = std::mem::take(&mut self.groups);
 
-                        let page_widget = adw::PreferencesPage::new();
-
-                        window.add(&page_widget);
-
-                        for group in layout {
-                            let group_widget = adw::PreferencesGroup::new();
-
-                            if let Some(title) = group.title() {
-                                let title = match lang.as_ref() {
-                                    Some(lang) => title.translate(lang),
-                                    None => title.default_translation()
-                                };
-
-                                group_widget.set_title(title);
-                            }
-
-                            if let Some(description) = group.description() {
-                                let description = match lang.as_ref() {
-                                    Some(lang) => description.translate(lang),
-                                    None => description.default_translation()
-                                };
-
-                                group_widget.set_description(Some(description));
-                            }
-
-                            page_widget.add(&group_widget);
-
-                            for entry in group.entries() {
-                                render_entry(
-                                    ParentWidget::Group(&group_widget),
-                                    entry,
-                                    lang.as_ref(),
-                                    sender.input_sender().clone()
-                                );
-                            }
-                        }
-
-                        page_widget
-                    }).await;
-
-                    match page_widget {
-                        Ok(page_widget) => self.pages.push(page_widget),
-
-                        Err(err) => {
-                            tracing::error!(?err, "failed to render game settings");
-
-                            dialogs::error(
-                                i18n!("failed_render_game_settings")
-                                    .unwrap_or("Failed to render game settings"),
-                                err.to_string()
-                            );
-
-                            return;
-                        }
+                let groups = gtk::glib::spawn_future_local(async move {
+                    for group in groups {
+                        page.remove(&group);
                     }
 
-                    self.game_variant = Some(variant);
-                    self.game_integration = Some(integration);
+                    let mut groups = Vec::with_capacity(layout.len());
+
+                    for group in layout {
+                        let group_widget = adw::PreferencesGroup::new();
+
+                        if let Some(title) = group.title() {
+                            let title = match lang.as_ref() {
+                                Some(lang) => title.translate(lang),
+                                None => title.default_translation()
+                            };
+
+                            group_widget.set_title(title);
+                        }
+
+                        if let Some(description) = group.description() {
+                            let description = match lang.as_ref() {
+                                Some(lang) => description.translate(lang),
+                                None => description.default_translation()
+                            };
+
+                            group_widget.set_description(Some(description));
+                        }
+
+                        page.add(&group_widget);
+
+                        for entry in group.entries() {
+                            render_entry(
+                                ParentWidget::Group(&group_widget),
+                                entry,
+                                lang.as_ref(),
+                                sender.input_sender().clone()
+                            );
+                        }
+
+                        groups.push(group_widget);
+                    }
+
+                    groups
+                }).await;
+
+                match groups {
+                    // Store groups *only if we've rendered them*. Otherwise we
+                    // will keep the window *blank*.
+                    Ok(groups) => self.groups = groups,
+
+                    Err(err) => {
+                        tracing::error!(?err, "failed to render game settings");
+
+                        dialogs::error(
+                            i18n!("failed_render_game_settings")
+                                .unwrap_or("Failed to render game settings"),
+                            err.to_string()
+                        );
+                    }
                 }
             }
 
@@ -650,9 +721,7 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                         }
 
                         Ok(None) => {
-                            if let Some(window) = &self.window {
-                                window.close();
-                            }
+                            self.window.close();
                         }
 
                         Err(err) => {

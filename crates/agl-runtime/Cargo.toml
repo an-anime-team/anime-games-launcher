@@ -1,6 +1,6 @@
 [package]
 name = "agl-runtime"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
 license = "GPL-3.0-or-later"
 edition = "2024"
@@ -16,12 +16,14 @@ tracing = [
 packages-support = ["dep:agl-packages"]
 
 sqlite-api = ["dep:rusqlite"]
+protobuf-api = ["dep:protox", "dep:prost-reflect"]
 torrent-api = ["dep:librqbit"]
 portal-api = ["dep:rfd"]
 
 default = [
     "tracing",
     "packages-support",
+    "protobuf-api",
     "sqlite-api",
     "torrent-api",
     "portal-api"
@@ -63,10 +65,14 @@ lazy_static = "1.5"
 tracing = { version = "0.1", optional = true }
 
 # Luau engine
-bufreaderwriter = "0.2.4"
+bufrw = "0.2.0"
 
 ## SQLite API
 rusqlite = { version = "0.39", features = ["bundled"], optional = true }
+
+## Protobuf API
+protox = { version = "0.9", optional = true }
+prost-reflect = { version = "0.16", optional = true }
 
 ## Torrent API
 librqbit = { version = "8.1", features = ["rust-tls"], default-features = false, optional = true }
@@ -76,12 +82,12 @@ rfd = { version = "0.17", optional = true }
 
 time = { version = "0.3", features = ["local-offset", "formatting"] }
 
-toml = "0.9"
+toml = "1.1"
 serde_json = "1.0"
 serde_yml = "0.0.12"
 bson = { version = "3.1", features = ["serde"] }
 
-rand = "0.9"
+rand = "0.10"
 seahash = "4.1"
 
 hex = "0.4"
