@@ -93,6 +93,8 @@
                         # adwaita-1-demo
                         libadwaita.devdoc
                         icon-library
+
+                        python3
                     ];
 
                     buildInputs = with pkgs; [
