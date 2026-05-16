@@ -443,8 +443,8 @@ impl SimpleAsyncComponent for GameStoreDetails {
                             i18n!("game_agreement_title")
                                 .unwrap_or("Game integration agreement")
                         )
-                        .width_request(600)
-                        .height_request(400)
+                        .width_request(500)
+                        .height_request(340)
                         .build();
 
                     relm4::view! {
