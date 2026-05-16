@@ -3,48 +3,48 @@
 [continue]
 en = "Continue"
 ru = "Продолжить"
+pt = "Continuar"
 de = "Fortfahren"
 id = "Lanjut"
 it = "Continua"
-pt = "Continuar"
 
 [cancel]
 en = "Cancel"
 ru = "Отменить"
+pt = "Cancelar"
 de = "Abbrechen"
 id = "Batal"
 it = "Annulla"
-pt = "Cancelar"
 
 [close]
 en = "Close"
 ru = "Закрыть"
-de = "Schließen"
 pt = "Fechar"
+de = "Schließen"
 id = "Tutup"
 it = "Chiudi"
 
 [backtrace]
 en = "Backtrace"
 ru = "Очередь вызовов"
-de = "Backtrace"
 pt = "Backtrace"
+de = "Backtrace"
 id = "Backtrace"
 it = "Backtrace"
 
 [components]
 en = "Components"
 ru = "Компоненты"
+pt = "Componentes"
 de = "Komponenten"
 id = "Komponen"
 it = "Componenti"
-pt = "Componentes"
 
 [settings]
 en = "Settings"
 ru = "Настройки"
-de = "Einstellungen"
 pt = "Configurações"
+de = "Einstellungen"
 id = "Pengaturan"
 it = "Impostazioni"
 
@@ -53,64 +53,64 @@ it = "Impostazioni"
 [creating_default_folders]
 en = "Creating default folders"
 ru = "Создание папок по умолчанию"
-de = "Erstelle Standardordner"
 pt = "Criando diretórios padrão"
+de = "Erstelle Standardordner"
 id = "Membuat folder-folder bawaan"
 it = "Creazione delle cartelle predefinite"
 
 [fetching_packages_allow_lists]
 en = "Fetching packages allow lists"
 ru = "Запрос белых списков пакетов"
-de = "Rufe Paket-Whitelisten auf"
 pt = "Adquirindo listas de permissão do pacote"
+de = "Rufe Paket-Whitelisten auf"
 id = "Mengunduh daftar paket yang diizinkan"
 it = "Recuperando le liste di pacchetti consentiti"
 
 [fetching_games_registries]
 en = "Fetching games registries"
 ru = "Запрос реестров игр"
-de = "Rufe Spielregister auf"
 pt = "Adquirindo registros do jogo"
+de = "Rufe Spielregister auf"
 id = "Mengunduh registrasi game"
 it = "Recuperando i registri dei giochi"
 
 [fetching_games_manifests]
 en = "Fetching games manifests"
 ru = "Запрос информации об играх"
-de = "Rufe Spielmanifste auf"
 pt = "Adquirindo manifestos do jogo"
+de = "Rufe Spielmanifste auf"
 id = "Mengunduh manifest untuk game"
 it = "Recuperando i manifest dei giochi"
 
 [loading_added_games]
 en = "Loading added games"
 ru = "Загрузка добавленных игр"
-de = "Lade hinzugefügte Spiele"
 pt = "Carregando jogos adicionados"
+de = "Lade hinzugefügte Spiele"
 id = "Memuat game ditambahankan"
 it = "Caricamento dei giochi aggiunti"
 
 [loading_game_package]
 en = "Loading {title} game package"
 ru = "Загрузка пакета игры {title}"
-de = "Lade das Spielpaket für {title}"
 pt = "Carregando pacote do jogo {title}"
+de = "Lade das Spielpaket für {title}"
 id = "Memuat paket untuk game {title}"
 it = "Caricando il pacchetto del gioco {title}"
 
 [updating_game_package]
 en = "Updating {title} game package"
 ru = "Обновление пакета игры {title}"
-de = "Aktualisiere das Spielpaket für {title}"
 pt = "Atualizando pacote do jogo {title}"
+de = "Aktualisiere das Spielpaket für {title}"
 id = "Memperbarui paket untuk game {title}"
 it = "Aggiornando il pacchetto del gioco {title}"
 
 [adding_store_page_games]
 en = "Adding store page games"
 ru = "Добавление игр на страницу магазина"
-de = "Füge Spiele der Shopseite hinzu"
 pt = "Adicionando jogos à página da loja"
+de = "Füge Spiele der Shopseite hinzu"
 id = "Menambahkan halaman toko untuk game"
 it = "Aggiunta dei giochi alla pagina del negozio"
 
@@ -119,56 +119,56 @@ it = "Aggiunta dei giochi alla pagina del negozio"
 [loading]
 en = "Loading"
 ru = "Загрузка"
-de = "Lade"
 pt = "Carregando"
+de = "Lade"
 id = "Memuat"
 it = "Caricamento"
 
 [about_launcher]
 en = "About"
 ru = "О программе"
-de = "Über"
 pt = "Sobre"
+de = "Über"
 id = "Tentang"
 it = "Informazioni"
 
 [games_store]
 en = "Store"
 ru = "Магазин"
-de = "Shop"
 pt = "Loja"
+de = "Shop"
 id = "Toko"
 it = "Negozio"
 
 [games_library]
 en = "Library"
 ru = "Библиотека"
-de = "Bibliothek"
 pt = "Biblioteca"
+de = "Bibliothek"
 id = "Perpustakaan"
 it = "Libreria"
 
 [games]
 en = "Games"
 ru = "Игры"
-de = "Spiele"
 pt = "Jogos"
+de = "Spiele"
 id = "Game"
 it = "Giochi"
 
 [details]
 en = "Details"
 ru = "Детали"
-de = "Details"
 pt = "Detalhes"
+de = "Details"
 id = "Detail"
 it = "Dettagli"
 
 [loaded_games_number]
 en = "Loaded {number} games"
 ru = "Загружено {number} игр"
-de = "{number} Spiele geladen"
 pt = "{number} Jogos carregados"
+de = "{number} Spiele geladen"
 id = "Memuat {number} game"
 it = "Caricati {number} giochi"
 
@@ -177,96 +177,96 @@ it = "Caricati {number} giochi"
 [game_agreement_title]
 en = "Game integration agreement"
 ru = "Пользовательское соглашение для установки игры"
+pt = "Acordo da integração de jogo"
 de = "Spielintegrationsvereinbarung"
 id = "Perjanjian untuk pemasangan dan integrasi Gim"
 it = "Accordo per l'integrazione del gioco"
-pt = "Acordo da integração de jogo"
 
 [game_agreement_message]
 en = "<b>{game_title}</b> provides a user agreement. You have to agree with it in order to continue the game integration installation.\n\n{agreement}"
 ru = "<b>{game_title}</b> содержит пользовательское соглашение. Вы должны согласиться с ним для продолжения установки игры.\n\n{agreement}"
+pt = "<b>{game_title}</b> possui um acordo de usuário. Você deve concordar com o acordo para continuar com a instalação da integração de jogo.\n\n{agreement}"
 de = "<b>{game_title}</b> schreibt eine Nutzungsvereinbarung vor. Du musst dieser zustimmen, um fortzufahren.\n\n{agreement}"
 id = "<b>{game_title}</b> memberikan perjanjian pengunaan gim. Anda harus setuju dengan perjanjian tersebut untuk melanjutkan pemasangan inegrasi gim.\n\n{agreement}"
 it = "<b>{game_title}</b> fornisce un accordo utente. Devi accettarlo per continuare l'installazione dell'integrazione del gioco.\n\n{agreement}"
-pt = "<b>{game_title}</b> possui um acordo de usuário. Você deve concordar com o acordo para continuar com a instalação da integração de jogo.\n\n{agreement}"
 
 [game_agreement_agree]
 en = "Agree"
 ru = "Согласен"
+pt = "Concordo"
 de = "Akzeptieren"
 id = "Setuju"
 it = "Accetta"
-pt = "Concordo"
 
 [game_agreement_disagree]
 en = "Disagree"
 ru = "Не согласен"
+pt = "Discordo"
 de = "Ablehnen"
 id = "Tidak Setuju"
 it = "Rifiuta"
-pt = "Discordo"
 
 [game_add_to_library]
 en = "Add to library"
 ru = "Добавить в библиотеку"
-de = "Zur Bibliothek hinzufügen"
 pt = "Adicionar à biblioteca"
+de = "Zur Bibliothek hinzufügen"
 id = "Tambahkan ke perpustakaan"
 it = "Aggiungi alla libreria"
 
 [game_adding_to_library]
 en = "Adding to library..."
 ru = "Добавляем в библиотеку..."
-de = "Füge der Bibliothek hinzu..."
 pt = "Adicionando à biblioteca"
+de = "Füge der Bibliothek hinzu..."
 id = "Menambahkan ke perpustakaan..."
 it = "Aggiunta alla libreria..."
 
 [open_game_in_library]
 en = "Open in library"
 ru = "Открыть в библиотеке"
-de = "In Bibliothek öffnen"
 pt = "Mostrar na biblioteca"
+de = "In Bibliothek öffnen"
 id = "Buka di perpustakaan"
 it = "Apri nella libreria"
 
 [game_developer]
 en = "Developer: {name}"
 ru = "Разработчик: {name}"
-de = "Entwickler: {name}"
 pt = "Desenvolvedor: {name}"
+de = "Entwickler: {name}"
 id = "Pengembang: {game}"
 it = "Sviluppatore: {name}"
 
 [game_publisher]
 en = "Publisher: {name}"
 ru = "Издатель: {name}"
-de = "Publisher: {name}"
 pt = "Publisher: {name}"
+de = "Publisher: {name}"
 id = "Penerbit: {name}"
 it = "Editore: {name}"
 
 [game_package]
 en = "Package"
 ru = "Пакет интеграции"
-de = "Paket"
 pt = "Pacote"
+de = "Paket"
 id = "Paket"
 it = "Pacchetto"
 
 [game_package_maintainers]
 en = "Maintainers"
 ru = "Сопровождающие"
-de = "Maintainer"
 pt = "Mantenedores"
+de = "Maintainer"
 id = "Pengelola"
 it = "Manutentori"
 
 [about_game]
 en = "About game"
 ru = "Об игре"
-de = "Über das Spiel"
 pt = "Sobre o jogo"
+de = "Über das Spiel"
 id = "Tentang game"
 it = "Informazioni sul gioco"
 
@@ -275,56 +275,56 @@ it = "Informazioni sul gioco"
 [no_store_games_available]
 en = "No games available"
 ru = "Нет доступных игр"
+pt = "Nenhum jogo disponível"
 de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
-pt = "Nenhum jogo disponível"
 
 [no_library_games_available]
 en = "No games available"
 ru = "Нет доступных игр"
+pt = "Nenhum jogo na biblioteca"
 de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
-pt = "Nenhum jogo na biblioteca"
 
 [no_library_game_selected]
 en = "No game selected"
 ru = "Игра не выбрана"
-de = "Kein Spiel ausgewählt"
 pt = "Nenhum jogo selecionado"
+de = "Kein Spiel ausgewählt"
 id = "Tidak ada game dipilih"
 it = "Nessun gioco selezionato"
 
 [game_play]
 en = "Play"
 ru = "Играть"
-de = "Spielen"
 pt = "Jogar"
+de = "Spielen"
 id = "Mulai"
 it = "Gioca"
 
 [game_process_id]
 en = "Game process"
 ru = "Процесс игры"
-de = "Spielprozess"
 pt = "Processo do jogo"
+de = "Spielprozess"
 id = "Proses game"
 it = "Processo di gioco"
 
 [game_running_for]
 en = "Running for"
 ru = "Игра запущена"
-de = "Läuft seit"
 pt = "Executando por"
+de = "Läuft seit"
 id = "Berjalan selama"
 it = "In esecuzione da"
 
 [kill_game_process]
 en = "Kill"
 ru = "Убить"
-de = "Beenden"
 pt = "Matar"
+de = "Beenden"
 id = "Matikan"
 it = "Termina"
 
@@ -333,87 +333,87 @@ it = "Termina"
 [game_components_title]
 en = "Game components"
 ru = "Компоненты игры"
+pt = "Componentes do Jogo"
 de = "Spielkomponenten"
 id = "Komponen Gim"
 it = "Componenti del gioco"
-pt = "Componentes do Jogo"
 
 [game_components_description]
 en = "You can enable or disable different game components. The launcher will suggest applying your changes to the game by installing or uninstalling toggled components. You can also fully uninstall the game using the \"Uninstall all\" button."
 ru = "Вы можете включать и выключать различные компоненты игры. Лаунчер предложит применить ваши изменения игры через установку или удаление выбранных компонентов. Вы также можете полностью удалить игру при нажатии на кнопку \"Удалить всё\"."
+pt = "Você pode habilitar ou desabilitar diferentes componentes de jogo. O launcher permite aplicar mudanças ao jogo instalando ou desinstalando componentes ativos. Você também pode desinstalar o jogo completamente utilizando o botão \"Desinstalar tudo\""
 de = "Du kannst verschiedene Spielkomponenten aktivieren oder deaktivieren. Der Launcher schlägt vor, deine Änderungen am Spiel anzuwenden durch Installation oder Deinstallation von Komponenten. Du kannst auch das Spiel vollständig löschen mit dem \"Alle deinstallieren\" Knopf."
 id = "Anda dapat menyalakan atau mematikan bermacam komponen gim. Peluncur aplikasi akan menyarankan untuk menerapkan perubahan anda kepada gim dengan memasang atau mencopot pemasangan untuk komponen yang dirubah. Anda juga dapat sepenuhnya mencopot gim dengan menggunakan tombol \"Copot semua\""
 it = "Puoi abilitare o disabilitare diversi componenti del gioco. Il launcher proporrà di applicare le modifiche al gioco installando o disinstallando i componenti selezionati. Puoi anche disinstallare completamente il gioco usando il pulsante \"Disinstalla tutto\"."
-pt = "Você pode habilitar ou desabilitar diferentes componentes de jogo. O launcher permite aplicar mudanças ao jogo instalando ou desinstalando componentes ativos. Você também pode desinstalar o jogo completamente utilizando o botão \"Desinstalar tudo\""
 
 [game_components_apply_changes_button_title]
 en = "Apply changes"
 ru = "Применить изменения"
+pt = "Aplicar mudanças"
 de = "Änderungen anwenden"
 id = "Terapkan perubahan"
 it = "Applica modifiche"
-pt = "Aplicar mudanças"
 
 [game_components_uninstall_all_button_title]
 en = "Uninstall all"
 ru = "Удалить всё"
+pt = "Desinstalar tudo"
 de = "Alle deinstallieren"
 id = "Copot semua"
 it = "Disinstalla tutto"
-pt = "Desinstalar tudo"
 
 [game_components_uninstall_all_button_description]
 en = "Uninstall every available component and hide the game from your games library"
 ru = "Удалить все доступные компоненты и скрыть игру из вашей библиотеки игр"
+pt = "Desinstala todos os componentes disponíveis e esconde o jogo da sua biblioteca"
 de = "Deinstalliert alle verfügbaren Komponenten und verberge das Spiel in deiner Bibliothek"
 id = "Copot semua komponen tersedia dan semunyikan gim dari daftar gim anda"
 it = "Disinstalla tutti i componenti presenti e nascondi il gioco dalla tua libreria"
-pt = "Desinstala todos os componentes disponíveis e esconde o jogo da sua biblioteca"
 
 [game_components_uninstall_all_approve_dialog_title]
 en = "Uninstall all game components?"
 ru = "Удалить все компоненты игры?"
+pt = "Desinstalaer todos os componentes do jogo?"
 de = "Alle Spielkomponenten deinstallieren?"
 id = "Copot semua komponen gim?"
 it = "Disinstallare tutti i componenti del gioco?"
-pt = "Desinstalaer todos os componentes do jogo?"
 
 [game_components_uninstall_all_approve_dialog_message]
 en = "This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"
 ru = "Это действие удалит все компоненты игры, а также саму игру из вашей библиотеки. При согласии вы не сможете восстановить игру без полной её переустановки через страницу магазина игр. Вы хотите продолжить?"
+pt = "Essa ação irá desinstalar todos os componentes do jogo e apagar o jogo de sua biblioteca. Após concordar, você não poderá restaurar o jogo sem reinstala-lo pela página da loja. Deseja continuar?"
 de = "Diese Aktion wird alle Spielkomponenten deinstallieren und dieses Spiel aus deiner Bibliothek löschen. Du wirst das Spiel nicht mehr wiederherstellen können ohne über den Shop wieder zu installieren. Möchtest du fortfahren?"
 id = "Aksi ini akan mencopot semua komponen gim dan menghapus gim dari daftar gim anda. Setelah menyetujui anda tidak akan dapat mengembalikan gim tanpa menmasang ulang dari halaman toko gim. Apa anda ingin melanjutkan?"
 it = "Questa azione disinstallerà tutti i componenti del gioco e lo eliminerà dalla tua libreria. Dopo aver accettato, non potrai ripristinare il gioco senza reinstallarlo dalla pagina del negozio. Vuoi continuare?"
-pt = "Essa ação irá desinstalar todos os componentes do jogo e apagar o jogo de sua biblioteca. Após concordar, você não poderá restaurar o jogo sem reinstala-lo pela página da loja. Deseja continuar?"
 
 [game_components_apply_changes_title]
 en = "Apply components changes"
 ru = "Применение изменений компонентов"
+pt = "Aplicar mudanças de componentes"
 de = "Komponentenänderungen anwenden"
 id = "Terapkan perubahan komponen"
 it = "Applica modifiche ai componenti"
-pt = "Aplicar mudanças de componentes"
 
 [game_components_uninstall_all_title]
 en = "Uninstall game components"
 ru = "Удаление компонентов игры"
+pt = "Desinstalar componentes de jogo"
 de = "Spielkomponenten deinstallieren"
 id = "Copot komponen gim"
 it = "Disinstalla componenti del gioco"
-pt = "Desinstalar componentes de jogo"
 
 [game_component_install_title]
 en = "Install {component}"
 ru = "Установка {component}"
+pt = "Instalar {component}"
 de = "{component} installieren"
 id = "Pasang {component}"
 it = "Installa {component}"
-pt = "Instalar {component}"
 
 [game_component_uninstall_title]
 en = "Uninstall {component}"
 ru = "Удаление {component}"
+pt = "Desinstalar {component}"
 de = "{component} deinstallieren"
 id = "Copot {component}"
 it = "Disinstalla {component}"
-pt = "Desinstalar {component}"
