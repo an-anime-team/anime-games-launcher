@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,9 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
+use std::io::Read;
 use std::collections::HashMap;
-use std::process::Command;
+use std::sync::Arc;
+use std::process::{Command, Stdio};
 
 use adw::prelude::*;
 
@@ -35,6 +36,7 @@ use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
 use agl_runtime::api::ApiOptions;
+use agl_runtime::api::bytes::Bytes;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 use agl_runtime::api::portal_api::{
     ToastOptions, NotificationOptions, DialogOptions, DialogButtonStatus
@@ -42,29 +44,34 @@ use agl_runtime::api::portal_api::{
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::api::{
-    GameVariant,
-    GameIntegration,
-    ActionsPipeline,
-    GameLaunchInfo,
-    GameSettingsGroup
+    GameVariant, GameIntegration, ActionsPipeline, GameLaunchInfo,
+    GameComponentsGroup, GameSettingsGroup
 };
 
-use crate::consts;
-use crate::config;
-use crate::i18n;
-use crate::cache;
+use crate::{consts, config, cache, games, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::windows::about::AboutWindow;
+use crate::ui::windows::game_components::{
+    GameComponentsWindow,
+    GameComponentsWindowInput,
+    GameComponentsWindowOutput
+};
+use crate::ui::windows::game_apply_components::{
+    GameApplyComponentsWindow,
+    GameApplyComponentsWindowInput,
+    GameApplyComponentsWindowOutput,
+    ApplyComponentInfo
+};
 use crate::ui::windows::game_settings::{
     GameSettingsWindow,
     GameSettingsWindowInput,
     GameSettingsWindowOutput
 };
-use crate::ui::windows::pipeline_actions::{
-    PipelineActionsWindow,
-    PipelineActionsWindowInput,
-    PipelineActionsWindowOutput
+use crate::ui::windows::game_actions_pipeline::{
+    GameActionsPipelineWindow,
+    GameActionsPipelineWindowInput,
+    GameActionsPipelineWindowOutput
 };
 use crate::ui::windows::game_running::{GameRunningWindow, GameRunningWindowMsg};
 
@@ -93,11 +100,26 @@ pub enum MainWindowMsg {
     AddAllowList(AllowList),
 
     AddStorePageGame {
+        /// Unique game name. A game package lock filename is expected be used.
+        name: String,
+
+        /// URL to the game's manifest file.
         manifest_url: String,
+
+        /// Game static info.
         manifest: GameManifest
     },
 
-    AddLibraryPageGame(GameLock),
+    AddLibraryPageGame {
+        /// Unique game name. A game package lock filename is expected be used.
+        name: String,
+
+        /// Game package lock.
+        lock: GameLock
+    },
+
+    /// Delete game package for the given game name.
+    DeleteGamePackage(String),
 
     ShowToast(ToastOptions),
     ShowNotification(NotificationOptions),
@@ -109,14 +131,36 @@ pub enum MainWindowMsg {
     ShowLibraryGameWithUrl(String),
 
     ScheduleGameActionsPipeline {
-        game_index: usize,
+        game_name: String,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    OpenGameSettingsWindow {
-        variant: GameVariant,
+    ScheduleApplyGameComponents {
+        game_integration: Arc<GameIntegration>,
+        game_variant: GameVariant,
+
+        game_name: String,
+        game_title: String,
+
+        install_components: Box<[ApplyComponentInfo]>,
+        uninstall_components: Box<[ApplyComponentInfo]>,
+
+        /// Delete game package after applying these components.
+        delete_game_package: bool
+    },
+
+    OpenGameComponentsWindow {
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
+        game_name: String,
+        game_title: String,
+        layout: Box<[GameComponentsGroup]>
+    },
+
+    OpenGameSettingsWindow {
+        integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -132,11 +176,13 @@ pub struct MainWindow {
     about_window: AsyncController<AboutWindow>,
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
+    game_components_window: AsyncController<GameComponentsWindow>,
+    game_apply_components_window: AsyncController<GameApplyComponentsWindow>,
     game_settings_window: AsyncController<GameSettingsWindow>,
-    pipeline_actions_window: AsyncController<PipelineActionsWindow>,
+    game_actions_pipeline_window: AsyncController<GameActionsPipelineWindow>,
     game_running_window: AsyncController<GameRunningWindow>,
 
-    window: Option<adw::ApplicationWindow>,
+    window: adw::ApplicationWindow,
     toast_overlay: adw::ToastOverlay,
     view_stack: adw::ViewStack,
 
@@ -151,12 +197,14 @@ pub struct MainWindow {
 
 impl std::fmt::Debug for MainWindow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LibraryPage")
+        f.debug_struct("MainWindow")
             .field("about_window", &self.about_window)
             .field("store_page", &self.store_page)
             .field("library_page", &self.library_page)
+            .field("game_components_window", &self.game_components_window)
+            .field("game_apply_components_window", &self.game_apply_components_window)
             .field("game_settings_window", &self.game_settings_window)
-            .field("pipeline_actions_window", &self.pipeline_actions_window)
+            .field("game_actions_pipeline_window", &self.game_actions_pipeline_window)
             .field("game_running_window", &self.game_running_window)
             .field("window", &self.window)
             .field("toast_overlay", &self.toast_overlay)
@@ -187,7 +235,7 @@ impl SimpleAsyncComponent for MainWindow {
 
     view! {
         #[root]
-        _window = adw::ApplicationWindow {
+        adw::ApplicationWindow {
             set_title: Some("Anime Games Launcher"),
             set_size_request: (1200, 800),
 
@@ -372,7 +420,7 @@ impl SimpleAsyncComponent for MainWindow {
             translate
         }).expect("failed to initialize packages runtime");
 
-        let mut model = Self {
+        let model = Self {
             about_window: AboutWindow::builder()
                 .launch(())
                 .detach(),
@@ -383,8 +431,8 @@ impl SimpleAsyncComponent for MainWindow {
                     StorePageOutput::SetShowBack(show)
                         => MainWindowMsg::SetShowBackButton(show),
 
-                    StorePageOutput::AddLibraryPageGame(game)
-                        => MainWindowMsg::AddLibraryPageGame(game),
+                    StorePageOutput::AddLibraryPageGame { name, lock }
+                        => MainWindowMsg::AddLibraryPageGame { name, lock },
 
                     StorePageOutput::ShowLibraryGameWithUrl(url)
                         => MainWindowMsg::ShowLibraryGameWithUrl(url)
@@ -393,14 +441,50 @@ impl SimpleAsyncComponent for MainWindow {
             library_page: LibraryPage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    LibraryPageOutput::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline }
-                        => MainWindowMsg::ScheduleGameActionsPipeline { game_index, game_title, actions_pipeline },
+                    LibraryPageOutput::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline }
+                        => MainWindowMsg::ScheduleGameActionsPipeline { game_name, game_title, actions_pipeline },
 
-                    LibraryPageOutput::OpenGameSettingsWindow { variant, integration, layout }
-                        => MainWindowMsg::OpenGameSettingsWindow { variant, integration, layout },
+                    LibraryPageOutput::OpenGameComponentsWindow { integration, variant, game_name, game_title, layout }
+                        => MainWindowMsg::OpenGameComponentsWindow { integration, variant, game_name, game_title, layout },
+
+                    LibraryPageOutput::OpenGameSettingsWindow { integration, variant, layout }
+                        => MainWindowMsg::OpenGameSettingsWindow { integration, variant, layout },
 
                     LibraryPageOutput::LaunchGame { game_title, game_launch_info }
                         => MainWindowMsg::LaunchGame { game_title, game_launch_info }
+                }),
+
+            game_components_window: GameComponentsWindow::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    GameComponentsWindowOutput::ApplyChanges {
+                        game_integration,
+                        game_variant,
+                        game_name,
+                        game_title,
+                        install_components,
+                        uninstall_components,
+                        delete_game_package
+                    } => MainWindowMsg::ScheduleApplyGameComponents {
+                        game_variant,
+                        game_integration,
+                        game_name,
+                        game_title,
+                        install_components,
+                        uninstall_components,
+                        delete_game_package
+                    }
+                }),
+
+            game_apply_components_window: GameApplyComponentsWindow::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    // FIXME: this is a hack
+                    GameApplyComponentsWindowOutput::UpdateGameInfo(_)
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo,
+
+                    GameApplyComponentsWindowOutput::DeleteGamePackage(name)
+                        => MainWindowMsg::DeleteGamePackage(name)
                 }),
 
             game_settings_window: GameSettingsWindow::builder()
@@ -410,10 +494,11 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
 
-            pipeline_actions_window: PipelineActionsWindow::builder()
+            game_actions_pipeline_window: GameActionsPipelineWindow::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    PipelineActionsWindowOutput::UpdateGameInfo(_)
+                    // FIXME: this is a hack
+                    GameActionsPipelineWindowOutput::UpdateGameInfo(_)
                         => MainWindowMsg::ReloadSelectedLibraryGameInfo
                 }),
 
@@ -421,7 +506,7 @@ impl SimpleAsyncComponent for MainWindow {
                 .launch(())
                 .detach(),
 
-            window: None,
+            window: root.clone(),
             toast_overlay: adw::ToastOverlay::new(),
             view_stack: adw::ViewStack::new(),
 
@@ -440,8 +525,6 @@ impl SimpleAsyncComponent for MainWindow {
 
         let widgets = view_output!();
 
-        model.window = Some(widgets._window.clone());
-
         // Connect hamburger menu buttons.
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
 
@@ -453,7 +536,7 @@ impl SimpleAsyncComponent for MainWindow {
             }));
         }
 
-        widgets._window.insert_action_group(
+        model.window.insert_action_group(
             "win",
             Some(&group.into_action_group())
         );
@@ -700,7 +783,9 @@ impl SimpleAsyncComponent for MainWindow {
                     tasks.push((url.clone(), cache_path.clone(), task));
                 }
 
-                paths.push((url, cache_path, is_featured));
+                let game_name = games::get_name(&url);
+
+                paths.push((game_name, url, cache_path, is_featured));
             }
 
             // Wait for all the game manifests to be downloaded.
@@ -734,8 +819,13 @@ impl SimpleAsyncComponent for MainWindow {
             for entry in config.games_path.read_dir()? {
                 let entry = entry?;
 
+                let game_name = entry.file_name()
+                    .to_string_lossy()
+                    .to_string();
+
                 tracing::trace!(
                     path = ?entry.path(),
+                    ?game_name,
                     "loading added game package lock"
                 );
 
@@ -763,6 +853,7 @@ impl SimpleAsyncComponent for MainWindow {
                 if is_expired {
                     tracing::trace!(
                         path = ?entry.path(),
+                        ?game_name,
                         ?title,
                         "updating added game package lock, cache is expired"
                     );
@@ -785,13 +876,17 @@ impl SimpleAsyncComponent for MainWindow {
                     )?;
                 }
 
-                sender.input(MainWindowMsg::AddLibraryPageGame(lock));
+                sender.input(MainWindowMsg::AddLibraryPageGame {
+                    name: game_name,
+                    lock
+                });
             }
 
             // Add store page games.
 
             // Show featured games first.
-            paths.sort_by(|a, b| b.2.cmp(&a.2));
+            #[allow(clippy::unnecessary_sort_by)]
+            paths.sort_by(|a, b| b.3.cmp(&a.3));
 
             tracing::debug!(?paths, "adding store page games");
 
@@ -801,7 +896,7 @@ impl SimpleAsyncComponent for MainWindow {
                     .to_string()
             )));
 
-            for (url, path, _is_featured) in paths {
+            for (game_name, url, path, _is_featured) in paths {
                 tracing::trace!(?url, ?path, "reading game manifest");
 
                 let manifest = std::fs::read(path)?;
@@ -811,6 +906,7 @@ impl SimpleAsyncComponent for MainWindow {
                     .context("failed to deserialize game manifest")?;
 
                 sender.input(MainWindowMsg::AddStorePageGame {
+                    name: game_name,
                     manifest_url: url,
                     manifest
                 });
@@ -862,32 +958,37 @@ impl SimpleAsyncComponent for MainWindow {
     ) {
         match message {
             MainWindowMsg::OpenAboutWindow => {
-                if let Some(window) = &self.window {
-                    self.about_window.widget().present(Some(window));
-                }
+                self.about_window.widget().present(Some(&self.window));
             }
 
-            MainWindowMsg::SetLoadingStatus(status) => self.loading_status = status,
+            MainWindowMsg::SetLoadingStatus(status) => {
+                self.loading_status = status;
+            }
 
             MainWindowMsg::AddAllowList(allow_list) => {
                 self.allow_list.merge_with(allow_list);
             }
 
-            MainWindowMsg::AddStorePageGame { manifest_url, manifest } => {
+            MainWindowMsg::AddStorePageGame {
+                name,
+                manifest_url,
+                manifest
+            } => {
                 self.store_page.emit(StorePageInput::AddGame {
+                    name,
                     manifest_url,
                     manifest
                 });
             }
 
-            MainWindowMsg::AddLibraryPageGame(game) => {
+            MainWindowMsg::AddLibraryPageGame { name, lock } => {
                 let config = config::get();
 
                 let lang = config.language();
 
                 let title = match &lang {
-                    Ok(lang) => game.manifest.game.title.translate(lang),
-                    Err(_) => game.manifest.game.title.default_translation()
+                    Ok(lang) => lock.manifest.game.title.translate(lang),
+                    Err(_) => lock.manifest.game.title.default_translation()
                 };
 
                 let paths = ModulePaths {
@@ -897,15 +998,15 @@ impl SimpleAsyncComponent for MainWindow {
                 };
 
                 // Add game's scope to all the game integration resources.
-                if let Some(scope) = &game.scope {
-                    for hash in game.lock.resources.keys() {
+                if let Some(scope) = &lock.scope {
+                    for hash in lock.lock.resources.keys() {
                         self.allow_list.add_module_scope(*hash, scope.clone());
                     }
                 }
 
                 // Load the game integration.
                 let result = self.runtime.load_packages(
-                    &game.lock,
+                    &lock.lock,
                     &self.storage,
                     &paths,
                     &self.allow_list
@@ -914,8 +1015,9 @@ impl SimpleAsyncComponent for MainWindow {
                 if let Err(err) = result {
                     tracing::error!(
                         ?err,
-                        url = game.url,
-                        title = game.manifest.game.title.default_translation(),
+                        ?name,
+                        url = lock.url,
+                        title = lock.manifest.game.title.default_translation(),
                         "failed to load game package"
                     );
 
@@ -945,10 +1047,11 @@ impl SimpleAsyncComponent for MainWindow {
                     None
                 }
 
-                let Some(module_key) = find_module_key(&game) else {
+                let Some(module_key) = find_module_key(&lock) else {
                     tracing::error!(
-                        url = game.url,
-                        title = game.manifest.game.title.default_translation(),
+                        ?name,
+                        url = lock.url,
+                        title = lock.manifest.game.title.default_translation(),
                         "failed to find game integration module in package lock"
                     );
 
@@ -977,8 +1080,9 @@ impl SimpleAsyncComponent for MainWindow {
                     Some(Err(err)) => {
                         tracing::error!(
                             ?err,
-                            url = game.url,
-                            title = game.manifest.game.title.default_translation(),
+                            ?name,
+                            url = lock.url,
+                            title = lock.manifest.game.title.default_translation(),
                             "failed to read game integration from the runtime"
                         );
 
@@ -993,8 +1097,9 @@ impl SimpleAsyncComponent for MainWindow {
 
                     None => {
                         tracing::error!(
-                            url = game.url,
-                            title = game.manifest.game.title.default_translation(),
+                            ?name,
+                            url = lock.url,
+                            title = lock.manifest.game.title.default_translation(),
                             "game integration module is missing in the runtime"
                         );
 
@@ -1021,8 +1126,9 @@ impl SimpleAsyncComponent for MainWindow {
                     Err(err) => {
                         tracing::error!(
                             ?err,
-                            url = game.url,
-                            title = game.manifest.game.title.default_translation(),
+                            ?name,
+                            url = lock.url,
+                            title = lock.manifest.game.title.default_translation(),
                             "failed to build game integration"
                         );
 
@@ -1037,9 +1143,14 @@ impl SimpleAsyncComponent for MainWindow {
                 };
 
                 self.library_page.emit(LibraryPageInput::AddGame {
-                    package: game,
+                    name,
+                    package: lock,
                     integration: game_integration
                 });
+            }
+
+            MainWindowMsg::DeleteGamePackage(name) => {
+                self.library_page.emit(LibraryPageInput::DeleteGamePackage(name));
             }
 
             MainWindowMsg::ShowToast(options) => {
@@ -1173,7 +1284,7 @@ impl SimpleAsyncComponent for MainWindow {
                     });
                 }
 
-                dialog.present(self.window.as_ref());
+                dialog.present(Some(&self.window));
             }
 
             MainWindowMsg::SetShowBackButton(show) => self.show_back_button = show,
@@ -1185,72 +1296,165 @@ impl SimpleAsyncComponent for MainWindow {
             MainWindowMsg::ShowLibraryGameWithUrl(url) => {
                 self.view_stack.set_visible_child_name("library");
 
-                self.library_page.emit(LibraryPageInput::SelectGameWithUrl(url));
+                self.library_page.emit(LibraryPageInput::SelectGameWithUrl {
+                    game_package_url: url,
+                    edition: None
+                });
             }
 
             MainWindowMsg::ScheduleGameActionsPipeline {
-                game_index,
+                game_name,
                 game_title,
                 actions_pipeline
             } => {
-                if let Some(window) = &self.window {
-                    self.pipeline_actions_window.emit(PipelineActionsWindowInput::SetActionsPipeline {
-                        game_index,
-                        game_title,
-                        actions_pipeline
-                    });
+                self.game_actions_pipeline_window.emit(GameActionsPipelineWindowInput::SetActionsPipeline {
+                    game_name,
+                    game_title,
+                    actions_pipeline
+                });
 
-                    self.pipeline_actions_window.widget()
-                        .present(Some(window));
-                }
+                self.game_actions_pipeline_window.widget()
+                    .present(Some(&self.window));
+            }
+
+            MainWindowMsg::ScheduleApplyGameComponents {
+                game_variant,
+                game_integration,
+                game_name,
+                game_title,
+                install_components,
+                uninstall_components,
+                delete_game_package
+            } => {
+                self.game_apply_components_window.emit(GameApplyComponentsWindowInput::SetComponents {
+                    game_variant,
+                    game_integration,
+                    game_name,
+                    game_title,
+                    install_components,
+                    uninstall_components,
+                    delete_game_package
+                });
+
+                self.game_apply_components_window.widget()
+                    .present(Some(&self.window));
+            }
+
+            MainWindowMsg::OpenGameComponentsWindow {
+                integration,
+                variant,
+                game_name,
+                game_title,
+                layout
+            } => {
+                self.game_components_window.emit(GameComponentsWindowInput::SetGame {
+                    integration,
+                    variant,
+                    game_name,
+                    game_title,
+                    layout
+                });
+
+                self.game_components_window.widget()
+                    .present(Some(&self.window));
             }
 
             MainWindowMsg::OpenGameSettingsWindow {
-                variant,
                 integration,
+                variant,
                 layout
             } => {
-                if let Some(window) = &self.window {
-                    self.game_settings_window.emit(GameSettingsWindowInput::SetGame {
-                        variant,
-                        integration,
-                        layout
-                    });
+                self.game_settings_window.emit(GameSettingsWindowInput::SetGame {
+                    variant,
+                    integration,
+                    layout
+                });
 
-                    self.game_settings_window.widget()
-                        .present(Some(window));
-                }
+                self.game_settings_window.widget()
+                    .present(Some(&self.window));
             }
 
             MainWindowMsg::LaunchGame { game_title, game_launch_info } => {
-                if let Some(window) = &self.window {
-                    let mut command = &mut Command::new(&game_launch_info.binary);
+                let mut command = &mut Command::new(&game_launch_info.binary);
 
-                    if let Some(args) = &game_launch_info.args {
-                        command = command.args(args);
-                    }
+                if let Some(args) = &game_launch_info.args {
+                    command = command.args(args);
+                }
 
-                    if let Some(env) = &game_launch_info.env {
-                        command = command.envs(env);
-                    }
+                if let Some(env) = &game_launch_info.env {
+                    command = command.envs(env);
+                }
 
-                    // TODO: pipe stdout/stderr to a log file.
+                if game_launch_info.stdout.is_some() {
+                    command = command.stdout(Stdio::piped());
+                } else {
+                    command = command.stdout(Stdio::inherit());
+                }
 
-                    tracing::info!(?command, "launching game");
+                if game_launch_info.stderr.is_some() {
+                    command = command.stderr(Stdio::piped());
+                } else {
+                    command = command.stderr(Stdio::inherit());
+                }
 
-                    match command.spawn() {
-                        Ok(child) => {
-                            self.game_running_window.emit(GameRunningWindowMsg::SetChild {
-                                game_title,
-                                child
+                tracing::info!(?command, "launching game");
+
+                match command.spawn() {
+                    Ok(mut child) => {
+                        // Stdout handler.
+                        if let Some(handler) = game_launch_info.stdout
+                            && let Some(mut stdout) = child.stdout.take()
+                        {
+                            tasks::spawn_blocking(move || {
+                                let mut buf = [0; 1024];
+
+                                while let Ok(n) = stdout.read(&mut buf) {
+                                    if n == 0 {
+                                        break;
+                                    }
+
+                                    let bytes = Bytes::new(
+                                        buf[..n].to_vec()
+                                            .into_boxed_slice()
+                                    );
+
+                                    let _ = handler.call::<()>(bytes);
+                                }
                             });
-
-                            self.game_running_window.widget()
-                                .present(Some(window));
                         }
 
-                        Err(err) => tracing::error!(?err, "failed to launch game")
+                        // Stderr handler.
+                        if let Some(handler) = game_launch_info.stderr
+                            && let Some(mut stderr) = child.stderr.take()
+                        {
+                            tasks::spawn_blocking(move || {
+                                let mut buf = [0; 1024];
+
+                                while let Ok(n) = stderr.read(&mut buf) {
+                                    if n == 0 {
+                                        break;
+                                    }
+
+                                    let bytes = Bytes::new(
+                                        buf[..n].to_vec()
+                                            .into_boxed_slice()
+                                    );
+
+                                    let _ = handler.call::<()>(bytes);
+                                }
+                            });
+                        }
+
+                        self.game_running_window.emit(GameRunningWindowMsg::SetChild {
+                            game_title,
+                            child
+                        });
+
+                        self.game_running_window.widget()
+                            .present(Some(&self.window));
                     }
+
+                    Err(err) => tracing::error!(?err, "failed to launch game")
                 }
             }
 

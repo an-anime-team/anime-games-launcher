@@ -111,14 +111,30 @@ impl HttpApi {
                         Ok(Box::new(move |lua: &Lua| {
                             let headers_table = lua.create_table_with_capacity(0, headers.len())?;
 
-                            for (key, value) in headers {
-                                if let Some(key) = key {
-                                    headers_table.raw_set(
-                                        key.to_string(),
-                                        lua.create_string(value.as_bytes())?
-                                    )?;
-                                }
+                            for (key, value) in headers.iter() {
+                                headers_table.raw_set(
+                                    key.to_string(),
+                                    lua.create_string(value.as_bytes())?
+                                )?;
                             }
+
+                            let headers_metatable = lua.create_table_with_capacity(0, 1)?;
+
+                            headers_metatable.raw_set(
+                                "__index",
+                                lua.create_function::<_, (LuaTable, String), LuaValue>(
+                                    move |lua: &Lua, (_, key): (LuaTable, String)| {
+                                        headers.get(&key)
+                                            .map(|value| {
+                                                lua.create_string(value.as_bytes())
+                                                    .map(LuaValue::String)
+                                            })
+                                            .unwrap_or(Ok(LuaValue::Nil))
+                                    }
+                                )?
+                            )?;
+
+                            headers_table.set_metatable(Some(headers_metatable))?;
 
                             let body = Bytes::new(body.into_boxed_slice());
 
@@ -172,14 +188,30 @@ impl HttpApi {
                         Ok(Box::new(move |lua: &Lua| {
                             let headers_table = lua.create_table_with_capacity(0, headers.len())?;
 
-                            for (key, value) in headers {
-                                if let Some(key) = key {
-                                    headers_table.raw_set(
-                                        key.to_string(),
-                                        lua.create_string(value.as_bytes())?
-                                    )?;
-                                }
+                            for (key, value) in headers.iter() {
+                                headers_table.raw_set(
+                                    key.to_string(),
+                                    lua.create_string(value.as_bytes())?
+                                )?;
                             }
+
+                            let headers_metatable = lua.create_table_with_capacity(0, 1)?;
+
+                            headers_metatable.raw_set(
+                                "__index",
+                                lua.create_function::<_, (LuaTable, String), LuaValue>(
+                                    move |lua: &Lua, (_, key): (LuaTable, String)| {
+                                        headers.get(&key)
+                                            .map(|value| {
+                                                lua.create_string(value.as_bytes())
+                                                    .map(LuaValue::String)
+                                            })
+                                            .unwrap_or(Ok(LuaValue::Nil))
+                                    }
+                                )?
+                            )?;
+
+                            headers_table.set_metatable(Some(headers_metatable))?;
 
                             let result = lua.create_table_with_capacity(0, 4)?;
 

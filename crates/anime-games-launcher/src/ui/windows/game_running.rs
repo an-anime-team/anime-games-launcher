@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ pub enum GameRunningWindowMsg {
 
 #[derive(Debug)]
 pub struct GameRunningWindow {
-    window: Option<adw::Dialog>,
+    window: adw::Dialog,
 
     game_title: Option<String>,
 
@@ -63,7 +63,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
 
     view! {
         #[root]
-        _window = adw::Dialog {
+        adw::Dialog {
             set_size_request: (400, 260),
             set_can_close: false,
 
@@ -95,6 +95,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
 
                             add_suffix = &gtk::Label {
                                 set_selectable: true,
+                                set_focusable: false,
 
                                 #[watch]
                                 set_label: model.child.as_ref()
@@ -145,8 +146,8 @@ impl SimpleAsyncComponent for GameRunningWindow {
         root: Self::Root,
         _sender: AsyncComponentSender<Self>
     ) -> AsyncComponentParts<Self> {
-        let mut model = Self {
-            window: None,
+        let model = Self {
+            window: root.clone(),
             game_title: None,
             child: None,
             running_since: None,
@@ -155,8 +156,6 @@ impl SimpleAsyncComponent for GameRunningWindow {
         };
 
         let widgets = view_output!();
-
-        model.window = Some(widgets._window.clone());
 
         AsyncComponentParts { model, widgets }
     }
@@ -221,9 +220,7 @@ impl SimpleAsyncComponent for GameRunningWindow {
             }
 
             GameRunningWindowMsg::Close => {
-                if let Some(window) = &self.window {
-                    window.force_close();
-                }
+                self.window.force_close();
             }
         }
     }

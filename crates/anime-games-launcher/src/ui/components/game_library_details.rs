@@ -23,8 +23,8 @@ use adw::prelude::*;
 
 use agl_games::manifest::GameManifest;
 use agl_games::api::{
-    ActionsPipeline, GameIntegration, GameLaunchInfo, GameLaunchStatus,
-    GameSettingsGroup, GameVariant, ToolButton
+    GameVariant, ActionsPipeline, GameIntegration, GameLaunchInfo,
+    GameLaunchStatus, GameComponentsGroup, GameSettingsGroup, ToolButton
 };
 
 use crate::{consts, config, i18n};
@@ -41,15 +41,25 @@ use super::game_tools_buttons::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum GameLibraryDetailsInput {
+    Clear,
+
     SetGame {
+        /// Unique game name. A game package lock filename is expected be used.
+        name: String,
+
+        /// Game manifest (static info).
         manifest: GameManifest,
-        edition: Option<String>,
+
+        /// Game integration object.
         integration: Arc<GameIntegration>,
-        index: usize
+
+        /// Selected game variant info.
+        variant: GameVariant
     },
 
     UpdateGameInfo,
     ScheduleGameActionsPipeline,
+    OpenGameComponentsWindow,
     CallToolButton(usize),
     OpenGameSettingsWindow,
     LaunchGame
@@ -58,14 +68,22 @@ pub enum GameLibraryDetailsInput {
 #[derive(Debug, Clone)]
 pub enum GameLibraryDetailsOutput {
     ScheduleGameActionsPipeline {
-        game_index: usize,
+        game_name: String,
         game_title: String,
         actions_pipeline: Arc<ActionsPipeline>
     },
 
-    OpenGameSettingsWindow {
-        variant: GameVariant,
+    OpenGameComponentsWindow {
         integration: Arc<GameIntegration>,
+        variant: GameVariant,
+        game_name: String,
+        game_title: String,
+        layout: Box<[GameComponentsGroup]>
+    },
+
+    OpenGameSettingsWindow {
+        integration: Arc<GameIntegration>,
+        variant: GameVariant,
         layout: Box<[GameSettingsGroup]>
     },
 
@@ -82,8 +100,7 @@ pub struct GameLibraryDetails {
 
     game_tools_buttons_factory: AsyncFactoryVecDeque<GameToolButtonFactory>,
 
-    game_index: usize,
-
+    game_name: Option<String>,
     game_title: Option<String>,
     game_developer: Option<String>,
     game_publisher: Option<String>,
@@ -93,6 +110,7 @@ pub struct GameLibraryDetails {
 
     game_launch_info: Option<GameLaunchInfo>,
     game_actions_pipeline: Option<Arc<ActionsPipeline>>,
+    game_components_layout: Option<Box<[GameComponentsGroup]>>,
     game_tools_buttons: Vec<ToolButton>,
     game_settings_layout: Option<Box<[GameSettingsGroup]>>
 }
@@ -143,6 +161,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         add_css_class: "title-1",
 
                         set_selectable: true,
+                        set_focusable: false,
 
                         #[watch]
                         set_label?: model.game_title.as_deref()
@@ -248,6 +267,22 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             add_css_class: "pill",
 
                             #[watch]
+                            set_visible: model.game_components_layout.is_some(),
+
+                            adw::ButtonContent {
+                                set_icon_name: "application-x-addon-symbolic",
+
+                                set_label: i18n!("components")
+                                    .unwrap_or("Components")
+                            },
+
+                            connect_clicked => GameLibraryDetailsInput::OpenGameComponentsWindow
+                        },
+
+                        gtk::Button {
+                            add_css_class: "pill",
+
+                            #[watch]
                             set_visible: model.game_settings_layout.is_some(),
 
                             adw::ButtonContent {
@@ -297,8 +332,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     }
                 }),
 
-            game_index: 0,
-
+            game_name: None,
             game_title: None,
             game_developer: None,
             game_publisher: None,
@@ -308,6 +342,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             game_launch_info: None,
             game_actions_pipeline: None,
+            game_components_layout: None,
             game_tools_buttons: vec![],
             game_settings_layout: None
         };
@@ -323,11 +358,29 @@ impl SimpleAsyncComponent for GameLibraryDetails {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
+            GameLibraryDetailsInput::Clear => {
+                self.game_tools_buttons_factory.guard().clear();
+
+                self.game_name = None;
+                self.game_title = None;
+                self.game_developer = None;
+                self.game_publisher = None;
+
+                self.game_integration = None;
+                self.game_variant = None;
+
+                self.game_launch_info = None;
+                self.game_actions_pipeline = None;
+                self.game_components_layout = None;
+                self.game_tools_buttons = vec![];
+                self.game_settings_layout = None;
+            }
+
             GameLibraryDetailsInput::SetGame {
+                name,
                 manifest,
-                edition,
                 integration,
-                index
+                variant
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::lazy_load_card(&manifest.game.images.poster)
@@ -363,18 +416,13 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     None => manifest.game.publisher.default_translation()
                 };
 
-                self.game_index = index;
-
+                self.game_name = Some(name);
                 self.game_title = Some(title.to_string());
                 self.game_developer = Some(developer.to_string());
                 self.game_publisher = Some(publisher.to_string());
 
                 self.game_integration = Some(integration);
-
-                self.game_variant = Some(GameVariant {
-                    platform: *consts::CURRENT_PLATFORM,
-                    edition
-                });
+                self.game_variant = Some(variant);
 
                 sender.input(GameLibraryDetailsInput::UpdateGameInfo);
             }
@@ -415,7 +463,23 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         }
                     }
 
-                    match integration.get_buttons(variant) {
+                    match integration.get_components_layout(variant) {
+                        Ok(layout) => self.game_components_layout = layout,
+
+                        Err(err) => {
+                            self.game_components_layout = None;
+
+                            tracing::error!(?err, "failed to request game components layout");
+
+                            dialogs::error(
+                                i18n!("failed_request_game_components_layout")
+                                    .unwrap_or("Failed to request game components layout"),
+                                err.to_string()
+                            );
+                        }
+                    }
+
+                    match integration.get_tools_buttons(variant) {
                         Ok(Some(buttons)) => {
                             self.game_tools_buttons.clear();
 
@@ -488,13 +552,31 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::ScheduleGameActionsPipeline => {
-                if let Some(game_title) = &self.game_title
+                if let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
                     && let Some(actions_pipeline) = &self.game_actions_pipeline
                 {
                     let _ = sender.output(GameLibraryDetailsOutput::ScheduleGameActionsPipeline {
-                        game_index: self.game_index,
+                        game_name: game_name.clone(),
                         game_title: game_title.clone(),
                         actions_pipeline: actions_pipeline.clone()
+                    });
+                }
+            }
+
+            GameLibraryDetailsInput::OpenGameComponentsWindow => {
+                if let Some(integration) = &self.game_integration
+                    && let Some(variant) = &self.game_variant
+                    && let Some(game_name) = &self.game_name
+                    && let Some(game_title) = &self.game_title
+                    && let Some(layout) = &self.game_components_layout
+                {
+                    let _ = sender.output(GameLibraryDetailsOutput::OpenGameComponentsWindow {
+                        variant: variant.clone(),
+                        integration: integration.clone(),
+                        game_name: game_name.clone(),
+                        game_title: game_title.clone(),
+                        layout: layout.clone()
                     });
                 }
             }
@@ -516,8 +598,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             }
 
             GameLibraryDetailsInput::OpenGameSettingsWindow => {
-                if let Some(variant) = &self.game_variant
-                    && let Some(integration) = &self.game_integration
+                if let Some(integration) = &self.game_integration
+                    && let Some(variant) = &self.game_variant
                     && let Some(layout) = &self.game_settings_layout
                 {
                     let _ = sender.output(GameLibraryDetailsOutput::OpenGameSettingsWindow {

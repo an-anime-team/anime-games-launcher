@@ -24,7 +24,7 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use mlua::prelude::*;
 
-use bufreaderwriter::rand::BufReaderWriterRand;
+use bufrw::BufReaderWriter;
 
 use agl_core::tasks::fs;
 
@@ -422,7 +422,7 @@ impl FilesystemApi {
                             handle = rand::random::<i32>();
                         }
 
-                        let buf = BufReaderWriterRand::reader_with_capacity(IO_BUFFER_SIZE, file);
+                        let buf = BufReaderWriter::with_capacity(file, IO_BUFFER_SIZE);
 
                         handles.insert(handle, buf);
 
@@ -489,7 +489,7 @@ impl FilesystemApi {
                         return Err(LuaError::external("invalid file handle"));
                     };
 
-                    file.get_mut().set_len(length)?;
+                    file.inner_mut().set_len(length)?;
 
                     Ok(())
                 })?

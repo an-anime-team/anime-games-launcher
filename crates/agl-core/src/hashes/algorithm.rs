@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-core
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -41,10 +41,6 @@ use std::str::FromStr;
 /// | sha     | sha2        | 256  | `sha2-512/256`    |
 /// | sha     | shake       | 128  | `shake-128`       |
 /// | sha     | shake       | 256  | `shake-256`       |
-/// | sha     | turboshake  | 128  | `turboshake-128`  |
-/// | sha     | turboshake  | 256  | `turboshake-256`  |
-/// | sha     | cshake      | 128  | `cshake-128`      |
-/// | sha     | cshake      | 256  | `cshake-256`      |
 /// | sha     | keccak      | 224  | `keccak-224`      |
 /// | sha     | keccak      | 256  | `keccak-256`      |
 /// | sha     | keccak      | 256  | `keccak-256-full` |
@@ -122,18 +118,6 @@ pub enum HashAlgorithm {
 
     #[cfg(feature = "hashes-sha3")]
     Shake_256,
-
-    #[cfg(feature = "hashes-sha3")]
-    TurboShake_128,
-
-    #[cfg(feature = "hashes-sha3")]
-    TurboShake_256,
-
-    #[cfg(feature = "hashes-sha3")]
-    CShake_128,
-
-    #[cfg(feature = "hashes-sha3")]
-    CShake_256,
 
     #[cfg(feature = "hashes-sha3")]
     Keccak_224,
@@ -237,18 +221,6 @@ impl HashAlgorithm {
 
             #[cfg(feature = "hashes-sha3")]
             Self::Shake_256 => "shake-256",
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_128 => "turboshake-128",
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::TurboShake_256 => "turboshake-256",
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_128 => "cshake-128",
-
-            #[cfg(feature = "hashes-sha3")]
-            Self::CShake_256 => "cshake-256",
 
             #[cfg(feature = "hashes-sha3")]
             Self::Keccak_224 => "keccak-224",
@@ -356,18 +328,6 @@ impl FromStr for HashAlgorithm {
 
             #[cfg(feature = "hashes-sha3")]
             "shake-256" | "shake256" => Ok(Self::Shake_256),
-
-            #[cfg(feature = "hashes-sha3")]
-            "turboshake-128" | "turboshake128" => Ok(Self::TurboShake_128),
-
-            #[cfg(feature = "hashes-sha3")]
-            "turboshake-256" | "turboshake256" => Ok(Self::TurboShake_256),
-
-            #[cfg(feature = "hashes-sha3")]
-            "cshake-128" | "cshake128" => Ok(Self::CShake_128),
-
-            #[cfg(feature = "hashes-sha3")]
-            "cshake-256" | "cshake256" => Ok(Self::CShake_256),
 
             #[cfg(feature = "hashes-sha3")]
             "keccak-224" | "keccak224" => Ok(Self::Keccak_224),
