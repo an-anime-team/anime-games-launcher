@@ -1377,7 +1377,9 @@ impl SimpleAsyncComponent for MainWindow {
             MainWindowMsg::LaunchGame { game_title, game_launch_info } => {
                 let mut command = &mut Command::new(&game_launch_info.binary);
 
-                if let Some(parent_folder) = game_launch_info.binary.parent() {
+                if let Some(parent_folder) = game_launch_info.binary.parent()
+                    && parent_folder.is_dir()
+                {
                     command = command.current_dir(parent_folder);
                 }
 
