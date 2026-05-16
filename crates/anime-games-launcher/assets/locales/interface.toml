@@ -336,6 +336,7 @@ ru = "Компоненты игры"
 de = "Spielkomponenten"
 id = "Komponen Gim"
 it = "Componenti del gioco"
+pt = "Componentes do Jogo"
 
 [game_components_description]
 en = "You can enable or disable different game components. The launcher will suggest applying your changes to the game by installing or uninstalling toggled components. You can also fully uninstall the game using the \"Uninstall all\" button."
@@ -343,6 +344,7 @@ ru = "Вы можете включать и выключать различны�
 de = "Du kannst verschiedene Spielkomponenten aktivieren oder deaktivieren. Der Launcher schlägt vor, deine Änderungen am Spiel anzuwenden durch Installation oder Deinstallation von Komponenten. Du kannst auch das Spiel vollständig löschen mit dem \"Alle deinstallieren\" Knopf."
 id = "Anda dapat menyalakan atau mematikan bermacam komponen gim. Peluncur aplikasi akan menyarankan untuk menerapkan perubahan anda kepada gim dengan memasang atau mencopot pemasangan untuk komponen yang dirubah. Anda juga dapat sepenuhnya mencopot gim dengan menggunakan tombol \"Copot semua\""
 it = "Puoi abilitare o disabilitare diversi componenti del gioco. Il launcher proporrà di applicare le modifiche al gioco installando o disinstallando i componenti selezionati. Puoi anche disinstallare completamente il gioco usando il pulsante \"Disinstalla tutto\"."
+pt = "Você pode habilitar ou desabilitar diferentes componentes de jogo. O launcher permite aplicar mudanças ao jogo instalando ou desinstalando componentes ativos. Você também pode desinstalar o jogo completamente utilizando o botão \"Desinstalar tudo\""
 
 [game_components_apply_changes_button_title]
 en = "Apply changes"
@@ -350,6 +352,7 @@ ru = "Применить изменения"
 de = "Änderungen anwenden"
 id = "Terapkan perubahan"
 it = "Applica modifiche"
+pt = "Aplicar mudanças"
 
 [game_components_uninstall_all_button_title]
 en = "Uninstall all"
@@ -357,6 +360,7 @@ ru = "Удалить всё"
 de = "Alle deinstallieren"
 id = "Copot semua"
 it = "Disinstalla tutto"
+pt = "Desinstalar tudo"
 
 [game_components_uninstall_all_button_description]
 en = "Uninstall every available component and hide the game from your games library"
@@ -364,6 +368,7 @@ ru = "Удалить все доступные компоненты и скры�
 de = "Deinstalliert alle verfügbaren Komponenten und verberge das Spiel in deiner Bibliothek"
 id = "Copot semua komponen tersedia dan semunyikan gim dari daftar gim anda"
 it = "Disinstalla tutti i componenti presenti e nascondi il gioco dalla tua libreria"
+pt = "Desinstala todos os componentes disponíveis e esconde o jogo da sua biblioteca"
 
 [game_components_uninstall_all_approve_dialog_title]
 en = "Uninstall all game components?"
@@ -371,6 +376,7 @@ ru = "Удалить все компоненты игры?"
 de = "Alle Spielkomponenten deinstallieren?"
 id = "Copot semua komponen gim?"
 it = "Disinstallare tutti i componenti del gioco?"
+pt = "Desinstalaer todos os componentes do jogo?"
 
 [game_components_uninstall_all_approve_dialog_message]
 en = "This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"
@@ -378,6 +384,7 @@ ru = "Это действие удалит все компоненты игры,
 de = "Diese Aktion wird alle Spielkomponenten deinstallieren und dieses Spiel aus deiner Bibliothek löschen. Du wirst das Spiel nicht mehr wiederherstellen können ohne über den Shop wieder zu installieren. Möchtest du fortfahren?"
 id = "Aksi ini akan mencopot semua komponen gim dan menghapus gim dari daftar gim anda. Setelah menyetujui anda tidak akan dapat mengembalikan gim tanpa menmasang ulang dari halaman toko gim. Apa anda ingin melanjutkan?"
 it = "Questa azione disinstallerà tutti i componenti del gioco e lo eliminerà dalla tua libreria. Dopo aver accettato, non potrai ripristinare il gioco senza reinstallarlo dalla pagina del negozio. Vuoi continuare?"
+pt = "Essa ação irá desinstalar todos os componentes do jogo e apagar o jogo de sua biblioteca. Após concordar, você não poderá restaurar o jogo sem reinstala-lo pela página da loja. Deseja continuar?"
 
 [game_components_apply_changes_title]
 en = "Apply components changes"
@@ -385,6 +392,7 @@ ru = "Применение изменений компонентов"
 de = "Komponentenänderungen anwenden"
 id = "Terapkan perubahan komponen"
 it = "Applica modifiche ai componenti"
+pt = "Aplicar mudanças de componentes"
 
 [game_components_uninstall_all_title]
 en = "Uninstall game components"
@@ -392,6 +400,7 @@ ru = "Удаление компонентов игры"
 de = "Spielkomponenten deinstallieren"
 id = "Copot komponen gim"
 it = "Disinstalla componenti del gioco"
+pt = "Desinstalar componentes de jogo"
 
 [game_component_install_title]
 en = "Install {component}"
@@ -399,6 +408,7 @@ ru = "Установка {component}"
 de = "{component} installieren"
 id = "Pasang {component}"
 it = "Installa {component}"
+pt = "Instalar {component}"
 
 [game_component_uninstall_title]
 en = "Uninstall {component}"
@@ -406,3 +416,4 @@ ru = "Удаление {component}"
 de = "{component} deinstallieren"
 id = "Copot {component}"
 it = "Disinstalla {component}"
+pt = "Desinstalar {component}"
