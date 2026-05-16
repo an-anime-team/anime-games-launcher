@@ -92,36 +92,35 @@ impl SimpleAsyncComponent for AboutWindow {
             ].join("\n"),
 
             set_release_notes_version: &APP_VERSION,
-            set_release_notes: &[
-                "<p>Added</p>",
+            set_release_notes: r#"
+                <p>Added</p>
 
-                "<ul>",
-                    "<li>Strings translations engine now respects regional language variants</li>",
-                    "<li>Added Indonesian launcher translations</li>",
-                    "<li>Added '--agl-debug' launcher launch flag to display trace logs in release builds</li>",
-                    "<li>Added spinner widget to the actions pipeline window if the current action has no progress and no text</li>",
-                "</ul>",
+                <ul>
+                    "<li>Added Italian translations</li>
+                    "<li>Added game integration agreements</li>
+                    "<li>When launched in debug mode ('--agl-debug' flag) the launcher will show entries names for settings and components as hints</li>
+                    "<li>Added new settings entry format for secrets (e.g. passwords)</li>
+                    "<li>Added optional game components system which required a big rewrite of the launcher's backend code</li>
+                    "<li>Added Protobuf API to the lua runtime</li>
+                </ul>
 
-                "<p>Fixed</p>",
+                <p>Fixed</p>
 
-                "<ul>",
-                    "<li>Fixed 'process.exec'-s 'Promise' awaiting</li>",
-                    "<li>Fixed rendering of long game titles</li>",
-                    "<li>Fixed empty pipeline action description setting</li>",
-                "</ul>",
+                <ul>
+                    <li>Selectable strings are not highlighted, focused or selected by default anymore</li>
+                    <li>Game variants are now properly selected and propagated to the lua side</li>
+                    <li>Actions in the actions pipeline window now properly render their descriptions</li>
+                    <li>Fixed a bug when the game library details window was updated 3 times instead of 1</li>
+                    <li>Fixed automatic game selection on the library page if "open in library" button on the game store page was clicked</li>
+                    <li>Fixed system language identification</li>
+                </ul>
 
-                "<p>Changed</p>",
+                <p>Changed</p>
 
-                "<ul>",
-                    "<li>Improved actions pipeline chart rendering. Now it uses 5-step WMA over the points history</li>",
-                "</ul>",
-
-                "<p>Removed</p>",
-
-                "<ul>",
-                    "<li>Removed automatic luau engine garbage collection from the launcher's side. It was causing a UI thread blocks</li>",
-                "</ul>"
-            ].join("\n")
+                <ul>
+                    <li>HTTP API headers are now case-insensitive</li>
+                </ul>
+            "#
         }
     }
 

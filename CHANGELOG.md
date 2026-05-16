@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added Italian translations
 - Added game integration agreements
+- When launched in debug mode (`--agl-debug` flag) the launcher will show
+  entries names for settings and components as hints
 - Added new settings entry format for secrets (e.g. passwords)
 - Added optional game components system which required a big rewrite of the
   launcher's backend code
