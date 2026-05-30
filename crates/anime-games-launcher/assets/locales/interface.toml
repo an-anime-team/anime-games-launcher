@@ -196,6 +196,7 @@ pt = "Acordo da integração de jogo"
 de = "Spielintegrationsvereinbarung"
 id = "Perjanjian untuk pemasangan dan integrasi Gim"
 it = "Accordo per l'integrazione del gioco"
+ja = "ゲーム統合の確認"
 
 [game_agreement_message]
 en = "<b>{game_title}</b> provides a user agreement. You have to agree with it in order to continue the game integration installation.\n\n{agreement}"
@@ -450,7 +451,7 @@ pt = "Instalar {component}"
 de = "{component} installieren"
 id = "Pasang {component}"
 it = "Installa {component}"
-ja = "{componet} をインストール"
+ja = "{component} のインストール"
 
 [game_component_uninstall_title]
 en = "Uninstall {component}"
@@ -459,4 +460,4 @@ pt = "Desinstalar {component}"
 de = "{component} deinstallieren"
 id = "Copot {component}"
 it = "Disinstalla {component}"
-ja = "{component} をアンインストール"
+ja = "{component} のアンインストール"

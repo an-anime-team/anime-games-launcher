@@ -126,6 +126,7 @@ pt = "Falha ao apagar pacote do jogo {title}"
 de = "Spielpaket für {title} konnte nicht gelöscht werden"
 id = "Gagal untuk menghapus paket gim {title}"
 it = "Impossibile eliminare il pacchetto del gioco {title}"
+ja = "ゲームパッケージ {title} を削除できませんでした"
 
 # ------------------------ Game components ------------------------
 
@@ -160,6 +161,7 @@ pt = "Falha ao aplicar componente do jogo"
 de = "Spielkomponente konnte nicht angewendet werden"
 id = "Gagal untuk menerapkan komponen gim"
 it = "Impossibile aggiungere il componente al gioco"
+ja = "ゲームコンポーネントを適用できませんでした"
 
 # ------------------------ Game settings ------------------------
 
