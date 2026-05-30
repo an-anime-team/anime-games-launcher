@@ -424,7 +424,7 @@ pt = "Essa ação irá desinstalar todos os componentes do jogo e apagar o jogo 
 de = "Diese Aktion wird alle Spielkomponenten deinstallieren und dieses Spiel aus deiner Bibliothek löschen. Du wirst das Spiel nicht mehr wiederherstellen können ohne über den Shop wieder zu installieren. Möchtest du fortfahren?"
 id = "Aksi ini akan mencopot semua komponen gim dan menghapus gim dari daftar gim anda. Setelah menyetujui anda tidak akan dapat mengembalikan gim tanpa menmasang ulang dari halaman toko gim. Apa anda ingin melanjutkan?"
 it = "Questa azione disinstallerà tutti i componenti del gioco e lo eliminerà dalla tua libreria. Dopo aver accettato, non potrai ripristinare il gioco senza reinstallarlo dalla pagina del negozio. Vuoi continuare?"
-ja = "この操作はすべてのコンポーネントを削除し、ライブラリからゲームを削除します。ストアページからゲームを再インストールするまで、ゲームを再度プレイすることはできなくなります。続行しますか？"
+ja = "この操作は全てのコンポーネントを削除し、ライブラリからゲームを削除します。ストアページからゲームを再インストールするまで、ゲームを再度プレイすることはできなくなります。続行しますか？"
 
 [game_components_apply_changes_title]
 en = "Apply components changes"
