@@ -7,6 +7,7 @@ pt = "Continuar"
 de = "Fortfahren"
 id = "Lanjut"
 it = "Continua"
+ja = "続行"
 
 [cancel]
 en = "Cancel"
@@ -15,6 +16,7 @@ pt = "Cancelar"
 de = "Abbrechen"
 id = "Batal"
 it = "Annulla"
+ja = "キャンセル"
 
 [close]
 en = "Close"
@@ -23,6 +25,7 @@ pt = "Fechar"
 de = "Schließen"
 id = "Tutup"
 it = "Chiudi"
+ja = "閉じる"
 
 [backtrace]
 en = "Backtrace"
@@ -31,6 +34,7 @@ pt = "Backtrace"
 de = "Backtrace"
 id = "Backtrace"
 it = "Backtrace"
+ja = "バックトレース"
 
 [components]
 en = "Components"
@@ -39,6 +43,7 @@ pt = "Componentes"
 de = "Komponenten"
 id = "Komponen"
 it = "Componenti"
+ja = "コンポーネント"
 
 [settings]
 en = "Settings"
@@ -47,6 +52,7 @@ pt = "Configurações"
 de = "Einstellungen"
 id = "Pengaturan"
 it = "Impostazioni"
+ja = "設定"
 
 # ------------------------ Startup tasks ------------------------
 
@@ -57,6 +63,7 @@ pt = "Criando diretórios padrão"
 de = "Erstelle Standardordner"
 id = "Membuat folder-folder bawaan"
 it = "Creazione delle cartelle predefinite"
+ja = "デフォルトのフォルダを作成しています"
 
 [fetching_packages_allow_lists]
 en = "Fetching packages allow lists"
@@ -97,6 +104,7 @@ pt = "Carregando pacote do jogo {title}"
 de = "Lade das Spielpaket für {title}"
 id = "Memuat paket untuk game {title}"
 it = "Caricando il pacchetto del gioco {title}"
+ja = "{title} ゲームパッケージを読み込んでいます"
 
 [updating_game_package]
 en = "Updating {title} game package"
@@ -105,6 +113,7 @@ pt = "Atualizando pacote do jogo {title}"
 de = "Aktualisiere das Spielpaket für {title}"
 id = "Memperbarui paket untuk game {title}"
 it = "Aggiornando il pacchetto del gioco {title}"
+ja = "{title} ゲームパッケージを更新しています"
 
 [adding_store_page_games]
 en = "Adding store page games"
@@ -123,6 +132,7 @@ pt = "Carregando"
 de = "Lade"
 id = "Memuat"
 it = "Caricamento"
+ja = "ロード中"
 
 [about_launcher]
 en = "About"
@@ -131,6 +141,7 @@ pt = "Sobre"
 de = "Über"
 id = "Tentang"
 it = "Informazioni"
+ja = "このランチャーについて"
 
 [games_store]
 en = "Store"
@@ -139,6 +150,7 @@ pt = "Loja"
 de = "Shop"
 id = "Toko"
 it = "Negozio"
+ja = "ストア"
 
 [games_library]
 en = "Library"
@@ -147,6 +159,7 @@ pt = "Biblioteca"
 de = "Bibliothek"
 id = "Perpustakaan"
 it = "Libreria"
+ja = "ライブラリ"
 
 [games]
 en = "Games"
@@ -163,6 +176,7 @@ pt = "Detalhes"
 de = "Details"
 id = "Detail"
 it = "Dettagli"
+ja = "詳細"
 
 [loaded_games_number]
 en = "Loaded {number} games"
@@ -171,6 +185,7 @@ pt = "{number} Jogos carregados"
 de = "{number} Spiele geladen"
 id = "Memuat {number} game"
 it = "Caricati {number} giochi"
+ja = "{number} つのゲームを読み込みました"
 
 # ------------------------ Game store page ------------------------
 
@@ -181,6 +196,7 @@ pt = "Acordo da integração de jogo"
 de = "Spielintegrationsvereinbarung"
 id = "Perjanjian untuk pemasangan dan integrasi Gim"
 it = "Accordo per l'integrazione del gioco"
+ja = "ゲーム統合の確認"
 
 [game_agreement_message]
 en = "<b>{game_title}</b> provides a user agreement. You have to agree with it in order to continue the game integration installation.\n\n{agreement}"
@@ -197,6 +213,7 @@ pt = "Concordo"
 de = "Akzeptieren"
 id = "Setuju"
 it = "Accetta"
+ja = "同意"
 
 [game_agreement_disagree]
 en = "Disagree"
@@ -205,6 +222,7 @@ pt = "Discordo"
 de = "Ablehnen"
 id = "Tidak Setuju"
 it = "Rifiuta"
+ja = "同意しない"
 
 [game_add_to_library]
 en = "Add to library"
@@ -213,6 +231,7 @@ pt = "Adicionar à biblioteca"
 de = "Zur Bibliothek hinzufügen"
 id = "Tambahkan ke perpustakaan"
 it = "Aggiungi alla libreria"
+ja = "ライブラリに追加"
 
 [game_adding_to_library]
 en = "Adding to library..."
@@ -221,6 +240,7 @@ pt = "Adicionando à biblioteca"
 de = "Füge der Bibliothek hinzu..."
 id = "Menambahkan ke perpustakaan..."
 it = "Aggiunta alla libreria..."
+ja = "ライブラリに追加しています..."
 
 [open_game_in_library]
 en = "Open in library"
@@ -229,6 +249,7 @@ pt = "Mostrar na biblioteca"
 de = "In Bibliothek öffnen"
 id = "Buka di perpustakaan"
 it = "Apri nella libreria"
+ja = "ライブラリで開く"
 
 [game_developer]
 en = "Developer: {name}"
@@ -237,6 +258,7 @@ pt = "Desenvolvedor: {name}"
 de = "Entwickler: {name}"
 id = "Pengembang: {game}"
 it = "Sviluppatore: {name}"
+ja = "開発元: {name}"
 
 [game_publisher]
 en = "Publisher: {name}"
@@ -245,6 +267,7 @@ pt = "Publisher: {name}"
 de = "Publisher: {name}"
 id = "Penerbit: {name}"
 it = "Editore: {name}"
+ja = "パブリッシャー: {name}"
 
 [game_package]
 en = "Package"
@@ -253,6 +276,7 @@ pt = "Pacote"
 de = "Paket"
 id = "Paket"
 it = "Pacchetto"
+ja = "パッケージ"
 
 [game_package_maintainers]
 en = "Maintainers"
@@ -261,6 +285,7 @@ pt = "Mantenedores"
 de = "Maintainer"
 id = "Pengelola"
 it = "Manutentori"
+ja = "メンテナ"
 
 [about_game]
 en = "About game"
@@ -269,6 +294,7 @@ pt = "Sobre o jogo"
 de = "Über das Spiel"
 id = "Tentang game"
 it = "Informazioni sul gioco"
+ja = "このゲームについて"
 
 # ------------------------ Game library page ------------------------
 
@@ -279,6 +305,7 @@ pt = "Nenhum jogo disponível"
 de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
+ja = "ゲームがありません"
 
 [no_library_games_available]
 en = "No games available"
@@ -287,6 +314,7 @@ pt = "Nenhum jogo na biblioteca"
 de = "Keine Spiele erhältlich"
 id = "Tidak ada game yang tersedia"
 it = "Nessun gioco disponibile"
+ja = "ゲームがありません"
 
 [no_library_game_selected]
 en = "No game selected"
@@ -295,6 +323,7 @@ pt = "Nenhum jogo selecionado"
 de = "Kein Spiel ausgewählt"
 id = "Tidak ada game dipilih"
 it = "Nessun gioco selezionato"
+ja = "ゲームが選択されていません"
 
 [game_play]
 en = "Play"
@@ -303,6 +332,7 @@ pt = "Jogar"
 de = "Spielen"
 id = "Mulai"
 it = "Gioca"
+ja = "プレイ"
 
 [game_process_id]
 en = "Game process"
@@ -311,6 +341,7 @@ pt = "Processo do jogo"
 de = "Spielprozess"
 id = "Proses game"
 it = "Processo di gioco"
+ja = "ゲームプロセス"
 
 [game_running_for]
 en = "Running for"
@@ -319,6 +350,7 @@ pt = "Executando por"
 de = "Läuft seit"
 id = "Berjalan selama"
 it = "In esecuzione da"
+ja = "稼働時間"
 
 [kill_game_process]
 en = "Kill"
@@ -327,6 +359,7 @@ pt = "Matar"
 de = "Beenden"
 id = "Matikan"
 it = "Termina"
+ja = "強制終了"
 
 # ------------------------ Game components window ------------------------
 
@@ -337,6 +370,7 @@ pt = "Componentes do Jogo"
 de = "Spielkomponenten"
 id = "Komponen Gim"
 it = "Componenti del gioco"
+ja = "ゲームコンポーネント"
 
 [game_components_description]
 en = "You can enable or disable different game components. The launcher will suggest applying your changes to the game by installing or uninstalling toggled components. You can also fully uninstall the game using the \"Uninstall all\" button."
@@ -345,6 +379,7 @@ pt = "Você pode habilitar ou desabilitar diferentes componentes de jogo. O laun
 de = "Du kannst verschiedene Spielkomponenten aktivieren oder deaktivieren. Der Launcher schlägt vor, deine Änderungen am Spiel anzuwenden durch Installation oder Deinstallation von Komponenten. Du kannst auch das Spiel vollständig löschen mit dem \"Alle deinstallieren\" Knopf."
 id = "Anda dapat menyalakan atau mematikan bermacam komponen gim. Peluncur aplikasi akan menyarankan untuk menerapkan perubahan anda kepada gim dengan memasang atau mencopot pemasangan untuk komponen yang dirubah. Anda juga dapat sepenuhnya mencopot gim dengan menggunakan tombol \"Copot semua\""
 it = "Puoi abilitare o disabilitare diversi componenti del gioco. Il launcher proporrà di applicare le modifiche al gioco installando o disinstallando i componenti selezionati. Puoi anche disinstallare completamente il gioco usando il pulsante \"Disinstalla tutto\"."
+ja = "ここでゲームの各種コンポーネントを有効または無効にすることができます。ランチャーは、選択されたコンポーネントをインストールまたはアンインストールすることで、ゲームに変更を適用するかどうかを尋ねます。「全てのコンポーネントを削除する」ボタンを使用してゲームを完全にアンインストールすることもできます。"
 
 [game_components_apply_changes_button_title]
 en = "Apply changes"
@@ -353,6 +388,7 @@ pt = "Aplicar mudanças"
 de = "Änderungen anwenden"
 id = "Terapkan perubahan"
 it = "Applica modifiche"
+ja = "変更を適用"
 
 [game_components_uninstall_all_button_title]
 en = "Uninstall all"
@@ -361,6 +397,7 @@ pt = "Desinstalar tudo"
 de = "Alle deinstallieren"
 id = "Copot semua"
 it = "Disinstalla tutto"
+ja = "全てのコンポーネントを削除する"
 
 [game_components_uninstall_all_button_description]
 en = "Uninstall every available component and hide the game from your games library"
@@ -369,6 +406,7 @@ pt = "Desinstala todos os componentes disponíveis e esconde o jogo da sua bibli
 de = "Deinstalliert alle verfügbaren Komponenten und verberge das Spiel in deiner Bibliothek"
 id = "Copot semua komponen tersedia dan semunyikan gim dari daftar gim anda"
 it = "Disinstalla tutti i componenti presenti e nascondi il gioco dalla tua libreria"
+ja = "全てのコンポーネントを削除し、ゲームライブラリからゲームを削除します。"
 
 [game_components_uninstall_all_approve_dialog_title]
 en = "Uninstall all game components?"
@@ -377,6 +415,7 @@ pt = "Desinstalaer todos os componentes do jogo?"
 de = "Alle Spielkomponenten deinstallieren?"
 id = "Copot semua komponen gim?"
 it = "Disinstallare tutti i componenti del gioco?"
+ja = "全てのゲームコンポーネントを削除しますか？"
 
 [game_components_uninstall_all_approve_dialog_message]
 en = "This action will uninstall every game component and delete the game from your library. After agreeing you will not be able to restore the game without reinstalling it from the games store page. Do you want to continue?"
@@ -385,6 +424,7 @@ pt = "Essa ação irá desinstalar todos os componentes do jogo e apagar o jogo 
 de = "Diese Aktion wird alle Spielkomponenten deinstallieren und dieses Spiel aus deiner Bibliothek löschen. Du wirst das Spiel nicht mehr wiederherstellen können ohne über den Shop wieder zu installieren. Möchtest du fortfahren?"
 id = "Aksi ini akan mencopot semua komponen gim dan menghapus gim dari daftar gim anda. Setelah menyetujui anda tidak akan dapat mengembalikan gim tanpa menmasang ulang dari halaman toko gim. Apa anda ingin melanjutkan?"
 it = "Questa azione disinstallerà tutti i componenti del gioco e lo eliminerà dalla tua libreria. Dopo aver accettato, non potrai ripristinare il gioco senza reinstallarlo dalla pagina del negozio. Vuoi continuare?"
+ja = "この操作は全てのコンポーネントを削除し、ライブラリからゲームを削除します。ストアページからゲームを再インストールするまで、ゲームを再度プレイすることはできなくなります。続行しますか？"
 
 [game_components_apply_changes_title]
 en = "Apply components changes"
@@ -393,6 +433,7 @@ pt = "Aplicar mudanças de componentes"
 de = "Komponentenänderungen anwenden"
 id = "Terapkan perubahan komponen"
 it = "Applica modifiche ai componenti"
+ja = "コンポーネントの変更を適用"
 
 [game_components_uninstall_all_title]
 en = "Uninstall game components"
@@ -401,6 +442,7 @@ pt = "Desinstalar componentes de jogo"
 de = "Spielkomponenten deinstallieren"
 id = "Copot komponen gim"
 it = "Disinstalla componenti del gioco"
+ja = "ゲームコンポーネントを削除"
 
 [game_component_install_title]
 en = "Install {component}"
@@ -409,6 +451,7 @@ pt = "Instalar {component}"
 de = "{component} installieren"
 id = "Pasang {component}"
 it = "Installa {component}"
+ja = "{component} のインストール"
 
 [game_component_uninstall_title]
 en = "Uninstall {component}"
@@ -417,3 +460,4 @@ pt = "Desinstalar {component}"
 de = "{component} deinstallieren"
 id = "Copot {component}"
 it = "Disinstalla {component}"
+ja = "{component} のアンインストール"

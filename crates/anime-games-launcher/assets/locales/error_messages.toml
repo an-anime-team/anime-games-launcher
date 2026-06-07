@@ -15,6 +15,7 @@ pt = "Falha ao carregar pacote do jogo {title}"
 de = "Spielpaket für {title} konnte nicht geladen werden"
 id = "Gagal memuat paket untuk game {title}"
 it = "Impossibile caricare il pacchetto del gioco {title}"
+ja = "{title} ゲームパッケージの読み込みに失敗しました"
 
 [failed_find_locked_game_integration_title]
 en = "Failed to find game integration module in package lock"
@@ -71,6 +72,7 @@ pt = "Falha ao matar o processo em execução do jogo"
 de = "Der Laufende Spielprozess konnten nicht beendet werden"
 id = "Gagal mematikan proses game yang sedang berjalan"
 it = "Impossibile terminare il processo di gioco in esecuzione"
+ja = "ゲームを強制終了できませんでした"
 
 # ------------------------ Game store page ------------------------
 
@@ -97,6 +99,7 @@ pt = "Falha ao baixar o pacote do jogo"
 de = "Das Spielpaket konnte nicht heruntergeladen werden"
 id = "Gagal mengunduh paket untuk game"
 it = "Impossibile scaricare il pacchetto del gioco"
+ja = "ゲームパッケージをダウンロードできませんでした"
 
 # ------------------------ Game library page ------------------------
 
@@ -123,6 +126,7 @@ pt = "Falha ao apagar pacote do jogo {title}"
 de = "Spielpaket für {title} konnte nicht gelöscht werden"
 id = "Gagal untuk menghapus paket gim {title}"
 it = "Impossibile eliminare il pacchetto del gioco {title}"
+ja = "ゲームパッケージ {title} を削除できませんでした"
 
 # ------------------------ Game components ------------------------
 
@@ -157,6 +161,7 @@ pt = "Falha ao aplicar componente do jogo"
 de = "Spielkomponente konnte nicht angewendet werden"
 id = "Gagal untuk menerapkan komponen gim"
 it = "Impossibile aggiungere il componente al gioco"
+ja = "ゲームコンポーネントを適用できませんでした"
 
 # ------------------------ Game settings ------------------------
 
@@ -217,6 +222,7 @@ pt = "Falha ao executar ação da pipeline"
 de = "Die Pipeline-Action konnte nicht durchgeführt werden"
 id = "Gagal menjalankan instruksi yang diperlukan untuk memuat game"
 it = "Impossibile eseguire l'azione della pipeline"
+ja = "パイプラインアクションを実行できませんでした"
 
 # ------------------------ Portal API ------------------------
 
