@@ -51,6 +51,36 @@ We will work on wider distributions support once more games will be supported.
 | [Flatpak](https://github.com/an-anime-team/agl-flatpak)            | Fedora Workstation, etc.                        |
 | [AUR](https://aur.archlinux.org/packages/anime-games-launcher-bin) | Arch Linux, CachyOS, Manjaro, EndeavourOS, etc. |
 
+### NixOS
+
+We provide official nix flake for installing the launcher:
+
+```nix
+{
+    inputs = {
+        # Add launcher flake as input
+        anime-games-launcher.url = "github:an-anime-team/anime-games-launcher";
+    };
+
+    outputs = { anime-games-launcher, ... }: {
+        nixosConfigurations.default = nixpkgs.lib.nixosSystem {
+            modules = [
+                # Add launcher's nixos module from the flake
+                anime-games-launcher.nixosModules.anime-games-launcher
+
+                # Add the launcher or anirun CLI
+                ({ ... }: {
+                    programs.anime-games-launcher = {
+                        enable = true;
+                        anirun.enable = true;
+                    };
+                })
+            ];
+        };
+    };
+}
+```
+
 ## Useful links
 
 - [Packages manager documentation](./crates/agl-packages/README.md)
