@@ -37,6 +37,14 @@ print(file.hash)   -- "<base32 value>"
 print(file.value)  -- "<path to the file>"
 ```
 
+Runtime also provides the `import` function. Unlike `load`, it will keep only
+resource values respecting their formats:
+
+```luau
+print(import("file-input")) -- "<path to the file>"
+print(import("package-input")) -- { module: module_value, .. }
+```
+
 ## Values cloning
 
 Since tables in lua work similarly to arrays in JS (they're shared on cloning)
