@@ -48,11 +48,13 @@ Read metadata of the filesystem path (file, directory or a symlink).
 type EntryType = 'file' | 'directory' | 'symlink';
 
 type Metadata = {
-    // UTC timestamp of the creation time.
-    created_at: number;
+    // UTC timestamp of the creation time. Set to nil if creation timestamp is
+    // not supported by the filesystem.
+    created_at: number?;
 
-    // UTC timestamp of the modification time.
-    modified_at: number;
+    // UTC timestamp of the modification time. Set to nil if modification
+    // timestamp is not supported by the filesystem.
+    modified_at: number?;
 
     // Length in bytes of the filesystem entry. For files it's equal to the 
     // file's size. Currently symlink and directory lengths are undefined.

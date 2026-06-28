@@ -106,19 +106,23 @@ impl FilesystemApi {
                     let result = lua.create_table_with_capacity(0, 5)?;
 
                     result.raw_set("created_at", {
-                        metadata.created()?
-                            .duration_since(UNIX_EPOCH)
-                            .as_ref()
-                            .map(Duration::as_secs)
-                            .unwrap_or_default()
+                        metadata.created().ok()
+                            .and_then(|created_at| {
+                                created_at.duration_since(UNIX_EPOCH)
+                                    .as_ref()
+                                    .map(Duration::as_secs)
+                                    .ok()
+                            })
                     })?;
 
                     result.raw_set("modified_at", {
-                        metadata.modified()?
-                            .duration_since(UNIX_EPOCH)
-                            .as_ref()
-                            .map(Duration::as_secs)
-                            .unwrap_or_default()
+                        metadata.modified().ok()
+                            .and_then(|modified_at| {
+                                modified_at.duration_since(UNIX_EPOCH)
+                                    .as_ref()
+                                    .map(Duration::as_secs)
+                                    .ok()
+                            })
                     })?;
 
                     result.raw_set("length", metadata.len())?;
