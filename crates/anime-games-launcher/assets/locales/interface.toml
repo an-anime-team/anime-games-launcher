@@ -115,6 +115,10 @@ id = "Memperbarui paket untuk game {title}"
 it = "Aggiornando il pacchetto del gioco {title}"
 ja = "{title} ゲームパッケージを更新しています"
 
+[collecting_garbage]
+en = "Collecting garbage"
+ru = "Сбор мусора"
+
 [adding_store_page_games]
 en = "Adding store page games"
 ru = "Добавление игр на страницу магазина"

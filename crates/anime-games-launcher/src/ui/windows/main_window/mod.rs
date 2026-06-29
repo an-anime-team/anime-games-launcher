@@ -17,8 +17,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::io::Read;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use adw::prelude::*;
@@ -32,6 +33,7 @@ use anyhow::Context;
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_locale::string::LocalizableString;
+use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::allow_list::AllowList;
@@ -362,7 +364,7 @@ impl SimpleAsyncComponent for MainWindow {
             TorrentServer::start(TorrentServerOptions {
                 default_folder: config.packages_temporary_path.clone(),
 
-                socks_proxy: match config.general_network_proxy_url.clone() {
+                socks_proxy: match config.general_network_proxy.clone() {
                     Some(proxy) if proxy.starts_with("socks") => Some(proxy),
                     _ => None
                 },
@@ -810,6 +812,8 @@ impl SimpleAsyncComponent for MainWindow {
             let storage = Storage::open(&config::startup().packages_resources_path)
                 .context("failed to open packages storage")?;
 
+            let mut resources = HashSet::new();
+
             for entry in config.games_path.read_dir()? {
                 let entry = entry?;
 
@@ -866,12 +870,81 @@ impl SimpleAsyncComponent for MainWindow {
                         entry.path(),
                         serde_json::to_vec_pretty(&lock.to_json())?
                     ).await?;
+
+                    resources.extend(lock.lock.resources.keys().copied());
                 }
 
                 sender.input(MainWindowMsg::AddLibraryPageGame {
                     name: game_name,
                     lock
                 });
+            }
+
+            // Collect garbage (unused resources, modules, temporary files).
+
+            tracing::debug!("collecting garbage");
+
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("collecting_garbage")
+                    .unwrap_or("Collecting garbage")
+                    .to_string()
+            )));
+
+            async fn gc_packages_dir(
+                path: &Path,
+                resources: &HashSet<Hash>
+            ) -> std::io::Result<()> {
+                let mut entries = tasks::fs::read_dir(path).await?;
+
+                while let Some(entry) = entries.next_entry().await? {
+                    let path = entry.path();
+
+                    // Remove entry if its name is not a valid hash.
+                    let Some(hash) = Hash::from_base32(entry.file_name().to_string_lossy()) else {
+                        if path.is_dir() {
+                            tasks::fs::remove_dir_all(path).await?;
+                        } else {
+                            tasks::fs::remove_file(path).await?;
+                        }
+
+                        continue;
+                    };
+
+                    // Remove entry if none of loaded packages needs it.
+                    if !resources.contains(&hash) {
+                        if path.is_dir() {
+                            tasks::fs::remove_dir_all(path).await?;
+                        } else {
+                            tasks::fs::remove_file(path).await?;
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+
+            // Remove unused resources.
+            if config.packages_resources_collect_garbage {
+                gc_packages_dir(
+                    &config.packages_resources_path,
+                    &resources
+                ).await?;
+            }
+
+            // Remove unused modules directories.
+            if config.packages_modules_collect_garbage {
+                gc_packages_dir(
+                    &config.packages_modules_path,
+                    &resources
+                ).await?;
+            }
+
+            // Re-create temporary directory.
+            if config.packages_temporary_collect_garbage
+                && config.packages_temporary_path.is_dir()
+            {
+                tasks::fs::remove_dir_all(&config.packages_temporary_path).await?;
+                tasks::fs::create_dir_all(&config.packages_temporary_path).await?;
             }
 
             // Add store page games.
