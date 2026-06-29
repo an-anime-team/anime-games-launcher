@@ -100,7 +100,8 @@ features = [
     "zstd",
     "deflate",
     "stream",
-    "socks"
+    "socks",
+    "system-proxy"
 ]
 optional = true
 
