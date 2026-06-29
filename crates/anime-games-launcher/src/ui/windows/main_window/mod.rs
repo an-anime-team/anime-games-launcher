@@ -378,7 +378,7 @@ impl SimpleAsyncComponent for MainWindow {
         });
 
         fn translate(str: LocalizableString) -> String {
-            let config = agl_core::tasks::block_on(config::get());
+            let config = tasks::block_on(config::get());
 
             let str = match config.language() {
                 Ok(lang) => str.translate(&lang),
@@ -553,15 +553,15 @@ impl SimpleAsyncComponent for MainWindow {
                     .to_string()
             )));
 
-            agl_core::tasks::fs::create_dir_all(consts::DATA_FOLDER.as_path()).await?;
-            agl_core::tasks::fs::create_dir_all(consts::CONFIG_FOLDER.as_path()).await?;
-            agl_core::tasks::fs::create_dir_all(consts::CACHE_FOLDER.as_path()).await?;
+            tasks::fs::create_dir_all(consts::DATA_FOLDER.as_path()).await?;
+            tasks::fs::create_dir_all(consts::CONFIG_FOLDER.as_path()).await?;
+            tasks::fs::create_dir_all(consts::CACHE_FOLDER.as_path()).await?;
 
-            agl_core::tasks::fs::create_dir_all(&config::startup().packages_resources_path).await?;
-            agl_core::tasks::fs::create_dir_all(&config::startup().packages_modules_path).await?;
-            agl_core::tasks::fs::create_dir_all(&config::startup().packages_persistent_path).await?;
-            agl_core::tasks::fs::create_dir_all(&config::startup().packages_temporary_path).await?;
-            agl_core::tasks::fs::create_dir_all(&config::startup().games_path).await?;
+            tasks::fs::create_dir_all(&config::startup().packages_resources_path).await?;
+            tasks::fs::create_dir_all(&config::startup().packages_modules_path).await?;
+            tasks::fs::create_dir_all(&config::startup().packages_persistent_path).await?;
+            tasks::fs::create_dir_all(&config::startup().packages_temporary_path).await?;
+            tasks::fs::create_dir_all(&config::startup().games_path).await?;
 
             // Update the config file to create it if it didn't exist before.
             // Do it after creating all the folders, including the config one.
@@ -644,7 +644,7 @@ impl SimpleAsyncComponent for MainWindow {
             for path in paths {
                 tracing::trace!(?path, "reading packages allow list");
 
-                let allow_list = std::fs::read(path)?;
+                let allow_list = tasks::fs::read(path).await?;
                 let allow_list = serde_json::from_slice::<Json>(&allow_list)?;
 
                 let allow_list = AllowList::from_json(&allow_list)
@@ -708,7 +708,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 if let Err(err) = result {
                     // Remove half-downloaded/broken file.
-                    let _ = std::fs::remove_file(path);
+                    let _ = tasks::fs::remove_file(path).await;
 
                     return Err(err);
                 }
@@ -719,7 +719,7 @@ impl SimpleAsyncComponent for MainWindow {
             for path in paths {
                 tracing::trace!(?path, "reading game registry");
 
-                let registry = std::fs::read(path)?;
+                let registry = tasks::fs::read(path).await?;
                 let registry = serde_json::from_slice::<Json>(&registry)?;
 
                 let registry = GamesRegistryManifest::from_json(&registry)
@@ -791,7 +791,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 if let Err(err) = result {
                     // Remove half-downloaded/broken file.
-                    let _ = std::fs::remove_file(path);
+                    let _ = tasks::fs::remove_file(path).await;
 
                     return Err(err);
                 }
@@ -823,7 +823,7 @@ impl SimpleAsyncComponent for MainWindow {
                     "loading added game package lock"
                 );
 
-                let lock = std::fs::read(entry.path())?;
+                let lock = tasks::fs::read(entry.path()).await?;
                 let lock = serde_json::from_slice::<Json>(&lock)?;
 
                 let mut lock = GameLock::from_json(&lock)
@@ -862,10 +862,10 @@ impl SimpleAsyncComponent for MainWindow {
 
                     lock.scope = prev_scope;
 
-                    std::fs::write(
+                    tasks::fs::write(
                         entry.path(),
                         serde_json::to_vec_pretty(&lock.to_json())?
-                    )?;
+                    ).await?;
                 }
 
                 sender.input(MainWindowMsg::AddLibraryPageGame {
@@ -891,7 +891,7 @@ impl SimpleAsyncComponent for MainWindow {
             for (game_name, url, path, _is_featured) in paths {
                 tracing::trace!(?url, ?path, "reading game manifest");
 
-                let manifest = std::fs::read(path)?;
+                let manifest = tasks::fs::read(path).await?;
                 let manifest = serde_json::from_slice::<Json>(&manifest)?;
 
                 let manifest = GameManifest::from_json(&manifest)
