@@ -604,12 +604,10 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this allow list is expired - request the list
                 // again.
-                let is_expired = cache::is_expired(
+                if cache::is_expired(
                     &cache_path,
                     config.cache_packages_allow_lists_duration
-                )?;
-
-                if is_expired {
+                ).await? {
                     tracing::trace!(?url, ?cache_path, "packages allow list cache is expired");
 
                     let task = downloader.download_with_options(
@@ -679,12 +677,10 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this registry is expired - request the registry
                 // value again.
-                let is_expired = cache::is_expired(
+                if cache::is_expired(
                     &cache_path,
                     config.cache_game_registries_duration
-                )?;
-
-                if is_expired {
+                ).await? {
                     tracing::trace!(?url, ?cache_path, "game registry cache is expired");
 
                     let task = downloader.download_with_options(
@@ -762,12 +758,10 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // If cache for this game manifest is expired - request the
                 // manifest again.
-                let is_expired = cache::is_expired(
+                if cache::is_expired(
                     &cache_path,
                     config.cache_game_manifests_duration
-                )?;
-
-                if is_expired {
+                ).await? {
                     tracing::trace!(?url, ?cache_path, "game manifest cache is expired");
 
                     let task = downloader.download_with_options(
@@ -845,12 +839,10 @@ impl SimpleAsyncComponent for MainWindow {
                         .unwrap_or_else(|| format!("Loading {title} game package"))
                 )));
 
-                let is_expired = cache::is_expired(
-                    entry.path(),
+                if cache::is_expired(
+                    &entry.path(),
                     config.cache_game_packages_duration
-                )?;
-
-                if is_expired {
+                ).await? {
                     tracing::trace!(
                         path = ?entry.path(),
                         ?game_name,

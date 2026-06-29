@@ -148,10 +148,10 @@ impl SimpleAsyncComponent for LazyPictureComponent {
                 Some(ImagePath::LazyLoad { url, .. }) => {
                     let cache_path = cache::get_path(url);
 
-                    let is_expired = cache::is_expired(
+                    let is_expired = agl_core::tasks::block_on(cache::is_expired(
                         &cache_path,
                         config::startup().cache_images_duration
-                    ).unwrap_or(true);
+                    )).unwrap_or(true);
 
                     if is_expired {
                         let downloader = Downloader::default();
