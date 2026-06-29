@@ -198,7 +198,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                     hint.as_ref()
                                         .map(|hint| {
                                             // FIXME: IO-heavy thing (there's around 6 update calls each time)
-                                            let config = config::get();
+                                            let config = agl_core::tasks::block_on(config::get());
 
                                             match config.language() {
                                                 Ok(lang) => hint.translate(&lang),
@@ -238,7 +238,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                 set_label?: model.game_actions_pipeline.as_ref()
                                     .map(|pipeline| {
                                         // FIXME: IO-heavy thing (there's around 6 update calls each time)
-                                        let config = config::get();
+                                        let config = agl_core::tasks::block_on(config::get());
 
                                         match config.language() {
                                             Ok(lang) => pipeline.title().translate(&lang),
@@ -251,7 +251,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                     .and_then(|pipeline| pipeline.description())
                                     .map(|description| {
                                         // FIXME: IO-heavy thing (there's around 6 update calls each time)
-                                        let config = config::get();
+                                        let config = agl_core::tasks::block_on(config::get());
 
                                         match config.language() {
                                             Ok(lang) => description.translate(&lang),
@@ -397,7 +397,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 self.background.emit(LazyPictureComponentMsg::SetImage(Some(background_image)));
 
-                let config = config::get();
+                let config = config::get().await;
 
                 let lang = config.language().ok();
 
@@ -487,7 +487,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             guards.clear();
 
-                            let config = config::get();
+                            let config = config::get().await;
 
                             let lang = config.language().ok();
 

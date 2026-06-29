@@ -378,7 +378,7 @@ impl SimpleAsyncComponent for MainWindow {
         });
 
         fn translate(str: LocalizableString) -> String {
-            let config = config::get();
+            let config = agl_core::tasks::block_on(config::get());
 
             let str = match config.language() {
                 Ok(lang) => str.translate(&lang),
@@ -553,19 +553,19 @@ impl SimpleAsyncComponent for MainWindow {
                     .to_string()
             )));
 
-            std::fs::create_dir_all(consts::DATA_FOLDER.as_path())?;
-            std::fs::create_dir_all(consts::CONFIG_FOLDER.as_path())?;
-            std::fs::create_dir_all(consts::CACHE_FOLDER.as_path())?;
+            agl_core::tasks::fs::create_dir_all(consts::DATA_FOLDER.as_path()).await?;
+            agl_core::tasks::fs::create_dir_all(consts::CONFIG_FOLDER.as_path()).await?;
+            agl_core::tasks::fs::create_dir_all(consts::CACHE_FOLDER.as_path()).await?;
 
-            std::fs::create_dir_all(&config::startup().packages_resources_path)?;
-            std::fs::create_dir_all(&config::startup().packages_modules_path)?;
-            std::fs::create_dir_all(&config::startup().packages_persistent_path)?;
-            std::fs::create_dir_all(&config::startup().packages_temporary_path)?;
-            std::fs::create_dir_all(&config::startup().games_path)?;
+            agl_core::tasks::fs::create_dir_all(&config::startup().packages_resources_path).await?;
+            agl_core::tasks::fs::create_dir_all(&config::startup().packages_modules_path).await?;
+            agl_core::tasks::fs::create_dir_all(&config::startup().packages_persistent_path).await?;
+            agl_core::tasks::fs::create_dir_all(&config::startup().packages_temporary_path).await?;
+            agl_core::tasks::fs::create_dir_all(&config::startup().games_path).await?;
 
             // Update the config file to create it if it didn't exist before.
             // Do it after creating all the folders, including the config one.
-            config::set(config::startup())?;
+            config::set(config::startup()).await?;
 
             let config = config::startup();
             let lang = config.language();
@@ -982,7 +982,7 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::AddLibraryPageGame { name, lock } => {
-                let config = config::get();
+                let config = config::get().await;
 
                 let lang = config.language();
 
@@ -1154,7 +1154,8 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::ShowToast(options) => {
-                let lang = config::get().language();
+                let lang = config::get().await
+                    .language();
 
                 let title = match &options {
                     ToastOptions::Simple(title) => title,
@@ -1193,7 +1194,8 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::ShowNotification(options) => {
-                let lang = config::get().language();
+                let lang = config::get().await
+                    .language();
 
                 let title = match &lang {
                     Ok(lang) => options.title.translate(lang),
@@ -1228,7 +1230,8 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::ShowDialog(options) => {
-                let lang = config::get().language();
+                let lang = config::get().await
+                    .language();
 
                 let title = match &lang {
                     Ok(lang) => options.title.translate(lang),

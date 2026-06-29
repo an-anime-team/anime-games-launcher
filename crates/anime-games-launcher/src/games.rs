@@ -108,7 +108,7 @@ impl GameLock {
         storage: &Storage
     ) -> anyhow::Result<Self> {
         // Prepare files downloader.
-        let config = config::get();
+        let config = config::get().await;
 
         let client = config.client_builder()?
             .build()?;

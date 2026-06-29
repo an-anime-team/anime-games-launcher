@@ -570,7 +570,8 @@ impl SimpleAsyncComponent for GameSettingsWindow {
                 variant,
                 layout
             } => {
-                let lang = config::get().language().ok();
+                let lang = config::get().await
+                    .language().ok();
 
                 let page = self.page.clone();
 

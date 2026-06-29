@@ -28,7 +28,7 @@ use agl_locale::unic_langid::LanguageIdentifier;
 use crate::consts::{DATA_FOLDER, CONFIG_FILE};
 
 lazy_static::lazy_static! {
-    static ref STARTUP_CONFIG: Config = get();
+    static ref STARTUP_CONFIG: Config = agl_core::tasks::block_on(get());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -499,19 +499,19 @@ pub fn startup() -> &'static Config {
 }
 
 /// Read configuration from the file.
-pub fn get() -> Config {
-    std::fs::read(CONFIG_FILE.as_path()).ok()
+pub async fn get() -> Config {
+    agl_core::tasks::fs::read(CONFIG_FILE.as_path()).await.ok()
         .and_then(|config| toml::from_slice::<TomlTable>(&config).ok())
         .map(|config| Config::from_toml(&config))
         .unwrap_or_default()
 }
 
 /// Update configuration file.
-pub fn set(config: &Config) -> anyhow::Result<()> {
-    std::fs::write(
+pub async fn set(config: &Config) -> anyhow::Result<()> {
+    agl_core::tasks::fs::write(
         CONFIG_FILE.as_path(),
         toml::to_string_pretty(&config.to_toml())?
-    )?;
+    ).await?;
 
     Ok(())
 }
