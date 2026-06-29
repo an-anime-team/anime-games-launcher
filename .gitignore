@@ -8,3 +8,8 @@
 /perf.data.old
 /perf-output.data
 /profile.json
+
+# Ignore all markdowns except readme and changelog
+/*.md
+!/README.md
+!/CHANGELOG.md

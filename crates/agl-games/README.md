@@ -293,13 +293,19 @@ type SettingsEntryNumber = {
 
 type SettingsEntryEnum = {
     format: 'enum';
-    values: { [name: string]: LocalizableString };
+    values: {
+        name: string,
+        title: LocalizableString
+    }[];
     selected: string;
 };
 
 type SettingsEntrySelector = {
     format: 'selector';
-    values: { [name: string]: LocalizableString };
+    values: {
+        name: string,
+        title: LocalizableString
+    }[];
     selected: string;
 };
 
