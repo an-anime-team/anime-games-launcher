@@ -181,6 +181,19 @@ impl Storage {
         self.resource_path(hash).exists()
     }
 
+    /// Remove resource file or directory under the given hash if it exists.
+    pub async fn remove_resource(&self, hash: &Hash) -> std::io::Result<()> {
+        let path = self.resource_path(hash);
+
+        if path.is_file() || path.is_symlink() {
+            tasks::fs::remove_file(path).await?;
+        } else if path.is_dir() {
+            tasks::fs::remove_dir_all(path).await?;
+        }
+
+        Ok(())
+    }
+
     /// Verify that resource content for provided hash is valid.
     ///
     /// If resource with provided hash is not stored, then `Ok(false)` is
