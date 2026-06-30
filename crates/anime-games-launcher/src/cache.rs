@@ -23,12 +23,12 @@ use anyhow::Context;
 
 use agl_packages::hash::Hash;
 
-use crate::consts::CACHE_FOLDER;
+use crate::consts::CACHE_DIR;
 
 /// Get path to a file with provided cache key.
 #[inline]
 pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {
-    CACHE_FOLDER.join(Hash::from_bytes(key.as_ref()).to_base32())
+    CACHE_DIR.join(Hash::from_bytes(key.as_ref()).to_base32())
 }
 
 /// Check if a file with provided path is expired.
@@ -43,11 +43,8 @@ pub async fn is_expired(path: &Path, ttl: Duration) -> anyhow::Result<bool> {
     let metadata = agl_core::tasks::fs::metadata(path).await
         .context("failed to read cached file metadata")?;
 
-    match metadata.modified() {
-        Ok(modified_at) => Ok(modified_at.elapsed()? > ttl),
-        Err(_) => match metadata.created() {
-            Ok(created_at) => Ok(created_at.elapsed()? > ttl),
-            Err(_) => Ok(true)
-        }
+    match metadata.modified().or_else(|_| metadata.created()) {
+        Ok(timestamp) => Ok(timestamp.elapsed()? > ttl),
+        Err(_) => Ok(true)
     }
 }

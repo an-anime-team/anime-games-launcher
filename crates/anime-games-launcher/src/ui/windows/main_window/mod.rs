@@ -555,9 +555,9 @@ impl SimpleAsyncComponent for MainWindow {
                     .to_string()
             )));
 
-            tasks::fs::create_dir_all(consts::DATA_FOLDER.as_path()).await?;
-            tasks::fs::create_dir_all(consts::CONFIG_FOLDER.as_path()).await?;
-            tasks::fs::create_dir_all(consts::CACHE_FOLDER.as_path()).await?;
+            tasks::fs::create_dir_all(consts::DATA_DIR.as_path()).await?;
+            tasks::fs::create_dir_all(consts::CONFIG_DIR.as_path()).await?;
+            tasks::fs::create_dir_all(consts::CACHE_DIR.as_path()).await?;
 
             tasks::fs::create_dir_all(&config::startup().packages_resources_path).await?;
             tasks::fs::create_dir_all(&config::startup().packages_modules_path).await?;
@@ -598,9 +598,13 @@ impl SimpleAsyncComponent for MainWindow {
             let mut tasks = Vec::with_capacity(config.packages_allow_lists.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
 
+            let mut cache_hits = HashSet::new();
+
             // Either fetch package allow list or use cached one.
             for url in &config.packages_allow_lists {
                 let cache_path = cache::get_path(url);
+
+                cache_hits.insert(cache_path.clone());
 
                 tracing::trace!(?url, ?cache_path, "fetching packages allow list");
 
@@ -637,7 +641,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 if let Err(err) = result {
                     // Remove half-downloaded/broken file.
-                    let _ = std::fs::remove_file(path);
+                    let _ = tasks::fs::remove_file(path).await;
 
                     return Err(err);
                 }
@@ -674,6 +678,8 @@ impl SimpleAsyncComponent for MainWindow {
             // Either fetch game registry manifest or use cached one.
             for url in &config.games_registries {
                 let cache_path = cache::get_path(url);
+
+                cache_hits.insert(cache_path.clone());
 
                 tracing::trace!(?url, ?cache_path, "fetching game registry");
 
@@ -756,6 +762,8 @@ impl SimpleAsyncComponent for MainWindow {
             for (url, is_featured) in games_manifests {
                 let cache_path = cache::get_path(&url);
 
+                cache_hits.insert(cache_path.clone());
+
                 tracing::trace!(?url, ?cache_path, "fetching game manifest");
 
                 // If cache for this game manifest is expired - request the
@@ -796,6 +804,43 @@ impl SimpleAsyncComponent for MainWindow {
                     let _ = tasks::fs::remove_file(path).await;
 
                     return Err(err);
+                }
+            }
+
+            // Clear cache.
+
+            tracing::debug!("clear cache");
+
+            sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                i18n!("clearing_cache")
+                    .unwrap_or("Clearing cache")
+                    .to_string()
+            )));
+
+            let mut entries = tasks::fs::read_dir(consts::CACHE_DIR.as_path()).await?;
+
+            while let Some(entry) = entries.next_entry().await? {
+                let path = entry.path();
+
+                if cache_hits.contains(&path) {
+                    continue;
+                }
+
+                let metadata = entry.metadata().await?;
+
+                if let Ok(timestamp) = metadata.modified()
+                    .or_else(|_| metadata.created())
+                    && timestamp.elapsed()
+                        .map(|elapsed| elapsed > config.cache_collect_garbage_after)
+                        .unwrap_or(true)
+                {
+                    tracing::trace!(?path, "remove expired cache entry");
+
+                    if metadata.is_dir() {
+                        tasks::fs::remove_dir_all(path).await?;
+                    } else {
+                        tasks::fs::remove_file(path).await?;
+                    }
                 }
             }
 
@@ -901,6 +946,8 @@ impl SimpleAsyncComponent for MainWindow {
 
                     // Remove entry if its name is not a valid hash.
                     let Some(hash) = Hash::from_base32(entry.file_name().to_string_lossy()) else {
+                        tracing::trace!(?path, "remove resource with invalid hash format");
+
                         if path.is_dir() {
                             tasks::fs::remove_dir_all(path).await?;
                         } else {
@@ -912,6 +959,8 @@ impl SimpleAsyncComponent for MainWindow {
 
                     // Remove entry if none of loaded packages needs it.
                     if !resources.contains(&hash) {
+                        tracing::trace!(?path, "remove unused resource");
+
                         if path.is_dir() {
                             tasks::fs::remove_dir_all(path).await?;
                         } else {

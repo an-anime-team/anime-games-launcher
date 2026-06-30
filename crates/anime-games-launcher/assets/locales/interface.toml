@@ -89,6 +89,10 @@ de = "Rufe Spielmanifste auf"
 id = "Mengunduh manifest untuk game"
 it = "Recuperando i manifest dei giochi"
 
+[clearing_cache]
+en = "Clearing cache"
+ru = "Очистка кэша"
+
 [loading_added_games]
 en = "Loading added games"
 ru = "Загрузка добавленных игр"

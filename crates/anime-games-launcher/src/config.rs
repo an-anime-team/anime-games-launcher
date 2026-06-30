@@ -26,7 +26,7 @@ use agl_core::export::network::reqwest;
 use agl_core::tasks;
 use agl_locale::unic_langid::LanguageIdentifier;
 
-use crate::consts::{DATA_FOLDER, CONFIG_FILE};
+use crate::consts::{DATA_DIR, CONFIG_FILE};
 
 lazy_static::lazy_static! {
     static ref STARTUP_CONFIG: Config = tasks::block_on(get());
@@ -79,6 +79,12 @@ pub struct Config {
     ///
     /// `cache.packages_allow_lists.duration`
     pub cache_packages_allow_lists_duration: Duration,
+
+    /// Duration since cache entry creation after which it will be automatically
+    /// removed.
+    ///
+    /// `cache.collect_garbage_after`
+    pub cache_collect_garbage_after: Duration,
 
     /// URLs to the modules allow lists files.
     ///
@@ -186,20 +192,21 @@ impl Default for Config {
             cache_game_manifests_duration: Duration::from_hours(24),
             cache_game_packages_duration: Duration::from_hours(8),
             cache_packages_allow_lists_duration: Duration::from_hours(8),
+            cache_collect_garbage_after: Duration::from_hours(72),
 
             packages_allow_lists: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json")
             ],
 
-            packages_resources_path: DATA_FOLDER.join("packages").join("resources"),
+            packages_resources_path: DATA_DIR.join("packages").join("resources"),
             packages_resources_collect_garbage: true,
 
-            packages_modules_path: DATA_FOLDER.join("packages").join("modules"),
+            packages_modules_path: DATA_DIR.join("packages").join("modules"),
             packages_modules_collect_garbage: true,
 
-            packages_persistent_path: DATA_FOLDER.join("packages").join("persistent"),
+            packages_persistent_path: DATA_DIR.join("packages").join("persistent"),
 
-            packages_temporary_path: DATA_FOLDER.join("packages").join("temporary"),
+            packages_temporary_path: DATA_DIR.join("packages").join("temporary"),
             packages_temporary_collect_garbage: true,
 
             runtime_memory_limit: 1024 * 1024 * 1024,
@@ -213,7 +220,7 @@ impl Default for Config {
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/games/registry.json")
             ],
-            games_path: DATA_FOLDER.join("games")
+            games_path: DATA_DIR.join("games")
         }
     }
 }
@@ -227,6 +234,9 @@ impl Config {
             [general.network]
             timeout = (self.general_network_timeout.as_millis() as u64)
             proxy = (self.general_network_proxy.as_deref().unwrap_or("system"))
+
+            [cache]
+            collect_garbage_after = (self.cache_collect_garbage_after.as_secs())
 
             [cache.images]
             duration = (self.cache_images_duration.as_secs())
@@ -365,6 +375,11 @@ impl Config {
                 if let Some(duration) = packages_allow_lists.get("duration").and_then(Toml::as_integer) {
                     config.cache_packages_allow_lists_duration = Duration::from_secs(duration as u64);
                 }
+            }
+
+            // `cache.collect_garbage_after`
+            if let Some(collect_garbage_after) = cache.get("collect_garbage_after").and_then(Toml::as_integer) {
+                config.cache_collect_garbage_after = Duration::from_secs(collect_garbage_after as u64);
             }
         }
 
