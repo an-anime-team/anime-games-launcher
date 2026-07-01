@@ -273,6 +273,11 @@ impl GameSettingsEntryFormat {
                             }
                         }
 
+                        #[cfg(feature = "tracing")]
+                        if !table.is_empty() {
+                            tracing::warn!("using outdated enum settings entry values syntax");
+                        }
+
                         // Sort old format entries by their title since
                         // hashmap-like tables don't preserve original items
                         // order.
@@ -326,6 +331,11 @@ impl GameSettingsEntryFormat {
                                     LocalizableString::from_lua(&pair.1)?
                                 ));
                             }
+                        }
+
+                        #[cfg(feature = "tracing")]
+                        if !table.is_empty() {
+                            tracing::warn!("using outdated selector settings entry values syntax");
                         }
 
                         // Sort old format entries by their title since
