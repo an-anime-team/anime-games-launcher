@@ -41,8 +41,14 @@ Runtime also provides the `import` function. Unlike `load`, it will keep only
 resource values respecting their formats:
 
 ```luau
-print(import("file-input")) -- "<path to the file>"
-print(import("package-input")) -- { module: module_value, .. }
+dbg(import("file-input")) -- "<path to the file>"
+dbg(import("package-input")) -- { module: module_value, .. }
+```
+
+You can also import an output of a package:
+
+```luau
+dbg(import("package-input/my-module"))
 ```
 
 ## Values cloning
