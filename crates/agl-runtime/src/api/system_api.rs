@@ -39,7 +39,7 @@ impl SystemApi {
                 "rfc3339" => time.format(&time::format_description::well_known::Rfc3339),
 
                 _ => {
-                    let format = time::format_description::parse(&format)
+                    let format = time::format_description::parse_borrowed::<3>(&format)
                         .map_err(|err| {
                             LuaError::external(format!("failed to parse time formatting: {err}"))
                         })?;
