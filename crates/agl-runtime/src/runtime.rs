@@ -187,57 +187,85 @@ impl Runtime {
         }
 
         // Import a resource. Unlike load, this function unpacks the actual
-        // resource value, stripping down all the metadata.
+        // resource value, stripping down all the metadata. The name can contain
+        // path to nested resources within packages by using "/" character.
         env.set("import", self.lua.create_function(move |lua: &Lua, name: String| -> Result<LuaValue, LuaError> {
-            // Stored resource should have `hash`, `format` and `value` fields.
-            let value = load_value(lua, name.as_str(), module_key.as_str())?;
+            fn unpack_resource(
+                lua: &Lua,
+                value: LuaValue
+            ) -> Result<LuaValue, LuaError> {
+                // If it's not a table then return it as is.
+                let Some(resource) = value.as_table() else {
+                    return Ok(value);
+                };
 
-            // If it's not a table then return it as is.
-            let Some(module) = value.as_table() else {
-                return Ok(value);
-            };
+                match resource.raw_get::<String>("format") {
+                    // Packages' outputs store resources in hash/format/value format
+                    // so we need to unpack them.
+                    Ok(format) if format == "package" => {
+                        let Ok(outputs) = resource.raw_get::<LuaTable>("value") else {
+                            return Ok(value);
+                        };
 
-            match module.raw_get::<String>("format") {
-                // Packages' outputs store resources in hash/format/value format
-                // so we need to unpack them.
-                Ok(format) if format == "package" => {
-                    let Ok(outputs) = module.raw_get::<LuaTable>("value") else {
-                        return Ok(value);
-                    };
+                        let values = lua.create_table_with_capacity(0, outputs.raw_len())?;
 
-                    let values = lua.create_table_with_capacity(0, outputs.raw_len())?;
+                        for pair in outputs.pairs::<LuaString, LuaValue>() {
+                            let (name, output) = pair?;
 
-                    for pair in outputs.pairs::<LuaString, LuaValue>() {
-                        let (name, output) = pair?;
+                            // If package output has `value` field then store it.
+                            if let Some(output) = output.as_table()
+                                && let Ok(value) = output.raw_get::<LuaValue>("value")
+                            {
+                                values.raw_set(name, value)?;
+                            }
 
-                        // If package output has `value` field then store it.
-                        if let Some(output) = output.as_table()
-                            && let Ok(value) = output.raw_get::<LuaValue>("value")
-                        {
-                            values.raw_set(name, value)?;
+                            // Otherwise store the whole output.
+                            else {
+                                values.raw_set(name, output)?;
+                            }
                         }
 
-                        // Otherwise store the whole output.
-                        else {
-                            values.raw_set(name, output)?;
-                        }
+                        Ok(LuaValue::Table(values))
                     }
 
-                    Ok(LuaValue::Table(values))
+                    Ok(_) => {
+                        // Return either `resource.value` or just `resource`.
+                        let value = resource.raw_get::<LuaValue>("value")
+                            .unwrap_or(value);
+
+                        Ok(value)
+                    }
+
+                    // If no `resource.format` field found then return just
+                    // `resource`.
+                    Err(_) => Ok(value)
                 }
-
-                Ok(_) => {
-                    // Return either `resource.value` or just `resource`.
-                    let value = module.raw_get::<LuaValue>("value")
-                        .unwrap_or(value);
-
-                    Ok(value)
-                }
-
-                // If no `resource.format` field found then return just
-                // `resource`.
-                Err(_) => Ok(value)
             }
+
+            let (name, mut path) = name.split_once('/').unwrap_or((&name, ""));
+
+            let mut value = load_value(lua, name, module_key.as_str())?;
+
+            // FIXME: currently only 1-level import paths will be resolved
+            //        properly.
+            value = unpack_resource(lua, value)?;
+
+            while !path.is_empty() {
+                let (name, suffix) = path.split_once('/').unwrap_or((path, ""));
+
+                let Some(outputs) = value.as_table() else {
+                    return Err(LuaError::external("no output for given import path"));
+                };
+
+                let Ok(output) = outputs.raw_get::<LuaValue>(name) else {
+                    return Err(LuaError::external("no output for given import path"));
+                };
+
+                path = suffix;
+                value = output;
+            }
+
+            Ok(value)
         })?)?;
 
         Ok(env)
