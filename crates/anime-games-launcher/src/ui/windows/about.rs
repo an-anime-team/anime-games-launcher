@@ -76,6 +76,7 @@ impl SimpleAsyncComponent for AboutWindow {
                 "Portuguese — João Dias https://github.com/retrozinndev",
                 "Indonesian — @yumekarisu https://github.com/yumekarisu",
                 "Italian — Martino Papero https://github.com/martymarty004",
+                "Japenese — @miyako2 https://github.com/miyako2",
                 "And other contributors"
             ].join("\n"),
 
@@ -96,29 +97,23 @@ impl SimpleAsyncComponent for AboutWindow {
                 <p>Added</p>
 
                 <ul>
-                    "<li>Added Italian translations</li>
-                    "<li>Added game integration agreements</li>
-                    "<li>When launched in debug mode ('--agl-debug' flag) the launcher will show entries names for settings and components as hints</li>
-                    "<li>Added new settings entry format for secrets (e.g. passwords)</li>
-                    "<li>Added optional game components system which required a big rewrite of the launcher's backend code</li>
-                    "<li>Added Protobuf API to the lua runtime</li>
-                </ul>
-
-                <p>Fixed</p>
-
-                <ul>
-                    <li>Selectable strings are not highlighted, focused or selected by default anymore</li>
-                    <li>Game variants are now properly selected and propagated to the lua side</li>
-                    <li>Actions in the actions pipeline window now properly render their descriptions</li>
-                    <li>Fixed a bug when the game library details window was updated 3 times instead of 1</li>
-                    <li>Fixed automatic game selection on the library page if "open in library" button on the game store page was clicked</li>
-                    <li>Fixed system language identification</li>
+                    <li>Games API got new values format for "enum" and "selector" settings entries.</li>
+                    <li>Added "accessed_at" field to the "fs.metadata" runtime API.</li>
+                    <li>Added "import" function to the runtime API.</li>
+                    <li>Added Japanese and Portuguese translations.</li>
+                    <li>Cache, resources, modules, and temporary directories got garbage collection mechanism controlled by related config file settings.</li>
+                    <li>Launcher now will set parent game binary's directory as the spawned game process's current working directory.</li>
                 </ul>
 
                 <p>Changed</p>
 
                 <ul>
-                    <li>HTTP API headers are now case-insensitive</li>
+                    <li>All network connections now respect system proxy settings. Used proxy address can be overridden in the launcher's config file.</li>
+                    <li>"fs.metadata" runtime API will set "created_at", "modified_at" and "accessed_at" as "nil" instead of returning an error if user file system doesn't support these fields.</li>
+                    <li>Many internal IO operations were made async.</li>
+                    <li>"general.network.proxy.url" and "general.network.proxy.mode" launcher settings were replaced by "general.network.proxy" string.</li>
+                    <li>Network requests user agent string was changed to "anime-games-launcher/v[version]".</li>
+                    <li>Some environment variables were renamed: "LAUNCHER_DATA_FOLDER" -> "LAUNCHER_DATA_DIR"; "LAUNCHER_CONFIG_FOLDER" -> "LAUNCHER_CONFIG_DIR"; "LAUNCHER_CACHE_FOLDER" -> "LAUNCHER_CACHE_DIR".</li>
                 </ul>
             "#
         }

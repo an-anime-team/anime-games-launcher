@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.1.1] - 01.07.2026
+
 ### Added
 
 - Games API got new values format for `enum` and `selector` settings entries.
@@ -309,7 +311,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.1.0...next
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.1.1...next
+[v2.1.1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.1.0...v2.1.1
 [v2.1.0]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0...v2.1.0
 [v2.0.0]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-rc1...v2.0.0
 [v2.0.0-rc1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-beta4...v2.0.0-rc1
