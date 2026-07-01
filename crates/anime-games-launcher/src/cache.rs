@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,31 +23,28 @@ use anyhow::Context;
 
 use agl_packages::hash::Hash;
 
-use crate::consts::CACHE_FOLDER;
+use crate::consts::CACHE_DIR;
 
 /// Get path to a file with provided cache key.
 #[inline]
 pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {
-    CACHE_FOLDER.join(Hash::from_bytes(key.as_ref()).to_base32())
+    CACHE_DIR.join(Hash::from_bytes(key.as_ref()).to_base32())
 }
 
-/// Check if a file with provided path is expired. Return `Ok(true)` if such
-/// file doesn't exist.
-pub fn is_expired(
-    path: impl AsRef<Path>,
-    ttl: Duration
-) -> anyhow::Result<bool> {
-    let path = path.as_ref();
-
+/// Check if a file with provided path is expired.
+///
+/// Return `Ok(true)` if the file doesn't exist or file system doesn't support
+/// modification and creation timestamps.
+pub async fn is_expired(path: &Path, ttl: Duration) -> anyhow::Result<bool> {
     if !path.exists() {
         return Ok(true);
     }
 
-    let metadata = path.metadata()
+    let metadata = agl_core::tasks::fs::metadata(path).await
         .context("failed to read cached file metadata")?;
 
-    let created_at = metadata.created()
-        .context("failed to read cached file creation time")?;
-
-    Ok(created_at.elapsed()? > ttl)
+    match metadata.modified().or_else(|_| metadata.created()) {
+        Ok(timestamp) => Ok(timestamp.elapsed()? > ttl),
+        Err(_) => Ok(true)
+    }
 }

@@ -338,7 +338,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 manifest_url,
                 manifest
             } => {
-                let config = config::get();
+                let config = config::get().await;
                 let lang = config.language().ok();
 
                 let title = match &lang {
@@ -423,7 +423,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
             GameStoreDetailsInput::SetGameStatus(status) => self.status = status,
 
             GameStoreDetailsInput::UpdateGameStatus => {
-                let config = config::get();
+                let config = config::get().await;
 
                 let path = config.games_path.join(games::get_name(&self.manifest_url));
 
@@ -514,7 +514,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                 self.status = GameStatus::Adding;
 
-                let config = config::get();
+                let config = config::get().await;
 
                 let storage = match Storage::open(config.packages_resources_path) {
                     Ok(storage) => storage,
@@ -536,7 +536,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
                             Ok(lock) => {
                                 sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::Added));
 
-                                let config = config::get();
+                                let config = config::get().await;
 
                                 let path = config.games_path.join(games::get_name(&lock.url));
 

@@ -23,12 +23,13 @@ use anyhow::Context;
 use toml::{toml, Value as Toml, Table as TomlTable};
 
 use agl_core::export::network::reqwest;
+use agl_core::tasks;
 use agl_locale::unic_langid::LanguageIdentifier;
 
-use crate::consts::{DATA_FOLDER, CONFIG_FILE};
+use crate::consts::{DATA_DIR, CONFIG_FILE};
 
 lazy_static::lazy_static! {
-    static ref STARTUP_CONFIG: Config = get();
+    static ref STARTUP_CONFIG: Config = tasks::block_on(get());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -46,8 +47,8 @@ pub struct Config {
     /// Proxy URL. If unset (`system`) - environment variable proxy is used
     /// (`http_proxy`, `https_proxy`, `all_proxy`).
     ///
-    /// `general.network.proxy.url`
-    pub general_network_proxy_url: Option<String>,
+    /// `general.network.proxy`
+    pub general_network_proxy: Option<String>,
 
     /// Duration of the images cache in seconds. If `0` is set then no cache is
     /// used. Default is `28800` (8 hours).
@@ -79,10 +80,11 @@ pub struct Config {
     /// `cache.packages_allow_lists.duration`
     pub cache_packages_allow_lists_duration: Duration,
 
-    /// Proxy mode: `http`, `https` or `all`.
+    /// Duration since cache entry creation after which it will be automatically
+    /// removed.
     ///
-    /// `general.network.proxy.mode`
-    pub general_network_proxy_mode: Option<String>,
+    /// `cache.collect_garbage_after`
+    pub cache_collect_garbage_after: Duration,
 
     /// URLs to the modules allow lists files.
     ///
@@ -94,6 +96,11 @@ pub struct Config {
     /// `packages.resources.path`
     pub packages_resources_path: PathBuf,
 
+    /// Remove resources that are not used by any game package.
+    ///
+    /// `packages.resources.collect_garbage`
+    pub packages_resources_collect_garbage: bool,
+
     /// Path to the folder where modules-specific files should be stored.
     ///
     /// These will be kept privately for each module, so they can be used as
@@ -101,6 +108,11 @@ pub struct Config {
     ///
     /// `packages.modules.path`
     pub packages_modules_path: PathBuf,
+
+    /// Remove modules directories if the module is not used by any package.
+    ///
+    /// `packages.modules.collect_garbage`
+    pub packages_modules_collect_garbage: bool,
 
     /// Path to the folder where persistent packages files should be stored.
     ///
@@ -118,6 +130,11 @@ pub struct Config {
     ///
     /// `packages.temporary.path`
     pub packages_temporary_path: PathBuf,
+
+    /// Clear temporary directory on launcher startup.
+    ///
+    /// `packages.temporary.collect_garbage`
+    pub packages_temporary_collect_garbage: bool,
 
     /// Maximal amount of memory in bytes allowed to be consumed by packages
     /// runtime (lua engine). If `0` is set then no limit is applied. Default is
@@ -168,23 +185,29 @@ impl Default for Config {
         Self {
             general_language: None,
             general_network_timeout: Duration::from_secs(5),
-            general_network_proxy_url: None,
-            general_network_proxy_mode: None,
+            general_network_proxy: None,
 
             cache_images_duration: Duration::from_hours(8),
             cache_game_registries_duration: Duration::from_hours(16),
             cache_game_manifests_duration: Duration::from_hours(24),
             cache_game_packages_duration: Duration::from_hours(8),
             cache_packages_allow_lists_duration: Duration::from_hours(8),
+            cache_collect_garbage_after: Duration::from_hours(72),
 
             packages_allow_lists: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json")
             ],
 
-            packages_resources_path: DATA_FOLDER.join("packages").join("resources"),
-            packages_modules_path: DATA_FOLDER.join("packages").join("modules"),
-            packages_persistent_path: DATA_FOLDER.join("packages").join("persistent"),
-            packages_temporary_path: DATA_FOLDER.join("packages").join("temporary"),
+            packages_resources_path: DATA_DIR.join("packages").join("resources"),
+            packages_resources_collect_garbage: true,
+
+            packages_modules_path: DATA_DIR.join("packages").join("modules"),
+            packages_modules_collect_garbage: true,
+
+            packages_persistent_path: DATA_DIR.join("packages").join("persistent"),
+
+            packages_temporary_path: DATA_DIR.join("packages").join("temporary"),
+            packages_temporary_collect_garbage: true,
 
             runtime_memory_limit: 1024 * 1024 * 1024,
 
@@ -197,7 +220,7 @@ impl Default for Config {
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/games/registry.json")
             ],
-            games_path: DATA_FOLDER.join("games")
+            games_path: DATA_DIR.join("games")
         }
     }
 }
@@ -210,10 +233,10 @@ impl Config {
 
             [general.network]
             timeout = (self.general_network_timeout.as_millis() as u64)
+            proxy = (self.general_network_proxy.as_deref().unwrap_or("system"))
 
-            [general.network.proxy]
-            url = (self.general_network_proxy_url.as_deref().unwrap_or("system"))
-            mode = (self.general_network_proxy_mode.as_deref().unwrap_or("system"))
+            [cache]
+            collect_garbage_after = (self.cache_collect_garbage_after.as_secs())
 
             [cache.images]
             duration = (self.cache_images_duration.as_secs())
@@ -235,15 +258,18 @@ impl Config {
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
+            collect_garbage = (self.packages_resources_collect_garbage)
 
             [packages.modules]
             path = (self.packages_modules_path.to_string_lossy())
+            collect_garbage = (self.packages_modules_collect_garbage)
 
             [packages.persistent]
             path = (self.packages_persistent_path.to_string_lossy())
 
             [packages.temporary]
             path = (self.packages_temporary_path.to_string_lossy())
+            collect_garbage = (self.packages_temporary_collect_garbage)
 
             [runtime]
             memory_limit = (self.runtime_memory_limit)
@@ -286,23 +312,23 @@ impl Config {
                     };
                 }
 
-                // `general.network.proxy.*`
+                // `general.network.proxy`
                 if let Some(proxy) = network.get("proxy") {
-                    // `general.network.proxy.url`
-                    if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
-                        config.general_network_proxy_url = if url == "system" {
+                    // New syntax (`general.network.proxy`).
+                    if let Some(url) = proxy.as_str() {
+                        config.general_network_proxy = if url == "system" {
                             None
                         } else {
                             Some(url.to_string())
                         };
                     }
 
-                    // `general.network.proxy.mode`
-                    if let Some(mode) = proxy.get("mode").and_then(Toml::as_str) {
-                        config.general_network_proxy_mode = if mode == "system" {
+                    // Old syntax (`general.network.proxy.url`).
+                    if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
+                        config.general_network_proxy = if url == "system" {
                             None
                         } else {
-                            Some(mode.to_string())
+                            Some(url.to_string())
                         };
                     }
                 }
@@ -350,6 +376,11 @@ impl Config {
                     config.cache_packages_allow_lists_duration = Duration::from_secs(duration as u64);
                 }
             }
+
+            // `cache.collect_garbage_after`
+            if let Some(collect_garbage_after) = cache.get("collect_garbage_after").and_then(Toml::as_integer) {
+                config.cache_collect_garbage_after = Duration::from_secs(collect_garbage_after as u64);
+            }
         }
 
         // `packages.*`
@@ -368,6 +399,11 @@ impl Config {
                 if let Some(path) = resources.get("path").and_then(Toml::as_str) {
                     config.packages_resources_path = PathBuf::from(path);
                 }
+
+                // `packages.resources.collect_garbage`
+                if let Some(value) = resources.get("collect_garbage").and_then(Toml::as_bool) {
+                    config.packages_resources_collect_garbage = value;
+                }
             }
 
             // `packages.modules.*`
@@ -375,6 +411,11 @@ impl Config {
                 // `packages.modules.path`
                 if let Some(path) = modules.get("path").and_then(Toml::as_str) {
                     config.packages_modules_path = PathBuf::from(path);
+                }
+
+                // `packages.modules.collect_garbage`
+                if let Some(value) = modules.get("collect_garbage").and_then(Toml::as_bool) {
+                    config.packages_modules_collect_garbage = value;
                 }
             }
 
@@ -391,6 +432,11 @@ impl Config {
                 // `packages.temporary.path`
                 if let Some(path) = temporary.get("path").and_then(Toml::as_str) {
                     config.packages_temporary_path = PathBuf::from(path);
+                }
+
+                // `packages.temporary.collect_garbage`
+                if let Some(value) = temporary.get("collect_garbage").and_then(Toml::as_bool) {
+                    config.packages_temporary_collect_garbage = value;
                 }
             }
         }
@@ -473,19 +519,11 @@ impl Config {
     /// network settings.
     pub fn client_builder(&self) -> anyhow::Result<reqwest::ClientBuilder> {
         let mut builder = reqwest::ClientBuilder::new()
-            .user_agent(format!("anime-games-launcher/{}", crate::consts::APP_VERSION))
+            .user_agent(format!("anime-games-launcher/v{}", crate::consts::APP_VERSION))
             .connect_timeout(self.general_network_timeout);
 
-        if let Some(proxy_url) = &self.general_network_proxy_url {
-            let proxy = match self.general_network_proxy_mode.as_deref() {
-                Some("http")  => reqwest::Proxy::http(proxy_url)?,
-                Some("https") => reqwest::Proxy::https(proxy_url)?,
-                Some("all")   => reqwest::Proxy::all(proxy_url)?,
-
-                _ => reqwest::Proxy::all(proxy_url)?
-            };
-
-            builder = builder.proxy(proxy);
+        if let Some(proxy_url) = &self.general_network_proxy {
+            builder = builder.proxy(reqwest::Proxy::all(proxy_url)?);
         }
 
         Ok(builder)
@@ -499,19 +537,19 @@ pub fn startup() -> &'static Config {
 }
 
 /// Read configuration from the file.
-pub fn get() -> Config {
-    std::fs::read(CONFIG_FILE.as_path()).ok()
+pub async fn get() -> Config {
+    tasks::fs::read(CONFIG_FILE.as_path()).await.ok()
         .and_then(|config| toml::from_slice::<TomlTable>(&config).ok())
         .map(|config| Config::from_toml(&config))
         .unwrap_or_default()
 }
 
 /// Update configuration file.
-pub fn set(config: &Config) -> anyhow::Result<()> {
-    std::fs::write(
+pub async fn set(config: &Config) -> anyhow::Result<()> {
+    tasks::fs::write(
         CONFIG_FILE.as_path(),
         toml::to_string_pretty(&config.to_toml())?
-    )?;
+    ).await?;
 
     Ok(())
 }

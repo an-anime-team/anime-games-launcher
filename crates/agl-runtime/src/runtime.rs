@@ -144,8 +144,11 @@ impl Runtime {
             scope: Arc::new(RwLock::new(scope))
         })?;
 
-        // Load referenced value.
-        env.set("load", self.lua.create_function(move |lua, name: String| -> Result<LuaValue, LuaError> {
+        fn load_value(
+            lua: &Lua,
+            name: &str,
+            module_key: &str
+        ) -> Result<LuaValue, LuaError> {
             // Read the engine table from the registry key.
             let engine_table = lua.named_registry_value::<LuaTable>("engine")?;
 
@@ -154,16 +157,16 @@ impl Runtime {
             let refs_table = engine_table.raw_get::<LuaTable>("refs")?;
 
             // If current module doesn't reference any values - return `nil`.
-            if !refs_table.contains_key(module_key.as_str())? {
+            if !refs_table.contains_key(module_key)? {
                 return Ok(LuaValue::Nil);
             }
 
             // Read the module's references.
-            let module_refs_table = refs_table.raw_get::<LuaTable>(module_key.as_str())?;
+            let module_refs_table = refs_table.raw_get::<LuaTable>(module_key)?;
 
             // If current module doesn't have reference with provided name -
             // return `nil`.
-            if !module_refs_table.contains_key(name.as_str())? {
+            if !module_refs_table.contains_key(name)? {
                 return Ok(LuaValue::Nil);
             }
 
@@ -172,6 +175,97 @@ impl Runtime {
 
             // Read the referenced value.
             values_table.raw_get(ref_key)
+        }
+
+        // Load referenced value.
+        {
+            let module_key = module_key.clone();
+
+            env.set("load", self.lua.create_function(move |lua: &Lua, name: String| -> Result<LuaValue, LuaError> {
+                load_value(lua, name.as_str(), module_key.as_str())
+            })?)?;
+        }
+
+        // Import a resource. Unlike load, this function unpacks the actual
+        // resource value, stripping down all the metadata. The name can contain
+        // path to nested resources within packages by using "/" character.
+        env.set("import", self.lua.create_function(move |lua: &Lua, name: String| -> Result<LuaValue, LuaError> {
+            fn unpack_resource(
+                lua: &Lua,
+                value: LuaValue
+            ) -> Result<LuaValue, LuaError> {
+                // If it's not a table then return it as is.
+                let Some(resource) = value.as_table() else {
+                    return Ok(value);
+                };
+
+                match resource.raw_get::<String>("format") {
+                    // Packages' outputs store resources in hash/format/value format
+                    // so we need to unpack them.
+                    Ok(format) if format == "package" => {
+                        let Ok(outputs) = resource.raw_get::<LuaTable>("value") else {
+                            return Ok(value);
+                        };
+
+                        let values = lua.create_table_with_capacity(0, outputs.raw_len())?;
+
+                        for pair in outputs.pairs::<LuaString, LuaValue>() {
+                            let (name, output) = pair?;
+
+                            // If package output has `value` field then store it.
+                            if let Some(output) = output.as_table()
+                                && let Ok(value) = output.raw_get::<LuaValue>("value")
+                            {
+                                values.raw_set(name, value)?;
+                            }
+
+                            // Otherwise store the whole output.
+                            else {
+                                values.raw_set(name, output)?;
+                            }
+                        }
+
+                        Ok(LuaValue::Table(values))
+                    }
+
+                    Ok(_) => {
+                        // Return either `resource.value` or just `resource`.
+                        let value = resource.raw_get::<LuaValue>("value")
+                            .unwrap_or(value);
+
+                        Ok(value)
+                    }
+
+                    // If no `resource.format` field found then return just
+                    // `resource`.
+                    Err(_) => Ok(value)
+                }
+            }
+
+            let (name, mut path) = name.split_once('/').unwrap_or((&name, ""));
+
+            let mut value = load_value(lua, name, module_key.as_str())?;
+
+            // FIXME: currently only 1-level import paths will be resolved
+            //        properly.
+            value = unpack_resource(lua, value)?;
+
+            while !path.is_empty() {
+                let (name, suffix) = path.split_once('/').unwrap_or((path, ""));
+
+                let Some(outputs) = value.as_table() else {
+                    return Err(LuaError::external("no output for given import path"));
+                };
+
+                let Ok(output) = outputs.raw_get::<LuaValue>(name) else {
+                    return Err(LuaError::external("no output for given import path"));
+                };
+
+                path = suffix;
+                value = output;
+            }
+
+            Ok(value)
         })?)?;
 
         Ok(env)

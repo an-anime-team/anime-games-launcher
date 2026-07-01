@@ -145,7 +145,8 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                 game_title,
                 actions_pipeline
             } => {
-                let lang = config::get().language().ok();
+                let lang = config::get().await
+                    .language().ok();
 
                 let title = match &lang {
                     Some(lang) => actions_pipeline.title().translate(lang),

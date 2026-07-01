@@ -207,7 +207,8 @@ impl SimpleAsyncComponent for GameComponentsWindow {
                 game_title,
                 layout
             } => {
-                let lang = config::get().language().ok();
+                let lang = config::get().await
+                    .language().ok();
 
                 let page = self.page.clone();
                 let footer_group = self.footer_group.clone();

@@ -213,7 +213,7 @@ fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("op5h5fuc7kqr4#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("fgkua9vq5ra7q#module")? else {
             panic!("missing loaded module value");
         };
 

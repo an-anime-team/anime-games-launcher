@@ -25,6 +25,7 @@ use agl_core::network::downloader::{
     Downloader, DownloadOptions, DownloaderError
 };
 
+use agl_core::tasks;
 use agl_core::archives::{Archive, ArchiveFormat, ArchiveError};
 
 use crate::hash::Hash;
@@ -104,7 +105,7 @@ impl Storage {
     }
 
     /// Get storage folder path.
-    #[inline]
+    #[inline(always)]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -120,32 +121,40 @@ impl Storage {
     /// untouched.
     ///
     /// Return hash of the stored resource.
-    pub fn store_resource(&self, path: impl Into<PathBuf>) -> std::io::Result<Hash> {
-        fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
+    pub async fn store_resource(
+        &self,
+        path: impl Into<PathBuf>
+    ) -> std::io::Result<Hash> {
+        async fn try_copy(
+            source: PathBuf,
+            target: PathBuf
+        ) -> std::io::Result<()> {
             if source.is_file() {
-                std::fs::copy(source, target)?;
+                tasks::fs::copy(source, target).await?;
             }
 
             else if source.is_dir() {
-                std::fs::create_dir_all(target)?;
+                tasks::fs::create_dir_all(&target).await?;
 
                 for entry in source.read_dir()? {
                     let entry = entry?;
 
-                    try_copy(&entry.path(), &target.join(entry.file_name()))?;
+                    Box::pin(try_copy(
+                        entry.path(),
+                        target.join(entry.file_name())
+                    )).await?;
                 }
             }
 
             else if source.is_symlink() {
                 // FIXME: only works on unix systems while we target to support
                 //        all the OSes.
-
                 #[allow(clippy::collapsible_if)]
                 if let Some(source_filename) = source.file_name() {
-                    std::os::unix::fs::symlink(
+                    tasks::fs::symlink(
                         source.read_link()?,
                         target.join(source_filename)
-                    )?;
+                    ).await?;
                 }
             }
 
@@ -158,7 +167,7 @@ impl Storage {
         let hash = Hash::from_path(path.clone())?;
 
         // Copy the resource into the storage folder.
-        try_copy(&path, &self.resource_path(&hash))?;
+        try_copy(path, self.resource_path(&hash)).await?;
 
         Ok(hash)
     }
@@ -170,6 +179,19 @@ impl Storage {
     #[inline]
     pub fn has_resource(&self, hash: &Hash) -> bool {
         self.resource_path(hash).exists()
+    }
+
+    /// Remove resource file or directory under the given hash if it exists.
+    pub async fn remove_resource(&self, hash: &Hash) -> std::io::Result<()> {
+        let path = self.resource_path(hash);
+
+        if path.is_file() || path.is_symlink() {
+            tasks::fs::remove_file(path).await?;
+        } else if path.is_dir() {
+            tasks::fs::remove_dir_all(path).await?;
+        }
+
+        Ok(())
     }
 
     /// Verify that resource content for provided hash is valid.
@@ -286,7 +308,9 @@ impl Storage {
 
             for package_url in packages_queue.drain(..) {
                 // Skip already downloaded packages.
-                if processed_resources.contains(&(package_url.clone(), ResourceFormat::Package)) {
+                if processed_resources.contains(
+                    &(package_url.clone(), ResourceFormat::Package)
+                ) {
                     continue;
                 }
 
@@ -317,7 +341,7 @@ impl Storage {
                 task.wait().await?;
 
                 // Read the manifest file and calculate its hash.
-                let manifest = std::fs::read(&temp_path)?;
+                let manifest = tasks::fs::read(&temp_path).await?;
                 let manifest_hash = Hash::from_bytes(&manifest);
 
                 // Deserialize package manifest.
@@ -332,13 +356,15 @@ impl Storage {
                     })?;
 
                 // Store the manifest in the storage.
-                self.store_resource(&temp_path)?;
+                self.store_resource(&temp_path).await?;
 
                 // Delete temporary file.
-                let _ = std::fs::remove_file(&temp_path);
+                let _ = tasks::fs::remove_file(&temp_path).await;
 
                 // List this package as processed.
-                processed_resources.insert((package_url.clone(), ResourceFormat::Package));
+                processed_resources.insert(
+                    (package_url.clone(), ResourceFormat::Package)
+                );
 
                 // Link requested URL with its output hash.
                 resource_hashes.insert(package_url.clone(), manifest_hash);
@@ -446,7 +472,9 @@ impl Storage {
 
             for (resource_url, resource_format, resource_info) in resources_queue.drain(..) {
                 // Skip already downloaded resources.
-                if processed_resources.contains(&(resource_url.clone(), resource_format)) {
+                if processed_resources.contains(
+                    &(resource_url.clone(), resource_format)
+                ) {
                     continue;
                 }
 
@@ -499,7 +527,7 @@ impl Storage {
                             && resource_hash != expected_hash
                         {
                             // Delete temporary file.
-                            let _ = std::fs::remove_file(&temp_path);
+                            let _ = tasks::fs::remove_file(&temp_path).await;
 
                             return Err(InstallPackagesError::ResourceHashMismatch {
                                 actual: resource_hash,
@@ -509,10 +537,10 @@ impl Storage {
                         }
 
                         // Store the downloaded file.
-                        self.store_resource(&temp_path)?;
+                        self.store_resource(&temp_path).await?;
 
                         // Delete temporary file.
-                        let _ = std::fs::remove_file(&temp_path);
+                        let _ = tasks::fs::remove_file(&temp_path).await;
 
                         // List this resource as processed.
                         processed_resources.insert((resource_url.clone(), resource_format));
@@ -528,7 +556,7 @@ impl Storage {
                         // Prepare temporary archive extraction folder.
                         let temp_extract_path = self.resource_path(&Hash::rand());
 
-                        std::fs::create_dir_all(&temp_extract_path)?;
+                        tasks::fs::create_dir_all(&temp_extract_path).await?;
 
                         // Try to predict the format of the archive from its
                         // download URL. It's needed because `temp_path` doesn't
@@ -550,7 +578,7 @@ impl Storage {
                         archive.extract(&temp_extract_path)?.wait()?;
 
                         // Delete temporary file.
-                        let _ = std::fs::remove_file(&temp_path);
+                        let _ = tasks::fs::remove_file(&temp_path).await;
 
                         // Calculate hash of the extracted archive.
                         let resource_hash = Hash::from_path(&temp_extract_path)?;
@@ -562,7 +590,7 @@ impl Storage {
                         {
                             // Delete temporary extraction folder.
                             // (damn that's a scary function...)
-                            let _ = std::fs::remove_dir_all(&temp_extract_path);
+                            let _ = tasks::fs::remove_dir_all(&temp_extract_path).await;
 
                             return Err(InstallPackagesError::ResourceHashMismatch {
                                 actual: resource_hash,
@@ -575,10 +603,10 @@ impl Storage {
                         // one.
                         //
                         // TODO: make sane use of store_resource here somehow
-                        std::fs::rename(
+                        tasks::fs::rename(
                             temp_extract_path,
                             self.resource_path(&resource_hash)
-                        )?;
+                        ).await?;
 
                         // List this resource as processed.
                         processed_resources.insert((resource_url.clone(), resource_format));

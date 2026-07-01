@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -36,9 +36,11 @@ lazy_static::lazy_static! {
     /// Path to the data folder.
     ///
     /// Default is `$XDG_DATA_HOME/anime-games-launcher`.
-    /// Can be overriden by `LAUNCHER_DATA_FOLDER` variable.
-    pub static ref DATA_FOLDER: PathBuf = {
-        if let Ok(path) = std::env::var("LAUNCHER_DATA_FOLDER") {
+    /// Can be overriden by `LAUNCHER_DATA_DIR` variable.
+    pub static ref DATA_DIR: PathBuf = {
+        if let Ok(path) = std::env::var("LAUNCHER_DATA_DIR")
+            .or_else(|_| std::env::var("LAUNCHER_DATA_FOLDER"))
+        {
             return PathBuf::from(path);
         }
 
@@ -70,9 +72,11 @@ lazy_static::lazy_static! {
     /// Path to the config folder.
     ///
     /// Default is `$XDG_CONFIG_HOME/anime-games-launcher`.
-    /// Can be overriden by `LAUNCHER_CONFIG_FOLDER` variable.
-    pub static ref CONFIG_FOLDER: PathBuf = {
-        if let Ok(path) = std::env::var("LAUNCHER_CONFIG_FOLDER") {
+    /// Can be overriden by `LAUNCHER_CONFIG_DIR` variable.
+    pub static ref CONFIG_DIR: PathBuf = {
+        if let Ok(path) = std::env::var("LAUNCHER_CONFIG_DIR")
+            .or_else(|_| std::env::var("LAUNCHER_CONFIG_FOLDER"))
+        {
             return PathBuf::from(path);
         }
 
@@ -104,9 +108,11 @@ lazy_static::lazy_static! {
     /// Path to the cache folder.
     ///
     /// Default is `$XDG_CACHE_HOME/anime-games-launcher`.
-    /// Can be overriden by `LAUNCHER_CACHE_FOLDER` variable.
-    pub static ref CACHE_FOLDER: PathBuf = {
-        if let Ok(path) = std::env::var("LAUNCHER_CACHE_FOLDER") {
+    /// Can be overriden by `LAUNCHER_CACHE_DIR` variable.
+    pub static ref CACHE_DIR: PathBuf = {
+        if let Ok(path) = std::env::var("LAUNCHER_CACHE_DIR")
+            .or_else(|_| std::env::var("LAUNCHER_CACHE_FOLDER"))
+        {
             return PathBuf::from(path);
         }
 
@@ -138,15 +144,15 @@ lazy_static::lazy_static! {
     /// Path to the config file.
     ///
     /// Default is `CONFIG_FOLDER/config.toml`.
-    pub static ref CONFIG_FILE: PathBuf = CONFIG_FOLDER.join("config.toml");
+    pub static ref CONFIG_FILE: PathBuf = CONFIG_DIR.join("config.toml");
 
     /// Path to the debug log file.
     ///
     /// Default is `DATA_FOLDER/debug.log`.
-    pub static ref DEBUG_FILE: PathBuf = DATA_FOLDER.join("debug.log");
+    pub static ref DEBUG_FILE: PathBuf = DATA_DIR.join("debug.log");
 
     /// Path to the trace log file.
     ///
     /// Default is `DATA_FOLDER/trace.log`.
-    pub static ref TRACE_FILE: PathBuf = DATA_FOLDER.join("trace.log");
+    pub static ref TRACE_FILE: PathBuf = DATA_DIR.join("trace.log");
 }

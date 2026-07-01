@@ -376,7 +376,7 @@ fn build_client(
     timeout: Option<Duration>
 ) -> anyhow::Result<reqwest::Client> {
     let mut client = reqwest::ClientBuilder::new()
-        .user_agent(user_agent.unwrap_or_else(|| format!("anirun/{APP_VERSION}")));
+        .user_agent(user_agent.unwrap_or_else(|| format!("anirun/v{APP_VERSION}")));
 
     if let Some(proxy) = &proxy {
         let proxy = reqwest::Proxy::all(proxy)
@@ -673,7 +673,7 @@ fn main() -> anyhow::Result<()> {
                 for (package_hash, package) in lock.packages.iter() {
                     for (resource_name, resource) in package.outputs.iter() {
                         if resource.format == ResourceFormat::File
-                            && resource.url.contains(".lua")
+                            && (resource.url.ends_with(".lua") || resource.url.ends_with(".luau"))
                             && let Some(output) = runtime.get_value::<LuaTable>(format!("{}#module", resource.hash))?
                         {
                             let output = output.get::<LuaValue>("value")?;

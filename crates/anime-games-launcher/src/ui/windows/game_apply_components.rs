@@ -165,7 +165,8 @@ impl SimpleAsyncComponent for GameApplyComponentsWindow {
                 uninstall_components,
                 delete_game_package
             } => {
-                let lang = config::get().language().ok();
+                let lang = config::get().await
+                    .language().ok();
 
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);

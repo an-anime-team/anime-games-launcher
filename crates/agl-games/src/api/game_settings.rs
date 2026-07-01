@@ -260,26 +260,59 @@ impl GameSettingsEntryFormat {
                     .and_then(|values| {
                         let mut table = Vec::with_capacity(values.raw_len());
 
-                        values.for_each::<String, LuaValue>(|key, value| {
-                            table.push((
-                                key,
-                                LocalizableString::from_lua(&value)?
-                            ));
+                        // Old format (name -> title table).
+                        for pair in values.pairs::<LuaValue, LuaValue>() {
+                            let pair = pair?;
 
-                            Ok(())
-                        })?;
+                            // Skip integer fields (sequence values).
+                            if let LuaValue::String(name) = pair.0 {
+                                table.push((
+                                    name.to_string_lossy(),
+                                    LocalizableString::from_lua(&pair.1)?
+                                ));
+                            }
+                        }
 
-                        // Returned lua table is not sorted properly so we're
-                        // kinda solving it here.
+                        #[cfg(feature = "tracing")]
+                        if !table.is_empty() {
+                            tracing::warn!("using outdated enum settings entry values syntax");
+                        }
+
+                        // Sort old format entries by their title since
+                        // hashmap-like tables don't preserve original items
+                        // order.
                         table.sort_by(|a, b| {
                             b.1.default_translation()
                                 .cmp(a.1.default_translation())
                         });
 
+                        // New format ({ name, title } objects).
+                        for value in values.sequence_values::<LuaTable>() {
+                            let value = value?;
+
+                            // Support "key" field although only "name" is
+                            // correct.
+                            let name = value.raw_get::<String>("name")
+                                .or_else(|_| value.raw_get::<String>("key"))?;
+
+                            // Support "value" field although only "title" is
+                            // correct.
+                            let title = value.raw_get::<LuaValue>("title")
+                                .or_else(|_| value.raw_get::<LuaValue>("value"))?;
+
+                            table.push((
+                                name,
+                                LocalizableString::from_lua(&title)?
+                            ));
+                        }
+
                         Ok(table.into_boxed_slice())
                     })?,
 
-                selected: value.get("selected")?
+                // Support "value" field for consistency, although "selected"
+                // is the only correct one.
+                selected: value.get("selected")
+                    .or_else(|_| value.get("value"))?
             }),
 
             "selector" => Ok(Self::Selector {
@@ -287,26 +320,59 @@ impl GameSettingsEntryFormat {
                     .and_then(|values| {
                         let mut table = Vec::with_capacity(values.raw_len());
 
-                        values.for_each::<String, LuaValue>(|key, value| {
-                            table.push((
-                                key,
-                                LocalizableString::from_lua(&value)?
-                            ));
+                        // Old format (name -> title table).
+                        for pair in values.pairs::<LuaValue, LuaValue>() {
+                            let pair = pair?;
 
-                            Ok(())
-                        })?;
+                            // Skip integer fields (sequence values).
+                            if let LuaValue::String(name) = pair.0 {
+                                table.push((
+                                    name.to_string_lossy(),
+                                    LocalizableString::from_lua(&pair.1)?
+                                ));
+                            }
+                        }
 
-                        // Returned lua table is not sorted properly so we're
-                        // kinda solving it here.
+                        #[cfg(feature = "tracing")]
+                        if !table.is_empty() {
+                            tracing::warn!("using outdated selector settings entry values syntax");
+                        }
+
+                        // Sort old format entries by their title since
+                        // hashmap-like tables don't preserve original items
+                        // order.
                         table.sort_by(|a, b| {
-                            a.1.default_translation()
-                                .cmp(b.1.default_translation())
+                            b.1.default_translation()
+                                .cmp(a.1.default_translation())
                         });
+
+                        // New format ({ name, title } objects).
+                        for value in values.sequence_values::<LuaTable>() {
+                            let value = value?;
+
+                            // Support "key" field although only "name" is
+                            // correct.
+                            let name = value.raw_get::<String>("name")
+                                .or_else(|_| value.raw_get::<String>("key"))?;
+
+                            // Support "value" field although only "title" is
+                            // correct.
+                            let title = value.raw_get::<LuaValue>("title")
+                                .or_else(|_| value.raw_get::<LuaValue>("value"))?;
+
+                            table.push((
+                                name,
+                                LocalizableString::from_lua(&title)?
+                            ));
+                        }
 
                         Ok(table.into_boxed_slice())
                     })?,
 
-                selected: value.get("selected")?
+                // Support "value" field for consistency, although "selected"
+                // is the only correct one.
+                selected: value.get("selected")
+                    .or_else(|_| value.get("value"))?
             }),
 
             "expandable" => Ok(Self::Expandable {

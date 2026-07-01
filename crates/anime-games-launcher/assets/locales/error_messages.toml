@@ -3,131 +3,137 @@
 [failed_execute_startup_task]
 en = "Failed to execute startup task"
 ru = "Не удалось выполнить задачу при запуске лаунчера"
-de = "Startaufgabe könnte nicht ausgeführt werden"
 pt = "Falha ao iniciar a tarefa de inicialização"
+de = "Startaufgabe könnte nicht ausgeführt werden"
 id = "Gagal menjalankan aksi untuk memulai aplikasi"
 it = "Impossibile eseguire l'attività di avvio"
 
 [failed_load_game_package]
 en = "Failed to load {title} game package"
 ru = "Не удалось загрузить игровой пакет {title}"
-de = "Spielpaket für {title} konnte nicht geladen werden"
 pt = "Falha ao carregar pacote do jogo {title}"
+de = "Spielpaket für {title} konnte nicht geladen werden"
 id = "Gagal memuat paket untuk game {title}"
 it = "Impossibile caricare il pacchetto del gioco {title}"
+ja = "{title} ゲームパッケージの読み込みに失敗しました"
 
 [failed_find_locked_game_integration_title]
 en = "Failed to find game integration module in package lock"
 ru = "Не удалось найти модуль интеграции игры в lock файле игрового пакета"
-de = "Integrationsmodul konnte in der Paket-Lock-Datei nicht gefunden werden"
 pt = "Falha ao encontrar módulo de integração no package lock"
+de = "Integrationsmodul konnte in der Paket-Lock-Datei nicht gefunden werden"
 id = "Gagal menemukan modul integrasi game dalam kunci paket"
 it = "Impossibile trovare il modulo di integrazione del gioco nel package lock"
 
 [failed_find_locked_game_integration_description]
 en = "Attempted to find {title} game integration module, but it's missing in the package lock. Perhaps the lock file is broken"
 ru = "Лаунчер попытался найти модуль интеграции для игры {title}, но его нет в lock файле игрового пакета. Вероятно lock файл сломан"
-de = "Das Integrationsmodul für {title} konnte nicht gefunden werden weil es in der Paket-Lock-Datei fehlt. Möglicherweise ist die Paket-Lock-Datei beschädigt"
 pt = "Houve uma tentativa de encontrar o módulo de integração de {title}, mas está faltando no package lock. Talvez o arquivo de lock esteja quebrado"
+de = "Das Integrationsmodul für {title} konnte nicht gefunden werden weil es in der Paket-Lock-Datei fehlt. Möglicherweise ist die Paket-Lock-Datei beschädigt"
 id = "Mencoba menemukan modul integrasi untuk game {title}, tetapi tidak dapat ditemukan dalam kunci paket. Ada kemungkinan kunci paket rusak"
 it = "È stato cercato il modulo di integrazione del gioco {title}, ma non è presente nel package lock. Il file lock potrebbe essere danneggiato"
 
 [failed_read_runtime_game_integration]
 en = "Failed to read {title} game integration from the runtime"
 ru = "Не удалось прочесть интеграцию игры {title} из движка игровых пакетов"
-de = "Die Spielintegration für {title} konnte nicht aus der Runtime ausgelesen werden"
 pt = "Falha ao ler integração de {title} no runtime"
+de = "Die Spielintegration für {title} konnte nicht aus der Runtime ausgelesen werden"
 id = "Gagal membaca integrasi game {title} dari runtime"
 it = "Impossibile leggere l'integrazione del gioco {title} dal runtime"
 
 [game_integration_module_missing_title]
 en = "Game integration module is missing in the runtime"
 ru = "Модуль интеграции игры отсутствует в движке игровых пакетов"
-de = "Das Spielintegrationsmodul fehlt in der Runtime"
 pt = "Módulo de integração está faltando no runtime"
+de = "Das Spielintegrationsmodul fehlt in der Runtime"
 id = "Modul integrasi game tidak dapat ditemukan pada runtime"
 it = "Il modulo di integrazione del gioco non è presente nel runtime"
 
 [game_integration_module_missing_description]
 en = "Attempted to load {title} game integration, but integration module is missing in the packages runtime"
 ru = "Лаунчер попытался загрузить игру {title}, но модуль интеграции отсутствует в движке игровых пакетов"
-de = "Die Spielintegration für {title} konnte nicht geladen werden weil diese in der Spiel-Runtime fehlt"
 pt = "Houve uma tentativa de carregar a integração do jogo {title}, mas o módulo está faltando no runtime do pacote"
+de = "Die Spielintegration für {title} konnte nicht geladen werden weil diese in der Spiel-Runtime fehlt"
 id = "Mencoba memuat integrasi game {title}, tetapi modul integrasi tidak dapat ditemukan dalam runtime paket"
 it = "È stato tentato il caricamento dell'integrazione del gioco {title}, ma il modulo di integrazione non è presente nel runtime dei pacchetti"
 
 [failed_build_game_integration]
 en = "Failed to build {title} game integration"
 ru = "Не удалось загрузить интеграцию игры {title}"
-de = "Erstellen der Spielintegration für {title} ist gescheitert"
 pt = "Falha ao construir a integração do jogo {title}"
+de = "Erstellen der Spielintegration für {title} ist gescheitert"
 id = "Gagal membuat integrasi game {title}"
 it = "Impossibile compilare l'integrazione del gioco {title}"
 
 [failed_kill_game_process]
 en = "Failed to kill running game process"
 ru = "Не удалось убить процесс игры"
-de = "Der Laufende Spielprozess konnten nicht beendet werden"
 pt = "Falha ao matar o processo em execução do jogo"
+de = "Der Laufende Spielprozess konnten nicht beendet werden"
 id = "Gagal mematikan proses game yang sedang berjalan"
 it = "Impossibile terminare il processo di gioco in esecuzione"
+ja = "ゲームを強制終了できませんでした"
 
 # ------------------------ Game store page ------------------------
 
 [failed_serialize_game_package_lock]
 en = "Failed to serialize game package lock"
 ru = "Не удалось сериализовать пакет интеграции игры"
-de = "Die Serialisierung der Spielpaketsperrdatei ist gescheitert"
 pt = "Falha ao serializar package lock do jogo"
+de = "Die Serialisierung der Spielpaketsperrdatei ist gescheitert"
 id = "Gagal melakukan serialisasi paket kunci untuk game"
 it = "Impossibile serializzare il package lock del gioco"
 
 [failed_save_game_package_lock]
 en = "Failed to save game package lock"
 ru = "Не удалось сохранить пакет интеграции игры"
-de = "Die Spielpaketsperrdatei konnte nicht gespeichert werden"
 pt = "Falha ao salvar package lock do jogo"
+de = "Die Spielpaketsperrdatei konnte nicht gespeichert werden"
 id = "Gagal menyimpan paket kunci untuk game"
 it = "Impossibile salvare il package lock del gioco"
 
 [failed_download_game_package]
 en = "Failed to download game package"
 ru = "Не удалось скачать пакет интеграции игры"
-de = "Das Spielpaket konnte nicht heruntergeladen werden"
 pt = "Falha ao baixar o pacote do jogo"
+de = "Das Spielpaket konnte nicht heruntergeladen werden"
 id = "Gagal mengunduh paket untuk game"
 it = "Impossibile scaricare il pacchetto del gioco"
+ja = "ゲームパッケージをダウンロードできませんでした"
 
 # ------------------------ Game library page ------------------------
 
 [failed_request_game_launch_info]
 en = "Failed to request game launch info"
 ru = "Не удалось запросить информацию для запуска игры"
-de = "Startinformationen konnten nicht abgefragt werden"
 pt = "Falha ao requisitar informações de execução do jogo"
+de = "Startinformationen konnten nicht abgefragt werden"
 id = "Gagal meminta informasi yang diperlukan untuk meluncurkan game"
 it = "Impossibile richiedere le informazioni di avvio del gioco"
 
 [failed_request_game_actions_pipeline]
 en = "Failed to request game actions pipeline"
 ru = "Не удалось запросить необходимую последовательность действий для игры"
-de = "Das Abfragen der Aktions-Pipeline des Spieles ist gescheitert"
 pt = "Falha ao requisitar pipeline de ações do jogo"
+de = "Das Abfragen der Aktions-Pipeline des Spieles ist gescheitert"
 id = "Gagal meminta instruksi yang diperlukan untuk memuat game"
 it = "Impossibile richiedere la pipeline delle azioni del gioco"
 
 [failed_delete_game_package]
 en = "Failed to delete {title} game package"
 ru = "Не удалось удалить пакет игры {title}"
+pt = "Falha ao apagar pacote do jogo {title}"
 de = "Spielpaket für {title} konnte nicht gelöscht werden"
 id = "Gagal untuk menghapus paket gim {title}"
 it = "Impossibile eliminare il pacchetto del gioco {title}"
+ja = "ゲームパッケージ {title} を削除できませんでした"
 
 # ------------------------ Game components ------------------------
 
 [failed_request_game_components_layout]
 en = "Failed to request game components layout"
 ru = "Не удалось запросить список компонентов игры"
+pt = "Falha ao requisitar o layout de componentes do jogo"
 de = "Anfrage des Spielkomponentenlayouts ist fehlgeschlagen"
 id = "Gagal untuk memesan susunan komponen gim"
 it = "Impossibile richiedere il layout dei componenti del gioco"
@@ -135,6 +141,7 @@ it = "Impossibile richiedere il layout dei componenti del gioco"
 [failed_update_game_components_layout]
 en = "Failed to update game components layout"
 ru = "Не удалось обновить список компонентов игры"
+pt = "Falha ao atualizar o layout de componentes do jogo"
 de = "Aktualisierung des Spielkomponentenlayouts ist fehlgeschlagen"
 id = "Gagal untuk memperbaharui susunan komponen gim"
 it = "Impossibile aggiornare il layout dei componenti del gioco"
@@ -142,6 +149,7 @@ it = "Impossibile aggiornare il layout dei componenti del gioco"
 [failed_render_game_components]
 en = "Failed to render game components"
 ru = "Не удалось загрузить страницу компонентов игры"
+pt = "Falha ao renderizar os componentes do jogo"
 de = "Rendern der Spielkomponente ist fehlgeschlagen"
 id = "Gagal untuk menampilkan komponen gim"
 it = "Impossibile visualizzare i componenti del gioco"
@@ -149,15 +157,18 @@ it = "Impossibile visualizzare i componenti del gioco"
 [failed_apply_game_component]
 en = "Failed to apply game component"
 ru = "Не удалось применить компонент игры"
+pt = "Falha ao aplicar componente do jogo"
 de = "Spielkomponente konnte nicht angewendet werden"
 id = "Gagal untuk menerapkan komponen gim"
 it = "Impossibile aggiungere il componente al gioco"
+ja = "ゲームコンポーネントを適用できませんでした"
 
 # ------------------------ Game settings ------------------------
 
 [failed_request_game_tools_buttons]
 en = "Failed to request game tools buttons"
 ru = "Не удалось запросить список дополнительных инструментов для игры"
+pt = "Falha ao requisitar os botões das ferramentas do jogo"
 de = "Anfrage für die Spielwerkzeugstaste ist fehlgeschlagen"
 id = "Gagal meminta tombol untuk peralatan game"
 it = "Impossibile richiedere i pulsanti degli strumenti del gioco"
@@ -165,6 +176,7 @@ it = "Impossibile richiedere i pulsanti degli strumenti del gioco"
 [failed_call_game_tool_button]
 en = "Failed to call game tool button"
 ru = "Не удалось выполнить дополнительный игровой инструмент"
+pt = "Falha ao acionar botão das ferramentas do jogo"
 de = "Spielwerkzeugstaste konnte nicht aufgerufen werden"
 id = "Gagal memanggil tombol untuk peralatan game"
 it = "Impossibile eseguire il pulsante dello strumento di gioco"
@@ -172,32 +184,32 @@ it = "Impossibile eseguire il pulsante dello strumento di gioco"
 [failed_request_game_settings_layout]
 en = "Failed to request game settings layout"
 ru = "Не удалось запросить список настроек игры"
-de = "Layout der Spieleinstellungen konnte nicht abgefragt werden"
 pt = "Falha ao requisitar layout de configurações do jogo"
+de = "Layout der Spieleinstellungen konnte nicht abgefragt werden"
 id = "Gagal meminta layout untuk pengaturan game"
 it = "Impossibile richiedere il layout delle impostazioni del gioco"
 
 [failed_render_game_settings]
 en = "Failed to render game settings"
 ru = "Не удалось загрузить страницу настроек игры"
-de = "Spieleinstellungen konnten nicht gerendert werden"
 pt = "Falha ao renderizar configurações do jogo"
+de = "Spieleinstellungen konnten nicht gerendert werden"
 id = "Gagal menggambar pengaturan untuk game"
 it = "Impossibile visualizzare le impostazioni del gioco"
 
 [failed_update_game_settings_layout]
 en = "Failed to update game settings layout"
 ru = "Не удалось обновить список настроек игры"
-de = "Das Layouts der Spieleinstellungen konnte nicht aktualisiert werden"
 pt = "Falha ao atualizar layour de configurações do jogo"
+de = "Das Layouts der Spieleinstellungen konnte nicht aktualisiert werden"
 id = "Gagal memperbarui layout untuk pengaturan game"
 it = "Impossibile aggiornare il layout delle impostazioni del gioco"
 
 [failed_set_game_property]
 en = "Failed to set game property value"
 ru = "Не удалось обновить настройки игры"
-de = "Spieleigenschaft konnte nicht gesetzt werden"
 pt = "Falha ao definir valor de uma propriedade do jogo"
+de = "Spieleigenschaft konnte nicht gesetzt werden"
 id = "Gagal menentukan nilai properti dari game"
 it = "Impossibile impostare il valore della proprietà del gioco"
 
@@ -206,33 +218,34 @@ it = "Impossibile impostare il valore della proprietà del gioco"
 [failed_perform_pipeline_action]
 en = "Failed to perform pipeline action"
 ru = "Не удалось выполнить последовательность действий (pipeline action)"
-de = "Die Pipeline-Action konnte nicht durchgeführt werden"
 pt = "Falha ao executar ação da pipeline"
+de = "Die Pipeline-Action konnte nicht durchgeführt werden"
 id = "Gagal menjalankan instruksi yang diperlukan untuk memuat game"
 it = "Impossibile eseguire l'azione della pipeline"
+ja = "パイプラインアクションを実行できませんでした"
 
 # ------------------------ Portal API ------------------------
 
 [failed_execute_toast_action]
 en = "Failed to execute toast action"
 ru = "Не удалось выполнить действие во всплывающем уведомлении"
-de = "Toast-Aktion konnte nicht ausgeführt werden"
 pt = "Falha ao executar ação toast"
+de = "Toast-Aktion konnte nicht ausgeführt werden"
 id = "Gagal menjalankan aksi yang ada pada pop-up toast"
 it = "Impossibile eseguire l'azione del toast"
 
 [failed_show_system_notification]
 en = "Failed to show system notification"
 ru = "Не удалось отобразить системное уведомление"
-de = "Systembenachrichtigung konnte nicht angezeigt werden"
 pt = "Falha ao mostrar notificação do sistema"
+de = "Systembenachrichtigung konnte nicht angezeigt werden"
 id = "Gagal menampilkan notifikasi dari sistem"
 it = "Impossibile mostrare la notifica di sistema"
 
 [failed_execute_dialog_action]
 en = "Failed to execute dialog action"
 ru = "Не удалось выполнить действие диалогового окна"
-de = "Dialog-Aktion konnte nicht ausgeführt werden"
 pt = "Falha ao executar ação do diálogo"
+de = "Dialog-Aktion konnte nicht ausgeführt werden"
 id = "Gagal menjalankan aksi yang ada pada dialog"
 it = "Impossibile eseguire l'azione della finestra di dialogo"

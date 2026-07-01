@@ -226,7 +226,7 @@ impl SimpleAsyncComponent for StorePage {
                     "adding store page game"
                 );
 
-                let config = config::get();
+                let config = config::get().await;
                 let lang = config.language().ok();
 
                 let title = match &lang {

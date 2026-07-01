@@ -290,7 +290,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     "loading game package"
                 );
 
-                let lang = config::get().language();
+                let lang = config::get().await
+                    .language();
 
                 let title = match &lang {
                     Ok(lang) => package.manifest.game.title.translate(lang),
@@ -347,7 +348,7 @@ impl SimpleAsyncComponent for LibraryPage {
             }
 
             LibraryPageInput::DeleteGamePackage(name) => {
-                let config = config::get();
+                let config = config::get().await;
 
                 if let Some(game_info) = self.games.remove(&name) {
                     let lang = config.language();

@@ -108,7 +108,7 @@ impl GameLock {
         storage: &Storage
     ) -> anyhow::Result<Self> {
         // Prepare files downloader.
-        let config = config::get();
+        let config = config::get().await;
 
         let client = config.client_builder()?
             .build()?;
@@ -120,12 +120,10 @@ impl GameLock {
 
         let manifest_path = cache::get_path(&manifest_url);
 
-        let is_expired = cache::is_expired(
+        if cache::is_expired(
             &manifest_path,
             config.cache_game_manifests_duration
-        )?;
-
-        if is_expired {
+        ).await? {
             let task = downloader.download_with_options(
                 &manifest_url,
                 &manifest_path,
