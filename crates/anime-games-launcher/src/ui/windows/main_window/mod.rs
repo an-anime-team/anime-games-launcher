@@ -419,6 +419,8 @@ impl SimpleAsyncComponent for MainWindow {
                 })
             },
 
+            secrets_file: config.runtime_secrets_path.clone(),
+
             translate
         }).expect("failed to initialize packages runtime");
 
@@ -1106,9 +1108,9 @@ impl SimpleAsyncComponent for MainWindow {
                 };
 
                 let paths = ModulePaths {
-                    temp_folder: config.packages_temporary_path.clone(),
-                    modules_folder: config.packages_modules_path.clone(),
-                    persistent_folder: config.packages_persistent_path.clone()
+                    temp_dir: config.packages_temporary_path.clone(),
+                    modules_dir: config.packages_modules_path.clone(),
+                    persistent_dir: config.packages_persistent_path.clone()
                 };
 
                 // Add game's scope to all the game integration resources.

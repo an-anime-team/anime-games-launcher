@@ -91,7 +91,7 @@ pub struct Config {
     /// `packages.allow_lists`
     pub packages_allow_lists: Vec<String>,
 
-    /// Path to the folder where package resources should be stored.
+    /// Path to the directory where package resources should be stored.
     ///
     /// `packages.resources.path`
     pub packages_resources_path: PathBuf,
@@ -101,7 +101,7 @@ pub struct Config {
     /// `packages.resources.collect_garbage`
     pub packages_resources_collect_garbage: bool,
 
-    /// Path to the folder where modules-specific files should be stored.
+    /// Path to the directory where modules-specific files should be stored.
     ///
     /// These will be kept privately for each module, so they can be used as
     /// secrets storage.
@@ -114,7 +114,7 @@ pub struct Config {
     /// `packages.modules.collect_garbage`
     pub packages_modules_collect_garbage: bool,
 
-    /// Path to the folder where persistent packages files should be stored.
+    /// Path to the directory where persistent packages files should be stored.
     ///
     /// These will be kept for as long as possible, and the primary usecase is
     /// to allow different modules to use the same files without needing to
@@ -123,7 +123,7 @@ pub struct Config {
     /// `packages.persistent.path`
     pub packages_persistent_path: PathBuf,
 
-    /// Path to the folder where temporary packages files should be stored.
+    /// Path to the directory where temporary packages files should be stored.
     ///
     /// These will be deleted automatically, depending on launcher
     /// configuration.
@@ -169,12 +169,17 @@ pub struct Config {
     /// `runtime.torrent.blocklist_url`
     pub runtime_torrent_blocklist_url: Option<String>,
 
+    /// Path to the secrets API database file.
+    ///
+    /// `runtime.secrets.path`
+    pub runtime_secrets_path: PathBuf,
+
     /// URLs of the game registry files.
     ///
     /// `games.registries`
     pub games_registries: Vec<String>,
 
-    /// Path to the folder where game locks are stored.
+    /// Path to the directory where game locks are stored.
     ///
     /// `games.path`
     pub games_path: PathBuf
@@ -216,6 +221,8 @@ impl Default for Config {
             runtime_torrent_enable_upnp: false,
             runtime_torrent_trackers: vec![],
             runtime_torrent_blocklist_url: Some(String::from("https://raw.githubusercontent.com/Naunter/BT_BlockLists/master/bt_blocklists.gz")),
+
+            runtime_secrets_path: DATA_DIR.join("secrets.db"),
 
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/games/registry.json")
@@ -280,6 +287,9 @@ impl Config {
             enable_upnp = (self.runtime_torrent_enable_upnp)
             trackers = (self.runtime_torrent_trackers.iter().map(|url| url.as_str()).collect::<Vec<_>>())
             blocklist_url = (self.runtime_torrent_blocklist_url.as_deref().unwrap_or("none"))
+
+            [runtime.secrets]
+            path = (self.runtime_secrets_path.to_string_lossy())
 
             [games]
             registries = (self.games_registries.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -480,6 +490,14 @@ impl Config {
                     } else {
                         Some(blocklist_url.to_string())
                     };
+                }
+            }
+
+            // `runtime.secrets.*`
+            if let Some(secrets) = runtime.get("secrets") {
+                // `runtime.secrets.path`
+                if let Some(path) = secrets.get("path").and_then(Toml::as_str) {
+                    config.runtime_secrets_path = PathBuf::from(path);
                 }
             }
         }
