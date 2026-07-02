@@ -74,6 +74,10 @@ fn get_runtime() -> Result<Runtime, RuntimeError> {
         #[cfg(feature = "portal-api")]
         show_dialog: Box::new(|_| {}),
 
+        #[cfg(feature = "secrets-api")]
+        secrets_file: std::env::temp_dir()
+            .join(".agl-runtime-load-packages-test.db"),
+
         translate
     })
 }

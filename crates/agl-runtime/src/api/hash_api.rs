@@ -71,7 +71,7 @@ impl HashApi {
                             .map_err(LuaError::external)?;
 
                         if path.is_relative() {
-                            path = context.module_folder.join(path);
+                            path = context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -79,7 +79,7 @@ impl HashApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_read_path(&path)? {
+                        if !context.can_read_path(&path) {
                             return Err(LuaError::external("no path read permissions"));
                         }
 

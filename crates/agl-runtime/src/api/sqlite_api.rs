@@ -141,7 +141,7 @@ impl SqliteApi {
 
                     lua.create_function(move |_, mut path: PathBuf| {
                         if path.is_relative() {
-                            path = context.module_folder.join(path);
+                            path = context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -149,7 +149,7 @@ impl SqliteApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&path)? {
+                        if !context.can_write_path(&path) {
                             return Err(LuaError::external("no path write permissions"));
                         }
 

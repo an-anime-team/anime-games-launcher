@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ impl ArchiveApi {
 
                     lua.create_function(move |_, (mut path, format): (PathBuf, Option<LuaString>)| {
                         if path.is_relative() {
-                            path = context.module_folder.join(path);
+                            path = context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -57,7 +57,7 @@ impl ArchiveApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_read_path(&path)? {
+                        if !context.can_read_path(&path) {
                             return Err(LuaError::external("no path read permissions"));
                         }
 
@@ -132,7 +132,7 @@ impl ArchiveApi {
 
                     lua.create_function(move |_, (handle, mut target, progress): (i32, PathBuf, Option<LuaFunction>)| {
                         if target.is_relative() {
-                            target = context.module_folder.join(target);
+                            target = context.module_dir.join(target);
                         }
 
                         target = normalize_path(target, true)
@@ -140,7 +140,7 @@ impl ArchiveApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&target)? {
+                        if !context.can_write_path(&target) {
                             return Err(LuaError::external("no target path write permissions"));
                         }
 

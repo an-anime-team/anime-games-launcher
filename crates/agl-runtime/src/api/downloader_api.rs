@@ -85,7 +85,7 @@ impl DownloaderApi {
                         let mut output_file = options.get::<PathBuf>("output_file")?;
 
                         if output_file.is_relative() {
-                            output_file = context.module_folder.join(output_file);
+                            output_file = context.module_dir.join(output_file);
                         }
 
                         output_file = normalize_path(output_file, true)
@@ -93,7 +93,7 @@ impl DownloaderApi {
                                 LuaError::external(format!("failed to normalize output file path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&output_file)? {
+                        if !context.can_write_path(&output_file) {
                             return Err(LuaError::external("no output file path write permissions"));
                         }
 

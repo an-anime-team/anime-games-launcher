@@ -267,7 +267,7 @@ pub struct PortalApi {
     portal_notify: LuaFunction,
     portal_dialog: LuaFunction,
     portal_open_file: LuaFunctionBuilder,
-    portal_open_folder: LuaFunctionBuilder,
+    portal_open_directory: LuaFunctionBuilder,
     portal_save_file: LuaFunctionBuilder
 }
 
@@ -370,26 +370,26 @@ impl PortalApi {
                 })
             }),
 
-            portal_open_folder: Box::new(move |lua, context| {
+            portal_open_directory: Box::new(move |lua, context| {
                 let module_scope = context.scope.clone();
 
-                lua.create_function(move |lua, open_folder_options: Option<LuaTable>| {
+                lua.create_function(move |lua, open_directory_options: Option<LuaTable>| {
                     let mut dialog = rfd::AsyncFileDialog::new();
 
                     let mut multiple = false;
 
-                    if let Some(open_folder_options) = open_folder_options {
-                        if let Some(title) = open_folder_options.get::<Option<LuaValue>>("title")? {
+                    if let Some(open_directory_options) = open_directory_options {
+                        if let Some(title) = open_directory_options.get::<Option<LuaValue>>("title")? {
                             let title = LocalizableString::from_lua(&title)?;
 
                             dialog = dialog.set_title((options.translate)(title));
                         }
 
-                        if let Some(directory) = open_folder_options.get::<Option<String>>("directory")? {
+                        if let Some(directory) = open_directory_options.get::<Option<String>>("directory")? {
                             dialog = dialog.set_directory(PathBuf::from(directory));
                         }
 
-                        multiple = open_folder_options.get::<bool>("multiple")
+                        multiple = open_directory_options.get::<bool>("multiple")
                             .unwrap_or(false);
                     }
 
@@ -495,14 +495,23 @@ impl PortalApi {
 
     /// Create new lua table with API functions.
     pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 6)?;
+        let env = self.lua.create_table_with_capacity(0, 7)?;
+
+        let open_directory = (self.portal_open_directory)(&self.lua, context)?;
 
         env.raw_set("toast", &self.portal_toast)?;
         env.raw_set("notify", &self.portal_notify)?;
         env.raw_set("dialog", &self.portal_dialog)?;
         env.raw_set("open_file", (self.portal_open_file)(&self.lua, context)?)?;
-        env.raw_set("open_folder", (self.portal_open_folder)(&self.lua, context)?)?;
+        env.raw_set("open_directory", &open_directory)?;
         env.raw_set("save_file", (self.portal_save_file)(&self.lua, context)?)?;
+
+        env.raw_set("open_folder", self.lua.create_function(move |_, options: Option<LuaTable>| {
+            #[cfg(feature = "tracing")]
+            tracing::warn!("portal.open_folder API was renamed to portal.open_directory");
+
+            open_directory.call::<LuaValue>(options)
+        })?)?;
 
         Ok(env)
     }

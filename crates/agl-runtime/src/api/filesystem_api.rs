@@ -71,7 +71,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |_, mut path: PathBuf| -> Result<bool, LuaError> {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -83,8 +83,7 @@ impl FilesystemApi {
                         return Ok(false);
                     }
 
-                    context.can_read_path(&path)
-                        .map_err(LuaError::external)
+                    Ok(context.can_read_path(&path))
                 })
             }),
 
@@ -93,7 +92,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, false)
@@ -139,8 +138,8 @@ impl FilesystemApi {
 
                     let permissions = lua.create_table_with_capacity(0, 2)?;
 
-                    permissions.raw_set("read", context.can_read_path(&path)?)?;
-                    permissions.raw_set("write", context.can_write_path(&path)?)?;
+                    permissions.raw_set("read", context.can_read_path(&path))?;
+                    permissions.raw_set("write", context.can_write_path(&path))?;
 
                     result.raw_set("permissions", permissions)?;
 
@@ -163,11 +162,11 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
                     if source.is_relative() {
-                        source = context.module_folder.join(source);
+                        source = context.module_dir.join(source);
                     }
 
                     if target.is_relative() {
-                        target = context.module_folder.join(target);
+                        target = context.module_dir.join(target);
                     }
 
                     source = normalize_path(source, true)
@@ -185,7 +184,7 @@ impl FilesystemApi {
                         return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    if !context.can_read_path(&source)? {
+                    if !context.can_read_path(&source) {
                         return Err(LuaError::external("no source path read permissions"));
                     }
 
@@ -194,7 +193,7 @@ impl FilesystemApi {
                         return Err(LuaError::external("target path already exists"));
                     }
 
-                    if !context.can_write_path(&target)? {
+                    if !context.can_write_path(&target) {
                         return Err(LuaError::external("no target path write permissions"));
                     }
 
@@ -248,11 +247,11 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
                     if source.is_relative() {
-                        source = context.module_folder.join(source);
+                        source = context.module_dir.join(source);
                     }
 
                     if target.is_relative() {
-                        target = context.module_folder.join(target);
+                        target = context.module_dir.join(target);
                     }
 
                     source = normalize_path(source, false)
@@ -270,7 +269,7 @@ impl FilesystemApi {
                         return Err(LuaError::external("source path doesn't exists"));
                     }
 
-                    if !context.can_write_path(&source)? {
+                    if !context.can_write_path(&source) {
                         return Err(LuaError::external("no source path write permissions"));
                     }
 
@@ -279,7 +278,7 @@ impl FilesystemApi {
                         return Err(LuaError::external("target path already exists"));
                     }
 
-                    if !context.can_write_path(&target)? {
+                    if !context.can_write_path(&target) {
                         return Err(LuaError::external("no target path write permissions"));
                     }
 
@@ -343,7 +342,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, false)
@@ -351,7 +350,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_write_path(&path)? {
+                    if !context.can_write_path(&path) {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
@@ -379,7 +378,7 @@ impl FilesystemApi {
 
                     lua.create_function(move |_, (mut path, options): (PathBuf, Option<LuaTable>)| {
                         if path.is_relative() {
-                            path = context.module_folder.join(path);
+                            path = context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -388,7 +387,7 @@ impl FilesystemApi {
                             })?;
 
                         if let Some(parent) = path.parent() && !parent.is_dir() {
-                            if !context.can_write_path(parent)? {
+                            if !context.can_write_path(parent) {
                                 return Err(LuaError::external("no path write permissions"));
                             }
 
@@ -402,18 +401,22 @@ impl FilesystemApi {
                         let mut append = false;
 
                         if let Some(options) = options {
-                            read      = options.get::<bool>("read").unwrap_or(true);
-                            write     = options.get::<bool>("write").unwrap_or_default();
-                            create    = options.get::<bool>("create").unwrap_or_default();
-                            overwrite = options.get::<bool>("overwrite").unwrap_or_default();
-                            append    = options.get::<bool>("append").unwrap_or_default();
+                            read   = options.get::<bool>("read").unwrap_or(true);
+                            write  = options.get::<bool>("write").unwrap_or_default();
+                            create = options.get::<bool>("create").unwrap_or_default();
+
+                            overwrite = options.get::<bool>("overwrite")
+                                .or_else(|_| options.get("truncate"))
+                                .unwrap_or_default();
+
+                            append = options.get::<bool>("append").unwrap_or_default();
                         }
 
-                        if read && !context.can_read_path(&path)? {
+                        if read && !context.can_read_path(&path) {
                             return Err(LuaError::external("no path read permissions"));
                         }
 
-                        if (write || create || overwrite || append) && !context.can_write_path(&path)? {
+                        if (write || create || overwrite || append) && !context.can_write_path(&path) {
                             return Err(LuaError::external("no path write permissions"));
                         }
 
@@ -634,7 +637,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -642,7 +645,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_write_path(&path)? {
+                    if !context.can_write_path(&path) {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
@@ -666,7 +669,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -674,7 +677,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_read_path(&path)? {
+                    if !context.can_read_path(&path) {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
@@ -696,7 +699,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, (mut path, content): (PathBuf, Bytes)| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -704,7 +707,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_write_path(&path)? {
+                    if !context.can_write_path(&path) {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
@@ -728,7 +731,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, false)
@@ -736,7 +739,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_write_path(&path)? {
+                    if !context.can_write_path(&path) {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
@@ -756,7 +759,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -764,7 +767,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_write_path(&path)? {
+                    if !context.can_write_path(&path) {
                         return Err(LuaError::external("no path write permissions"));
                     }
 
@@ -784,7 +787,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -792,7 +795,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_read_path(&path)? {
+                    if !context.can_read_path(&path) {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
@@ -839,7 +842,7 @@ impl FilesystemApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -847,7 +850,7 @@ impl FilesystemApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_write_path(&path)? {
+                    if !context.can_write_path(&path) {
                         return Err(LuaError::external("no path write permissions"));
                     }
 

@@ -19,6 +19,7 @@ sqlite-api = ["dep:rusqlite"]
 protobuf-api = ["dep:protox", "dep:prost-reflect"]
 torrent-api = ["dep:librqbit"]
 portal-api = ["dep:rfd"]
+secrets-api = ["dep:rusqlite"]
 
 default = [
     "tracing",
@@ -26,7 +27,8 @@ default = [
     "protobuf-api",
     "sqlite-api",
     "torrent-api",
-    "portal-api"
+    "portal-api",
+    "secrets-api"
 ]
 
 [dependencies.agl-core]

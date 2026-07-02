@@ -284,6 +284,15 @@ struct CliModuleScope {
     #[arg(long)]
     pub portal_api: Option<bool>,
 
+    /// Allow module to access secrets API.
+    ///
+    /// This API can be used to read and write secret values, with guarded
+    /// access for every module.
+    ///
+    /// Default: `true`.
+    #[arg(long)]
+    pub secrets_api: Option<bool>,
+
     /// Allow module to access process API.
     ///
     /// This API allows module to spawn and control new processes on the host
@@ -310,7 +319,19 @@ struct CliModuleScope {
     ///
     /// Default: none.
     #[arg(long = "sandbox-write-path", alias = "sandbox-write")]
-    pub sandbox_write_paths: Vec<PathBuf>
+    pub sandbox_write_paths: Vec<PathBuf>,
+
+    /// List of containers which module can read.
+    ///
+    /// Default: none.
+    #[arg(long = "secrets-read-container", alias = "secrets-read")]
+    pub secrets_read_containers: Vec<String>,
+
+    /// List of containers which module can write.
+    ///
+    /// Default: none.
+    #[arg(long = "secrets-write-container", alias = "secrets-write")]
+    pub secrets_write_containers: Vec<String>
 }
 
 impl From<CliModuleScope> for ModuleScope {
@@ -330,9 +351,12 @@ impl From<CliModuleScope> for ModuleScope {
             allow_protobuf_api: value.protobuf_api.unwrap_or(true),
             allow_torrent_api: value.torrent_api.unwrap_or(false),
             allow_portal_api: value.portal_api.unwrap_or(true),
+            allow_secrets_api: value.secrets_api.unwrap_or(true),
             allow_process_api: value.process_api.unwrap_or(false),
             sandbox_read_paths: value.sandbox_read_paths,
-            sandbox_write_paths: value.sandbox_write_paths
+            sandbox_write_paths: value.sandbox_write_paths,
+            secrets_read_containers: value.secrets_read_containers,
+            secrets_write_containers: value.secrets_write_containers
         }
     }
 }

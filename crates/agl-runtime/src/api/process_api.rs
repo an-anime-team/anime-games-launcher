@@ -48,10 +48,10 @@ impl ProcessApi {
 
         Ok(Self {
             process_exec: Box::new(|lua: &Lua, context: &Context| {
-                let module_folder = context.module_folder.clone();
+                let module_dir = context.module_dir.clone();
 
                 lua.create_function(move |lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
-                    let module_folder = module_folder.clone();
+                    let module_dir = module_dir.clone();
 
                     let args = args
                         .map(|args| {
@@ -88,14 +88,14 @@ impl ProcessApi {
                         let mut command = Command::new(binary);
 
                         let mut command = command
-                            .current_dir(&module_folder)
+                            .current_dir(&module_dir)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped());
 
                         // Create module folder if it doesn't exist.
-                        if !module_folder.is_dir() {
-                            std::fs::create_dir_all(&module_folder)?;
+                        if !module_dir.is_dir() {
+                            std::fs::create_dir_all(&module_dir)?;
                         }
 
                         // Apply command arguments.
@@ -139,21 +139,21 @@ impl ProcessApi {
                 let process_handles = process_handles.clone();
 
                 Box::new(move |lua: &Lua, context: &Context| {
-                    let module_folder = context.module_folder.clone();
+                    let module_dir = context.module_dir.clone();
                     let process_handles = process_handles.clone();
 
                     lua.create_function(move |_, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
                         let mut command = Command::new(binary);
 
                         let mut command = command
-                            .current_dir(&module_folder)
+                            .current_dir(&module_dir)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped());
 
                         // Create module folder if it doesn't exist.
-                        if !module_folder.is_dir() {
-                            std::fs::create_dir_all(&module_folder)?;
+                        if !module_dir.is_dir() {
+                            std::fs::create_dir_all(&module_dir)?;
                         }
 
                         // Apply command arguments.

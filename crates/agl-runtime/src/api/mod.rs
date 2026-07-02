@@ -49,6 +49,9 @@ pub mod torrent_api;
 #[cfg(feature = "portal-api")]
 pub mod portal_api;
 
+#[cfg(feature = "secrets-api")]
+pub mod secrets_api;
+
 pub mod process_api;
 
 use crate::module::ModuleScope;
@@ -74,15 +77,15 @@ fn path_is_parent_of(parent: &Path, child: &Path) -> bool {
 /// Luau module standard library builder context.
 #[derive(Debug, Clone)]
 pub struct Context {
-    /// Path to a temporary folder. It is always accessible for the module.
-    pub temp_folder: PathBuf,
+    /// Path to a temporary directory. It is always accessible for the module.
+    pub temp_dir: PathBuf,
 
-    /// Path to a module's personal folder. It is always accessible for the
+    /// Path to a module's private directory. It is always accessible for the
     /// module.
-    pub module_folder: PathBuf,
+    pub module_dir: PathBuf,
 
-    /// Path to a inter-modules globally accessible folder.
-    pub persistent_folder: PathBuf,
+    /// Path to a inter-modules globally accessible directory.
+    pub persistent_dir: PathBuf,
 
     /// Module permissions scope.
     pub scope: Arc<RwLock<ModuleScope>>
@@ -93,12 +96,12 @@ impl Context {
     pub fn can_read_path(
         &self,
         path: &Path
-    ) -> std::io::Result<bool> {
-        if path_is_parent_of(&self.temp_folder, path)
-            || path_is_parent_of(&self.module_folder, path)
-            || path_is_parent_of(&self.persistent_folder, path)
+    ) -> bool {
+        if path_is_parent_of(&self.temp_dir, path)
+            || path_is_parent_of(&self.module_dir, path)
+            || path_is_parent_of(&self.persistent_dir, path)
         {
-            return Ok(true);
+            return true;
         }
 
         if let Ok(scope) = self.scope.read() {
@@ -107,35 +110,53 @@ impl Context {
 
             for allowed_path in rw_paths {
                 if path_is_parent_of(allowed_path, path) {
-                    return Ok(true);
+                    return true;
                 }
             }
         }
 
-        Ok(false)
+        false
     }
 
     /// Check if a path is allowed to be written by the current module.
     pub fn can_write_path(
         &self,
         path: &Path
-    ) -> std::io::Result<bool> {
-        if path_is_parent_of(&self.temp_folder, path)
-            || path_is_parent_of(&self.module_folder, path)
-            || path_is_parent_of(&self.persistent_folder, path)
+    ) -> bool {
+        if path_is_parent_of(&self.temp_dir, path)
+            || path_is_parent_of(&self.module_dir, path)
+            || path_is_parent_of(&self.persistent_dir, path)
         {
-            return Ok(true);
+            return true;
         }
 
         if let Ok(scope) = self.scope.read() {
             for allowed_path in &scope.sandbox_write_paths {
                 if path_is_parent_of(allowed_path, path) {
-                    return Ok(true);
+                    return true;
                 }
             }
         }
 
-        Ok(false)
+        false
+    }
+
+    #[cfg(feature = "secrets-api")]
+    pub fn can_read_secrets_container(&self, container: &String) -> bool {
+        if let Ok(scope) = self.scope.read() {
+            return scope.secrets_read_containers.contains(container);
+        }
+
+        false
+    }
+
+    #[cfg(feature = "secrets-api")]
+    pub fn can_write_secrets_container(&self, container: &String) -> bool {
+        if let Ok(scope) = self.scope.read() {
+            return scope.secrets_write_containers.contains(container);
+        }
+
+        false
     }
 }
 
@@ -166,7 +187,10 @@ pub struct ApiOptions {
     pub show_dialog: Box<dyn Fn(portal_api::DialogOptions) + Send>,
 
     /// Callback used to translate localizable string.
-    pub translate: fn(agl_locale::string::LocalizableString) -> String
+    pub translate: fn(agl_locale::string::LocalizableString) -> String,
+
+    /// Path to the secrets API database file.
+    pub secrets_file: PathBuf
 }
 
 /// Luau modules standard library builder.
@@ -201,6 +225,9 @@ pub struct Api {
 
     #[cfg(feature = "portal-api")]
     portal_api: portal_api::PortalApi,
+
+    #[cfg(feature = "secrets-api")]
+    secrets_api: secrets_api::SecretsApi,
 
     process_api: process_api::ProcessApi
 }
@@ -333,6 +360,9 @@ impl Api {
                 show_dialog: options.show_dialog,
                 translate: options.translate
             })?,
+
+            #[cfg(feature = "secrets-api")]
+            secrets_api: secrets_api::SecretsApi::new(options.lua.clone(), options.secrets_file)?,
 
             process_api: process_api::ProcessApi::new(options.lua.clone())?,
 
@@ -471,6 +501,11 @@ impl Api {
         #[cfg(feature = "portal-api")]
         if scope.allow_portal_api {
             env.raw_set("portal", self.portal_api.create_env(context)?)?;
+        }
+
+        #[cfg(feature = "secrets-api")]
+        if scope.allow_secrets_api {
+            env.raw_set("secrets", self.secrets_api.create_env(context)?)?;
         }
 
         // Process API.

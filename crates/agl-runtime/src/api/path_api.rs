@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -85,19 +85,19 @@ impl PathApi {
     pub fn new(lua: Lua) -> Result<Self, LuaError> {
         Ok(Self {
             path_temp_dir: Box::new(|lua: &Lua, context: &Context| {
-                let path = context.temp_folder.clone();
+                let path = context.temp_dir.clone();
 
                 lua.create_function(move |_, ()| Ok(path.clone()))
             }),
 
             path_module_dir: Box::new(|lua: &Lua, context: &Context| {
-                let path = context.module_folder.clone();
+                let path = context.module_dir.clone();
 
                 lua.create_function(move |_, ()| Ok(path.clone()))
             }),
 
             path_persist_dir: Box::new(|lua: &Lua, context: &Context| {
-                let path = context.persistent_folder.clone();
+                let path = context.persistent_dir.clone();
 
                 lua.create_function(move |_, key: LuaString| {
                     fn normalize_key(key: LuaString) -> String {
@@ -287,7 +287,7 @@ impl PathApi {
 
                 lua.create_function(move |_, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, false)
@@ -304,13 +304,13 @@ impl PathApi {
 
                 lua.create_function(move |lua: &Lua, mut path: PathBuf| {
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     let result = lua.create_table_with_capacity(0, 2)?;
 
-                    result.raw_set("read", context.can_read_path(&path)?)?;
-                    result.raw_set("write", context.can_write_path(&path)?)?;
+                    result.raw_set("read", context.can_read_path(&path))?;
+                    result.raw_set("write", context.can_write_path(&path))?;
 
                     Ok(result)
                 })

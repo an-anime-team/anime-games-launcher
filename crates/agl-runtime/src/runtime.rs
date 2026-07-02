@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -129,17 +129,17 @@ impl Runtime {
     /// Try to create a luau module environment from provided permissions scope.
     fn create_env_from_scope(
         &self,
-        temp_folder: PathBuf,
-        module_folder: PathBuf,
-        persistent_folder: PathBuf,
+        temp_dir: PathBuf,
+        module_dir: PathBuf,
+        persistent_dir: PathBuf,
         module_key: String,
         scope: ModuleScope
     ) -> Result<LuaTable, RuntimeError> {
         // Create environment table with the standard library APIs.
         let env = self.api.create_env(&Context {
-            temp_folder,
-            module_folder,
-            persistent_folder,
+            temp_dir,
+            module_dir,
+            persistent_dir,
 
             scope: Arc::new(RwLock::new(scope))
         })?;

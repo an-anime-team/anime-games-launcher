@@ -638,7 +638,7 @@ impl TorrentApi {
                     }
 
                     if path.is_relative() {
-                        path = context.module_folder.join(path);
+                        path = context.module_dir.join(path);
                     }
 
                     path = normalize_path(path, true)
@@ -646,7 +646,7 @@ impl TorrentApi {
                             LuaError::external(format!("failed to normalize path: {err}"))
                         })?;
 
-                    if !context.can_read_path(&path)? {
+                    if !context.can_read_path(&path) {
                         return Err(LuaError::external("no path read permissions"));
                     }
 
@@ -700,14 +700,28 @@ impl TorrentApi {
                     let context = context.clone();
 
                     lua.create_function(move |lua: &Lua, (torrent, options): (Bytes, Option<LuaTable>)| {
-                        let mut output_folder = context.temp_folder.clone();
+                        let mut output_dir = context.temp_dir.clone();
                         let mut trackers = None;
                         let mut paused = false;
                         let mut restart = true;
 
                         if let Some(options) = options {
-                            if let Some(opt_output_folder) = options.get::<Option<String>>("output_folder")? {
-                                output_folder = PathBuf::from(opt_output_folder);
+                            // New option name.
+                            if let Some(opt_output_dir) = options.get::<Option<String>>("output_directory")? {
+                                output_dir = PathBuf::from(opt_output_dir);
+                            }
+
+                            // Alias for new option name.
+                            else if let Some(opt_output_dir) = options.get::<Option<String>>("output_dir")? {
+                                output_dir = PathBuf::from(opt_output_dir);
+                            }
+
+                            // Old option name.
+                            else if let Some(opt_output_dir) = options.get::<Option<String>>("output_folder")? {
+                                #[cfg(feature = "tracing")]
+                                tracing::warn!("output_folder option of the torrent.add API was renamed to output_directory");
+
+                                output_dir = PathBuf::from(opt_output_dir);
                             }
 
                             trackers = options.get::<Option<Vec<String>>>("trackers")?;
@@ -721,17 +735,17 @@ impl TorrentApi {
                             }
                         }
 
-                        if output_folder.is_relative() {
-                            output_folder = context.module_folder.join(output_folder);
+                        if output_dir.is_relative() {
+                            output_dir = context.module_dir.join(output_dir);
                         }
 
-                        output_folder = normalize_path(output_folder, true)
+                        output_dir = normalize_path(output_dir, true)
                             .map_err(|err| {
-                                LuaError::external(format!("failed to normalize output folder path: {err}"))
+                                LuaError::external(format!("failed to normalize output directory path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&output_folder)? {
-                            return Err(LuaError::external("no output folder write permissions"));
+                        if !context.can_write_path(&output_dir) {
+                            return Err(LuaError::external("no output directory write permissions"));
                         }
 
                         let torrent_server = torrent_server.clone();
@@ -739,7 +753,7 @@ impl TorrentApi {
                         let value = PromiseValue::from_blocking(move || {
                             let result = torrent_server.add_torrent(
                                 (*torrent).clone(),
-                                output_folder,
+                                output_dir,
                                 trackers,
                                 paused,
                                 restart

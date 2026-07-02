@@ -198,6 +198,7 @@ List of all available APIs:
 | Protobuf API   | `protobuf`   | Protobuf messages encoding and decoding.       |
 | Torrent API    | `torrent`    | BitTorrent protocol.                           |
 | Portal API     | `portal`     | Sandboxed application and system interactions. |
+| Secrets API    | `secrets`    | Reading and writing secret values.             |
 | Process API    | `process`    | Binaries execution.                            |
 
 > Some of the API documentation might be misleading or wrong. You can check
