@@ -481,7 +481,13 @@ pub enum GameSettingsWindowInput {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GameSettingsWindowOutput {
-    ReloadGameInfo
+    ReloadGameInfo {
+        launch_info: bool,
+        actions_pipeline: bool,
+        components_layout: bool,
+        tools_layout: bool,
+        settings_layout: bool
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -550,17 +556,37 @@ impl SimpleAsyncComponent for GameSettingsWindow {
             sender: AsyncComponentSender<GameSettingsWindow>
         ) {
             match reactivity {
+                GameSettingsEntryReactivity::None => {
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo {
+                        launch_info: false,
+                        actions_pipeline: false,
+                        components_layout: false,
+                        tools_layout: false,
+                        settings_layout: true
+                    });
+                }
+
                 GameSettingsEntryReactivity::Relaxed => {
-                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo);
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo {
+                        launch_info: true,
+                        actions_pipeline: true,
+                        components_layout: true,
+                        tools_layout: true,
+                        settings_layout: true
+                    });
                 }
 
                 GameSettingsEntryReactivity::Release => {
-                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo);
+                    let _ = sender.output(GameSettingsWindowOutput::ReloadGameInfo {
+                        launch_info: true,
+                        actions_pipeline: true,
+                        components_layout: true,
+                        tools_layout: true,
+                        settings_layout: true
+                    });
 
                     sender.input(GameSettingsWindowInput::UpdateCurrentGameLayout);
                 }
-
-                _ => ()
             }
         }
 

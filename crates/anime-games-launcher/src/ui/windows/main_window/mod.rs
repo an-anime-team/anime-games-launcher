@@ -171,7 +171,13 @@ pub enum MainWindowMsg {
         game_launch_info: GameLaunchInfo
     },
 
-    ReloadSelectedLibraryGameInfo
+    ReloadSelectedLibraryGameInfo {
+        launch_info: bool,
+        actions_pipeline: bool,
+        components_layout: bool,
+        tools_layout: bool,
+        settings_layout: bool
+    }
 }
 
 pub struct MainWindow {
@@ -485,7 +491,13 @@ impl SimpleAsyncComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     // FIXME: this is a hack
                     GameApplyComponentsWindowOutput::UpdateGameInfo(_)
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo,
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                            launch_info: true,
+                            actions_pipeline: true,
+                            components_layout: true,
+                            tools_layout: true,
+                            settings_layout: true
+                        },
 
                     GameApplyComponentsWindowOutput::DeleteGamePackage(name)
                         => MainWindowMsg::DeleteGamePackage(name)
@@ -494,8 +506,19 @@ impl SimpleAsyncComponent for MainWindow {
             game_settings_window: GameSettingsWindow::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    GameSettingsWindowOutput::ReloadGameInfo
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                    GameSettingsWindowOutput::ReloadGameInfo {
+                        launch_info,
+                        actions_pipeline,
+                        components_layout,
+                        tools_layout,
+                        settings_layout
+                    } => MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                        launch_info,
+                        actions_pipeline,
+                        components_layout,
+                        tools_layout,
+                        settings_layout
+                    }
                 }),
 
             game_actions_pipeline_window: GameActionsPipelineWindow::builder()
@@ -503,7 +526,13 @@ impl SimpleAsyncComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     // FIXME: this is a hack
                     GameActionsPipelineWindowOutput::UpdateGameInfo(_)
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                            launch_info: true,
+                            actions_pipeline: true,
+                            components_layout: true,
+                            tools_layout: true,
+                            settings_layout: true
+                        }
                 }),
 
             game_running_window: GameRunningWindow::builder()
@@ -1583,8 +1612,20 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            MainWindowMsg::ReloadSelectedLibraryGameInfo => {
-                self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo);
+            MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                launch_info,
+                actions_pipeline,
+                components_layout,
+                tools_layout,
+                settings_layout
+            } => {
+                self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo {
+                    launch_info,
+                    actions_pipeline,
+                    components_layout,
+                    tools_layout,
+                    settings_layout
+                });
             }
         }
     }

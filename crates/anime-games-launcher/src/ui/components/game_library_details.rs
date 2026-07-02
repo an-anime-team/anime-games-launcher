@@ -57,7 +57,14 @@ pub enum GameLibraryDetailsInput {
         variant: GameVariant
     },
 
-    UpdateGameInfo,
+    UpdateGameInfo {
+        launch_info: bool,
+        actions_pipeline: bool,
+        components_layout: bool,
+        tools_layout: bool,
+        settings_layout: bool
+    },
+
     ScheduleGameActionsPipeline,
     OpenGameComponentsWindow,
     CallToolButton(usize),
@@ -424,128 +431,150 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 self.game_integration = Some(integration);
                 self.game_variant = Some(variant);
 
-                sender.input(GameLibraryDetailsInput::UpdateGameInfo);
+                sender.input(GameLibraryDetailsInput::UpdateGameInfo {
+                    launch_info: true,
+                    actions_pipeline: true,
+                    components_layout: true,
+                    tools_layout: true,
+                    settings_layout: true
+                });
             }
 
-            GameLibraryDetailsInput::UpdateGameInfo => {
+            GameLibraryDetailsInput::UpdateGameInfo {
+                launch_info,
+                actions_pipeline,
+                components_layout,
+                tools_layout,
+                settings_layout
+            } => {
                 if let Some(integration) = &self.game_integration
                     && let Some(variant) = &self.game_variant
                 {
-                    match integration.get_launch_info(variant) {
-                        Ok(launch_info) => self.game_launch_info = launch_info,
+                    if launch_info {
+                        match integration.get_launch_info(variant) {
+                            Ok(launch_info) => self.game_launch_info = launch_info,
 
-                        Err(err) => {
-                            self.game_launch_info = None;
+                            Err(err) => {
+                                self.game_launch_info = None;
 
-                            tracing::error!(?err, "failed to request game launch info");
+                                tracing::error!(?err, "failed to request game launch info");
 
-                            dialogs::error(
-                                i18n!("failed_request_game_launch_info")
-                                    .unwrap_or("Failed to request game launch info"),
-                                err.to_string()
-                            );
-                        }
-                    }
-
-                    match integration.get_actions_pipeline(variant) {
-                        Ok(pipeline) => self.game_actions_pipeline = pipeline.map(Arc::from),
-
-                        Err(err) => {
-                            self.game_actions_pipeline = None;
-
-                            tracing::error!(?err, "failed to request game actions pipeline");
-
-                            dialogs::error(
-                                i18n!("failed_request_game_actions_pipeline")
-                                    .unwrap_or("Failed to request game actions pipeline"),
-                                err.to_string()
-                            );
-                        }
-                    }
-
-                    match integration.get_components_layout(variant) {
-                        Ok(layout) => self.game_components_layout = layout,
-
-                        Err(err) => {
-                            self.game_components_layout = None;
-
-                            tracing::error!(?err, "failed to request game components layout");
-
-                            dialogs::error(
-                                i18n!("failed_request_game_components_layout")
-                                    .unwrap_or("Failed to request game components layout"),
-                                err.to_string()
-                            );
-                        }
-                    }
-
-                    match integration.get_tools_buttons(variant) {
-                        Ok(Some(buttons)) => {
-                            self.game_tools_buttons.clear();
-
-                            let mut guards = self.game_tools_buttons_factory.guard();
-
-                            guards.clear();
-
-                            let config = config::get().await;
-
-                            let lang = config.language().ok();
-
-                            for button in buttons {
-                                let title = match &lang {
-                                    Some(lang) => button.title().translate(lang),
-                                    None => button.title().default_translation()
-                                };
-
-                                let description = button.description()
-                                    .map(|description| {
-                                        match &lang {
-                                            Some(lang) => description.translate(lang),
-                                            None => description.default_translation()
-                                        }
-                                    });
-
-                                guards.push_back(GameToolButtonInit {
-                                    title: title.to_string(),
-                                    description: description.map(String::from)
-                                });
-
-                                self.game_tools_buttons.push(button);
+                                dialogs::error(
+                                    i18n!("failed_request_game_launch_info")
+                                        .unwrap_or("Failed to request game launch info"),
+                                    err.to_string()
+                                );
                             }
                         }
+                    }
 
-                        Ok(None) => {
-                            self.game_tools_buttons_factory.guard().clear();
-                            self.game_tools_buttons.clear();
-                        }
+                    if actions_pipeline {
+                        match integration.get_actions_pipeline(variant) {
+                            Ok(pipeline) => self.game_actions_pipeline = pipeline.map(Arc::from),
 
-                        Err(err) => {
-                            self.game_tools_buttons_factory.guard().clear();
-                            self.game_tools_buttons.clear();
+                            Err(err) => {
+                                self.game_actions_pipeline = None;
 
-                            tracing::error!(?err, "failed to request game tools buttons");
+                                tracing::error!(?err, "failed to request game actions pipeline");
 
-                            dialogs::error(
-                                i18n!("failed_request_game_tools_buttons")
-                                    .unwrap_or("Failed to request game tools buttons"),
-                                err.to_string()
-                            );
+                                dialogs::error(
+                                    i18n!("failed_request_game_actions_pipeline")
+                                        .unwrap_or("Failed to request game actions pipeline"),
+                                    err.to_string()
+                                );
+                            }
                         }
                     }
 
-                    match integration.get_settings_layout(variant) {
-                        Ok(layout) => self.game_settings_layout = layout,
+                    if components_layout {
+                        match integration.get_components_layout(variant) {
+                            Ok(layout) => self.game_components_layout = layout,
 
-                        Err(err) => {
-                            self.game_settings_layout = None;
+                            Err(err) => {
+                                self.game_components_layout = None;
 
-                            tracing::error!(?err, "failed to request game settings layout");
+                                tracing::error!(?err, "failed to request game components layout");
 
-                            dialogs::error(
-                                i18n!("failed_request_game_settings_layout")
-                                    .unwrap_or("Failed to request game settings layout"),
-                                err.to_string()
-                            );
+                                dialogs::error(
+                                    i18n!("failed_request_game_components_layout")
+                                        .unwrap_or("Failed to request game components layout"),
+                                    err.to_string()
+                                );
+                            }
+                        }
+                    }
+
+                    if tools_layout {
+                        match integration.get_tools_buttons(variant) {
+                            Ok(Some(buttons)) => {
+                                self.game_tools_buttons.clear();
+
+                                let mut guards = self.game_tools_buttons_factory.guard();
+
+                                guards.clear();
+
+                                let config = config::get().await;
+
+                                let lang = config.language().ok();
+
+                                for button in buttons {
+                                    let title = match &lang {
+                                        Some(lang) => button.title().translate(lang),
+                                        None => button.title().default_translation()
+                                    };
+
+                                    let description = button.description()
+                                        .map(|description| {
+                                            match &lang {
+                                                Some(lang) => description.translate(lang),
+                                                None => description.default_translation()
+                                            }
+                                        });
+
+                                    guards.push_back(GameToolButtonInit {
+                                        title: title.to_string(),
+                                        description: description.map(String::from)
+                                    });
+
+                                    self.game_tools_buttons.push(button);
+                                }
+                            }
+
+                            Ok(None) => {
+                                self.game_tools_buttons_factory.guard().clear();
+                                self.game_tools_buttons.clear();
+                            }
+
+                            Err(err) => {
+                                self.game_tools_buttons_factory.guard().clear();
+                                self.game_tools_buttons.clear();
+
+                                tracing::error!(?err, "failed to request game tools buttons");
+
+                                dialogs::error(
+                                    i18n!("failed_request_game_tools_buttons")
+                                        .unwrap_or("Failed to request game tools buttons"),
+                                    err.to_string()
+                                );
+                            }
+                        }
+                    }
+
+                    if settings_layout {
+                        match integration.get_settings_layout(variant) {
+                            Ok(layout) => self.game_settings_layout = layout,
+
+                            Err(err) => {
+                                self.game_settings_layout = None;
+
+                                tracing::error!(?err, "failed to request game settings layout");
+
+                                dialogs::error(
+                                    i18n!("failed_request_game_settings_layout")
+                                        .unwrap_or("Failed to request game settings layout"),
+                                    err.to_string()
+                                );
+                            }
                         }
                     }
                 }
@@ -593,7 +622,13 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                         );
                     }
 
-                    sender.input(GameLibraryDetailsInput::UpdateGameInfo);
+                    sender.input(GameLibraryDetailsInput::UpdateGameInfo {
+                        launch_info: true,
+                        actions_pipeline: true,
+                        components_layout: true,
+                        tools_layout: true,
+                        settings_layout: true
+                    });
                 }
             }
 

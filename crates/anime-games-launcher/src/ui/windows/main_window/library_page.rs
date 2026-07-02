@@ -93,7 +93,13 @@ pub enum LibraryPageInput {
 
     CollapseGamesExceptIndex(DynamicIndex),
 
-    UpdateSelectedGameInfo,
+    UpdateSelectedGameInfo {
+        launch_info: bool,
+        actions_pipeline: bool,
+        components_layout: bool,
+        tools_layout: bool,
+        settings_layout: bool
+    },
 
     ScheduleGameActionsPipeline {
         game_name: String,
@@ -470,8 +476,20 @@ impl SimpleAsyncComponent for LibraryPage {
                 self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
             }
 
-            LibraryPageInput::UpdateSelectedGameInfo => {
-                self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo);
+            LibraryPageInput::UpdateSelectedGameInfo {
+                launch_info,
+                actions_pipeline,
+                components_layout,
+                tools_layout,
+                settings_layout
+            } => {
+                self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo {
+                    launch_info,
+                    actions_pipeline,
+                    components_layout,
+                    tools_layout,
+                    settings_layout
+                });
             }
 
             LibraryPageInput::ScheduleGameActionsPipeline {
