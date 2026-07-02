@@ -65,21 +65,21 @@ pub enum RuntimeError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ModulePaths {
-    /// Path to the folder where temporary files should be stored. This folder
-    /// is accessible by all the modules and is expected that will be cleaned
-    /// automatically eventually.
-    pub temp_folder: PathBuf,
+    /// Path to the directory where temporary files should be stored. This
+    /// directory is accessible by all the modules and is expected that will be
+    /// cleaned automatically eventually.
+    pub temp_dir: PathBuf,
 
-    /// Path to the folder where modules will have their own secure storages.
-    /// Each module will get a subfolder which can be accessed only by this
+    /// Path to the directory where modules will have their own secure storages.
+    /// Each module will get a subdirectory which can be accessed only by this
     /// module.
-    pub modules_folder: PathBuf,
+    pub modules_dir: PathBuf,
 
-    /// Path to the folder where persistent files should be stored. This folder
-    /// is accessible by all the modules and is expected that it will not be
-    /// cleaned in long amount of time, so that modules can store important
-    /// files there (e.g. downloaded game files).
-    pub persistent_folder: PathBuf
+    /// Path to the directory where persistent files should be stored. This
+    /// directory is accessible by all the modules and is expected that it will
+    /// not be cleaned in long amount of time, so that modules can store
+    /// important files there (e.g. downloaded game files).
+    pub persistent_dir: PathBuf
 }
 
 /// A host struct for luau scripts runtime. Allows to spawn new scripts and
@@ -386,9 +386,9 @@ impl Runtime {
 
         // Create environment for the module.
         let env = self.create_env_from_scope(
-            paths.temp_folder,
-            paths.modules_folder.join(module_hash.to_base32()),
-            paths.persistent_folder,
+            paths.temp_dir,
+            paths.modules_dir.join(module_hash.to_base32()),
+            paths.persistent_dir,
             key.clone(),
             module.scope
         )?;

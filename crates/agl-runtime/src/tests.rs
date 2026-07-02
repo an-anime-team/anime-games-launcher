@@ -92,9 +92,9 @@ fn simple_module() -> Result<(), RuntimeError> {
     };
 
     let paths = ModulePaths {
-        temp_folder: std::env::temp_dir(),
-        modules_folder: std::env::temp_dir(),
-        persistent_folder: std::env::temp_dir()
+        temp_dir: std::env::temp_dir(),
+        modules_dir: std::env::temp_dir(),
+        persistent_dir: std::env::temp_dir()
     };
 
     runtime.load_module("module", module, paths)?;
@@ -131,9 +131,9 @@ fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
         let runtime = get_runtime()?;
 
         let paths = ModulePaths {
-            temp_folder: std::env::temp_dir(),
-            modules_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir()
+            temp_dir: std::env::temp_dir(),
+            modules_dir: std::env::temp_dir(),
+            persistent_dir: std::env::temp_dir()
         };
 
         let allow_list = AllowList::default();
@@ -167,9 +167,9 @@ fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
         let runtime = get_runtime()?;
 
         let paths = ModulePaths {
-            temp_folder: std::env::temp_dir(),
-            modules_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir()
+            temp_dir: std::env::temp_dir(),
+            modules_dir: std::env::temp_dir(),
+            persistent_dir: std::env::temp_dir()
         };
 
         let allow_list = AllowList::default();
@@ -207,9 +207,9 @@ fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         let runtime = get_runtime()?;
 
         let paths = ModulePaths {
-            temp_folder: std::env::temp_dir(),
-            modules_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir()
+            temp_dir: std::env::temp_dir(),
+            modules_dir: std::env::temp_dir(),
+            persistent_dir: std::env::temp_dir()
         };
 
         let allow_list = AllowList::default();

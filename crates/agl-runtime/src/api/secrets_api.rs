@@ -255,7 +255,7 @@ fn test_secrets() -> Result<(), LuaError> {
 
     let api = SecretsApi::new(Lua::new(), &path)?;
 
-    let api = api.create_env(&Context {
+    let env = api.create_env(&Context {
         temp_dir: std::env::temp_dir(),
         module_dir: std::env::temp_dir(),
         persistent_dir: std::env::temp_dir(),
@@ -272,54 +272,50 @@ fn test_secrets() -> Result<(), LuaError> {
         }))
     })?;
 
-    let secrets_permissions = api.raw_get::<LuaFunction>("permissions")?;
-    let secrets_list = api.raw_get::<LuaFunction>("list")?;
-    let secrets_read = api.raw_get::<LuaFunction>("read")?;
-    let secrets_write = api.raw_get::<LuaFunction>("write")?;
-    let secrets_remove = api.raw_get::<LuaFunction>("remove")?;
-
     // Validate secrets.permissions API
-    let permissions = secrets_permissions.call::<LuaTable>("read")?;
+    let permissions = env.call_function::<LuaTable>("permissions", "read")?;
 
     assert!(permissions.raw_get::<bool>("read")?);
     assert!(!permissions.raw_get::<bool>("write")?);
 
-    let permissions = secrets_permissions.call::<LuaTable>("write")?;
+    let permissions = env.call_function::<LuaTable>("permissions", "write")?;
 
     assert!(permissions.raw_get::<bool>("read")?);
     assert!(permissions.raw_get::<bool>("write")?);
 
-    let permissions = secrets_permissions.call::<LuaTable>("unknown")?;
+    let permissions = env.call_function::<LuaTable>("permissions", "unknown")?;
 
     assert!(!permissions.raw_get::<bool>("read")?);
     assert!(!permissions.raw_get::<bool>("write")?);
 
     // Validate read-container permissions and entries list.
-    assert!(secrets_list.call::<Vec<String>>("unknown").is_err());
-    assert!(secrets_list.call::<Vec<String>>("read")?.is_empty());
-    assert!(secrets_list.call::<Vec<String>>("write")?.is_empty());
+    assert!(env.call_function::<Vec<String>>("list", "unknown").is_err());
+    assert!(env.call_function::<Vec<String>>("list", "read")?.is_empty());
+    assert!(env.call_function::<Vec<String>>("list", "write")?.is_empty());
 
-    assert!(secrets_write.call::<()>(("unknown", "test", "hello")).is_err());
-    assert!(secrets_write.call::<()>(("read", "test", "hello")).is_err());
+    assert!(env.call_function::<()>("write", ("unknown", "test", "hello")).is_err());
+    assert!(env.call_function::<()>("write", ("read", "test", "hello")).is_err());
 
-    secrets_write.call::<()>(("write", "test", "hello"))?;
+    env.call_function::<()>("write", ("write", "test", "hello"))?;
 
-    assert_eq!(secrets_list.call::<Vec<String>>("write")?, ["test"]);
+    assert_eq!(env.call_function::<Vec<String>>("list", "write")?, ["test"]);
 
     // Validate write-container read and remove.
-    assert!(secrets_read.call::<Option<Bytes>>(("unknown", "test", "hello")).is_err());
-    assert!(secrets_read.call::<Option<Bytes>>(("read", "test", "hello"))?.is_none());
+    assert!(env.call_function::<Option<Bytes>>("read", ("unknown", "test", "hello")).is_err());
+    assert!(env.call_function::<Option<Bytes>>("read", ("read", "test", "hello"))?.is_none());
 
     assert_eq!(
-        secrets_read.call::<Option<Bytes>>(("write", "test"))?
+        env.call_function::<Option<Bytes>>("read", ("write", "test"))?
             .as_ref()
             .map(|buf| buf.as_slice()),
         Some("hello".as_bytes())
     );
 
-    secrets_remove.call::<()>("write")?;
+    env.call_function::<()>("remove", "write")?;
 
-    assert!(secrets_read.call::<Option<Bytes>>(("write", "test"))?.is_none());
+    assert!(env.call_function::<Option<Bytes>>("read", ("write", "test"))?.is_none());
+
+    std::fs::remove_file(path)?;
 
     Ok(())
 }

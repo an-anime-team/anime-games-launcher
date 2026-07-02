@@ -415,82 +415,97 @@ impl SqliteApi {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[test]
+fn test_sqlite() -> Result<(), LuaError> {
+    let path = std::env::temp_dir().join(".agl-sqlite-test.db");
 
-//     #[test]
-//     fn sqlite_queries() -> anyhow::Result<()> {
-//         let path = std::env::temp_dir().join(".agl-v1-sqlite-queries-test.db");
+    if path.exists() {
+        std::fs::remove_file(&path)?;
+    }
 
-//         if path.exists() {
-//             std::fs::remove_file(&path)?;
-//         }
+    let api = SqliteApi::new(Lua::new())?;
 
-//         let path = path.to_string_lossy().to_string();
+    let env = api.create_env(&Context {
+        temp_dir: std::env::temp_dir(),
+        module_dir: std::env::temp_dir(),
+        persistent_dir: std::env::temp_dir(),
+        scope: Arc::new(RwLock::new(ModuleScope::default()))
+    })?;
 
-//         let lua = Lua::new();
-//         let api = SQLiteAPI::new(lua.clone())?;
+    let handle = env.call_function::<i32>("open", path.clone())?;
 
-//         let env = api.create_env(&Context {
-//             resource_hash: Hash::rand(),
-//             temp_folder: std::env::temp_dir(),
-//             module_folder: std::env::temp_dir(),
-//             persistent_folder: std::env::temp_dir(),
-//             input_resources: vec![],
-//             ext_process_api: false,
-//             ext_allowed_paths: vec![],
-//             local_validator: LocalValidator::open(std::env::temp_dir().join("local_validator.json"))?
-//         })?;
+    env.call_function::<LuaAnyUserData>("exec", (handle, "
+        CREATE TABLE test (
+            id    INTEGER UNIQUE NOT NULL,
+            value TEXT NOT NULL,
 
-//         let handle = env.call_function::<i32>("open", path.to_string())?;
+            PRIMARY KEY (id)
+        );
+    "))?.call_method::<()>("await", ())?;
 
-//         env.call_function::<()>("execute", (handle, "
-//             CREATE TABLE test (
-//                 id    INTEGER UNIQUE NOT NULL,
-//                 value TEXT NOT NULL,
+    let row_1 = env.call_function::<LuaAnyUserData>(
+        "exec",
+        (handle, "INSERT INTO test (id, value) VALUES (5, 'test 1')")
+    )?.call_method::<i64>("await", ())?;
 
-//                 PRIMARY KEY (id)
-//             );
-//         "))?;
+    let row_2 = env.call_function::<LuaAnyUserData>(
+        "exec",
+        (handle, "INSERT INTO test (id, value) VALUES (?1, 'test 2')", [10])
+    )?.call_method::<i64>("await", ())?;
 
-//         let row_1 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (5, 'test 1')"))?;
-//         let row_2 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (?1, 'test 2')", [10]))?;
-//         let row_3 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (15, ?1)", ["test 3"]))?;
-//         let row_4 = env.call_function::<i64>("execute", (handle, "INSERT INTO test (id, value) VALUES (?1, ?2)", [LuaValue::Integer(20), LuaValue::String(lua.create_string("test 4")?)]))?;
+    let row_3 = env.call_function::<LuaAnyUserData>(
+        "exec",
+        (handle, "INSERT INTO test (id, value) VALUES (15, ?1)", ["test 3"])
+    )?.call_method::<i64>("await", ())?;
 
-//         assert_eq!(row_1, 5);
-//         assert_eq!(row_2, 10);
-//         assert_eq!(row_3, 15);
-//         assert_eq!(row_4, 20);
+    let row_4 = env.call_function::<LuaAnyUserData>(
+        "exec",
+        (handle, "INSERT INTO test (id, value) VALUES (?1, ?2)", [
+            LuaValue::Integer(20),
+            LuaValue::String(api.lua.create_string("test 4")?)
+        ])
+    )?.call_method::<i64>("await", ())?;
 
-//         let rows_count = env.call_function::<LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
+    assert_eq!(row_1, 5);
+    assert_eq!(row_2, 10);
+    assert_eq!(row_3, 15);
+    assert_eq!(row_4, 20);
 
-//         assert_eq!(rows_count.pop::<i32>()?, 4);
+    let rows_count = env.call_function::<LuaAnyUserData>(
+        "query_row",
+        (handle, "SELECT COUNT(id) FROM test")
+    )?.call_method::<LuaTable>("await", ())?;
 
-//         let rows = env.call_function::<Vec<LuaTable>>("query", (handle, "SELECT value FROM test WHERE id > ?1", [0]))?;
+    assert_eq!(rows_count.pop::<i32>()?, 4);
 
-//         for row in rows {
-//             assert!(row.pop::<String>()?.starts_with("test "));
-//         }
+    let rows = env.call_function::<LuaAnyUserData>(
+        "query",
+        (handle, "SELECT value FROM test WHERE id > ?1", [0])
+    )?.call_method::<Vec<LuaTable>>("await", ())?;
 
-//         env.call_function::<()>("batch", (handle, "
-//             BEGIN TRANSACTION;
-//                 DELETE FROM test WHERE id = 5;
-//                 DELETE FROM test WHERE id = 10;
-//                 DELETE FROM test WHERE id = 15;
-//                 DELETE FROM test WHERE id = 20;
-//             COMMIT;
-//         "))?;
+    for row in rows {
+        assert!(row.pop::<String>()?.starts_with("test "));
+    }
 
-//         let rows_count = env.call_function::<LuaTable>("query_row", (handle, "SELECT COUNT(id) FROM test"))?;
+    env.call_function::<LuaAnyUserData>("batch", (handle, "
+        BEGIN TRANSACTION;
+            DELETE FROM test WHERE id = 5;
+            DELETE FROM test WHERE id = 10;
+            DELETE FROM test WHERE id = 15;
+            DELETE FROM test WHERE id = 20;
+        COMMIT;
+    "))?.call_method::<()>("await", ())?;
 
-//         assert_eq!(rows_count.pop::<i32>()?, 0);
+    let rows_count = env.call_function::<LuaAnyUserData>(
+        "query_row",
+        (handle, "SELECT COUNT(id) FROM test")
+    )?.call_method::<LuaTable>("await", ())?;
 
-//         env.call_function::<()>("close", handle)?;
+    assert_eq!(rows_count.pop::<i32>()?, 0);
 
-//         std::fs::remove_file(path)?;
+    env.call_function::<()>("close", handle)?;
 
-//         Ok(())
-//     }
-// }
+    std::fs::remove_file(path)?;
+
+    Ok(())
+}
