@@ -430,7 +430,13 @@ impl SimpleAsyncComponent for MainWindow {
             translate
         };
 
-        let runtime = Runtime::new(options, ApiContext::default())
+        let context = ApiContext::default();
+
+        if let Ok(mut private_paths) = context.private_paths.write() {
+            private_paths.extend(config.runtime_private_paths.clone());
+        }
+
+        let runtime = Runtime::new(options, context)
             .expect("failed to initialize packages runtime");
 
         let model = Self {

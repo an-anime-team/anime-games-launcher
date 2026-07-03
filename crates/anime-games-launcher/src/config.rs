@@ -26,7 +26,7 @@ use agl_core::export::network::reqwest;
 use agl_core::tasks;
 use agl_locale::unic_langid::LanguageIdentifier;
 
-use crate::consts::{DATA_DIR, CONFIG_FILE};
+use crate::consts::{HOME_DIR, DATA_DIR, CONFIG_FILE};
 
 lazy_static::lazy_static! {
     static ref STARTUP_CONFIG: Config = tasks::block_on(get());
@@ -143,6 +143,11 @@ pub struct Config {
     /// `runtime.memory_limit`
     pub runtime_memory_limit: usize,
 
+    /// List of paths that runtime modules will be forbidden to access.
+    ///
+    /// `runtime.private_paths`
+    pub runtime_private_paths: Vec<PathBuf>,
+
     /// Enable torrent API support. If disabled - no runtime module will be able
     /// to interact with it, and no background service will be started at all.
     ///
@@ -216,6 +221,25 @@ impl Default for Config {
 
             runtime_memory_limit: 1024 * 1024 * 1024,
 
+            runtime_private_paths: {
+                let mut paths = vec![
+                    // Accounts passwords.
+                    PathBuf::from("/etc/shadow")
+                ];
+
+                // SSH private and public keys.
+                if let Some(path) = HOME_DIR.as_ref() {
+                    paths.push(path.join(".ssh"));
+                }
+
+                // GnuPG private and public keys.
+                if let Some(path) = HOME_DIR.as_ref() {
+                    paths.push(path.join(".gnupg"));
+                }
+
+                paths
+            },
+
             runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
             runtime_torrent_enable_upnp: false,
@@ -280,6 +304,9 @@ impl Config {
 
             [runtime]
             memory_limit = (self.runtime_memory_limit)
+            private_paths = (self.runtime_private_paths.iter()
+                .map(|path| path.to_string_lossy().to_string())
+                .collect::<Vec<_>>())
 
             [runtime.torrent]
             enable = (self.runtime_torrent_enable)
@@ -478,6 +505,14 @@ impl Config {
             // `runtime.memory_limit`
             if let Some(memory_limit) = runtime.get("memory_limit").and_then(Toml::as_integer) {
                 config.runtime_memory_limit = memory_limit as usize;
+            }
+
+            // `runtime.private_paths`
+            if let Some(private_paths) = runtime.get("private_paths").and_then(Toml::as_array) {
+                config.runtime_private_paths = private_paths.iter()
+                    .flat_map(Toml::as_str)
+                    .map(PathBuf::from)
+                    .collect();
             }
 
             // `runtime.torrent.*`

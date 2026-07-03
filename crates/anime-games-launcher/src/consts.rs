@@ -33,6 +33,18 @@ lazy_static::lazy_static! {
         platform.expect("failed to detect current system platform")
     };
 
+    /// Path to the current user's home directory.
+    pub static ref HOME_DIR: Option<PathBuf> = std::env::var("HOME")
+        .or_else(|_| {
+            std::env::var("USER")
+                .or_else(|_| std::env::var("USERNAME"))
+                .map(|username| format!("/home/{username}"))
+        })
+        .map(PathBuf::from)
+        .map_err(std::io::Error::other)
+        .and_then(|path| path.canonicalize())
+        .ok();
+
     /// Path to the data folder.
     ///
     /// Default is `$XDG_DATA_HOME/anime-games-launcher`.
@@ -45,26 +57,17 @@ lazy_static::lazy_static! {
         }
 
         let path = std::env::var("XDG_DATA_HOME")
-            .map(|data| format!("{data}/anime-games-launcher"))
+            .map(|data| PathBuf::from(data).join("anime-games-launcher"))
             .or_else(|_| {
-                std::env::var("HOME")
-                    .map(|home| {
-                        format!("{home}/.local/share/anime-games-launcher")
-                    })
+                HOME_DIR.as_ref()
+                    .map(|dir| dir.join(".local/share/anime-games-launcher"))
+                    .ok_or(std::env::VarError::NotPresent)
             })
-            .or_else(|_| {
-                std::env::var("USER")
-                    .or_else(|_| std::env::var("USERNAME"))
-                    .map(|username| {
-                        format!("/home/{username}/.local/share/anime-games-launcher")
-                    })
-            })
-            .map(PathBuf::from)
             .or_else(|_| {
                 std::env::current_dir()
                     .map(|current| current.join("data"))
             })
-            .expect("couldn't locate data directory");
+            .expect("failed to locate data directory");
 
         path.canonicalize().unwrap_or(path)
     };
@@ -81,26 +84,17 @@ lazy_static::lazy_static! {
         }
 
         let path = std::env::var("XDG_CONFIG_HOME")
-            .map(|config| format!("{config}/anime-games-launcher"))
+            .map(|config| PathBuf::from(config).join("anime-games-launcher"))
             .or_else(|_| {
-                std::env::var("HOME")
-                    .map(|home| {
-                        format!("{home}/.config/anime-games-launcher")
-                    })
+                HOME_DIR.as_ref()
+                    .map(|dir| dir.join(".config/anime-games-launcher"))
+                    .ok_or(std::env::VarError::NotPresent)
             })
-            .or_else(|_| {
-                std::env::var("USER")
-                    .or_else(|_| std::env::var("USERNAME"))
-                    .map(|username| {
-                        format!("/home/{username}/.config/anime-games-launcher")
-                    })
-            })
-            .map(PathBuf::from)
             .or_else(|_| {
                 std::env::current_dir()
                     .map(|current| current.join("config"))
             })
-            .expect("couldn't locate config directory");
+            .expect("failed to locate config directory");
 
         path.canonicalize().unwrap_or(path)
     };
@@ -117,26 +111,17 @@ lazy_static::lazy_static! {
         }
 
         let path = std::env::var("XDG_CACHE_HOME")
-            .map(|cache| format!("{cache}/anime-games-launcher"))
+            .map(|cache| PathBuf::from(cache).join("anime-games-launcher"))
             .or_else(|_| {
-                std::env::var("HOME")
-                    .map(|home| {
-                        format!("{home}/.cache/anime-games-launcher")
-                    })
+                HOME_DIR.as_ref()
+                    .map(|dir| dir.join(".cache/anime-games-launcher"))
+                    .ok_or(std::env::VarError::NotPresent)
             })
-            .or_else(|_| {
-                std::env::var("USER")
-                    .or_else(|_| std::env::var("USERNAME"))
-                    .map(|username| {
-                        format!("/home/{username}/.cache/anime-games-launcher")
-                    })
-            })
-            .map(PathBuf::from)
             .or_else(|_| {
                 std::env::current_dir()
                     .map(|current| current.join("cache"))
             })
-            .expect("couldn't locate cache directory");
+            .expect("failed to locate cache directory");
 
         path.canonicalize().unwrap_or(path)
     };
