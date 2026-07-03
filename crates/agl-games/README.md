@@ -49,10 +49,9 @@ name of its output that provides the game integration module.
             ]
         },
         "tags": [
+            "free-to-play",
             "gambling",
-            "payments",
-            "anti-cheat",
-            "workarounds"
+            "in-game-purchases"
         ],
         "agreement": {
             "en": "Example game agreement",
@@ -62,7 +61,14 @@ name of its output that provides the game integration module.
     "package": {
         "url": "https://.../package.json",
         "output": "..."
-    }
+    },
+    "maintainers": [
+        "John Doe",
+        {
+            "en": "My Name <example@dawn.wine>",
+            "ru": "Моё Имя <example@dawn.wine>"
+        }
+    ]
 }
 ```
 
