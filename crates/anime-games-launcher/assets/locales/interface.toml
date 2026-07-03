@@ -65,8 +65,8 @@ id = "Membuat folder-folder bawaan"
 it = "Creazione delle cartelle predefinite"
 ja = "デフォルトのフォルダを作成しています"
 
-[fetching_packages_scopes_lists]
-en = "Fetching packages scopes lists"
+[fetching_modules_scopes_lists]
+en = "Fetching modules scopes lists"
 ru = "Запрос списков привелегий пакетов"
 
 [fetching_games_registries]

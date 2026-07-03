@@ -89,7 +89,7 @@ pub struct Config {
     /// URLs to the modules scopes lists files.
     ///
     /// `packages.scopes_lists`
-    pub packages_scopes_list: Vec<String>,
+    pub packages_scopes_lists: Vec<String>,
 
     /// Path to the directory where package resources should be stored.
     ///
@@ -199,7 +199,7 @@ impl Default for Config {
             cache_modules_scopes_lists_duration: Duration::from_hours(8),
             cache_collect_garbage_after: Duration::from_hours(72),
 
-            packages_scopes_list: vec![
+            packages_scopes_lists: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/scopes.json")
             ],
 
@@ -261,7 +261,7 @@ impl Config {
             duration = (self.cache_modules_scopes_lists_duration.as_secs())
 
             [packages]
-            scopes_lists = (self.packages_scopes_list.iter().map(|url| url.as_str()).collect::<Vec<_>>())
+            scopes_lists = (self.packages_scopes_lists.iter().map(|url| url.as_str()).collect::<Vec<_>>())
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
@@ -403,9 +403,9 @@ impl Config {
 
         // `packages.*`
         if let Some(packages) = value.get("packages") {
-            // New syntax (`packages.scopes_list`)
-            if let Some(scopes_list) = packages.get("scopes_list").and_then(Toml::as_array) {
-                config.packages_scopes_list = scopes_list.iter()
+            // New syntax (`packages.scopes_lists`)
+            if let Some(scopes_list) = packages.get("scopes_lists").and_then(Toml::as_array) {
+                config.packages_scopes_lists = scopes_list.iter()
                     .flat_map(Toml::as_str)
                     .map(String::from)
                     .collect();
@@ -413,7 +413,7 @@ impl Config {
 
             // Old syntax (`packages.allow_lists`)
             else if let Some(allow_lists) = packages.get("allow_lists").and_then(Toml::as_array) {
-                config.packages_scopes_list = allow_lists.iter()
+                config.packages_scopes_lists = allow_lists.iter()
                     .flat_map(Toml::as_str)
                     .map(|url| {
                         if url == "https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json" {

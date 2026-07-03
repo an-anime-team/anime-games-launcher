@@ -614,26 +614,26 @@ impl SimpleAsyncComponent for MainWindow {
             // Prepare downloader and files cache.
             let downloader = Downloader::from_client(client);
 
-            // Fetch packages allow lists.
+            // Fetch modules scopes lists.
 
             tracing::debug!(
-                scopes_list = ?config.packages_scopes_list,
-                "fetching packages allow lists"
+                scopes_lists = ?config.packages_scopes_lists,
+                "fetching modules scopes lists"
             );
 
             sender.input(MainWindowMsg::SetLoadingStatus(Some(
-                i18n!("fetching_packages_scopes_lists")
-                    .unwrap_or("Fetching packages scopes lists")
+                i18n!("fetching_modules_scopes_lists")
+                    .unwrap_or("Fetching modules scopes lists")
                     .to_string()
             )));
 
-            let mut tasks = Vec::with_capacity(config.packages_scopes_list.len());
+            let mut tasks = Vec::with_capacity(config.packages_scopes_lists.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
 
             let mut cache_hits = HashSet::new();
 
             // Either fetch package scopes list or use cached one.
-            for url in &config.packages_scopes_list {
+            for url in &config.packages_scopes_lists {
                 let cache_path = cache::get_path(url);
 
                 cache_hits.insert(cache_path.clone());
