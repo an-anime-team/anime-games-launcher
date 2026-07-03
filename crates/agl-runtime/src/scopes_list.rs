@@ -26,9 +26,9 @@ use super::module::ModuleScope;
 
 /// List of scopes for luau modules.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct AllowList(HashMap<Hash, ModuleScope>);
+pub struct ScopesList(HashMap<Hash, ModuleScope>);
 
-impl AllowList {
+impl ScopesList {
     pub fn to_json(&self) -> Json {
         json!(self.0.iter()
             .map(|(k, v)| (k.to_base32(), v.to_json()))
@@ -53,14 +53,14 @@ impl AllowList {
         &self.0
     }
 
-    /// Merge current allow list with provided one.
+    /// Merge current control list with provided one.
     pub fn merge_with(&mut self, another_list: Self) {
         for (hash, scope) in another_list.0 {
             self.add_module_scope(hash, scope);
         }
     }
 
-    /// Add module scope to the allow list, merging it with existing one if it
+    /// Add module scope to the control list, merging it with existing one if it
     /// is available.
     pub fn add_module_scope(&mut self, hash: Hash, scope: ModuleScope) {
         let entry = self.0.entry(hash)

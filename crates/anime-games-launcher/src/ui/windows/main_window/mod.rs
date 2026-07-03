@@ -36,7 +36,7 @@ use agl_locale::string::LocalizableString;
 use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
-use agl_runtime::allow_list::AllowList;
+use agl_runtime::scopes_list::ScopesList;
 use agl_runtime::api::ApiOptions;
 use agl_runtime::api::bytes::Bytes;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
@@ -99,7 +99,7 @@ pub enum MainWindowMsg {
 
     SetLoadingStatus(Option<String>),
 
-    AddAllowList(AllowList),
+    AddScopesList(ScopesList),
 
     AddStorePageGame {
         /// Unique game name. A game package lock filename is expected be used.
@@ -200,7 +200,7 @@ pub struct MainWindow {
 
     storage: Storage,
     runtime: Runtime,
-    allow_list: AllowList
+    scopes_list: ScopesList
 }
 
 impl std::fmt::Debug for MainWindow {
@@ -221,7 +221,7 @@ impl std::fmt::Debug for MainWindow {
             .field("show_back_button", &self.show_back_button)
             .field("storage", &self.storage)
             .field("runtime", &"Runtime")
-            .field("allow_list", &self.allow_list)
+            .field("scopes_list", &self.scopes_list)
             .finish()
     }
 }
@@ -549,7 +549,8 @@ impl SimpleAsyncComponent for MainWindow {
 
             storage,
             runtime,
-            allow_list: AllowList::default()
+
+            scopes_list: ScopesList::default()
         };
 
         // Named like this to supress relm4 view macro warning.
@@ -681,13 +682,13 @@ impl SimpleAsyncComponent for MainWindow {
             for path in paths {
                 tracing::trace!(?path, "reading packages allow list");
 
-                let allow_list = tasks::fs::read(path).await?;
-                let allow_list = serde_json::from_slice::<Json>(&allow_list)?;
+                let scopes_list = tasks::fs::read(path).await?;
+                let scopes_list = serde_json::from_slice::<Json>(&scopes_list)?;
 
-                let allow_list = AllowList::from_json(&allow_list)
-                    .context("failed to deserialize packages allow list")?;
+                let scopes_list = ScopesList::from_json(&scopes_list)
+                    .context("failed to deserialize packages scopes list")?;
 
-                sender.input(MainWindowMsg::AddAllowList(allow_list));
+                sender.input(MainWindowMsg::AddScopesList(scopes_list));
             }
 
             // Fetch game registries.
@@ -1110,8 +1111,8 @@ impl SimpleAsyncComponent for MainWindow {
                 self.loading_status = status;
             }
 
-            MainWindowMsg::AddAllowList(allow_list) => {
-                self.allow_list.merge_with(allow_list);
+            MainWindowMsg::AddScopesList(scopes_list) => {
+                self.scopes_list.merge_with(scopes_list);
             }
 
             MainWindowMsg::AddStorePageGame {
@@ -1145,7 +1146,7 @@ impl SimpleAsyncComponent for MainWindow {
                 // Add game's scope to all the game integration resources.
                 if let Some(scope) = &lock.scope {
                     for hash in lock.lock.resources.keys() {
-                        self.allow_list.add_module_scope(*hash, scope.clone());
+                        self.scopes_list.add_module_scope(*hash, scope.clone());
                     }
                 }
 
@@ -1154,7 +1155,7 @@ impl SimpleAsyncComponent for MainWindow {
                     &lock.lock,
                     &self.storage,
                     &paths,
-                    &self.allow_list
+                    &self.scopes_list
                 );
 
                 if let Err(err) = result {

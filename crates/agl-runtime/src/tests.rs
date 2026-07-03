@@ -29,7 +29,7 @@ use agl_locale::string::LocalizableString;
 use agl_packages::storage::Storage;
 
 #[cfg(feature = "packages-support")]
-use crate::allow_list::AllowList;
+use crate::scopes_list::ScopesList;
 
 use crate::module::{Module, ModuleScope};
 use crate::api::ApiOptions;
@@ -136,9 +136,9 @@ fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
             persistent_dir: std::env::temp_dir()
         };
 
-        let allow_list = AllowList::default();
+        let scopes_list = ScopesList::default();
 
-        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
         let Some(module) = runtime.get_value::<LuaTable>("j19332e198rda#module")? else {
@@ -172,9 +172,9 @@ fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
             persistent_dir: std::env::temp_dir()
         };
 
-        let allow_list = AllowList::default();
+        let scopes_list = ScopesList::default();
 
-        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
         let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
@@ -212,9 +212,9 @@ fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
             persistent_dir: std::env::temp_dir()
         };
 
-        let allow_list = AllowList::default();
+        let scopes_list = ScopesList::default();
 
-        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
         let Some(module) = runtime.get_value::<LuaTable>("fgkua9vq5ra7q#module")? else {

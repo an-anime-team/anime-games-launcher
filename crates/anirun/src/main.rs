@@ -38,7 +38,7 @@ use agl_packages::lock::Lock;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_runtime::module::{Module, ModuleScope};
-use agl_runtime::allow_list::AllowList;
+use agl_runtime::scopes_list::ScopesList;
 use agl_runtime::api::ApiOptions;
 use agl_runtime::api::portal_api::ToastOptions;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
@@ -679,10 +679,10 @@ fn main() -> anyhow::Result<()> {
 
                 tracing::info!("preparing allow list");
 
-                let mut allow_list = AllowList::default();
+                let mut scopes_list = ScopesList::default();
 
                 for resource in lock.resources.keys().copied() {
-                    allow_list.add_module_scope(
+                    scopes_list.add_module_scope(
                         resource,
                         ModuleScope::from(scope.clone())
                     );
@@ -700,7 +700,7 @@ fn main() -> anyhow::Result<()> {
                     &lock,
                     &storage,
                     &paths,
-                    &allow_list
+                    &scopes_list
                 )?;
 
                 for (package_hash, package) in lock.packages.iter() {

@@ -30,7 +30,7 @@ use agl_packages::{
 };
 
 #[cfg(feature = "packages-support")]
-use crate::allow_list::AllowList;
+use crate::scopes_list::ScopesList;
 
 use crate::module::{Module, ModuleScope};
 use crate::api::{Api, ApiOptions, Context};
@@ -413,7 +413,7 @@ impl Runtime {
         lock: &Lock,
         storage: &Storage,
         paths: &ModulePaths,
-        allow_list: &AllowList
+        scopes_list: &ScopesList
     ) -> Result<(), RuntimeError> {
         use std::collections::{VecDeque, HashSet, HashMap};
 
@@ -566,7 +566,7 @@ impl Runtime {
 
             let mut module = Module {
                 path: storage.resource_path(hash),
-                scope: allow_list.get_module_scope(hash)
+                scope: scopes_list.get_module_scope(hash)
                     .cloned()
                     .unwrap_or_default()
             };
