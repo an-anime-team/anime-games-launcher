@@ -43,23 +43,6 @@ pub enum CompressionLevel {
     Custom(i8)
 }
 
-#[cfg(feature = "compression-zstd")]
-impl CompressionLevel {
-    /// Convert into zstd compression level.
-    pub const fn zstd_level(&self) -> i32 {
-        match self {
-            Self::Quick    => 3,
-            Self::Fast     => 9,
-            Self::Balanced => 13,
-            Self::Good     => 17,
-            Self::Best     => 22,
-            Self::Default  => 10,
-
-            Self::Custom(level) => *level as i32
-        }
-    }
-}
-
 impl std::fmt::Display for CompressionLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -126,6 +109,23 @@ impl From<CompressionLevel> for flate2::Compression {
             CompressionLevel::Default  => Self::new(6),
 
             CompressionLevel::Custom(level) => Self::new(level as u32)
+        }
+    }
+}
+
+#[cfg(feature = "compression-zstd")]
+impl CompressionLevel {
+    /// Convert into zstd compression level.
+    pub const fn zstd_level(&self) -> i32 {
+        match self {
+            Self::Quick    => 3,
+            Self::Fast     => 9,
+            Self::Balanced => 13,
+            Self::Good     => 17,
+            Self::Best     => 22,
+            Self::Default  => 10,
+
+            Self::Custom(level) => *level as i32
         }
     }
 }
