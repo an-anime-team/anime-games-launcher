@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Games manifests got optional `manifest.game.name` field. It is used to
+  deduplicate games from mirrored games integrations repositories.
+- Added `free-to-play` and `adult-content` game manifest tags.
+- Launcher will now show unstandard game manifest tags on the store page.
+- Added Secrets API as universal solution to keep secret information that
+  persists between module updates.
+- Runtime APIs now accept list of paths that they cannot access. Secrets API
+  database is automatically added to this list.
+- Added `runtime.private_paths` launcher config property to configure list of
+  paths to which runtime APIs will never have access. Process API can still
+  access them as an exception. By default launcher will populate this property
+  with a couple of chosen paths, including `$HOME/.ssh` and `$HOME/.gnupg`.
+- Added [`TRACE`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/TRACE)
+  request method to HTTP API.
+- More operations in the launcher were replaced by async alternatives.
+
+### Fixed
+
+- Fixed launcher settings UI updating after `reactivity = none` entries changes.
+
+### Changed
+
+- Renamed some game manifest tags (old variants kept as aliases):
+  - `social` -> `social-features`;
+  - `controller` -> `controller-support`;
+  - `payments` -> `in-game-purchases`.
+- Game tags on the launcher's store page are now sorted.
+- `torrent.add` API's `output_folder` option was renamed to `output_directory`.
+  Old variant is kept as alias for backward compatibility.
+- `portal.open_folder` API was renamed to `portal.open_folder`. Old function
+  is kept as alias for backward compatibility.
+- Modules allow lists were renamed to scopes lists. Launcher will automatically
+  rename the standard game-integrations URL to the new one.
+- Reduced Filesystem API's files RAM buffer size from 4 MiB to 64 KiB.
+- Some Filesystem API functions now make symlinks only if target of family is
+  unix.
+- `fs.read_dir` API now uses real async operations instead of blocking function.
+- Now launcher will silently ignore games registries and games manifests
+  updating during startup.
+- Games cards on the store page are not loaded in the order of their appearance
+  in the games registries, in the order the registries URLs are listed in the
+  launcher's config file. If many games with the same name available, the first
+  one will be selected, and other will be ignored with a warning log.
+- Games lock files are now stored under `[name_hash]-[sanitized_name]` file
+  name, where hash is base16 seahash value, and name is taken from the manifest.
+  If it's not avaialble, then the previous naming scheme is used. Old file names
+  will automatically be renamed to the new format if possible.
+
+### Removed
+
+- Removed some game manifest tags:
+  - `performance-issues`;
+  - `anti-cheat`;
+  - `workarounds`.
+
 ## [v2.1.1] - 01.07.2026
 
 ### Added
@@ -40,9 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the anirun CLI. Previously application version didn't have `v` letter
   prefix in the user agent string.
 - Some environment variables were renamed:
-  `LAUNCHER_DATA_FOLDER` -> `LAUNCHER_DATA_DIR`;
-  `LAUNCHER_CONFIG_FOLDER` -> `LAUNCHER_CONFIG_DIR`;
-  `LAUNCHER_CACHE_FOLDER` -> `LAUNCHER_CACHE_DIR`.
+  - `LAUNCHER_DATA_FOLDER` -> `LAUNCHER_DATA_DIR`;
+  - `LAUNCHER_CONFIG_FOLDER` -> `LAUNCHER_CONFIG_DIR`;
+  - `LAUNCHER_CACHE_FOLDER` -> `LAUNCHER_CACHE_DIR`.
 
 ## [v2.1.0] - 16.05.2026
 
