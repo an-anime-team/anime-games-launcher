@@ -44,11 +44,11 @@ pub struct HashApi {
 }
 
 impl HashApi {
-    pub fn new(lua: Lua) -> Result<Self, LuaError> {
+    pub fn new(lua: Lua, api_context: ApiContext) -> Result<Self, LuaError> {
         let hasher_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            hash_digitize: lua.create_function(move |_, (algorithm, value): (LuaString, Bytes)| {
+            hash_digitize: lua.create_function(move |_lua: &Lua, (algorithm, value): (LuaString, Bytes)| {
                 let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                     .map_err(LuaError::external)?;
 
@@ -63,15 +63,18 @@ impl HashApi {
             })?,
 
             hash_digitize_file: {
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
 
                     lua.create_function(move |lua: &Lua, (algorithm, mut path): (LuaString, PathBuf)| {
                         let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                             .map_err(LuaError::external)?;
 
                         if path.is_relative() {
-                            path = context.module_dir.join(path);
+                            path = module_context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -79,7 +82,11 @@ impl HashApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_read_path(&path) {
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_read_path(&path) {
                             return Err(LuaError::external("no path read permissions"));
                         }
 
@@ -117,7 +124,7 @@ impl HashApi {
             hash_hasher: {
                 let hasher_handles = hasher_handles.clone();
 
-                lua.create_function(move |_, algorithm: LuaString| {
+                lua.create_function(move |_lua: &Lua, algorithm: LuaString| {
                     let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                         .map_err(LuaError::external)?;
 
@@ -142,7 +149,7 @@ impl HashApi {
             hash_write: {
                 let hasher_handles = hasher_handles.clone();
 
-                lua.create_function(move |_, (handle, value): (i32, Bytes)| {
+                lua.create_function(move |_lua: &Lua, (handle, value): (i32, Bytes)| {
                     let mut hashers = hasher_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -178,7 +185,10 @@ impl HashApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 5)?;
 
         env.raw_set("digitize", &self.hash_digitize)?;
@@ -197,7 +207,7 @@ mod tests {
 
     #[test]
     fn hash() -> Result<(), LuaError> {
-        let api = HashApi::new(Lua::new())?;
+        let api = HashApi::new(Lua::new(), ApiContext::default())?;
 
         assert_eq!(api.hash_digitize.call::<Vec<u8>>(("seahash",  "Hello, World!"))?, &[46, 194, 87, 41, 102, 208, 6, 253]);
         assert_eq!(api.hash_digitize.call::<Vec<u8>>(("crc32",    "Hello, World!"))?, &[236, 74, 195, 208]);
@@ -218,7 +228,7 @@ mod tests {
 
     #[test]
     fn hasher() -> Result<(), LuaError> {
-        let api = HashApi::new(Lua::new())?;
+        let api = HashApi::new(Lua::new(), ApiContext::default())?;
 
         let hashers = [
             ("seahash",  vec![46, 194, 87, 41, 102, 208, 6, 253]),

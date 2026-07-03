@@ -74,24 +74,58 @@ fn path_is_parent_of(parent: &Path, child: &Path) -> bool {
         .all(|(p, c)| p == c)
 }
 
-/// Luau module standard library builder context.
+/// Luau runtime API building context.
+#[derive(Default, Debug, Clone)]
+pub struct ApiContext {
+    /// List of paths that must never be accessed. For example, secrets API
+    /// database.
+    pub private_paths: Arc<RwLock<Vec<PathBuf>>>
+}
+
+impl ApiContext {
+    /// Check if a path is allowed to be accessed.
+    pub fn can_access_path(&self, path: &Path) -> bool {
+        if let Ok(private_paths) = self.private_paths.read() {
+            for private_path in private_paths.iter() {
+                if path_is_parent_of(private_path, path) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+}
+
+/// Luau module loading context.
 #[derive(Debug, Clone)]
-pub struct Context {
+pub struct ModuleContext {
     /// Path to a temporary directory. It is always accessible for the module.
-    pub temp_dir: PathBuf,
+    pub temp_dir: Arc<PathBuf>,
 
     /// Path to a module's private directory. It is always accessible for the
     /// module.
-    pub module_dir: PathBuf,
+    pub module_dir: Arc<PathBuf>,
 
     /// Path to a inter-modules globally accessible directory.
-    pub persistent_dir: PathBuf,
+    pub persistent_dir: Arc<PathBuf>,
 
     /// Module permissions scope.
     pub scope: Arc<RwLock<ModuleScope>>
 }
 
-impl Context {
+impl Default for ModuleContext {
+    fn default() -> Self {
+        Self {
+            temp_dir: Arc::new(std::env::temp_dir()),
+            module_dir: Arc::new(std::env::temp_dir()),
+            persistent_dir: Arc::new(std::env::temp_dir()),
+            scope: Arc::new(RwLock::new(ModuleScope::default()))
+        }
+    }
+}
+
+impl ModuleContext {
     /// Check if a path is allowed to be read by the current module.
     pub fn can_read_path(
         &self,
@@ -160,7 +194,7 @@ impl Context {
     }
 }
 
-type LuaFunctionBuilder = Box<dyn Fn(&Lua, &Context) -> Result<LuaFunction, LuaError>>;
+type LuaFunctionBuilder = Box<dyn Fn(&Lua, &ModuleContext) -> Result<LuaFunction, LuaError>>;
 
 pub struct ApiOptions {
     /// Lua engine.
@@ -234,7 +268,15 @@ pub struct Api {
 
 impl Api {
     /// Create new standard library builder.
-    pub fn new(options: ApiOptions) -> Result<Self, LuaError> {
+    pub fn new(
+        options: ApiOptions,
+        api_context: ApiContext
+    ) -> Result<Self, LuaError> {
+        // Append secrets API database file to the list of no access files.
+        if let Ok(mut private_paths) = api_context.private_paths.write() {
+            private_paths.push(options.secrets_file.clone());
+        }
+
         Ok(Self {
             clone: options.lua.create_function(|lua, value: LuaValue| {
                 fn clone_value(lua: &Lua, value: LuaValue) -> Result<LuaValue, LuaError> {
@@ -335,34 +377,72 @@ impl Api {
             path_api: path_api::PathApi::new(options.lua.clone())?,
             task_api: task_api::TaskApi::new(options.lua.clone())?,
             system_api: system_api::SystemApi::new(options.lua.clone())?,
-            filesystem_api: filesystem_api::FilesystemApi::new(options.lua.clone())?,
-            http_api: http_api::HttpApi::new(options.lua.clone(), options.reqwest_client.clone())?,
-            downloader_api: downloader_api::DownloaderApi::new(options.lua.clone(), options.reqwest_client.clone())?,
-            archive_api: archive_api::ArchiveApi::new(options.lua.clone())?,
-            hash_api: hash_api::HashApi::new(options.lua.clone())?,
-            compression_api: compression_api::CompressionApi::new(options.lua.clone())?,
+
+            filesystem_api: filesystem_api::FilesystemApi::new(
+                options.lua.clone(),
+                api_context.clone()
+            )?,
+
+            http_api: http_api::HttpApi::new(
+                options.lua.clone(),
+                options.reqwest_client.clone()
+            )?,
+
+            downloader_api: downloader_api::DownloaderApi::new(
+                options.lua.clone(),
+                api_context.clone(),
+                options.reqwest_client.clone()
+            )?,
+
+            archive_api: archive_api::ArchiveApi::new(
+                options.lua.clone(),
+                api_context.clone()
+            )?,
+
+            hash_api: hash_api::HashApi::new(
+                options.lua.clone(),
+                api_context.clone()
+            )?,
+
+            compression_api: compression_api::CompressionApi::new(
+                options.lua.clone()
+            )?,
 
             #[cfg(feature = "sqlite-api")]
-            sqlite_api: sqlite_api::SqliteApi::new(options.lua.clone())?,
+            sqlite_api: sqlite_api::SqliteApi::new(
+                options.lua.clone(),
+                api_context.clone()
+            )?,
 
             #[cfg(feature = "protobuf-api")]
             protobuf_api: protobuf_api::ProtobufApi::new(options.lua.clone())?,
 
             #[cfg(feature = "torrent-api")]
             torrent_api: options.torrent_server.map(|server| {
-                torrent_api::TorrentApi::new(options.lua.clone(), server)
+                torrent_api::TorrentApi::new(
+                    options.lua.clone(),
+                    api_context.clone(),
+                    server
+                )
             }).transpose()?,
 
             #[cfg(feature = "portal-api")]
-            portal_api: portal_api::PortalApi::new(options.lua.clone(), portal_api::PortalApiOptions {
-                show_toast: options.show_toast,
-                show_notification: options.show_notification,
-                show_dialog: options.show_dialog,
-                translate: options.translate
-            })?,
+            portal_api: portal_api::PortalApi::new(
+                options.lua.clone(),
+                api_context.clone(),
+                portal_api::PortalApiOptions {
+                    show_toast: options.show_toast,
+                    show_notification: options.show_notification,
+                    show_dialog: options.show_dialog,
+                    translate: options.translate
+                }
+            )?,
 
             #[cfg(feature = "secrets-api")]
-            secrets_api: secrets_api::SecretsApi::new(options.lua.clone(), options.secrets_file)?,
+            secrets_api: secrets_api::SecretsApi::new(
+                options.lua.clone(),
+                options.secrets_file
+            )?,
 
             process_api: process_api::ProcessApi::new(options.lua.clone())?,
 
@@ -376,7 +456,10 @@ impl Api {
     }
 
     /// Create new environment table.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table()?;
 
         // Some default functions and constants.

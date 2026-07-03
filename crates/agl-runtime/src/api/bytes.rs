@@ -178,7 +178,7 @@ impl Seek for Bytes {
 }
 
 impl FromLua for Bytes {
-    fn from_lua(value: LuaValue, _: &Lua) -> LuaResult<Self> {
+    fn from_lua(value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
         match value {
             LuaValue::String(str) => {
                 Ok(Self::new(str.as_bytes().to_vec().into_boxed_slice()))
@@ -206,18 +206,18 @@ impl FromLua for Bytes {
 
 impl LuaUserData for Bytes {
     fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("len", |_: &Lua, bytes: &Self| Ok(bytes.len));
-        fields.add_field_method_get("pos", |_: &Lua, bytes: &Self| Ok(bytes.pos));
-        fields.add_field_method_get("is_empty", |_: &Lua, bytes: &Self| Ok(bytes.is_empty()));
+        fields.add_field_method_get("len", |_lua: &Lua, bytes: &Self| Ok(bytes.len));
+        fields.add_field_method_get("pos", |_lua: &Lua, bytes: &Self| Ok(bytes.pos));
+        fields.add_field_method_get("is_empty", |_lua: &Lua, bytes: &Self| Ok(bytes.is_empty()));
     }
 
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_meta_method("__len", |_: &Lua, bytes: &Self, _: ()| Ok(bytes.len));
-        methods.add_meta_method("__eq", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() == other.as_slice()));
-        methods.add_meta_method("__lt", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() < other.as_slice()));
-        methods.add_meta_method("__le", |_: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() <= other.as_slice()));
+        methods.add_meta_method("__len", |_lua: &Lua, bytes: &Self, ()| Ok(bytes.len));
+        methods.add_meta_method("__eq", |_lua: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() == other.as_slice()));
+        methods.add_meta_method("__lt", |_lua: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() < other.as_slice()));
+        methods.add_meta_method("__le", |_lua: &Lua, bytes: &Self, other: Bytes| Ok(bytes.as_slice() <= other.as_slice()));
 
-        methods.add_meta_method("__index", |_: &Lua, bytes: &Self, idx: usize| {
+        methods.add_meta_method("__index", |_lua: &Lua, bytes: &Self, idx: usize| {
             if idx > 0 && let Some(byte) = bytes.as_slice().get(idx - 1) {
                 Ok(LuaValue::Integer(*byte as i64))
             } else  {
@@ -225,11 +225,11 @@ impl LuaUserData for Bytes {
             }
         });
 
-        methods.add_method("as_table", |lua: &Lua, bytes: &Self, _: ()| {
+        methods.add_method("as_table", |lua: &Lua, bytes: &Self, ()| {
             lua.create_sequence_from(bytes.iter().copied())
         });
 
-        methods.add_method("as_string", |lua: &Lua, bytes: &Self, _: ()| {
+        methods.add_method("as_string", |lua: &Lua, bytes: &Self, ()| {
             lua.create_string(&bytes.buf)
         });
 
@@ -285,7 +285,7 @@ impl LuaUserData for Bytes {
             Ok(LuaValue::Table(table))
         });
 
-        methods.add_method_mut("seek", |_: &Lua, bytes: &mut Self, position: i64| {
+        methods.add_method_mut("seek", |_lua: &Lua, bytes: &mut Self, position: i64| {
             if position >= 0 {
                 bytes.seek(SeekFrom::Start(position as u64))?;
             } else {
@@ -295,7 +295,7 @@ impl LuaUserData for Bytes {
             Ok(LuaValue::Integer(bytes.pos as i64))
         });
 
-        methods.add_method_mut("seek_rel", |_: &Lua, bytes: &mut Self, offset: i64| {
+        methods.add_method_mut("seek_rel", |_lua: &Lua, bytes: &mut Self, offset: i64| {
             bytes.seek(SeekFrom::Current(offset))?;
 
             Ok(LuaValue::Integer(bytes.pos as i64))

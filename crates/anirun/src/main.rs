@@ -39,7 +39,7 @@ use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_runtime::module::{Module, ModuleScope};
 use agl_runtime::scopes_list::ScopesList;
-use agl_runtime::api::ApiOptions;
+use agl_runtime::api::{ApiContext, ApiOptions};
 use agl_runtime::api::portal_api::ToastOptions;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 
@@ -426,7 +426,7 @@ fn build_runtime(
     torrent: Option<TorrentOptionsCli>,
     reqwest_client: reqwest::Client
 ) -> anyhow::Result<Runtime> {
-    Ok(Runtime::new(ApiOptions {
+    let options = ApiOptions {
         lua: Lua::new(),
 
         reqwest_client,
@@ -497,7 +497,9 @@ fn build_runtime(
 
         secrets_file,
         translate
-    })?)
+    };
+
+    Ok(Runtime::new(options, ApiContext::default())?)
 }
 
 fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {

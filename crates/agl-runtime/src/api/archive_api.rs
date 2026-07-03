@@ -36,20 +36,22 @@ pub struct ArchiveApi {
 }
 
 impl ArchiveApi {
-    pub fn new(lua: Lua) -> Result<Self, LuaError> {
+    pub fn new(lua: Lua, api_context: ApiContext) -> Result<Self, LuaError> {
         let archive_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
             archive_open: {
+                let api_context = api_context.clone();
                 let archive_handles = archive_handles.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
                     let archive_handles = archive_handles.clone();
 
-                    lua.create_function(move |_, (mut path, format): (PathBuf, Option<LuaString>)| {
+                    lua.create_function(move |_lua: &Lua, (mut path, format): (PathBuf, Option<LuaString>)| {
                         if path.is_relative() {
-                            path = context.module_dir.join(path);
+                            path = module_context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -57,7 +59,11 @@ impl ArchiveApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_read_path(&path) {
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_read_path(&path) {
                             return Err(LuaError::external("no path read permissions"));
                         }
 
@@ -94,7 +100,7 @@ impl ArchiveApi {
             archive_entries: {
                 let archive_handles = archive_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let handles = archive_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -124,15 +130,17 @@ impl ArchiveApi {
             },
 
             archive_extract: {
+                let api_context = api_context.clone();
                 let archive_handles = archive_handles.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
                     let archive_handles = archive_handles.clone();
 
-                    lua.create_function(move |_, (handle, mut target, progress): (i32, PathBuf, Option<LuaFunction>)| {
+                    lua.create_function(move |_lua: &Lua, (handle, mut target, progress): (i32, PathBuf, Option<LuaFunction>)| {
                         if target.is_relative() {
-                            target = context.module_dir.join(target);
+                            target = module_context.module_dir.join(target);
                         }
 
                         target = normalize_path(target, true)
@@ -140,7 +148,11 @@ impl ArchiveApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&target) {
+                        if !api_context.can_access_path(&target) {
+                            return Err(LuaError::external("target path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&target) {
                             return Err(LuaError::external("no target path write permissions"));
                         }
 
@@ -194,7 +206,7 @@ impl ArchiveApi {
             archive_close: {
                 let archive_handles = archive_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     archive_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?
                         .remove(&handle);
@@ -208,7 +220,10 @@ impl ArchiveApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 4)?;
 
         env.raw_set("open", (self.archive_open)(&self.lua, context)?)?;

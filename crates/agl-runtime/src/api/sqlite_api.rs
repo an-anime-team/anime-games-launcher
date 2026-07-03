@@ -128,20 +128,22 @@ pub struct SqliteApi {
 }
 
 impl SqliteApi {
-    pub fn new(lua: Lua) -> Result<Self, LuaError> {
+    pub fn new(lua: Lua, api_context: ApiContext) -> Result<Self, LuaError> {
         let connection_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
             sqlite_open: {
+                let api_context = api_context.clone();
                 let connection_handles = connection_handles.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
                     let connection_handles = connection_handles.clone();
 
-                    lua.create_function(move |_, mut path: PathBuf| {
+                    lua.create_function(move |_lua: &Lua, mut path: PathBuf| {
                         if path.is_relative() {
-                            path = context.module_dir.join(path);
+                            path = module_context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -149,11 +151,23 @@ impl SqliteApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&path) {
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&path) {
                             return Err(LuaError::external("no path write permissions"));
                         }
 
                         if let Some(parent) = path.parent() && !parent.is_dir() {
+                            if !api_context.can_access_path(parent) {
+                                return Err(LuaError::external("this path cannot be accessed"));
+                            }
+
+                            if !module_context.can_write_path(parent) {
+                                return Err(LuaError::external("no path write permissions"));
+                            }
+
                             std::fs::create_dir_all(parent)?;
                         }
 
@@ -376,7 +390,7 @@ impl SqliteApi {
             sqlite_close: {
                 let connection_handles = connection_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = connection_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -401,7 +415,10 @@ impl SqliteApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("open", (self.sqlite_open)(&self.lua, context)?)?;
@@ -423,14 +440,9 @@ fn test_sqlite() -> Result<(), LuaError> {
         std::fs::remove_file(&path)?;
     }
 
-    let api = SqliteApi::new(Lua::new())?;
+    let api = SqliteApi::new(Lua::new(), ApiContext::default())?;
 
-    let env = api.create_env(&Context {
-        temp_dir: std::env::temp_dir(),
-        module_dir: std::env::temp_dir(),
-        persistent_dir: std::env::temp_dir(),
-        scope: Arc::new(RwLock::new(ModuleScope::default()))
-    })?;
+    let env = api.create_env(&ModuleContext::default())?;
 
     let handle = env.call_function::<i32>("open", path.clone())?;
 

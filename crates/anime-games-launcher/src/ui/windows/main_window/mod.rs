@@ -37,7 +37,7 @@ use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::scopes_list::ScopesList;
-use agl_runtime::api::ApiOptions;
+use agl_runtime::api::{ApiOptions, ApiContext};
 use agl_runtime::api::bytes::Bytes;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 use agl_runtime::api::portal_api::{
@@ -396,7 +396,7 @@ impl SimpleAsyncComponent for MainWindow {
             str.to_string()
         }
 
-        let runtime = Runtime::new(ApiOptions {
+        let options = ApiOptions {
             lua,
             reqwest_client,
             torrent_server,
@@ -428,7 +428,10 @@ impl SimpleAsyncComponent for MainWindow {
             secrets_file: config.runtime_secrets_path.clone(),
 
             translate
-        }).expect("failed to initialize packages runtime");
+        };
+
+        let runtime = Runtime::new(options, ApiContext::default())
+            .expect("failed to initialize packages runtime");
 
         let model = Self {
             about_window: AboutWindow::builder()

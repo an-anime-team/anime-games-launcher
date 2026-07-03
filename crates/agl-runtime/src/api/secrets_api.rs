@@ -51,7 +51,7 @@ impl SecretsApi {
         let database = Arc::new(Mutex::new(database));
 
         Ok(Self {
-            secrets_permissions: Box::new(move |lua: &Lua, context: &Context| {
+            secrets_permissions: Box::new(move |lua: &Lua, context: &ModuleContext| {
                 let context = context.to_owned();
 
                 lua.create_function(move |lua: &Lua, container: String| {
@@ -67,7 +67,7 @@ impl SecretsApi {
             secrets_list: {
                 let database = database.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &ModuleContext| {
                     let database = database.clone();
                     let context = context.to_owned();
 
@@ -116,7 +116,7 @@ impl SecretsApi {
             secrets_read: {
                 let database = database.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &ModuleContext| {
                     let database = database.clone();
                     let context = context.to_owned();
 
@@ -158,7 +158,7 @@ impl SecretsApi {
             secrets_write: {
                 let database = database.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &ModuleContext| {
                     let database = database.clone();
                     let context = context.to_owned();
 
@@ -191,7 +191,7 @@ impl SecretsApi {
             secrets_remove: {
                 let database = database.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
+                Box::new(move |lua: &Lua, context: &ModuleContext| {
                     let database = database.clone();
                     let context = context.to_owned();
 
@@ -232,7 +232,10 @@ impl SecretsApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 5)?;
 
         env.raw_set("permissions", (self.secrets_permissions)(&self.lua, context)?)?;
@@ -255,10 +258,10 @@ fn test_secrets() -> Result<(), LuaError> {
 
     let api = SecretsApi::new(Lua::new(), &path)?;
 
-    let env = api.create_env(&Context {
-        temp_dir: std::env::temp_dir(),
-        module_dir: std::env::temp_dir(),
-        persistent_dir: std::env::temp_dir(),
+    let env = api.create_env(&ModuleContext {
+        temp_dir: Arc::new(std::env::temp_dir()),
+        module_dir: Arc::new(std::env::temp_dir()),
+        persistent_dir: Arc::new(std::env::temp_dir()),
         scope: Arc::new(RwLock::new(ModuleScope {
             secrets_read_containers: vec![
                 String::from("read"),

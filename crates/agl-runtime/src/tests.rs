@@ -32,7 +32,7 @@ use agl_packages::storage::Storage;
 use crate::scopes_list::ScopesList;
 
 use crate::module::{Module, ModuleScope};
-use crate::api::ApiOptions;
+use crate::api::{ApiContext, ApiOptions};
 use crate::runtime::{Runtime, RuntimeError, ModulePaths};
 
 #[cfg(feature = "packages-support")]
@@ -58,7 +58,7 @@ fn get_runtime() -> Result<Runtime, RuntimeError> {
         str.default_translation().to_string()
     }
 
-    Runtime::new(ApiOptions {
+    let options = ApiOptions {
         lua: Lua::new(),
         reqwest_client: reqwest::Client::new(),
 
@@ -79,7 +79,9 @@ fn get_runtime() -> Result<Runtime, RuntimeError> {
             .join(".agl-runtime-load-packages-test.db"),
 
         translate
-    })
+    };
+
+    Runtime::new(options, ApiContext::default())
 }
 
 #[test]

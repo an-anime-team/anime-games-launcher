@@ -33,7 +33,7 @@ use agl_packages::{
 use crate::scopes_list::ScopesList;
 
 use crate::module::{Module, ModuleScope};
-use crate::api::{Api, ApiOptions, Context};
+use crate::api::{Api, ApiContext, ApiOptions, ModuleContext};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeError {
@@ -91,7 +91,10 @@ pub struct Runtime {
 
 impl Runtime {
     /// Create new luau engine with provided API options.
-    pub fn new(options: ApiOptions) -> Result<Self, RuntimeError> {
+    pub fn new(
+        options: ApiOptions,
+        context: ApiContext
+    ) -> Result<Self, RuntimeError> {
         // Prepare tables and create a registry key to be able to access them
         // from the rust side.
         let engine_table = options.lua.create_table_with_capacity(0, 2)?;
@@ -110,7 +113,7 @@ impl Runtime {
 
         Ok(Self {
             lua: options.lua.clone(),
-            api: Api::new(options)?
+            api: Api::new(options, context)?
         })
     }
 
@@ -136,10 +139,10 @@ impl Runtime {
         scope: ModuleScope
     ) -> Result<LuaTable, RuntimeError> {
         // Create environment table with the standard library APIs.
-        let env = self.api.create_env(&Context {
-            temp_dir,
-            module_dir,
-            persistent_dir,
+        let env = self.api.create_env(&ModuleContext {
+            temp_dir: Arc::new(temp_dir),
+            module_dir: Arc::new(module_dir),
+            persistent_dir: Arc::new(persistent_dir),
 
             scope: Arc::new(RwLock::new(scope))
         })?;

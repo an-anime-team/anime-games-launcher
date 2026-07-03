@@ -33,7 +33,7 @@ use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};
 use super::*;
 
 pub const IO_READ_CHUNK_LEN: usize = 4096; // 4 KiB file reads
-pub const IO_BUFFER_SIZE: usize = 4 * 1024 * 1024 * 1024; // 4 MiB read/write in-RAM cache
+pub const IO_BUFFER_SIZE: usize = 64 * 1024; // 64 KiB read/write in-RAM cache
 
 pub struct FilesystemApi {
     lua: Lua,
@@ -62,323 +62,20 @@ pub struct FilesystemApi {
 }
 
 impl FilesystemApi {
-    pub fn new(lua: Lua) -> Result<Self, LuaError> {
+    pub fn new(lua: Lua, api_context: ApiContext) -> Result<Self, LuaError> {
         let file_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            fs_exists: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
+            fs_exists: {
+                let api_context = api_context.clone();
 
-                lua.create_function(move |_, mut path: PathBuf| -> Result<bool, LuaError> {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
 
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !path.exists() {
-                        return Ok(false);
-                    }
-
-                    Ok(context.can_read_path(&path))
-                })
-            }),
-
-            fs_metadata: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, false)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    let metadata = path.metadata()?;
-
-                    let result = lua.create_table_with_capacity(0, 6)?;
-
-                    result.raw_set("created_at", {
-                        metadata.created().ok()
-                            .and_then(|created_at| {
-                                created_at.duration_since(UNIX_EPOCH)
-                                    .as_ref()
-                                    .map(Duration::as_secs)
-                                    .ok()
-                            })
-                    })?;
-
-                    result.raw_set("modified_at", {
-                        metadata.modified().ok()
-                            .and_then(|modified_at| {
-                                modified_at.duration_since(UNIX_EPOCH)
-                                    .as_ref()
-                                    .map(Duration::as_secs)
-                                    .ok()
-                            })
-                    })?;
-
-                    result.raw_set("accessed_at", {
-                        metadata.accessed().ok()
-                            .and_then(|modified_at| {
-                                modified_at.duration_since(UNIX_EPOCH)
-                                    .as_ref()
-                                    .map(Duration::as_secs)
-                                    .ok()
-                            })
-                    })?;
-
-                    result.raw_set("length", metadata.len())?;
-
-                    let permissions = lua.create_table_with_capacity(0, 2)?;
-
-                    permissions.raw_set("read", context.can_read_path(&path))?;
-                    permissions.raw_set("write", context.can_write_path(&path))?;
-
-                    result.raw_set("permissions", permissions)?;
-
-                    result.raw_set("type", {
-                        if metadata.is_symlink() {
-                            "symlink"
-                        } else if metadata.is_dir() {
-                            "directory"
-                        } else {
-                            "file"
-                        }
-                    })?;
-
-                    Ok(result)
-                })
-            }),
-
-            fs_copy: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
-                    if source.is_relative() {
-                        source = context.module_dir.join(source);
-                    }
-
-                    if target.is_relative() {
-                        target = context.module_dir.join(target);
-                    }
-
-                    source = normalize_path(source, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize source path: {err}"))
-                        })?;
-
-                    target = normalize_path(target, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize target path: {err}"))
-                        })?;
-
-                    // Throw an error if source path doesn't exists or inaccessible.
-                    if !source.exists() {
-                        return Err(LuaError::external("source path doesn't exists"));
-                    }
-
-                    if !context.can_read_path(&source) {
-                        return Err(LuaError::external("no source path read permissions"));
-                    }
-
-                    // Throw an error if target path already exists or inaccessible.
-                    if target.exists() {
-                        return Err(LuaError::external("target path already exists"));
-                    }
-
-                    if !context.can_write_path(&target) {
-                        return Err(LuaError::external("no target path write permissions"));
-                    }
-
-                    async fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
-                        if source.is_file() {
-                            fs::copy(source, target).await?;
-                        }
-
-                        else if source.is_dir() {
-                            fs::create_dir_all(target).await?;
-
-                            for entry in source.read_dir()? {
-                                let entry = entry?;
-
-                                Box::pin(try_copy(
-                                    &entry.path(),
-                                    &target.join(entry.file_name())
-                                )).await?;
-                            }
-                        }
-
-                        else if source.is_symlink() {
-                            // FIXME: only works on unix systems while we target
-                            //        to support all the OSes.
-
-                            #[allow(clippy::collapsible_if)]
-                            if let Some(source_filename) = source.file_name() {
-                                std::os::unix::fs::symlink(
-                                    source.read_link()?,
-                                    target.join(source_filename)
-                                )?;
-                            }
-                        }
-
-                        Ok(())
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        try_copy(&source, &target).await?;
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_move: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
-                    if source.is_relative() {
-                        source = context.module_dir.join(source);
-                    }
-
-                    if target.is_relative() {
-                        target = context.module_dir.join(target);
-                    }
-
-                    source = normalize_path(source, false)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize source path: {err}"))
-                        })?;
-
-                    target = normalize_path(target, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize target path: {err}"))
-                        })?;
-
-                    // Throw an error if source path doesn't exists or inaccessible.
-                    if !source.exists() {
-                        return Err(LuaError::external("source path doesn't exists"));
-                    }
-
-                    if !context.can_write_path(&source) {
-                        return Err(LuaError::external("no source path write permissions"));
-                    }
-
-                    // Throw an error if target path already exists or inaccessible.
-                    if target.exists() {
-                        return Err(LuaError::external("target path already exists"));
-                    }
-
-                    if !context.can_write_path(&target) {
-                        return Err(LuaError::external("no target path write permissions"));
-                    }
-
-                    async fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
-                        if source.is_file() {
-                            // Try to rename the file (mv) or copy it and then
-                            // remove the source if mv has failed (different
-                            // mounts).
-                            if fs::rename(source, target).await.is_err() {
-                                fs::copy(source, target).await?;
-                                fs::remove_file(source).await?;
-                            }
-                        }
-
-                        else if source.is_dir() {
-                            // Try to rename the folder (mv) or create a target
-                            // folder and move all the files there.
-                            if fs::rename(source, target).await.is_err() {
-                                fs::create_dir_all(target).await?;
-
-                                for entry in source.read_dir()? {
-                                    let entry = entry?;
-
-                                    Box::pin(try_move(
-                                        &entry.path(),
-                                        &target.join(entry.file_name())
-                                    )).await?;
-                                }
-
-                                fs::remove_dir_all(source).await?;
-                            }
-                        }
-
-                        else if source.is_symlink() {
-                            if let Some(source_filename) = source.file_name() {
-                                std::os::unix::fs::symlink(
-                                    source.read_link()?,
-                                    target.join(source_filename)
-                                )?;
-                            }
-
-                            fs::remove_file(source).await?;
-                        }
-
-                        Ok(())
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        try_move(&source, &target).await?;
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_remove: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, false)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_write_path(&path) {
-                        return Err(LuaError::external("no path write permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        if path.is_dir() {
-                            fs::remove_dir_all(path).await?;
-                        } else {
-                            fs::remove_file(path).await?;
-                        }
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_open: {
-                let file_handles = file_handles.clone();
-
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
-                    let file_handles = file_handles.clone();
-
-                    lua.create_function(move |_, (mut path, options): (PathBuf, Option<LuaTable>)| {
+                    lua.create_function(move |_lua: &Lua, mut path: PathBuf| -> Result<bool, LuaError> {
                         if path.is_relative() {
-                            path = context.module_dir.join(path);
+                            path = module_context.module_dir.join(path);
                         }
 
                         path = normalize_path(path, true)
@@ -386,8 +83,376 @@ impl FilesystemApi {
                                 LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
+                        if !api_context.can_access_path(&path) {
+                            return Ok(false);
+                        }
+
+                        if !module_context.can_read_path(&path) {
+                            return Ok(false);
+                        }
+
+                        Ok(path.exists())
+                    })
+                })
+            },
+
+            fs_metadata: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.to_owned();
+
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, false)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        let metadata = path.metadata()?;
+
+                        let result = lua.create_table_with_capacity(0, 6)?;
+
+                        result.raw_set("created_at", {
+                            metadata.created().ok()
+                                .and_then(|created_at| {
+                                    created_at.duration_since(UNIX_EPOCH)
+                                        .as_ref()
+                                        .map(Duration::as_secs)
+                                        .ok()
+                                })
+                        })?;
+
+                        result.raw_set("modified_at", {
+                            metadata.modified().ok()
+                                .and_then(|modified_at| {
+                                    modified_at.duration_since(UNIX_EPOCH)
+                                        .as_ref()
+                                        .map(Duration::as_secs)
+                                        .ok()
+                                })
+                        })?;
+
+                        result.raw_set("accessed_at", {
+                            metadata.accessed().ok()
+                                .and_then(|modified_at| {
+                                    modified_at.duration_since(UNIX_EPOCH)
+                                        .as_ref()
+                                        .map(Duration::as_secs)
+                                        .ok()
+                                })
+                        })?;
+
+                        result.raw_set("length", metadata.len())?;
+
+                        let permissions = lua.create_table_with_capacity(0, 2)?;
+
+                        permissions.raw_set("read", module_context.can_read_path(&path))?;
+                        permissions.raw_set("write", module_context.can_write_path(&path))?;
+
+                        result.raw_set("permissions", permissions)?;
+
+                        result.raw_set("type", {
+                            if metadata.is_symlink() {
+                                "symlink"
+                            } else if metadata.is_dir() {
+                                "directory"
+                            } else {
+                                "file"
+                            }
+                        })?;
+
+                        Ok(result)
+                    })
+                })
+            },
+
+            fs_copy: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
+                        if source.is_relative() {
+                            source = module_context.module_dir.join(source);
+                        }
+
+                        if target.is_relative() {
+                            target = module_context.module_dir.join(target);
+                        }
+
+                        source = normalize_path(source, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize source path: {err}"))
+                            })?;
+
+                        target = normalize_path(target, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize target path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&source) {
+                            return Err(LuaError::external("source path cannot be accessed"));
+                        }
+
+                        if !api_context.can_access_path(&target) {
+                            return Err(LuaError::external("target path cannot be accessed"));
+                        }
+
+                        // Throw an error if source path doesn't exists or inaccessible.
+                        if !source.exists() {
+                            return Err(LuaError::external("source path doesn't exists"));
+                        }
+
+                        if !module_context.can_read_path(&source) {
+                            return Err(LuaError::external("no source path read permissions"));
+                        }
+
+                        // Throw an error if target path already exists or inaccessible.
+                        if target.exists() {
+                            return Err(LuaError::external("target path already exists"));
+                        }
+
+                        if !module_context.can_write_path(&target) {
+                            return Err(LuaError::external("no target path write permissions"));
+                        }
+
+                        async fn try_copy(source: &Path, target: &Path) -> std::io::Result<()> {
+                            if source.is_file() {
+                                fs::copy(source, target).await?;
+                            }
+
+                            else if source.is_dir() {
+                                fs::create_dir_all(target).await?;
+
+                                for entry in source.read_dir()? {
+                                    let entry = entry?;
+
+                                    Box::pin(try_copy(
+                                        &entry.path(),
+                                        &target.join(entry.file_name())
+                                    )).await?;
+                                }
+                            }
+
+                            else if source.is_symlink() {
+                                // FIXME: only works on unix systems while we target
+                                //        to support all the OSes.
+
+                                #[allow(clippy::collapsible_if)]
+                                if let Some(source_filename) = source.file_name() {
+                                    #[cfg(target_family = "unix")]
+                                    std::os::unix::fs::symlink(
+                                        source.read_link()?,
+                                        target.join(source_filename)
+                                    )?;
+                                }
+                            }
+
+                            Ok(())
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            try_copy(&source, &target).await?;
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_move: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, (mut source, mut target): (PathBuf, PathBuf)| {
+                        if source.is_relative() {
+                            source = module_context.module_dir.join(source);
+                        }
+
+                        if target.is_relative() {
+                            target = module_context.module_dir.join(target);
+                        }
+
+                        source = normalize_path(source, false)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize source path: {err}"))
+                            })?;
+
+                        target = normalize_path(target, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize target path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&source) {
+                            return Err(LuaError::external("target path cannot be accessed"));
+                        }
+
+                        if !api_context.can_access_path(&target) {
+                            return Err(LuaError::external("target path cannot be accessed"));
+                        }
+
+                        // Throw an error if source path doesn't exists or inaccessible.
+                        if !source.exists() {
+                            return Err(LuaError::external("source path doesn't exists"));
+                        }
+
+                        if !module_context.can_write_path(&source) {
+                            return Err(LuaError::external("no source path write permissions"));
+                        }
+
+                        // Throw an error if target path already exists or inaccessible.
+                        if target.exists() {
+                            return Err(LuaError::external("target path already exists"));
+                        }
+
+                        if !module_context.can_write_path(&target) {
+                            return Err(LuaError::external("no target path write permissions"));
+                        }
+
+                        async fn try_move(source: &Path, target: &Path) -> std::io::Result<()> {
+                            if source.is_file() {
+                                // Try to rename the file (mv) or copy it and then
+                                // remove the source if mv has failed (different
+                                // mounts).
+                                if fs::rename(source, target).await.is_err() {
+                                    fs::copy(source, target).await?;
+                                    fs::remove_file(source).await?;
+                                }
+                            }
+
+                            else if source.is_dir() {
+                                // Try to rename the folder (mv) or create a target
+                                // folder and move all the files there.
+                                if fs::rename(source, target).await.is_err() {
+                                    fs::create_dir_all(target).await?;
+
+                                    for entry in source.read_dir()? {
+                                        let entry = entry?;
+
+                                        Box::pin(try_move(
+                                            &entry.path(),
+                                            &target.join(entry.file_name())
+                                        )).await?;
+                                    }
+
+                                    fs::remove_dir_all(source).await?;
+                                }
+                            }
+
+                            else if source.is_symlink() {
+                                if let Some(source_filename) = source.file_name() {
+                                    #[cfg(target_family = "unix")]
+                                    std::os::unix::fs::symlink(
+                                        source.read_link()?,
+                                        target.join(source_filename)
+                                    )?;
+                                }
+
+                                fs::remove_file(source).await?;
+                            }
+
+                            Ok(())
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            try_move(&source, &target).await?;
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_remove: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, false)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&path) {
+                            return Err(LuaError::external("no path write permissions"));
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            if path.is_dir() {
+                                fs::remove_dir_all(path).await?;
+                            } else {
+                                fs::remove_file(path).await?;
+                            }
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_open: {
+                let api_context = api_context.clone();
+                let file_handles = file_handles.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+                    let file_handles = file_handles.clone();
+
+                    lua.create_function(move |_lua: &Lua, (mut path, options): (PathBuf, Option<LuaTable>)| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
                         if let Some(parent) = path.parent() && !parent.is_dir() {
-                            if !context.can_write_path(parent) {
+                            if !api_context.can_access_path(parent) {
+                                return Err(LuaError::external("this path cannot be accessed"));
+                            }
+
+                            if !module_context.can_write_path(parent) {
                                 return Err(LuaError::external("no path write permissions"));
                             }
 
@@ -412,11 +477,11 @@ impl FilesystemApi {
                             append = options.get::<bool>("append").unwrap_or_default();
                         }
 
-                        if read && !context.can_read_path(&path) {
+                        if read && !module_context.can_read_path(&path) {
                             return Err(LuaError::external("no path read permissions"));
                         }
 
-                        if (write || create || overwrite || append) && !context.can_write_path(&path) {
+                        if (write || create || overwrite || append) && !module_context.can_write_path(&path) {
                             return Err(LuaError::external("no path write permissions"));
                         }
 
@@ -451,7 +516,7 @@ impl FilesystemApi {
             fs_seek: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, position): (i32, i64)| {
+                lua.create_function(move |_lua: &Lua, (handle, position): (i32, i64)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -477,7 +542,7 @@ impl FilesystemApi {
             fs_seek_rel: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, offset): (i32, i64)| {
+                lua.create_function(move |_lua: &Lua, (handle, offset): (i32, i64)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -496,7 +561,7 @@ impl FilesystemApi {
             fs_truncate: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, length): (i32, u64)| {
+                lua.create_function(move |_lua: &Lua, (handle, length): (i32, u64)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -565,7 +630,7 @@ impl FilesystemApi {
             fs_write: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, (handle, content, position): (i32, Bytes, Option<i64>)| {
+                lua.create_function(move |_lua: &Lua, (handle, content, position): (i32, Bytes, Option<i64>)| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -596,7 +661,7 @@ impl FilesystemApi {
             fs_flush: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -614,7 +679,7 @@ impl FilesystemApi {
             fs_close: {
                 let file_handles = file_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = file_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -632,245 +697,314 @@ impl FilesystemApi {
                 })?
             },
 
-            fs_create_file: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
+            fs_create_file: {
+                let api_context = api_context.clone();
 
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
 
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_write_path(&path) {
-                        return Err(LuaError::external("no path write permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        if let Some(parent) = path.parent() && !parent.is_dir() {
-                            fs::create_dir_all(parent).await?;
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
                         }
 
-                        fs::write(path, []).await?;
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_read_file: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_read_path(&path) {
-                        return Err(LuaError::external("no path read permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        let content = Bytes::from(fs::read(path).await?);
-
-                        Ok(Box::new(move |lua: &Lua| {
-                            content.into_lua(lua)
-                        }) as TaskOutput)
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_write_file: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, (mut path, content): (PathBuf, Bytes)| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_write_path(&path) {
-                        return Err(LuaError::external("no path write permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        if let Some(parent) = path.parent() && !parent.is_dir() {
-                            fs::create_dir_all(parent).await?;
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
                         }
 
-                        fs::write(path, content.as_slice()).await?;
+                        if !module_context.can_write_path(&path) {
+                            return Err(LuaError::external("no path write permissions"));
+                        }
 
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_remove_file: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, false)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_write_path(&path) {
-                        return Err(LuaError::external("no path write permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        fs::remove_file(path).await?;
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_create_dir: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_write_path(&path) {
-                        return Err(LuaError::external("no path write permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        fs::create_dir_all(path).await?;
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
-
-            fs_read_dir: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
-
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
-
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_read_path(&path) {
-                        return Err(LuaError::external("no path read permissions"));
-                    }
-
-                    let value = PromiseValue::from_blocking(move || {
-                        let entries = path.read_dir()?
-                            .map(|entry| {
-                                entry.map(|entry| (entry.file_name(), entry.path()))
-                            })
-                            .collect::<Result<Box<[_]>, _>>()?;
-
-                        Ok(Box::new(move |lua: &Lua| {
-                            let result = lua.create_table_with_capacity(entries.len(), 0)?;
-
-                            for (name, path) in entries {
-                                let entry_table = lua.create_table_with_capacity(0, 3)?;
-
-                                entry_table.raw_set("name", name.to_string_lossy().to_string())?;
-                                entry_table.raw_set("path", path.to_string_lossy().to_string())?;
-
-                                entry_table.raw_set("type", {
-                                    if path.is_symlink() {
-                                        "symlink"
-                                    } else if path.is_dir() {
-                                        "directory"
-                                    } else {
-                                        "file"
-                                    }
-                                })?;
-
-                                result.raw_push(entry_table)?;
+                        let value = PromiseValue::from_future(async move {
+                            if let Some(parent) = path.parent() && !parent.is_dir() {
+                                fs::create_dir_all(parent).await?;
                             }
 
-                            Ok(LuaValue::Table(result))
-                        }) as TaskOutput)
-                    });
+                            fs::write(path, []).await?;
 
-                    Promise::new(value)
-                        .into_lua(lua)
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
                 })
-            }),
+            },
 
-            fs_remove_dir: Box::new(|lua: &Lua, context: &Context| {
-                let context = context.to_owned();
+            fs_read_file: {
+                let api_context = api_context.clone();
 
-                lua.create_function(move |lua: &Lua, mut path: PathBuf| {
-                    if path.is_relative() {
-                        path = context.module_dir.join(path);
-                    }
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
 
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
 
-                    if !context.can_write_path(&path) {
-                        return Err(LuaError::external("no path write permissions"));
-                    }
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
 
-                    let value = PromiseValue::from_future(async move {
-                        fs::remove_dir_all(path).await?;
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
 
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
+                        if !module_context.can_read_path(&path) {
+                            return Err(LuaError::external("no path read permissions"));
+                        }
 
-                    Promise::new(value)
-                        .into_lua(lua)
+                        let value = PromiseValue::from_future(async move {
+                            let content = Bytes::from(fs::read(path).await?);
+
+                            Ok(Box::new(move |lua: &Lua| {
+                                content.into_lua(lua)
+                            }) as TaskOutput)
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
                 })
-            }),
+            },
+
+            fs_write_file: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, (mut path, content): (PathBuf, Bytes)| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&path) {
+                            return Err(LuaError::external("no path write permissions"));
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            if let Some(parent) = path.parent() && !parent.is_dir() {
+                                fs::create_dir_all(parent).await?;
+                            }
+
+                            fs::write(path, content.as_slice()).await?;
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_remove_file: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, false)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&path) {
+                            return Err(LuaError::external("no path write permissions"));
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            fs::remove_file(path).await?;
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_create_dir: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&path) {
+                            return Err(LuaError::external("no path write permissions"));
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            fs::create_dir_all(path).await?;
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_read_dir: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_read_path(&path) {
+                            return Err(LuaError::external("no path read permissions"));
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            let mut read_entries = tasks::fs::read_dir(path).await?;
+                            let mut entries = Vec::new();
+
+                            while let Some(entry) = read_entries.next_entry().await? {
+                                entries.push((entry.file_name(), entry.path()));
+                            }
+
+                            drop(read_entries);
+
+                            Ok(Box::new(move |lua: &Lua| {
+                                let result = lua.create_table_with_capacity(entries.len(), 0)?;
+
+                                for (name, path) in entries {
+                                    let entry_table = lua.create_table_with_capacity(0, 3)?;
+
+                                    entry_table.raw_set("name", lua.create_string(name.as_encoded_bytes())?)?;
+                                    entry_table.raw_set("path", lua.create_string(path.as_os_str().as_encoded_bytes())?)?;
+
+                                    entry_table.raw_set("type", {
+                                        if path.is_symlink() {
+                                            "symlink"
+                                        } else if path.is_dir() {
+                                            "directory"
+                                        } else {
+                                            "file"
+                                        }
+                                    })?;
+
+                                    result.raw_push(entry_table)?;
+                                }
+
+                                Ok(LuaValue::Table(result))
+                            }) as TaskOutput)
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            fs_remove_dir: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
+
+                    lua.create_function(move |lua: &Lua, mut path: PathBuf| {
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
+
+                        path = normalize_path(path, true)
+                            .map_err(|err| {
+                                LuaError::external(format!("failed to normalize path: {err}"))
+                            })?;
+
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&path) {
+                            return Err(LuaError::external("no path write permissions"));
+                        }
+
+                        let value = PromiseValue::from_future(async move {
+                            fs::remove_dir_all(path).await?;
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
 
             lua
         })
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 20)?;
 
         env.raw_set("exists", (self.fs_exists)(&self.lua, context)?)?;

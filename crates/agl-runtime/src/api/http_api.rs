@@ -48,6 +48,7 @@ fn create_request(
         "patch"   => Method::PATCH,
         "delete"  => Method::DELETE,
         "connect" => Method::CONNECT,
+        "trace"   => Method::TRACE,
 
         _ => return Err(LuaError::external("invalid request method"))
     };
@@ -271,7 +272,7 @@ impl HttpApi {
             http_close: {
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     net_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))

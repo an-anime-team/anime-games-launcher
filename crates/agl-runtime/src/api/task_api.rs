@@ -257,11 +257,11 @@ impl LuaUserData for Promise {
             }
         }
 
-        methods.add_method("poll", |lua: &Lua, promise: &Self, _: ()| -> Result<LuaMultiValue, LuaError> {
+        methods.add_method("poll", |lua: &Lua, promise: &Self, ()| -> Result<LuaMultiValue, LuaError> {
             lua.pack_multi(poll(lua, promise)?)
         });
 
-        methods.add_method("await", |lua: &Lua, promise: &Self, _: ()| -> Result<LuaValue, LuaError> {
+        methods.add_method("await", |lua: &Lua, promise: &Self, ()| -> Result<LuaValue, LuaError> {
             let mut lock = promise.lock();
 
             let Some(value) = lock.take() else {
@@ -374,7 +374,7 @@ impl LuaUserData for Promise {
             }
         });
 
-        methods.add_method("abort", |_, promise: &Self, _: ()| -> Result<(), LuaError> {
+        methods.add_method("abort", |_lua: &Lua, promise: &Self, ()| -> Result<(), LuaError> {
             let mut lock = promise.lock();
 
             let Some(value) = lock.take() else {
