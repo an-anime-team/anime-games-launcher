@@ -31,6 +31,7 @@ name of its output that provides the game integration module.
 {
     "format": 1,
     "game": {
+        "name": "example_game",
         "title": "Example game",
         "description": {
             "en": "Example game description",
@@ -75,9 +76,23 @@ the best translation variant using current system language.
 type LocalizableString = string | { [lang: string]: string };
 ```
 
+### Game name
+
+Game name is an optional field that can be used to identify different game
+manifests.
+
+The idea is that user's application can pull the same or similar game manifests
+from different places - for example, from the main and from a mirror repository.
+Then the application will need to decide what game manifest to use to show it
+to the user. If game name is provided and there are different manifests with
+the same name, an application could group and select one of them to show to user
+and hide all the others.
+
+Game name can have more usages depending on upstream implementation.
+
 ### Game tags
 
-List of available game tags:
+List of standard game tags:
 
 | Name                 | Short description                                            |
 | -------------------- | ------------------------------------------------------------ |
@@ -89,6 +104,9 @@ List of available game tags:
 | `in-game-purchases`  | Game accepts real money for in-game content                  |
 | `graphic-violence`   | Game has scenes with blood or injuries                       |
 | `adult-content`      | Game has adult content                                       |
+
+You can also add unstandardized strings as tags. Depending on upstream
+implementation they can be shown to the user as well.
 
 ### Game integration agreement
 
