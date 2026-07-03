@@ -29,7 +29,7 @@ name of its output that provides the game integration module.
 
 ```json
 {
-    "version": 1,
+    "format": 1,
     "game": {
         "title": "Example game",
         "description": {
@@ -81,15 +81,14 @@ List of available game tags:
 
 | Name                 | Short description                                            |
 | -------------------- | ------------------------------------------------------------ |
-| `gambling`           | Game has gambling elements                                   |
-| `payments`           | Buying in-game items for real money                          |
-| `graphic-violence`   | Game contains explicit elements including blood and injuries |
+| `free-to-play`       | The game is free to play                                     |
 | `cooperative`        | Game has built-in multiplayer (cooperative) elements         |
-| `social`             | Game has social features - online chat, VoIP, shared spaces  |
-| `controller`         | Game has controllers support                                 |
-| `performance-issues` | Known performance issues on some platforms                   |
-| `anti-cheat`         | Client or server-side anti-cheat                             |
-| `workarounds`        | Game package provides modifications to run the game          |
+| `social-features`    | Game has social features such as text, voice or video chats  |
+| `controller-support` | Game has controllers support                                 |
+| `gambling`           | Game has gambling elements                                   |
+| `in-game-purchases`  | Game accepts real money for in-game content                  |
+| `graphic-violence`   | Game has scenes with blood or injuries                       |
+| `adult-content`      | Game has adult content                                       |
 
 ### Game integration agreement
 

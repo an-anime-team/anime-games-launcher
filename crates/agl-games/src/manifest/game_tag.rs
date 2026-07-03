@@ -24,14 +24,13 @@ pub enum GameTag {
     /// Game has built-in multiplayer (cooperative) elements.
     Cooperative,
 
-    /// Game has social features - online chat, VoIP, shared spaces, etc.
+    /// Game has social features such as text, voice or video chats.
     SocialFeatures,
 
     /// Game has controllers support.
     ControllerSupport,
 
-    /// Game has scenes of gambling or has game mechanics related to gambling
-    /// (wishes, banners, etc.)
+    /// Game has scenes of gambling or has game mechanics related to gambling.
     Gambling,
 
     /// Game accepts real money for in-game content.
