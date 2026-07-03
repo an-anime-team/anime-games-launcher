@@ -617,36 +617,36 @@ impl SimpleAsyncComponent for MainWindow {
             // Fetch packages allow lists.
 
             tracing::debug!(
-                allow_lists = ?config.packages_allow_lists,
+                scopes_list = ?config.packages_scopes_list,
                 "fetching packages allow lists"
             );
 
             sender.input(MainWindowMsg::SetLoadingStatus(Some(
-                i18n!("fetching_packages_allow_lists")
-                    .unwrap_or("Fetching packages allow lists")
+                i18n!("fetching_packages_scopes_lists")
+                    .unwrap_or("Fetching packages scopes lists")
                     .to_string()
             )));
 
-            let mut tasks = Vec::with_capacity(config.packages_allow_lists.len());
+            let mut tasks = Vec::with_capacity(config.packages_scopes_list.len());
             let mut paths = Vec::with_capacity(tasks.capacity());
 
             let mut cache_hits = HashSet::new();
 
-            // Either fetch package allow list or use cached one.
-            for url in &config.packages_allow_lists {
+            // Either fetch package scopes list or use cached one.
+            for url in &config.packages_scopes_list {
                 let cache_path = cache::get_path(url);
 
                 cache_hits.insert(cache_path.clone());
 
-                tracing::trace!(?url, ?cache_path, "fetching packages allow list");
+                tracing::trace!(?url, ?cache_path, "fetching packages scopes list");
 
-                // If cache for this allow list is expired - request the list
+                // If cache for this scopes list is expired - request the list
                 // again.
                 if cache::is_expired(
                     &cache_path,
-                    config.cache_packages_allow_lists_duration
+                    config.cache_modules_scopes_lists_duration
                 ).await? {
-                    tracing::trace!(?url, ?cache_path, "packages allow list cache is expired");
+                    tracing::trace!(?url, ?cache_path, "packages scopes list cache is expired");
 
                     let task = downloader.download_with_options(
                         url,

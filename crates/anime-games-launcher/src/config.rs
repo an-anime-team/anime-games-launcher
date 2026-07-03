@@ -74,11 +74,11 @@ pub struct Config {
     /// `cache.game_packages.duration`
     pub cache_game_packages_duration: Duration,
 
-    /// Duration of the runtime packages allow lists cache in seconds. If `0` is
-    /// set then no cache is used. Default is `28800` (8 hours).
+    /// Duration of the runtime modules scopes lists cache in seconds. If `0`
+    /// is set then no cache is used. Default is `28800` (8 hours).
     ///
-    /// `cache.packages_allow_lists.duration`
-    pub cache_packages_allow_lists_duration: Duration,
+    /// `cache.modules_scopes_lists.duration`
+    pub cache_modules_scopes_lists_duration: Duration,
 
     /// Duration since cache entry creation after which it will be automatically
     /// removed.
@@ -86,10 +86,10 @@ pub struct Config {
     /// `cache.collect_garbage_after`
     pub cache_collect_garbage_after: Duration,
 
-    /// URLs to the modules allow lists files.
+    /// URLs to the modules scopes lists files.
     ///
-    /// `packages.allow_lists`
-    pub packages_allow_lists: Vec<String>,
+    /// `packages.scopes_lists`
+    pub packages_scopes_list: Vec<String>,
 
     /// Path to the directory where package resources should be stored.
     ///
@@ -196,11 +196,11 @@ impl Default for Config {
             cache_game_registries_duration: Duration::from_hours(16),
             cache_game_manifests_duration: Duration::from_hours(24),
             cache_game_packages_duration: Duration::from_hours(8),
-            cache_packages_allow_lists_duration: Duration::from_hours(8),
+            cache_modules_scopes_lists_duration: Duration::from_hours(8),
             cache_collect_garbage_after: Duration::from_hours(72),
 
-            packages_allow_lists: vec![
-                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json")
+            packages_scopes_list: vec![
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/scopes.json")
             ],
 
             packages_resources_path: DATA_DIR.join("packages").join("resources"),
@@ -257,11 +257,11 @@ impl Config {
             [cache.game_packages]
             duration = (self.cache_game_packages_duration.as_secs())
 
-            [cache.packages_allow_lists]
-            duration = (self.cache_packages_allow_lists_duration.as_secs())
+            [cache.modules_scopes_lists]
+            duration = (self.cache_modules_scopes_lists_duration.as_secs())
 
             [packages]
-            allow_lists = (self.packages_allow_lists.iter().map(|url| url.as_str()).collect::<Vec<_>>())
+            scopes_lists = (self.packages_scopes_list.iter().map(|url| url.as_str()).collect::<Vec<_>>())
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
@@ -324,7 +324,7 @@ impl Config {
 
                 // `general.network.proxy`
                 if let Some(proxy) = network.get("proxy") {
-                    // New syntax (`general.network.proxy`).
+                    // New syntax (`general.network.proxy`)
                     if let Some(url) = proxy.as_str() {
                         config.general_network_proxy = if url == "system" {
                             None
@@ -333,8 +333,8 @@ impl Config {
                         };
                     }
 
-                    // Old syntax (`general.network.proxy.url`).
-                    if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
+                    // Old syntax (`general.network.proxy.url`)
+                    else if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
                         config.general_network_proxy = if url == "system" {
                             None
                         } else {
@@ -379,11 +379,19 @@ impl Config {
                 }
             }
 
-            // `cache.packages_allow_lists.*`
-            if let Some(packages_allow_lists) = cache.get("packages_allow_lists") {
+            // New syntax (`cache.modules_scopes_lists.*`)
+            if let Some(modules_scopes_lists) = cache.get("modules_scopes_lists") {
+                // `cache.modules_scopes_lists.duration`
+                if let Some(duration) = modules_scopes_lists.get("duration").and_then(Toml::as_integer) {
+                    config.cache_modules_scopes_lists_duration = Duration::from_secs(duration as u64);
+                }
+            }
+
+            // Old syntax (`cache.packages_allow_lists.*`)
+            else if let Some(packages_allow_lists) = cache.get("packages_allow_lists") {
                 // `cache.packages_allow_lists.duration`
                 if let Some(duration) = packages_allow_lists.get("duration").and_then(Toml::as_integer) {
-                    config.cache_packages_allow_lists_duration = Duration::from_secs(duration as u64);
+                    config.cache_modules_scopes_lists_duration = Duration::from_secs(duration as u64);
                 }
             }
 
@@ -395,11 +403,25 @@ impl Config {
 
         // `packages.*`
         if let Some(packages) = value.get("packages") {
-            // `packages.allow_lists`
-            if let Some(allow_lists) = packages.get("allow_lists").and_then(Toml::as_array) {
-                config.packages_allow_lists = allow_lists.iter()
+            // New syntax (`packages.scopes_list`)
+            if let Some(scopes_list) = packages.get("scopes_list").and_then(Toml::as_array) {
+                config.packages_scopes_list = scopes_list.iter()
                     .flat_map(Toml::as_str)
                     .map(String::from)
+                    .collect();
+            }
+
+            // Old syntax (`packages.allow_lists`)
+            else if let Some(allow_lists) = packages.get("allow_lists").and_then(Toml::as_array) {
+                config.packages_scopes_list = allow_lists.iter()
+                    .flat_map(Toml::as_str)
+                    .map(|url| {
+                        if url == "https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json" {
+                            String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/scopes.json")
+                        } else {
+                            String::from(url)
+                        }
+                    })
                     .collect();
             }
 
