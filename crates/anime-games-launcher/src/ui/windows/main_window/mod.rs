@@ -946,6 +946,22 @@ impl SimpleAsyncComponent for MainWindow {
                     .context("failed to deserialize game package lock")?;
 
                 let name = lock.name();
+                let expected_path = config.games_path.join(&name);
+
+                // If loaded game name is different from its file name then
+                // rename it.
+                if expected_path != entry.path() {
+                    tracing::warn!(
+                        actual_path = ?entry.path(),
+                        ?expected_path,
+                        "added game is stored under invalid file name; renaming it"
+                    );
+
+                    tasks::fs::rename(
+                        entry.path(),
+                        expected_path
+                    ).await?;
+                }
 
                 let title = match &lang {
                     Ok(lang) => lock.manifest.game.title.translate(lang),
