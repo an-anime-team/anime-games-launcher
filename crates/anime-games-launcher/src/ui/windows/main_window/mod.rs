@@ -638,7 +638,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                 cache_hits.insert(cache_path.clone());
 
-                tracing::trace!(?url, ?cache_path, "fetching packages scopes list");
+                tracing::trace!(?url, ?cache_path, "fetching modules scopes list");
 
                 // If cache for this scopes list is expired - request the list
                 // again.
@@ -646,7 +646,7 @@ impl SimpleAsyncComponent for MainWindow {
                     &cache_path,
                     config.cache_modules_scopes_lists_duration
                 ).await? {
-                    tracing::trace!(?url, ?cache_path, "packages scopes list cache is expired");
+                    tracing::trace!(?url, ?cache_path, "modules scopes list cache is expired");
 
                     let task = downloader.download_with_options(
                         url,
@@ -658,35 +658,41 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url, cache_path.clone(), task));
+                    tasks.push((url, cache_path, task));
                 }
 
-                paths.push(cache_path);
+                // Otherwise add the cached path.
+                else {
+                    paths.push(cache_path);
+                }
             }
 
-            // Wait for all the allow lists to be downloaded.
+            // Wait for all the modules scopes lists to be downloaded.
             for (url, path, task) in tasks {
-                tracing::trace!(?url, ?path, "awaiting packages allow list downloading");
+                tracing::trace!(?url, ?path, "awaiting modules scopes list downloading");
 
-                let result = task.wait().await
-                    .context("failed to await packages allow list fetching");
+                match task.wait().await {
+                    Ok(_) => {
+                        paths.push(path);
+                    }
 
-                if let Err(err) = result {
-                    // Remove half-downloaded/broken file.
-                    let _ = tasks::fs::remove_file(path).await;
+                    Err(err) => {
+                        tracing::error!(?url, ?err, "failed to download modules scopes list");
 
-                    return Err(err);
+                        // Remove half-downloaded/broken file.
+                        let _ = tasks::fs::remove_file(path).await;
+                    }
                 }
             }
 
             for path in paths {
-                tracing::trace!(?path, "reading packages allow list");
+                tracing::trace!(?path, "reading modules scopes list");
 
                 let scopes_list = tasks::fs::read(path).await?;
                 let scopes_list = serde_json::from_slice::<Json>(&scopes_list)?;
 
                 let scopes_list = ScopesList::from_json(&scopes_list)
-                    .context("failed to deserialize packages scopes list")?;
+                    .context("failed to deserialize modules scopes list")?;
 
                 sender.input(MainWindowMsg::AddScopesList(scopes_list));
             }
@@ -694,7 +700,7 @@ impl SimpleAsyncComponent for MainWindow {
             // Fetch game registries.
 
             tracing::debug!(
-                registries = ?config::startup().games_registries,
+                registries = ?config.games_registries,
                 "fetching games registries"
             );
 
@@ -733,24 +739,30 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url, cache_path.clone(), task));
+                    tasks.push((url, cache_path, task));
                 }
 
-                paths.push(cache_path);
+                // Otherwise add the cached path.
+                else {
+                    paths.push(cache_path);
+                }
             }
 
             // Wait for all the game registries to be downloaded.
             for (url, path, task) in tasks {
                 tracing::trace!(?url, ?path, "awaiting game registry downloading");
 
-                let result = task.wait().await
-                    .context("failed to await game registry fetching");
+                match task.wait().await {
+                    Ok(_) => {
+                        paths.push(path);
+                    }
 
-                if let Err(err) = result {
-                    // Remove half-downloaded/broken file.
-                    let _ = tasks::fs::remove_file(path).await;
+                    Err(err) => {
+                        tracing::error!(?url, ?err, "failed to download games registries");
 
-                    return Err(err);
+                        // Remove half-downloaded/broken file.
+                        let _ = tasks::fs::remove_file(path).await;
+                    }
                 }
             }
 
@@ -798,6 +810,10 @@ impl SimpleAsyncComponent for MainWindow {
 
                 tracing::trace!(?url, ?cache_path, "fetching game manifest");
 
+                // Prepare game name. Currently it's derived from the game's
+                // manifest file URL.
+                let game_name = games::get_name(&url);
+
                 // If cache for this game manifest is expired - request the
                 // manifest again.
                 if cache::is_expired(
@@ -816,26 +832,36 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url.clone(), cache_path.clone(), task));
+                    tasks.push((
+                        game_name,
+                        url,
+                        is_featured,
+                        cache_path,
+                        task
+                    ));
                 }
 
-                let game_name = games::get_name(&url);
-
-                paths.push((game_name, url, cache_path, is_featured));
+                // Otherwise add the cached path and info.
+                else {
+                    paths.push((game_name, url, cache_path, is_featured));
+                }
             }
 
             // Wait for all the game manifests to be downloaded.
-            for (url, path, task) in tasks {
+            for (game_name, url, is_featured, path, task) in tasks {
                 tracing::trace!(?url, ?path, "awaiting game manifest downloading");
 
-                let result = task.wait().await
-                    .context("failed to await game manifest fetching");
+                match task.wait().await {
+                    Ok(_) => {
+                        paths.push((game_name, url, path, is_featured));
+                    }
 
-                if let Err(err) = result {
-                    // Remove half-downloaded/broken file.
-                    let _ = tasks::fs::remove_file(path).await;
+                    Err(err) => {
+                        tracing::error!(?url, ?err, "failed to download game manifest");
 
-                    return Err(err);
+                        // Remove half-downloaded/broken file.
+                        let _ = tasks::fs::remove_file(path).await;
+                    }
                 }
             }
 
