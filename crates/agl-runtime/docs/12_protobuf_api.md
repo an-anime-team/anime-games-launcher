@@ -58,7 +58,7 @@ protobuf message from either a key-value table, or a sequential values table.
 local encoded_value = protobuf.encode(schema, "Person", {
     id     = 1,
     name   = "KRypt0n_",
-    email  = "krypt0nn@vk.com",
+    email  = "krypt0nn@dawn.wine",
     status = "ACTIVE" -- number "1" would work too
 })
 
@@ -66,7 +66,7 @@ local encoded_value = protobuf.encode(schema, "Person", {
 local encoded_value = protobuf.encode(schema, "Person", {
     1,
     "KRypt0n_",
-    "krypt0nn@vk.com",
+    "krypt0nn@dawn.wine",
     1 -- string "ACTIVE" would work too
 })
 
@@ -83,6 +83,6 @@ local decoded_value = protobuf.decode(schema, "Person", encoded_value)
 
 print(`  Name: {decoded_value.name}`)   -- "KRypt0n_"
 print(`    Id: {decoded_value.id}`)     -- "1"
-print(` Email: {decoded_value.email}`)  -- "krypt0nn@vk.com"
+print(` Email: {decoded_value.email}`)  -- "krypt0nn@dawn.wine"
 print(`Status: {decoded_value.status}`) -- "ACTIVE"
 ```

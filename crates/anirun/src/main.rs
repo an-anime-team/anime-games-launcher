@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anirun
-// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
-#[command(author = "Nikita Podvirnyi <krypt0nn@vk.com>")]
+#[command(author = "Nikita Podvirnyi <krypt0nn@dawn.wine>")]
 struct Cli {
     #[arg(long, alias = "resources")]
     pub resources_dir: Option<PathBuf>,
@@ -88,7 +88,7 @@ struct Cli {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
-#[command(author = "Nikita Podvirnyi <krypt0nn@vk.com>")]
+#[command(author = "Nikita Podvirnyi <krypt0nn@dawn.wine>")]
 enum CliCommands {
     /// Packages manager commands.
     #[command(subcommand)]

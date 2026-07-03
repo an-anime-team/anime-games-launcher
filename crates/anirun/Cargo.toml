@@ -2,7 +2,7 @@
 name = "anirun"
 version = "0.1.2"
 description = "Anime Games Launcher runtime modules CLI"
-authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
+authors = ["Nikita Podvirnyi <krypt0nn@dawn.wine>"]
 homepage = "https://github.com/an-anime-team/anime-games-launcher"
 repository = "https://github.com/an-anime-team/anime-games-launcher"
 license = "GPL-3.0-or-later"
