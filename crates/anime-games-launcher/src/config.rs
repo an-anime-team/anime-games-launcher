@@ -223,8 +223,35 @@ impl Default for Config {
 
             runtime_private_paths: {
                 let mut paths = vec![
-                    // Accounts passwords.
-                    PathBuf::from("/etc/shadow")
+                    // Linux accounts.
+                    PathBuf::from("/etc/shadow"),
+                    PathBuf::from("/etc/gshadow"),
+                    PathBuf::from("/etc/passwd"),
+                    PathBuf::from("/etc/group"),
+                    PathBuf::from("/etc/sudoers"),
+                    PathBuf::from("/etc/static/sudoers"),
+                    PathBuf::from("/etc/.pwd.lock"),
+
+                    // BSD accounts.
+                    //
+                    // https://man.freebsd.org/cgi/man.cgi?query=master.passwd&sektion=5&n=1
+                    PathBuf::from("/etc/master.passwd"),
+
+                    // Linux SSH and GnuPG info.
+                    PathBuf::from("/etc/ssh"),
+                    PathBuf::from("/etc/gnupg"),
+                    PathBuf::from("/etc/static/ssh"),
+                    PathBuf::from("/etc/static/gnupg"),
+
+                    // Linux LUKS encryption data.
+                    PathBuf::from("/etc/crypttab"),
+
+                    // Linux WIFI credentials.
+                    PathBuf::from("/etc/wpa_supplicant"),
+                    PathBuf::from("/etc/static/wpa_supplicant"),
+
+                    // Linux boot partition.
+                    PathBuf::from("/boot")
                 ];
 
                 // SSH private and public keys.
