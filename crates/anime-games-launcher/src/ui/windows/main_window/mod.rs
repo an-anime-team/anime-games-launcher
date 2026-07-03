@@ -689,7 +689,9 @@ impl SimpleAsyncComponent for MainWindow {
                 tracing::trace!(?path, "reading modules scopes list");
 
                 let scopes_list = tasks::fs::read(path).await?;
-                let scopes_list = serde_json::from_slice::<Json>(&scopes_list)?;
+
+                let scopes_list = serde_json::from_slice::<Json>(&scopes_list)
+                    .context("failed to decode json file with modules scopes list")?;
 
                 let scopes_list = ScopesList::from_json(&scopes_list)
                     .context("failed to deserialize modules scopes list")?;
@@ -772,7 +774,9 @@ impl SimpleAsyncComponent for MainWindow {
                 tracing::trace!(?path, "reading game registry");
 
                 let registry = tasks::fs::read(path).await?;
-                let registry = serde_json::from_slice::<Json>(&registry)?;
+
+                let registry = serde_json::from_slice::<Json>(&registry)
+                    .context("failed to decode json file with games registry")?;
 
                 let registry = GamesRegistryManifest::from_json(&registry)
                     .context("failed to deserialize games registry")?;
