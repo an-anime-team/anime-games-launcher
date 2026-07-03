@@ -23,7 +23,7 @@ use agl_core::tasks;
 use agl_packages::storage::Storage;
 use agl_games::manifest::GameManifest;
 
-use crate::{config, i18n, games};
+use crate::{config, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 
@@ -431,7 +431,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
             GameStoreDetailsInput::UpdateGameStatus => {
                 let config = config::get().await;
 
-                let path = config.games_path.join(games::get_name(&self.manifest_url));
+                let path = config.games_path.join(&self.name);
 
                 if path.is_file() {
                     self.status = GameStatus::Added;
@@ -544,7 +544,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 let config = config::get().await;
 
-                                let path = config.games_path.join(games::get_name(&lock.url));
+                                let path = config.games_path.join(&name);
 
                                 tracing::info!(?url, ?path, "game added");
 
@@ -554,7 +554,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     Err(err) => {
                                         sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
-                                        tracing::error!(?err, "failed to serialize game package lock");
+                                        tracing::error!(
+                                            ?err,
+                                            ?name,
+                                            "failed to serialize game package lock"
+                                        );
 
                                         dialogs::error(
                                             i18n!("failed_serialize_game_package_lock")
@@ -566,10 +570,14 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     }
                                 };
 
-                                if let Err(err) = std::fs::write(path, lock_bytes) {
+                                if let Err(err) = tasks::fs::write(path, lock_bytes).await {
                                     sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
-                                    tracing::error!(?err, "failed to save game package lock");
+                                    tracing::error!(
+                                        ?err,
+                                        ?name,
+                                        "failed to save game package lock"
+                                    );
 
                                     dialogs::error(
                                         i18n!("failed_save_game_package_lock")

@@ -22,12 +22,13 @@ use std::sync::Arc;
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use agl_core::tasks;
 use agl_games::api::{
     ActionsPipeline, GameComponentsGroup, GameEdition, GameIntegration,
     GameLaunchInfo, GameSettingsGroup, GameVariant
 };
 
-use crate::{consts, config, games, i18n};
+use crate::{consts, config, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
@@ -50,8 +51,7 @@ struct LoadedGameInfo {
 #[derive(Debug, Clone)]
 pub enum LibraryPageInput {
     AddGame {
-        /// Unique game name (internal identifier). A game package lock filename
-        /// is expected to be used, though any unique value is suitable.
+        /// Unique game name.
         name: String,
 
         /// Loaded game package info.
@@ -280,8 +280,8 @@ impl SimpleAsyncComponent for LibraryPage {
             LibraryPageInput::AddGame { name, package, integration } => {
                 if self.games.contains_key(&name) {
                     tracing::warn!(
-                        ?name,
                         url = package.url,
+                        ?name,
                         title = package.manifest.game.title.default_translation(),
                         "attempted to load a game package for a game that is already registered"
                     );
@@ -290,8 +290,8 @@ impl SimpleAsyncComponent for LibraryPage {
                 }
 
                 tracing::debug!(
-                    ?name,
                     url = package.url,
+                    ?name,
                     title = package.manifest.game.title.default_translation(),
                     "loading game package"
                 );
@@ -312,8 +312,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     Err(err) => {
                         tracing::error!(
                             ?err,
-                            ?name,
                             url = package.url,
+                            ?name,
                             title = package.manifest.game.title.default_translation(),
                             "failed to request game integration editions"
                         );
@@ -365,8 +365,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     };
 
                     tracing::info!(
+                        url = ?game_info.package.url,
                         ?name,
-                        manifest_url = ?game_info.package.url,
                         ?title,
                         "deleting game package"
                     );
@@ -376,13 +376,13 @@ impl SimpleAsyncComponent for LibraryPage {
 
                     self.game_details.emit(GameLibraryDetailsInput::Clear);
 
-                    let path = config.games_path.join(games::get_name(&game_info.package.url));
+                    let path = config.games_path.join(&name);
 
-                    if path.exists() && let Err(err) = std::fs::remove_file(path) {
+                    if path.exists() && let Err(err) = tasks::fs::remove_file(path).await {
                         tracing::error!(
                             ?err,
+                            url = ?game_info.package.url,
                             ?name,
-                            manifest_url = ?game_info.package.url,
                             ?title,
                             "failed to delete game package"
                         );

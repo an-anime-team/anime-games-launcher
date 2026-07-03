@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::io::Read;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -102,7 +102,7 @@ pub enum MainWindowMsg {
     AddScopesList(ScopesList),
 
     AddStorePageGame {
-        /// Unique game name. A game package lock filename is expected be used.
+        /// Unique game name.
         name: String,
 
         /// URL to the game's manifest file.
@@ -113,7 +113,7 @@ pub enum MainWindowMsg {
     },
 
     AddLibraryPageGame {
-        /// Unique game name. A game package lock filename is expected be used.
+        /// Unique game name.
         name: String,
 
         /// Game package lock.
@@ -637,7 +637,7 @@ impl SimpleAsyncComponent for MainWindow {
             )));
 
             let mut tasks = Vec::with_capacity(config.packages_scopes_lists.len());
-            let mut paths = Vec::with_capacity(tasks.capacity());
+            let mut paths = Vec::with_capacity(config.packages_scopes_lists.len());
 
             let mut cache_hits = HashSet::new();
 
@@ -722,10 +722,10 @@ impl SimpleAsyncComponent for MainWindow {
             )));
 
             let mut tasks = Vec::with_capacity(config.games_registries.len());
-            let mut paths = Vec::with_capacity(tasks.capacity());
+            let mut paths = Vec::with_capacity(config.games_registries.len());
 
             // Either fetch game registry manifest or use cached one.
-            for url in &config.games_registries {
+            for (i, url) in config.games_registries.iter().enumerate() {
                 let cache_path = cache::get_path(url);
 
                 cache_hits.insert(cache_path.clone());
@@ -750,22 +750,22 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url, cache_path, task));
+                    tasks.push((url, cache_path, task, i));
                 }
 
                 // Otherwise add the cached path.
                 else {
-                    paths.push(cache_path);
+                    paths.push((i, cache_path));
                 }
             }
 
             // Wait for all the game registries to be downloaded.
-            for (url, path, task) in tasks {
+            for (url, path, task, i) in tasks {
                 tracing::trace!(?url, ?path, "awaiting game registry downloading");
 
                 match task.wait().await {
                     Ok(_) => {
-                        paths.push(path);
+                        paths.push((i, path));
                     }
 
                     Err(err) => {
@@ -777,9 +777,12 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            let mut games_manifests = HashMap::<String, bool>::new();
+            // Restore original games registries order.
+            paths.sort_by_key(|(i, _)| *i);
 
-            for path in paths {
+            let mut games_manifests = Vec::with_capacity(paths.len());
+
+            for (_, path) in paths {
                 tracing::trace!(?path, "reading game registry");
 
                 let registry = tasks::fs::read(path).await?;
@@ -793,16 +796,17 @@ impl SimpleAsyncComponent for MainWindow {
                 // List all the games manifests' URLs and whether they're
                 // featured.
                 for game in registry.games {
-                    *games_manifests.entry(game.url)
-                        .or_default() |= game.featured;
+                    match games_manifests.iter_mut().find(|(url, _)| url == &game.url) {
+                        Some((_, featured)) => *featured |= game.featured,
+                        None => games_manifests.push((game.url, game.featured))
+                    }
                 }
             }
 
             // Fetch game manifests.
 
             tracing::debug!(
-                urls = ?games_manifests.keys()
-                    .collect::<Vec<_>>(),
+                manifests = ?games_manifests,
                 "fetching games manifests"
             );
 
@@ -823,10 +827,6 @@ impl SimpleAsyncComponent for MainWindow {
 
                 tracing::trace!(?url, ?cache_path, "fetching game manifest");
 
-                // Prepare game name. Currently it's derived from the game's
-                // manifest file URL.
-                let game_name = games::get_name(&url);
-
                 // If cache for this game manifest is expired - request the
                 // manifest again.
                 if cache::is_expired(
@@ -846,7 +846,6 @@ impl SimpleAsyncComponent for MainWindow {
                     );
 
                     tasks.push((
-                        game_name,
                         url,
                         is_featured,
                         cache_path,
@@ -856,17 +855,17 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // Otherwise add the cached path and info.
                 else {
-                    paths.push((game_name, url, cache_path, is_featured));
+                    paths.push((url, cache_path, is_featured));
                 }
             }
 
             // Wait for all the game manifests to be downloaded.
-            for (game_name, url, is_featured, path, task) in tasks {
+            for (url, is_featured, path, task) in tasks {
                 tracing::trace!(?url, ?path, "awaiting game manifest downloading");
 
                 match task.wait().await {
                     Ok(_) => {
-                        paths.push((game_name, url, path, is_featured));
+                        paths.push((url, path, is_featured));
                     }
 
                     Err(err) => {
@@ -933,21 +932,20 @@ impl SimpleAsyncComponent for MainWindow {
             for entry in config.games_path.read_dir()? {
                 let entry = entry?;
 
-                let game_name = entry.file_name()
-                    .to_string_lossy()
-                    .to_string();
-
                 tracing::trace!(
                     path = ?entry.path(),
-                    ?game_name,
                     "loading added game package lock"
                 );
 
                 let lock = tasks::fs::read(entry.path()).await?;
-                let lock = serde_json::from_slice::<Json>(&lock)?;
+
+                let lock = serde_json::from_slice::<Json>(&lock)
+                    .context("failed to decode json file with game package lock")?;
 
                 let mut lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
+
+                let name = lock.name();
 
                 let title = match &lang {
                     Ok(lang) => lock.manifest.game.title.translate(lang),
@@ -965,7 +963,7 @@ impl SimpleAsyncComponent for MainWindow {
                 ).await? {
                     tracing::trace!(
                         path = ?entry.path(),
-                        ?game_name,
+                        ?name,
                         ?title,
                         "updating added game package lock, cache is expired"
                     );
@@ -991,7 +989,7 @@ impl SimpleAsyncComponent for MainWindow {
                 }
 
                 sender.input(MainWindowMsg::AddLibraryPageGame {
-                    name: game_name,
+                    name,
                     lock
                 });
             }
@@ -1069,10 +1067,6 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Add store page games.
 
-            // Show featured games first.
-            #[allow(clippy::unnecessary_sort_by)]
-            paths.sort_by(|a, b| b.3.cmp(&a.3));
-
             tracing::debug!(?paths, "adding store page games");
 
             sender.input(MainWindowMsg::SetLoadingStatus(Some(
@@ -1081,18 +1075,48 @@ impl SimpleAsyncComponent for MainWindow {
                     .to_string()
             )));
 
-            for (game_name, url, path, _is_featured) in paths {
+            let mut games = Vec::with_capacity(paths.len());
+
+            // Read games manifests.
+            for (url, path, is_featured) in paths {
                 tracing::trace!(?url, ?path, "reading game manifest");
 
                 let manifest = tasks::fs::read(path).await?;
-                let manifest = serde_json::from_slice::<Json>(&manifest)?;
+
+                let manifest = serde_json::from_slice::<Json>(&manifest)
+                    .context("failed to decode json file with game manifest")?;
 
                 let manifest = GameManifest::from_json(&manifest)
                     .context("failed to deserialize game manifest")?;
 
+                let name = games::get_name(
+                    manifest.game.name.as_deref(),
+                    url.as_str()
+                );
+
+                // If there's yet no game with the same name then add it.
+                if !games.iter().any(|(game_name, _, _, _)| game_name == &name) {
+                    games.push((name, url, is_featured, manifest));
+                }
+
+                else {
+                    tracing::warn!(
+                        ?url,
+                        ?name,
+                        title = manifest.game.title.default_translation(),
+                        "a game with the same name has already been added to the store page"
+                    );
+                }
+            }
+
+            // Show featured games first.
+            #[allow(clippy::unnecessary_sort_by)]
+            games.sort_by(|a, b| b.2.cmp(&a.2));
+
+            for (name, manifest_url, _, manifest) in games {
                 sender.input(MainWindowMsg::AddStorePageGame {
-                    name: game_name,
-                    manifest_url: url,
+                    name,
+                    manifest_url,
                     manifest
                 });
             }
@@ -1200,8 +1224,8 @@ impl SimpleAsyncComponent for MainWindow {
                 if let Err(err) = result {
                     tracing::error!(
                         ?err,
-                        ?name,
                         url = lock.url,
+                        ?name,
                         title = lock.manifest.game.title.default_translation(),
                         "failed to load game package"
                     );
@@ -1234,8 +1258,8 @@ impl SimpleAsyncComponent for MainWindow {
 
                 let Some(module_key) = find_module_key(&lock) else {
                     tracing::error!(
-                        ?name,
                         url = lock.url,
+                        ?name,
                         title = lock.manifest.game.title.default_translation(),
                         "failed to find game integration module in package lock"
                     );
@@ -1265,8 +1289,8 @@ impl SimpleAsyncComponent for MainWindow {
                     Some(Err(err)) => {
                         tracing::error!(
                             ?err,
-                            ?name,
                             url = lock.url,
+                            ?name,
                             title = lock.manifest.game.title.default_translation(),
                             "failed to read game integration from the runtime"
                         );
@@ -1282,8 +1306,8 @@ impl SimpleAsyncComponent for MainWindow {
 
                     None => {
                         tracing::error!(
-                            ?name,
                             url = lock.url,
+                            ?name,
                             title = lock.manifest.game.title.default_translation(),
                             "game integration module is missing in the runtime"
                         );
@@ -1311,8 +1335,8 @@ impl SimpleAsyncComponent for MainWindow {
                     Err(err) => {
                         tracing::error!(
                             ?err,
-                            ?name,
                             url = lock.url,
+                            ?name,
                             title = lock.manifest.game.title.default_translation(),
                             "failed to build game integration"
                         );
