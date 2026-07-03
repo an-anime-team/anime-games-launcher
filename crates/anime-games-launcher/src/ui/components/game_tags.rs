@@ -59,6 +59,8 @@ impl AsyncFactoryComponent for GameTagFactory {
                     set_margin_all: 4,
 
                     gtk::Image {
+                        set_visible: !matches!(self.0, GameTag::Other(_)),
+
                         set_icon_name: match self.0 {
                             GameTag::FreeToPlay        => Some("social-network-symbolic"),
                             GameTag::Cooperative       => Some("system-users-symbolic"),
