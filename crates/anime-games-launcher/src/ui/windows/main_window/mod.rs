@@ -959,7 +959,7 @@ impl SimpleAsyncComponent for MainWindow {
 
                     tasks::fs::rename(
                         entry.path(),
-                        expected_path
+                        &expected_path
                     ).await?;
                 }
 
@@ -997,7 +997,7 @@ impl SimpleAsyncComponent for MainWindow {
                     lock.scope = prev_scope;
 
                     tasks::fs::write(
-                        entry.path(),
+                        expected_path,
                         serde_json::to_vec_pretty(&lock.to_json())?
                     ).await?;
 
