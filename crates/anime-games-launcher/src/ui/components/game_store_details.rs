@@ -390,12 +390,18 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 ));
 
                 // Set game tags.
+                let mut tags = manifest.game.tags.iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                tags.sort();
+
                 let mut guard = self.tags.guard();
 
                 guard.clear();
 
-                for tag in &manifest.game.tags {
-                    guard.push_back(*tag);
+                for tag in tags {
+                    guard.push_back(tag);
                 }
 
                 drop(guard);

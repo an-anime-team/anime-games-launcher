@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ use agl_games::manifest::GameTag;
 
 use crate::i18n;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameTagFactory(GameTag);
 
 #[relm4::factory(pub, async)]
@@ -39,15 +39,16 @@ impl AsyncFactoryComponent for GameTagFactory {
             set_align: gtk::Align::Start,
 
             set_tooltip?: match self.0 {
-                GameTag::Gambling          => i18n!("game_tag_gambling_description").map(String::from),
-                GameTag::Payments          => i18n!("game_tag_payments_description").map(String::from),
-                GameTag::GraphicViolence   => i18n!("game_tag_graphic_violence_description").map(String::from),
+                GameTag::FreeToPlay        => i18n!("game_tag_free_to_play_description").map(String::from),
                 GameTag::Cooperative       => i18n!("game_tag_cooperative_description").map(String::from),
-                GameTag::Social            => i18n!("game_tag_social_description").map(String::from),
-                GameTag::Controller        => i18n!("game_tag_controller_description").map(String::from),
-                GameTag::PerformanceIssues => i18n!("game_tag_performance_issues_description").map(String::from),
-                GameTag::AntiCheat         => i18n!("game_tag_anti_cheat_description").map(String::from),
-                GameTag::Workarounds       => i18n!("game_tag_workarounds_description").map(String::from),
+                GameTag::SocialFeatures    => i18n!("game_tag_social_features_description").map(String::from),
+                GameTag::ControllerSupport => i18n!("game_tag_controller_support_description").map(String::from),
+                GameTag::Gambling          => i18n!("game_tag_gambling_description").map(String::from),
+                GameTag::InGamePurchases   => i18n!("game_tag_in_game_purchases_description").map(String::from),
+                GameTag::GraphicViolence   => i18n!("game_tag_graphic_violence_description").map(String::from),
+                GameTag::AdultContent      => i18n!("game_tag_adult_content_description").map(String::from),
+
+                GameTag::Other(_) => None
             }.as_deref(),
 
             gtk::Frame {
@@ -59,55 +60,54 @@ impl AsyncFactoryComponent for GameTagFactory {
 
                     gtk::Image {
                         set_icon_name: match self.0 {
-                            GameTag::Gambling          => Some("dice3-symbolic"),
-                            GameTag::Payments          => Some("money-symbolic"),
-                            GameTag::GraphicViolence   => Some("violence-symbolic"),
+                            GameTag::FreeToPlay        => Some("social-network-symbolic"),
                             GameTag::Cooperative       => Some("system-users-symbolic"),
-                            GameTag::Social            => Some("mail-unread-symbolic"),
-                            GameTag::Controller        => Some("input-gaming-symbolic"),
-                            GameTag::PerformanceIssues => Some("speedometer4-symbolic"),
-                            GameTag::AntiCheat         => Some("background-app-ghost-symbolic"),
-                            GameTag::Workarounds       => Some("test-symbolic")
+                            GameTag::SocialFeatures    => Some("mail-unread-symbolic"),
+                            GameTag::ControllerSupport => Some("input-gaming-symbolic"),
+                            GameTag::Gambling          => Some("dice3-symbolic"),
+                            GameTag::InGamePurchases   => Some("money-symbolic"),
+                            GameTag::GraphicViolence   => Some("violence-symbolic"),
+                            GameTag::AdultContent      => Some("nudity-symbolic"),
+
+                            GameTag::Other(_) => None
                         }
                     },
 
                     gtk::Label {
                         set_label: &match self.0 {
-                            GameTag::Gambling => i18n!("game_tag_gambling_title")
-                                .unwrap_or("Gambling")
-                                .to_string(),
-
-                            GameTag::Payments => i18n!("game_tag_payments_title")
-                                .unwrap_or("Payments")
-                                .to_string(),
-
-                            GameTag::GraphicViolence => i18n!("game_tag_graphic_violence_title")
-                                .unwrap_or("Graphic Violence")
+                            GameTag::FreeToPlay => i18n!("game_tag_free_to_play_title")
+                                .unwrap_or("Free to play")
                                 .to_string(),
 
                             GameTag::Cooperative => i18n!("game_tag_cooperative_title")
                                 .unwrap_or("Cooperative")
                                 .to_string(),
 
-                            GameTag::Social => i18n!("game_tag_social_title")
-                                .unwrap_or("Social")
+                            GameTag::SocialFeatures => i18n!("game_tag_social_features_title")
+                                .unwrap_or("Social features")
                                 .to_string(),
 
-                            GameTag::Controller => i18n!("game_tag_controller_title")
+                            GameTag::ControllerSupport => i18n!("game_tag_controller_support_title")
                                 .unwrap_or("Controller")
                                 .to_string(),
 
-                            GameTag::PerformanceIssues => i18n!("game_tag_performance_issues_title")
-                                .unwrap_or("Performance Issues")
+                            GameTag::Gambling => i18n!("game_tag_gambling_title")
+                                .unwrap_or("Gambling")
                                 .to_string(),
 
-                            GameTag::AntiCheat => i18n!("game_tag_anti_cheat_title")
-                                .unwrap_or("Anti-cheat")
+                            GameTag::InGamePurchases => i18n!("game_tag_in_game_purchases_title")
+                                .unwrap_or("In-game purchases")
                                 .to_string(),
 
-                            GameTag::Workarounds => i18n!("game_tag_workarounds_title")
-                                .unwrap_or("Workarounds")
-                                .to_string()
+                            GameTag::GraphicViolence => i18n!("game_tag_graphic_violence_title")
+                                .unwrap_or("Graphic violence")
+                                .to_string(),
+
+                            GameTag::AdultContent => i18n!("game_tag_adult_content_title")
+                                .unwrap_or("Adult content")
+                                .to_string(),
+
+                            GameTag::Other(ref tag) => tag.replace(['-', '_'], " ")
                         }
                     }
                 }
@@ -115,7 +115,7 @@ impl AsyncFactoryComponent for GameTagFactory {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     async fn init_model(
         tag: Self::Init,
         _index: &DynamicIndex,

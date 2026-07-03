@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,14 +16,26 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GameTag {
+    /// Game is free to play.
+    FreeToPlay,
+
+    /// Game has built-in multiplayer (cooperative) elements.
+    Cooperative,
+
+    /// Game has social features - online chat, VoIP, shared spaces, etc.
+    SocialFeatures,
+
+    /// Game has controllers support.
+    ControllerSupport,
+
     /// Game has scenes of gambling or has game mechanics related to gambling
     /// (wishes, banners, etc.)
     Gambling,
 
-    /// Game can accept real money for in-game content.
-    Payments,
+    /// Game accepts real money for in-game content.
+    InGamePurchases,
 
     /// Graphic violence generally consists of any clear and uncensored
     /// depiction of various violent acts. Commonly included depictions include
@@ -39,42 +51,26 @@ pub enum GameTag {
     /// Source: https://en.wikipedia.org/wiki/Graphic_violence
     GraphicViolence,
 
-    /// Game has built-in multiplayer (cooperative) elements.
-    Cooperative,
+    /// Game has adult content.
+    AdultContent,
 
-    /// Game has social features - online chat, VoIP, shared spaces, etc.
-    Social,
-
-    /// Game has controllers support.
-    Controller,
-
-    /// Game is known to have bad performance, either globally across all the
-    /// platforms or on the target platform specifically.
-    PerformanceIssues,
-
-    /// Game has an anti-cheat, either server- or client-side. This tag doesn't
-    /// necessary mean that this anti-cheat doesn't support the target platform.
-    AntiCheat,
-
-    /// Game cannot run on some platforms natively, but the integration package
-    /// provides set of special utilities or game files modifications which make
-    /// the game function. Note that this may violate its terms of service and
-    /// result in taking actions on your account.
-    Workarounds
+    /// Another tag.
+    Other(String)
 }
 
 impl std::fmt::Display for GameTag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Gambling            => f.write_str("gambling"),
-            Self::Payments            => f.write_str("payments"),
-            Self::GraphicViolence     => f.write_str("graphic-violence"),
-            Self::Cooperative         => f.write_str("cooperative"),
-            Self::Social              => f.write_str("social"),
-            Self::Controller          => f.write_str("controller"),
-            Self::PerformanceIssues   => f.write_str("performance-issues"),
-            Self::AntiCheat           => f.write_str("anti-cheat"),
-            Self::Workarounds         => f.write_str("workarounds")
+            Self::FreeToPlay        => f.write_str("free-to-play"),
+            Self::Cooperative       => f.write_str("cooperative"),
+            Self::SocialFeatures    => f.write_str("social-features"),
+            Self::ControllerSupport => f.write_str("controller-support"),
+            Self::Gambling          => f.write_str("gambling"),
+            Self::InGamePurchases   => f.write_str("in-game-purchases"),
+            Self::GraphicViolence   => f.write_str("graphic-violence"),
+            Self::AdultContent      => f.write_str("adult-content"),
+
+            Self::Other(tag) => f.write_str(tag)
         }
     }
 }
@@ -82,18 +78,37 @@ impl std::fmt::Display for GameTag {
 impl std::str::FromStr for GameTag {
     type Err = ();
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "gambling"             => Ok(Self::Gambling),
-            "payments"             => Ok(Self::Payments),
-            "graphic-violence"     => Ok(Self::GraphicViolence),
-            "cooperative"          => Ok(Self::Cooperative),
-            "social"               => Ok(Self::Social),
-            "performance-issues"   => Ok(Self::PerformanceIssues),
-            "anti-cheat"           => Ok(Self::AntiCheat),
-            "workarounds"          => Ok(Self::Workarounds),
+    fn from_str(tag: &str) -> Result<Self, Self::Err> {
+        match tag {
+            "free-to-play" | "free" | "f2p" => Ok(Self::FreeToPlay),
+
+            "cooperative" | "coop" => Ok(Self::Cooperative),
+
+            "social-features" | "social" => Ok(Self::SocialFeatures),
+
+            "controller-support" | "controller" => Ok(Self::ControllerSupport),
+
+            "gambling" => Ok(Self::Gambling),
+
+            "in-game-purchases" | "purchases" | "payments" => Ok(Self::InGamePurchases),
+
+            "graphic-violence" | "violence" => Ok(Self::GraphicViolence),
+
+            "adult-content" | "adult" | "R18" | "18+" => Ok(Self::AdultContent),
 
             _ => Err(())
         }
+    }
+}
+
+impl From<String> for GameTag {
+    fn from(tag: String) -> Self {
+        tag.parse().unwrap_or(Self::Other(tag))
+    }
+}
+
+impl From<&'_ str> for GameTag {
+    fn from(tag: &str) -> Self {
+        tag.parse().unwrap_or_else(|_| Self::Other(tag.to_string()))
     }
 }

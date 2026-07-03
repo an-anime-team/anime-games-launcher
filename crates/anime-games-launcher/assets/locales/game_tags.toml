@@ -1,56 +1,12 @@
-# Gambling
+# Free to play
 
-[game_tag_gambling_title]
-en = "Gambling"
-ru = "Азартные игры"
-pt = "Apostas"
-de = "Glücksspiel"
-id = "Perjudian"
-it = "Gioco d'azzardo"
+[game_tag_free_to_play_title]
+en = "Free to play"
+ru = "Бесплатная"
 
-[game_tag_gambling_description]
-en = "Game has scenes of gambling or has game mechanics related to gambling (wishes, banners, etc.)"
-ru = "Игра содержит сцены с азартными играми или механики, связанные с азартными играми (например, баннеры с персонажами)"
-pt = "Jogo contém cenas de apostas ou possui mecânicas relacionadas à apostas (orações, banners e etc.)"
-de = "Dieses Spiel beinhaltet Szenen mit Glücksspielen oder hat Glücksspielähnliche Spielmechaniken (Gacha, Lootboxen, etc.)"
-id = "Game memuat konten yang memperagakan perjudian atau memiliki mekanisme yang berhubungan dengan perjudian (wishes, banner, dan lain-lain.)"
-it = "Il gioco contiene scene di gioco d'azzardo o meccaniche legate al gioco d'azzardo (loot box, gachapon, ecc.)"
-
-# Payments
-
-[game_tag_payments_title]
-en = "Payments"
-ru = "Внутриигровые покупки"
-pt = "Transações"
-de = "Zahlungen"
-id = "Transaksi"
-it = "Pagamenti"
-
-[game_tag_payments_description]
-en = "Game can accept real money for in-game content"
-ru = "Игра может принимать реальные деньги для внутриигрового контента"
-pt = "O jogo pode aceitar dinheiro real por conteúdo no jogo"
-de = "Das Spiel akzeptiert echtes Geld für Spielinhalte"
-id = "Game menerima pembayaran menggunakan mata uang asli untuk membeli konten di dalam game"
-it = "Il gioco può richiedere denaro reale per contenuti di gioco"
-
-# Graphic violence
-
-[game_tag_graphic_violence_title]
-en = "Graphic Violence"
-ru = "Насилие"
-pt = "Violência Gráfica"
-de = "Grafische Gewalt"
-id = "Kekerasan"
-it = "Violenza grafica"
-
-[game_tag_graphic_violence_description]
-en = "Game contains graphic violence"
-ru = "Игра содержит сцены насилия"
-pt = "Jogo possui violência representada graficalmente"
-de = "Das Spiel beinhaltet Szenen von grafischer Gewalt"
-id = "Game memuat konten yang menampilkan kekerasan"
-it = "Il gioco contiene scene di violenza grafica"
+[game_tag_free_to_play_description]
+en = "This game is free to play"
+ru = "Это бесплатная игра"
 
 # Cooperative
 
@@ -63,99 +19,109 @@ id = "Kooperasi"
 it = "Cooperativo"
 
 [game_tag_cooperative_description]
-en = "Game has built-in multiplayer (cooperative) elements"
-ru = "Игра содержит элементы кооперации с другими игроками"
+en = "This game has built-in multiplayer (cooperative) elements"
+ru = "Эта игра содержит элементы взаимодействия с другими игроками"
 pt = "O jogo possui elementos de multiplayer cooperativo"
 de = "Das Spiel beinhaltet integrierte Mehrspieler-Koop-Elemente"
 id = "Game memiliki elemen multiplayer (kerjasama)"
 it = "Il gioco include elementi multigiocatore cooperativi integrati"
 
-# Social
+# Social features
 
-[game_tag_social_title]
-en = "Social"
-ru = "Социальная"
+[game_tag_social_features_title]
+en = "Social features"
+ru = "Социальные возможности"
 pt = "Social"
 de = "Sozial"
 id = "Sosial"
 it = "Sociale"
 
-[game_tag_social_description]
-en = "Game has social features - online chat, VoIP, shared spaces, etc"
-ru = "Игра содержит социальные функции - онлайн чат, голосовое общение, общие комнаты и т.п."
+[game_tag_social_features_description]
+en = "This game has social features such as in-game text, voice or video chat"
+ru = "Эта игра содержит социальные возможности такие как внутриигровой текстовый, голосовой или видео-чат"
 pt = "O jogo possui funções sociais - conversas online, VoIP, espaços compartilhados e etc."
 de = "Das Spiel bietet soziale Funktionen wie Text- oder Sprachchat, gemeinsame Räume, usw."
 id = "Game memiliki fitur sosial - online chat, VoIP, shared spaces, etc"
 it = "Il gioco include funzioni sociali, come chat online, VoIP, spazi condivisi, ecc."
 
-# Controller
+# Controller support
 
-[game_tag_controller_title]
-en = "Controller"
-ru = "Контроллер"
+[game_tag_controller_support_title]
+en = "Controller support"
+ru = "Поддержка контроллера"
 pt = "Controle"
 de = "Controller"
 id = "Kontroller"
 it = "Controller"
 
-[game_tag_controller_description]
-en = "Game has controllers support"
-ru = "Игра имеет поддержку контроллеров"
+[game_tag_controller_support_description]
+en = "This game has controller support"
+ru = "Эта игра имеет поддержку контроллера"
 pt = "O jogo possui suporte nativo à controles"
 de = "Das Spiel unterstützt Controller"
 id = "Game memiliki dukungan untuk kontroller"
 it = "Il gioco supporta i controller"
 
-# Performance issues
+# Gambling
 
-[game_tag_performance_issues_title]
-en = "Performance Issues"
-ru = "Проблемы с производительностью"
-pt = "Problemas de Performance"
-de = "Leistungsprobleme"
-id = "Masalah performa"
-it = "Problemi di prestazioni"
+[game_tag_gambling_title]
+en = "Gambling"
+ru = "Азартные игры"
+pt = "Apostas"
+de = "Glücksspiel"
+id = "Perjudian"
+it = "Gioco d'azzardo"
 
-[game_tag_performance_issues_description]
-en = "Game is known to have bad performance on some platforms"
-ru = "Игра имеет плохую производительность на некоторых платформах"
-pt = "O jogo é conhecido por ter problemas de performance em algumas plataformas"
-de = "Das Spiel hat bekanntermaßen eine schlechte Leistung auf einigen Plattformen"
-id = "Game diketahui memiliki performa yang buruk di beberapa platform"
-it = "Il gioco è noto per avere prestazioni scarse su alcune piattaforme"
+[game_tag_gambling_description]
+en = "This game has scenes of gambling or has game mechanics related to gambling"
+ru = "Эта игра содержит сцены с азартными играми или механики, связанные с азартными играми"
+pt = "Jogo contém cenas de apostas ou possui mecânicas relacionadas à apostas"
+de = "Dieses Spiel beinhaltet Szenen mit Glücksspielen oder hat Glücksspielähnliche Spielmechaniken"
+id = "Game memuat konten yang memperagakan perjudian atau memiliki mekanisme yang berhubungan dengan perjudian"
+it = "Il gioco contiene scene di gioco d'azzardo o meccaniche legate al gioco d'azzardo"
 
-# Anti-cheat
+# In-game purchases
 
-[game_tag_anti_cheat_title]
-en = "Anti-cheat"
-ru = "Анти-чит"
-pt = "Anti-trapaça"
-de = "Anti-Cheat"
-id = "Anti-Cheat"
-it = "Anti-cheat"
+[game_tag_in_game_purchases_title]
+en = "In-game purchases"
+ru = "Внутриигровые покупки"
+pt = "Transações"
+de = "Zahlungen"
+id = "Transaksi"
+it = "Pagamenti"
 
-[game_tag_anti_cheat_description]
-en = "Game has an anti-cheat, either server- or client-side"
-ru = "Игра имеет клиентский или серверный анти-чит"
-pt = "O jogo possui um mecanismo de anti-trapaças (anti-cheat), sendo no lado do servidor- ou cliente"
-de = "Das Spiel verwendet ein entweder server- oder clientseitiges Anti-Cheat"
-id = "Game memiliki anti-cheat, baik pada sisi server ataupun sisi klien"
-it = "Il gioco include un sistema anti-cheat, lato server o lato client"
+[game_tag_in_game_purchases_description]
+en = "This game accepts real money to purchase in-game content"
+ru = "Эта игра принимает реальные деньги для покупки внутриигрового контента"
+pt = "O jogo pode aceitar dinheiro real por conteúdo no jogo"
+de = "Das Spiel akzeptiert echtes Geld für Spielinhalte"
+id = "Game menerima pembayaran menggunakan mata uang asli untuk membeli konten di dalam game"
+it = "Il gioco può richiedere denaro reale per contenuti di gioco"
 
-# Workarounds
+# Graphic violence
 
-[game_tag_workarounds_title]
-en = "Workarounds"
-ru = "Дополнительные компоненты"
-pt = "Gambiarra"
-de = "Workarounds"
-id = "Solusi sementara"
-it = "Soluzioni alternative"
+[game_tag_graphic_violence_title]
+en = "Graphic violence"
+ru = "Изображения насилия"
+pt = "Violência Gráfica"
+de = "Grafische Gewalt"
+id = "Kekerasan"
+it = "Violenza grafica"
 
-[game_tag_workarounds_description]
-en = "Game cannot run on some platforms natively, but the integration package provides set of special utilities or game files modifications which make the game function. Note that this may violate its terms of service and result in taking actions on your account"
-ru = "Игра не может работать на некоторых платформах, однако модуль интеграции поставляет набор компонентов, необходимых для функционирования игры. Обратите внимание что это может нарушать правила пользования игрой и привести к потере вашего аккаунта"
-pt = "O jogo não pode ser executado nativamente em algumas plataformas, mas o pacote de integração provê utilidades especiais ou arquivos modificados do jogo que permitem que o jogo funcione. Perceba que talvez isso viole os Termos de Serviço do jogo, podendo resultar em ações sobre sua conta."
-de = "Das Spiel läuft nicht nativ auf einigen Plattformen, weshalb das Integrationspaket zusätzlich noch spezielle Hilfsprogramme oder Modifikationen bereitstellt, um das Spiel zum Laufen zu bringen. Beachte jedoch, dass dies gegen die Nutzungsbedingungen des Spieles verstoßen könnte und zu Maßnahmen gegen deinen Account führen kann."
-id = "Game tidak dapat dijalankan pada platform tertentu secara langsung, tetapi paket integrasi memberikan aplikasi khusus ataupun memodifikasi file pada game yang dapat membuatnya berfungsu. Patut dipahami bahwa hal tersebut mungkin melanggar ketentuan pelayanan (terms of service) dan dapat memunculkan tindakkan terhadap akun Anda"
-it = "Il gioco non può essere eseguito in modo nativo su alcune piattaforme, ma il pacchetto di integrazione fornisce utilità speciali o modifiche ai file di gioco che lo rendono funzionante. Tieni presente che questo potrebbe violare i termini di servizio e comportare provvedimenti sul tuo account"
+[game_tag_graphic_violence_description]
+en = "This game contains graphic violence"
+ru = "Эта игра содержит сцены насилия"
+pt = "Jogo possui violência representada graficalmente"
+de = "Das Spiel beinhaltet Szenen von grafischer Gewalt"
+id = "Game memuat konten yang menampilkan kekerasan"
+it = "Il gioco contiene scene di violenza grafica"
+
+# Adult content
+
+[game_tag_adult_content_title]
+en = "Adult content"
+ru = "Контент для взрослых"
+
+[game_tag_adult_content_description]
+en = "This game contains adult content"
+ru = "Эта игра содержит контент для взрослых"

@@ -17,7 +17,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
-use std::str::FromStr;
 
 use serde_json::{json, Value as Json};
 
@@ -144,10 +143,7 @@ impl GameInfo {
                 .and_then(Json::as_array)
                 .map(|tags| {
                     tags.iter()
-                        .flat_map(|tag| {
-                            tag.as_str()
-                                .and_then(|tag| GameTag::from_str(tag).ok())
-                        })
+                        .flat_map(|tag| tag.as_str().map(GameTag::from))
                         .collect::<HashSet<_>>()
                 })
                 .unwrap_or_default(),
