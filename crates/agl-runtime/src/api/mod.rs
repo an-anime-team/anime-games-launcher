@@ -178,7 +178,9 @@ impl ModuleContext {
     #[cfg(feature = "secrets-api")]
     pub fn can_read_secrets_container(&self, container: &String) -> bool {
         if let Ok(scope) = self.scope.read() {
-            return scope.secrets_read_containers.contains(container);
+            return scope.secrets_read_containers.iter()
+                .chain(scope.secrets_write_containers.iter())
+                .any(|name| name == container);
         }
 
         false
