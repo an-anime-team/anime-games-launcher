@@ -958,8 +958,6 @@ impl SimpleAsyncComponent for MainWindow {
                         .unwrap_or_else(|| format!("Loading {title} game package"))
                 )));
 
-                resources.extend(lock.lock.resources.keys().copied());
-
                 let name = lock.name();
                 let expected_path = config.games_path.join(&name);
 
@@ -1028,6 +1026,8 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     }
                 }
+
+                resources.extend(lock.lock.resources.keys().copied());
 
                 sender.input(MainWindowMsg::AddLibraryPageGame {
                     name,
