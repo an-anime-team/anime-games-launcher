@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.2.0] - 04.07.2026
+
 ### Added
 
 - Games manifests got optional `manifest.game.name` field. It is used to
@@ -50,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fs.read_dir` API now uses real async operations instead of blocking function.
 - Now launcher will silently ignore games registries and games manifests
   updating during startup.
-- Games cards on the store page are not loaded in the order of their appearance
+- Games cards on the store page are now loaded in the order of their appearance
   in the games registries, in the order the registries URLs are listed in the
   launcher's config file. If many games with the same name available, the first
   one will be selected, and other will be ignored with a warning log.
@@ -373,7 +375,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <br>
 
-[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.1.1...next
+[unreleased]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.2.0...next
+[v2.2.0]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.1.1...v2.2.0
 [v2.1.1]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.1.0...v2.1.1
 [v2.1.0]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0...v2.1.0
 [v2.0.0]: https://github.com/an-anime-team/anime-games-launcher/compare/v2.0.0-rc1...v2.0.0

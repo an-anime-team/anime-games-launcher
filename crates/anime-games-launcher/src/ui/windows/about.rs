@@ -61,7 +61,7 @@ impl SimpleAsyncComponent for AboutWindow {
 
             add_credit_section: (Some("Contributors"), &[
                 "Dylan Donnell https://github.com/dy-tea",
-                "@mkrsym1 https://github.com/mkrsym1"
+                "@NelloKudo https://github.com/NelloKudo"
             ]),
 
             add_credit_section: (Some("Linux packaging"), &[
@@ -97,23 +97,46 @@ impl SimpleAsyncComponent for AboutWindow {
                 <p>Added</p>
 
                 <ul>
-                    <li>Games API got new values format for "enum" and "selector" settings entries.</li>
-                    <li>Added "accessed_at" field to the "fs.metadata" runtime API.</li>
-                    <li>Added "import" function to the runtime API.</li>
-                    <li>Added Japanese and Portuguese translations.</li>
-                    <li>Cache, resources, modules, and temporary directories got garbage collection mechanism controlled by related config file settings.</li>
-                    <li>Launcher now will set parent game binary's directory as the spawned game process's current working directory.</li>
+                    <li>Games manifests got optional "manifest.game.name" field</li>
+                    <li>Added "free-to-play" and "adult-content" game manifest tags</li>
+                    <li>Launcher will now show unstandard game manifest tags on the store page</li>
+                    <li>Added Secrets API as universal solution to keep secret information that persists between module updates</li>
+                    <li>Runtime APIs now accept list of paths that they cannot access. Secrets API database is automatically added to this list</li>
+                    <li>Added "runtime.private_paths" launcher config property to configure list of paths to which runtime APIs will never have access</li>
+                    <li>Added "TRACE" request method to HTTP API</li>
+                    <li>More operations in the launcher were replaced by async alternatives</li>
+                    <li>Added "base32/nix" text encoding to "str.encode" and "str.decode" APIs</li>
+                </ul>
+
+                <p>Fixed</p>
+
+                <ul>
+                    <li>Fixed launcher settings UI updating after "reactivity = none" entries changes</li>
+                    <li>Fixed launcher's garbage collector deleting games integrations resources</li>
                 </ul>
 
                 <p>Changed</p>
 
                 <ul>
-                    <li>All network connections now respect system proxy settings. Used proxy address can be overridden in the launcher's config file.</li>
-                    <li>"fs.metadata" runtime API will set "created_at", "modified_at" and "accessed_at" as "nil" instead of returning an error if user file system doesn't support these fields.</li>
-                    <li>Many internal IO operations were made async.</li>
-                    <li>"general.network.proxy.url" and "general.network.proxy.mode" launcher settings were replaced by "general.network.proxy" string.</li>
-                    <li>Network requests user agent string was changed to "anime-games-launcher/v[version]".</li>
-                    <li>Some environment variables were renamed: "LAUNCHER_DATA_FOLDER" -> "LAUNCHER_DATA_DIR"; "LAUNCHER_CONFIG_FOLDER" -> "LAUNCHER_CONFIG_DIR"; "LAUNCHER_CACHE_FOLDER" -> "LAUNCHER_CACHE_DIR".</li>
+                    <li>Renamed some game manifest tags, old variants kept as aliases</li>
+                    <li>Game tags on the launcher's store page are now sorted</li>
+                    <li>"torrent.add" API's "output_folder" option was renamed to "output_directory". Old variant is kept as alias for backward compatibility</li>
+                    <li>"portal.open_folder" API was renamed to "portal.open_directory". Old function is kept as alias for backward compatibility</li>
+                    <li>Modules allow lists were renamed to scopes lists. Launcher will automatically rename the standard game-integrations URL to the new one</li>
+                    <li>Reduced Filesystem API's files RAM buffer size from 4 MiB to 64 KiB</li>
+                    <li>Some Filesystem API functions now make symlinks only if target of family is unix</li>
+                    <li>"fs.read_dir" API now uses real async operations instead of blocking function</li>
+                    <li>Now launcher will silently ignore games registries and games manifests updating during startup</li>
+                    <li>Games cards on the store page are now loaded in the order of their appearance in the games registries</li>
+                    <li>Games lock files are now stored under "[name_hash]-[sanitized_name]" file name. Old file names will automatically be renamed to the new format if possible</li>
+                    <li>Launcher will load old game packages, but show a message about game package being outdated</li>
+                    <li>Changed packages hash format to "nix_base32(blake3_128([...]))"</li>
+                </ul>
+
+                <p>Removed</p>
+
+                <ul>
+                    <li>Removed some game manifest tags</li>
                 </ul>
             "#
         }
