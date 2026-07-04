@@ -43,6 +43,7 @@ use crate::ui::components::game_library_details::{
 struct LoadedGameInfo {
     pub package: GameLock,
     pub integration: Arc<GameIntegration>,
+    pub outdated: bool,
     pub editions: Option<Box<[GameEdition]>>,
     pub card_index: DynamicIndex
 }
@@ -58,7 +59,11 @@ pub enum LibraryPageInput {
         package: GameLock,
 
         /// Loaded game integration object.
-        integration: Arc<GameIntegration>
+        integration: Arc<GameIntegration>,
+
+        /// If true, launcher failed to update game package at startup, and
+        /// older package was loaded.
+        outdated: bool
     },
 
     /// Delete game package for the given game name.
@@ -277,7 +282,12 @@ impl SimpleAsyncComponent for LibraryPage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            LibraryPageInput::AddGame { name, package, integration } => {
+            LibraryPageInput::AddGame {
+                name,
+                package,
+                integration,
+                outdated
+            } => {
                 if self.games.contains_key(&name) {
                     tracing::warn!(
                         url = package.url,
@@ -348,6 +358,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 self.games.insert(name, LoadedGameInfo {
                     package,
                     integration,
+                    outdated,
                     editions,
                     card_index
                 });
@@ -425,7 +436,8 @@ impl SimpleAsyncComponent for LibraryPage {
                         variant: GameVariant {
                             platform: *consts::CURRENT_PLATFORM,
                             edition
-                        }
+                        },
+                        outdated: game_info.outdated
                     });
                 }
             }
@@ -454,7 +466,8 @@ impl SimpleAsyncComponent for LibraryPage {
                         variant: GameVariant {
                             platform: *consts::CURRENT_PLATFORM,
                             edition
-                        }
+                        },
+                        outdated: game_info.outdated
                     });
                 }
             }

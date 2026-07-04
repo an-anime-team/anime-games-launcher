@@ -54,7 +54,11 @@ pub enum GameLibraryDetailsInput {
         integration: Arc<GameIntegration>,
 
         /// Selected game variant info.
-        variant: GameVariant
+        variant: GameVariant,
+
+        /// If true, launcher failed to update game package at startup, and
+        /// older package was loaded.
+        outdated: bool
     },
 
     UpdateGameInfo {
@@ -107,6 +111,8 @@ pub struct GameLibraryDetails {
 
     game_tools_buttons_factory: AsyncFactoryVecDeque<GameToolButtonFactory>,
 
+    game_banner_message: Option<String>,
+
     game_name: Option<String>,
     game_title: Option<String>,
     game_developer: Option<String>,
@@ -146,6 +152,14 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 #[watch]
                 set_visible: model.game_title.is_none()
+            },
+
+            adw::Banner {
+                #[watch]
+                set_revealed: model.game_banner_message.is_some(),
+
+                #[watch]
+                set_title?: model.game_banner_message.as_deref()
             },
 
             adw::Clamp {
@@ -339,6 +353,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     }
                 }),
 
+            game_banner_message: None,
+
             game_name: None,
             game_title: None,
             game_developer: None,
@@ -387,7 +403,8 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 name,
                 manifest,
                 integration,
-                variant
+                variant,
+                outdated
             } => {
                 self.card.emit(CardComponentInput::SetImage(Some(
                     ImagePath::lazy_load_card(&manifest.game.images.poster)
@@ -421,6 +438,14 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 let publisher = match &lang {
                     Some(lang) => manifest.game.publisher.translate(lang),
                     None => manifest.game.publisher.default_translation()
+                };
+
+                self.game_banner_message = if outdated {
+                    Some(i18n!("game_outdated_package_loaded_title")
+                        .unwrap_or("Outdated game package was loaded")
+                        .to_string())
+                } else {
+                    None
                 };
 
                 self.game_name = Some(name);

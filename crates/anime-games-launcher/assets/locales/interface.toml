@@ -329,6 +329,10 @@ id = "Tidak ada game dipilih"
 it = "Nessun gioco selezionato"
 ja = "ゲームが選択されていません"
 
+[game_outdated_package_loaded_title]
+en = "Outdated game package was loaded"
+ru = "Был загружен устаревший игровой пакет"
+
 [game_play]
 en = "Play"
 ru = "Играть"

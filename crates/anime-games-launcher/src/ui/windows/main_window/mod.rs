@@ -117,7 +117,10 @@ pub enum MainWindowMsg {
         name: String,
 
         /// Game package lock.
-        lock: GameLock
+        lock: GameLock,
+
+        /// If true, launcher failed to update game package at startup.
+        outdated: bool
     },
 
     /// Delete game package for the given game name.
@@ -451,7 +454,7 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::SetShowBackButton(show),
 
                     StorePageOutput::AddLibraryPageGame { name, lock }
-                        => MainWindowMsg::AddLibraryPageGame { name, lock },
+                        => MainWindowMsg::AddLibraryPageGame { name, lock, outdated: false },
 
                     StorePageOutput::ShowLibraryGameWithUrl(url)
                         => MainWindowMsg::ShowLibraryGameWithUrl(url)
@@ -942,8 +945,18 @@ impl SimpleAsyncComponent for MainWindow {
                 let lock = serde_json::from_slice::<Json>(&lock)
                     .context("failed to decode json file with game package lock")?;
 
-                let mut lock = GameLock::from_json(&lock)
+                let lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
+
+                let title = match &lang {
+                    Ok(lang) => lock.manifest.game.title.translate(lang),
+                    Err(_) => lock.manifest.game.title.default_translation()
+                };
+
+                sender.input(MainWindowMsg::SetLoadingStatus(Some(
+                    i18n!("loading_game_package", { title => title })
+                        .unwrap_or_else(|| format!("Loading {title} game package"))
+                )));
 
                 resources.extend(lock.lock.resources.keys().copied());
 
@@ -965,15 +978,7 @@ impl SimpleAsyncComponent for MainWindow {
                     ).await?;
                 }
 
-                let title = match &lang {
-                    Ok(lang) => lock.manifest.game.title.translate(lang),
-                    Err(_) => lock.manifest.game.title.default_translation()
-                };
-
-                sender.input(MainWindowMsg::SetLoadingStatus(Some(
-                    i18n!("loading_game_package", { title => title })
-                        .unwrap_or_else(|| format!("Loading {title} game package"))
-                )));
+                let mut outdated = false;
 
                 if cache::is_expired(
                     &entry.path(),
@@ -991,22 +996,41 @@ impl SimpleAsyncComponent for MainWindow {
                             .unwrap_or_else(|| format!("Updating {title} game package"))
                     )));
 
-                    let prev_scope = lock.scope;
+                    // Keep package scope from the current package lock.
+                    let prev_scope = lock.scope.clone();
 
-                    lock = GameLock::download(&lock.url, &storage).await
-                        .context("failed to update game package lock")?;
+                    // Try to update game package.
+                    match GameLock::download(&lock.url, &storage).await {
+                        // If succeeded, then replace old package file by a
+                        // new one.
+                        Ok(mut lock) => {
+                            lock.scope = prev_scope;
 
-                    lock.scope = prev_scope;
+                            tasks::fs::write(
+                                expected_path,
+                                serde_json::to_vec_pretty(&lock.to_json())?
+                            ).await?;
+                        }
 
-                    tasks::fs::write(
-                        expected_path,
-                        serde_json::to_vec_pretty(&lock.to_json())?
-                    ).await?;
+                        // If failed, then still load the game package but
+                        // mark it as outdated.
+                        Err(err) => {
+                            tracing::error!(
+                                ?err,
+                                ?name,
+                                ?title,
+                                "failed to update game package lock"
+                            );
+
+                            outdated = true;
+                        }
+                    }
                 }
 
                 sender.input(MainWindowMsg::AddLibraryPageGame {
                     name,
-                    lock
+                    lock,
+                    outdated
                 });
             }
 
@@ -1206,7 +1230,7 @@ impl SimpleAsyncComponent for MainWindow {
                 });
             }
 
-            MainWindowMsg::AddLibraryPageGame { name, lock } => {
+            MainWindowMsg::AddLibraryPageGame { name, lock, outdated } => {
                 let config = config::get().await;
 
                 let lang = config.language();
@@ -1370,7 +1394,8 @@ impl SimpleAsyncComponent for MainWindow {
                 self.library_page.emit(LibraryPageInput::AddGame {
                     name,
                     package: lock,
-                    integration: game_integration
+                    integration: game_integration,
+                    outdated
                 });
             }
 
