@@ -231,7 +231,7 @@ impl FromStr for StringEncoding {
             }
 
             // nix-base32
-            "nix-base32" | "nixos-base32" | "base32/nix" | "base32-nixos" => {
+            "nix-base32" | "nixos-base32" | "base32/nix" | "base32-nixos" | "nix32" => {
                 Ok(Self::Base32Nix)
             }
 
