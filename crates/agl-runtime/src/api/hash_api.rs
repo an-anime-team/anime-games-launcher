@@ -48,7 +48,7 @@ impl HashApi {
         let hasher_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            hash_digitize: lua.create_function(move |_lua: &Lua, (algorithm, value): (LuaString, Bytes)| {
+            hash_digitize: lua.create_function(move |lua: &Lua, (algorithm, value): (LuaString, Bytes)| {
                 let algorithm = HashAlgorithm::from_str(&algorithm.to_string_lossy())
                     .map_err(LuaError::external)?;
 
@@ -59,7 +59,8 @@ impl HashApi {
 
                 let hash = hasher.finalize().0;
 
-                Ok(hash)
+                Bytes::new(hash)
+                    .into_lua(lua)
             })?,
 
             hash_digitize_file: {
