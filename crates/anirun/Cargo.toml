@@ -1,6 +1,6 @@
 [package]
 name = "anirun"
-version = "0.1.2"
+version = "0.1.3"
 description = "Anime Games Launcher runtime modules CLI"
 authors = ["Nikita Podvirnyi <krypt0nn@dawn.wine>"]
 homepage = "https://github.com/an-anime-team/anime-games-launcher"

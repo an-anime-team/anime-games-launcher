@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "agl-games"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "agl-locale",
  "lazy_static",
@@ -69,7 +69,7 @@ dependencies = [
 
 [[package]]
 name = "agl-packages"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "agl-core",
  "base32",
@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "agl-runtime"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "agl-core",
  "agl-locale",
@@ -100,7 +100,7 @@ dependencies = [
  "nix-base32",
  "prost-reflect",
  "protox",
- "rand 0.10.1",
+ "rand 0.10.2",
  "rfd",
  "rusqlite",
  "seahash",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "anime-games-launcher"
-version = "2.1.1"
+version = "2.2.0"
 dependencies = [
  "agl-core",
  "agl-games",
@@ -191,7 +191,7 @@ dependencies = [
 
 [[package]]
 name = "anirun"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "agl-core",
  "agl-locale",
@@ -279,9 +279,9 @@ checksum = "76a2e8124351fda1ef8aaaa3bbd7ebbcb486bbcd4225aca0aa0d84bb2db8fecb"
 
 [[package]]
 name = "arrayvec"
-version = "0.7.7"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f02882884d3e1bc524fb12c79f107f6ad0e1cfd498c536ffb494301740995dfe"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "assert_cfg"
@@ -3739,9 +3739,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e8e8bcc7961af1fdac401278c6a831614941f6164ee3bf4ce61b7edb162207"
+checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
 dependencies = [
  "chacha20",
  "getrandom 0.4.3",
@@ -4076,9 +4076,9 @@ checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
 
 [[package]]
 name = "rustc-hash"
-version = "2.1.2"
+version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94300abf3f1ae2e2b8ffb7b58043de3d399c73fa6f4b73826402a5c457614dbe"
+checksum = "6b1e7f9a428571be2dc5bc0505c13fb6bf936822b894ec87abf8a08a4e51742d"
 
 [[package]]
 name = "rustc_version"
@@ -4679,11 +4679,10 @@ checksum = "adb6935a6f5c20170eeceb1a3835a49e12e19d792f6dd344ccc76a985ca5a6ca"
 
 [[package]]
 name = "tauri-winrt-notification"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b1e66e07de489fe43a46678dd0b8df65e0c973909df1b60ba33874e297ba9b9"
+checksum = "9ed071c670382e85fc2f48ae706492d8c338f4f89bf72520d32f8abfe880aade"
 dependencies = [
- "quick-xml 0.37.5",
  "thiserror 2.0.18",
  "windows 0.61.3",
  "windows-version",
