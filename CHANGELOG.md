@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Game tags on the launcher's store page are now sorted.
 - `torrent.add` API's `output_folder` option was renamed to `output_directory`.
   Old variant is kept as alias for backward compatibility.
-- `portal.open_folder` API was renamed to `portal.open_folder`. Old function
+- `portal.open_folder` API was renamed to `portal.open_directory`. Old function
   is kept as alias for backward compatibility.
 - Modules allow lists were renamed to scopes lists. Launcher will automatically
   rename the standard game-integrations URL to the new one.
