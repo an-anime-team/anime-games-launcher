@@ -945,7 +945,7 @@ impl SimpleAsyncComponent for MainWindow {
                 let lock = serde_json::from_slice::<Json>(&lock)
                     .context("failed to decode json file with game package lock")?;
 
-                let lock = GameLock::from_json(&lock)
+                let mut lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
 
                 let title = match &lang {
@@ -1003,13 +1003,15 @@ impl SimpleAsyncComponent for MainWindow {
                     match GameLock::download(&lock.url, &storage).await {
                         // If succeeded, then replace old package file by a
                         // new one.
-                        Ok(mut lock) => {
-                            lock.scope = prev_scope;
+                        Ok(mut new_lock) => {
+                            new_lock.scope = prev_scope;
 
                             tasks::fs::write(
                                 expected_path,
-                                serde_json::to_vec_pretty(&lock.to_json())?
+                                serde_json::to_vec_pretty(&new_lock.to_json())?
                             ).await?;
+
+                            lock = new_lock;
                         }
 
                         // If failed, then still load the game package but
