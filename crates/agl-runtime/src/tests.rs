@@ -143,7 +143,7 @@ fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
         runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("j19332e198rda#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("503c9n53idi9rhfsm7al00gc2f#module")? else {
             panic!("missing loaded module value");
         };
 
@@ -179,14 +179,14 @@ fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
         runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("4hnpqy6q7jjyga41s5vzdmz0yh#module")? else {
             panic!("missing loaded module value");
         };
 
         let module = module.raw_get::<LuaFunction>("value")?;
 
         runtime.set_value("test", "World")?;
-        runtime.set_named_reference("hlm1n2jp72hbg#module", "test", "name")?;
+        runtime.set_named_reference("6vq28ac1yw9dilf7ih4w2h0kdb#module", "test", "name")?;
 
         assert_eq!(module.call::<String>(())?, "Hello, World!");
 
@@ -219,7 +219,7 @@ fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("fgkua9vq5ra7q#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("0wbfqfvpsd5xfxx4wzkimxx9jb#module")? else {
             panic!("missing loaded module value");
         };
 

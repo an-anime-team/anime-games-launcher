@@ -2,14 +2,13 @@
     "inputs": {
         "package_1": {
             "uri": "package_1.json",
-            "format": "package",
-            "hash": "07d19jbftmc26"
+            "format": "package"
         }
     },
     "outputs": {
         "module_2": {
             "uri": "module_2.luau",
-            "hash": "fgkua9vq5ra7q"
+            "hash": "0wbfqfvpsd5xfxx4wzkimxx9jb"
         }
     }
 }

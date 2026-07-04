@@ -225,8 +225,7 @@ impl Hasher {
 fn test() {
     let hash = Hash::digitize(b"Hello, World!");
 
-    assert_eq!(hash.to_base32(), "vk3d0ph9av12s");
-
+    assert_eq!(hash.to_base32(), "6imsz16xyarpfdd8r0kykqd2i8");
     assert_eq!(Hash::from_base32(hash.to_base32()), Some(hash));
 }
 

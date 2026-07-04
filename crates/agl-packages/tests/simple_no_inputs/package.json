@@ -3,37 +3,37 @@
         "example_file": {
             "uri": "example_file.txt",
             "format": "file",
-            "hash": "dfhtkkli693ji"
+            "hash": "25icmymkhv80gdn5vqrr5q6cv2"
         },
         "example_tar": {
             "uri": "example_tar.tar",
             "format": "archive",
-            "hash": "bfcut078nb5sq"
+            "hash": "0w7y7mfkyxfrhds8xynvngpdy3"
         },
         "example_tar_gz": {
             "uri": "example_tar_gz.tar.gz",
             "format": "archive",
-            "hash": "nuasi909r9ek2"
+            "hash": "24wny2wd32jg5y8kx1ai39klni"
         },
         "example_tar_bz2": {
             "uri": "example_tar_bz2.tar.bz2",
             "format": "archive",
-            "hash": "rl09ekeb9s9sm"
+            "hash": "5vy9hxy42hmcc5nm6pvq6lmwl9"
         },
         "example_tar_zstd": {
             "uri": "example_tar_zstd.tar.zstd",
             "format": "archive",
-            "hash": "4ib8sfl2v57te"
+            "hash": "6y406xav11v3cpzw3hmvx1jyzb"
         },
         "example_zip": {
             "uri": "example_zip.zip",
             "format": "archive",
-            "hash": "s4lst5543nd1k"
+            "hash": "6w01wcjn5iplqg2j7ps771nd86"
         },
         "example_7z": {
             "uri": "example_7z.7z",
             "format": "archive",
-            "hash": "i8bois3gmu8mk"
+            "hash": "2550b8v7ayqqw776jj8inc4jx7"
         }
     }
 }
