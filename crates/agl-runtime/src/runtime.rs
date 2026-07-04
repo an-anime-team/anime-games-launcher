@@ -379,7 +379,7 @@ impl Runtime {
                 }
             })?;
 
-        let module_hash = Hash::from_bytes(&module_content);
+        let module_hash = Hash::digitize(&module_content);
 
         // Read the engine table from the registry key.
         let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;

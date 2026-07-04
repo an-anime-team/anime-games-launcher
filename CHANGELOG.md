@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   will automatically be renamed to the new format if possible.
 - Launcher will load old game packages, but show a message about game package
   being outdated.
+- Changed packages hash format to `nix_base32(blake3_128([...]))`.
 
 ### Removed
 

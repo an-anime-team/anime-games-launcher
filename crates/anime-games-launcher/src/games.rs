@@ -58,7 +58,7 @@ pub fn get_name(name: Option<&str>, manifest_url: &str) -> String {
             }
         }
 
-        None => Hash::from_bytes(manifest_url.as_bytes()).to_base32()
+        None => Hash::digitize(manifest_url.as_bytes()).to_base32()
     }
 }
 

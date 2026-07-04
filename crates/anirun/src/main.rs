@@ -732,7 +732,7 @@ fn main() -> anyhow::Result<()> {
 
                 if !source_path.exists() {
                     let temp_path = temp_dir.join(
-                        Hash::from_bytes(source.as_bytes()).to_string()
+                        Hash::digitize(source.as_bytes()).to_base32()
                     );
 
                     tracing::debug!(?source, ?temp_path, "provided module source is not a file path, attempting to download it");

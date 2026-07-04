@@ -28,7 +28,7 @@ use crate::consts::CACHE_DIR;
 /// Get path to a file with provided cache key.
 #[inline]
 pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {
-    CACHE_DIR.join(Hash::from_bytes(key.as_ref()).to_base32())
+    CACHE_DIR.join(Hash::digitize(key.as_ref()).to_base32())
 }
 
 /// Check if a file with provided path is expired.
