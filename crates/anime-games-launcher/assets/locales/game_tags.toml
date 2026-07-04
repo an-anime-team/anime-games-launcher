@@ -3,10 +3,12 @@
 [game_tag_free_to_play_title]
 en = "Free to play"
 ru = "Бесплатная"
+pt = "Gratuito para jogar"
 
 [game_tag_free_to_play_description]
 en = "This game is free to play"
 ru = "Это бесплатная игра"
+pt = "Este jogo é gratuito para jogar"
 
 # Cooperative
 
@@ -121,7 +123,9 @@ it = "Il gioco contiene scene di violenza grafica"
 [game_tag_adult_content_title]
 en = "Adult content"
 ru = "Контент для взрослых"
+pt = "Conteúdo Adulto"
 
 [game_tag_adult_content_description]
 en = "This game contains adult content"
 ru = "Эта игра содержит контент для взрослых"
+pt = "Este jogo possui conteúdo adulto"
