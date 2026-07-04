@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-core
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -41,23 +41,6 @@ pub enum CompressionLevel {
 
     /// Custom native compression level for the selected algorithm.
     Custom(i8)
-}
-
-#[cfg(feature = "compression-zstd")]
-impl CompressionLevel {
-    /// Convert into zstd compression level.
-    pub const fn zstd_level(&self) -> i32 {
-        match self {
-            Self::Quick    => 3,
-            Self::Fast     => 9,
-            Self::Balanced => 13,
-            Self::Good     => 17,
-            Self::Best     => 22,
-            Self::Default  => 10,
-
-            Self::Custom(level) => *level as i32
-        }
-    }
 }
 
 impl std::fmt::Display for CompressionLevel {
@@ -126,6 +109,23 @@ impl From<CompressionLevel> for flate2::Compression {
             CompressionLevel::Default  => Self::new(6),
 
             CompressionLevel::Custom(level) => Self::new(level as u32)
+        }
+    }
+}
+
+#[cfg(feature = "compression-zstd")]
+impl CompressionLevel {
+    /// Convert into zstd compression level.
+    pub const fn zstd_level(&self) -> i32 {
+        match self {
+            Self::Quick    => 3,
+            Self::Fast     => 9,
+            Self::Balanced => 13,
+            Self::Good     => 17,
+            Self::Best     => 22,
+            Self::Default  => 10,
+
+            Self::Custom(level) => *level as i32
         }
     }
 }

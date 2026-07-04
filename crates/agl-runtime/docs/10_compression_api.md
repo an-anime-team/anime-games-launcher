@@ -4,15 +4,16 @@ Sometimes you would want to manually compress or decompress data, e.g. fetched
 from the internet or packed into some proprietary file encoding format. This API
 implements some of the most common compression algorithms.
 
-| Function                   | Description                                              |
-| -------------------------- | -------------------------------------------------------- |
-| `compression.compress`     | Compress given bytes slice.                              |
-| `compression.decompress`   | Decompress given bytes slice.                            |
-| `compression.compressor`   | Open data compressor.                                    |
-| `compression.decompressor` | Open data decompressor.                                  |
-| `compression.write`        | Write data to the compressor / decompressor.             |
-| `compression.flush`        | Flush written data and process it, returning the result. |
-| `compression.close`        | Close open compressor / decompressor.                    |
+| Function                   | Description                                               |
+| -------------------------- | --------------------------------------------------------- |
+| `compression.compress`     | Compress given bytes slice.                               |
+| `compression.decompress`   | Decompress given bytes slice.                             |
+| `compression.compressor`   | Open data compressor.                                     |
+| `compression.decompressor` | Open data decompressor.                                   |
+| `compression.read`         | Read data from a compressor or decompressor.              |
+| `compression.write`        | Write data to a compressor or decompressor.               |
+| `compression.finish`       | Finish data processing and append end sequence if needed. |
+| `compression.close`        | Close open compressor / decompressor.                     |
 
 ## Supported compression algorithms
 
@@ -22,13 +23,11 @@ compression algorithms are provided by the `agl-core` library.
 | Algorithm  | URL                                |
 | ---------- | ---------------------------------- |
 | `lz4`      | https://crates.io/crates/lz4_flex  |
-| `bzip`     | https://crates.io/crates/bzip2     |
+| `bzip2`    | https://crates.io/crates/bzip2     |
 | `deflate`  | https://crates.io/crates/flate2    |
 | `gzip`     | https://crates.io/crates/flate2    |
 | `zlib`     | https://crates.io/crates/flate2    |
 | `zstd`     | https://crates.io/crates/zstd      |
-| `lzma`     | https://crates.io/crates/lzma-rust |
-| `lzma2`    | https://crates.io/crates/lzma-rust |
 
 ## Compression levels
 
@@ -40,20 +39,14 @@ presented for simplicity only.
 
 | Algorithm   | Min | Max | `quick` | `fast` | `balanced` | `good` | `best` | `default` |
 | ----------- | --- | --- | ------- | ------ | ---------- | ------ | ------ | --------- |
-| `lz4` (1)   | -   | -   | -       | -      | -          | -      | -      | -         |
+| `lz4` (*)   | -   | -   | -       | -      | -          | -      | -      | -         |
 | `bzip`      | 1   | 9   | 1       | 3      | 5          | 7      | 9      | 4         |
 | `deflate`   | 1   | 9   | 1       | 3      | 5          | 7      | 9      | 6         |
 | `gzip`      | 1   | 9   | 1       | 3      | 5          | 7      | 9      | 6         |
 | `zlib`      | 1   | 9   | 1       | 3      | 5          | 7      | 9      | 6         |
 | `zstd`      | 1   | 22  | 3       | 9      | 13         | 17     | 22     | 10        |
-| `lzma`  (2) | 0   | 9   | 1       | 3      | 5          | 7      | 9      | 4         |
-| `lzma2` (2) | 0   | 9   | 1       | 3      | 5          | 7      | 9      | 4         |
 
-> 1. lz4 doesn't have compression levels.
-> 2. lzma doesn't have compression levels, but it has compression options.
->    Due to this you cannot directly rely on the standard lzma object provided
->    by this standard to process external data. You also have to specify the
->    compression level in lzma decompressor builder, unlike other algorithms.
+> \* lz4 doesn't have compression levels.
 
 ## `compression.compress(algorithm: string, value: Bytes) -> Promise<Bytes>`
 
@@ -91,7 +84,7 @@ Create data compression object, returning handle to it. Just like in the
 compression level specified after the column.
 
 ```luau
-local lzma2_default = compression.compressor("lzma2")
+local gzip_default = compression.compressor("gzip")
 local zstd_level_9 = compression.compressor("zstd:9")
 ```
 
@@ -100,7 +93,7 @@ local zstd_level_9 = compression.compressor("zstd:9")
 Create data decompression object, returning handle to it.
 
 ```luau
-local lzma2 = compression.decompressor("lzma2")
+local zstd = compression.decompressor("zstd")
 ```
 
 ## `compression.read(handle: number) -> Bytes | nil`

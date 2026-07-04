@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ fn filter_lua_value(value: LuaValue) -> Result<LuaValue, LuaError> {
 enum StringEncoding {
     Base16,
     Base32(base32::Alphabet),
+    Base32Nix,
     Base64(base64::engine::GeneralPurpose),
     Json { pretty: bool },
     Bson,
@@ -79,6 +80,12 @@ impl StringEncoding {
                 let value = Bytes::from_lua(value, lua)?;
 
                 lua.create_string(base32::encode(*alphabet, value.as_slice()))
+            }
+
+            Self::Base32Nix => {
+                let value = Bytes::from_lua(value, lua)?;
+
+                lua.create_string(nix_base32::to_nix_base32(value.as_slice()))
             }
 
             Self::Base64(engine) => {
@@ -146,6 +153,17 @@ impl StringEncoding {
                     .into_lua(lua)
             }
 
+            Self::Base32Nix => {
+                let string = string.to_string_lossy()
+                    .to_string();
+
+                let value = nix_base32::from_nix_base32(&string)
+                    .ok_or_else(|| LuaError::external("invalid nix-base32 string"))?;
+
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
+            }
+
             Self::Base64(engine) => {
                 let value = engine.decode(string.as_bytes())
                     .map_err(LuaError::external)?;
@@ -204,12 +222,17 @@ impl FromStr for StringEncoding {
                 Ok(Self::Base32(base32::Alphabet::Rfc4648Lower { padding: false }))
             }
 
-            "base32/hex-pad"   => {
+            "base32/hex-pad" => {
                 Ok(Self::Base32(base32::Alphabet::Rfc4648HexLower { padding: true }))
             }
 
             "base32/hex-nopad" => {
                 Ok(Self::Base32(base32::Alphabet::Rfc4648HexLower { padding: false }))
+            }
+
+            // nix-base32
+            "nix-base32" | "nixos-base32" | "base32/nix" | "base32-nixos" | "nix32" => {
+                Ok(Self::Base32Nix)
             }
 
             // Base64

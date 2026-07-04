@@ -34,7 +34,7 @@
                         maintainers = [
                             {
                                 name = "Nikita Podvirnyi";
-                                email = "krypt0nn@vk.com";
+                                email = "krypt0nn@dawn.wine";
                                 matrix = "@krypt0nn:mozilla.org";
                                 github = "krypt0nn";
                                 githubId = 29639507;
@@ -97,7 +97,7 @@
                         maintainers = [
                             {
                                 name = "Nikita Podvirnyi";
-                                email = "krypt0nn@vk.com";
+                                email = "krypt0nn@dawn.wine";
                                 matrix = "@krypt0nn:mozilla.org";
                                 github = "krypt0nn";
                                 githubId = 29639507;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ fn create_request(
         "patch"   => Method::PATCH,
         "delete"  => Method::DELETE,
         "connect" => Method::CONNECT,
+        "trace"   => Method::TRACE,
 
         _ => return Err(LuaError::external("invalid request method"))
     };
@@ -271,7 +272,7 @@ impl HttpApi {
             http_close: {
                 let net_handles = net_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     net_handles.lock()
                         .map_err(|err| {
                             LuaError::external(format!("failed to read handle: {err}"))
@@ -315,7 +316,7 @@ mod tests {
 
         assert_eq!(response.get::<u16>("status")?, 200);
         assert!(response.get::<bool>("is_ok")?);
-        assert_eq!(seahash::hash(&response.get::<Bytes>("body")?), 3006589543747530287);
+        assert_eq!(seahash::hash(&response.get::<Bytes>("body")?), 14642176728771407784);
 
         Ok(())
     }

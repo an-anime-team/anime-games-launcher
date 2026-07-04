@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -29,10 +29,10 @@ use agl_locale::string::LocalizableString;
 use agl_packages::storage::Storage;
 
 #[cfg(feature = "packages-support")]
-use crate::allow_list::AllowList;
+use crate::scopes_list::ScopesList;
 
 use crate::module::{Module, ModuleScope};
-use crate::api::ApiOptions;
+use crate::api::{ApiContext, ApiOptions};
 use crate::runtime::{Runtime, RuntimeError, ModulePaths};
 
 #[cfg(feature = "packages-support")]
@@ -58,7 +58,7 @@ fn get_runtime() -> Result<Runtime, RuntimeError> {
         str.default_translation().to_string()
     }
 
-    Runtime::new(ApiOptions {
+    let options = ApiOptions {
         lua: Lua::new(),
         reqwest_client: reqwest::Client::new(),
 
@@ -74,8 +74,14 @@ fn get_runtime() -> Result<Runtime, RuntimeError> {
         #[cfg(feature = "portal-api")]
         show_dialog: Box::new(|_| {}),
 
+        #[cfg(feature = "secrets-api")]
+        secrets_file: std::env::temp_dir()
+            .join(".agl-runtime-load-packages-test.db"),
+
         translate
-    })
+    };
+
+    Runtime::new(options, ApiContext::default())
 }
 
 #[test]
@@ -88,9 +94,9 @@ fn simple_module() -> Result<(), RuntimeError> {
     };
 
     let paths = ModulePaths {
-        temp_folder: std::env::temp_dir(),
-        modules_folder: std::env::temp_dir(),
-        persistent_folder: std::env::temp_dir()
+        temp_dir: std::env::temp_dir(),
+        modules_dir: std::env::temp_dir(),
+        persistent_dir: std::env::temp_dir()
     };
 
     runtime.load_module("module", module, paths)?;
@@ -127,17 +133,17 @@ fn simple_package() -> Result<(), Box<dyn std::error::Error>> {
         let runtime = get_runtime()?;
 
         let paths = ModulePaths {
-            temp_folder: std::env::temp_dir(),
-            modules_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir()
+            temp_dir: std::env::temp_dir(),
+            modules_dir: std::env::temp_dir(),
+            persistent_dir: std::env::temp_dir()
         };
 
-        let allow_list = AllowList::default();
+        let scopes_list = ScopesList::default();
 
-        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("j19332e198rda#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("503c9n53idi9rhfsm7al00gc2f#module")? else {
             panic!("missing loaded module value");
         };
 
@@ -163,24 +169,24 @@ fn dependency_module() -> Result<(), Box<dyn std::error::Error>> {
         let runtime = get_runtime()?;
 
         let paths = ModulePaths {
-            temp_folder: std::env::temp_dir(),
-            modules_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir()
+            temp_dir: std::env::temp_dir(),
+            modules_dir: std::env::temp_dir(),
+            persistent_dir: std::env::temp_dir()
         };
 
-        let allow_list = AllowList::default();
+        let scopes_list = ScopesList::default();
 
-        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("4rrnaukmvtkl4#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("4hnpqy6q7jjyga41s5vzdmz0yh#module")? else {
             panic!("missing loaded module value");
         };
 
         let module = module.raw_get::<LuaFunction>("value")?;
 
         runtime.set_value("test", "World")?;
-        runtime.set_named_reference("hlm1n2jp72hbg#module", "test", "name")?;
+        runtime.set_named_reference("6vq28ac1yw9dilf7ih4w2h0kdb#module", "test", "name")?;
 
         assert_eq!(module.call::<String>(())?, "Hello, World!");
 
@@ -203,17 +209,17 @@ fn nested_package() -> Result<(), Box<dyn std::error::Error>> {
         let runtime = get_runtime()?;
 
         let paths = ModulePaths {
-            temp_folder: std::env::temp_dir(),
-            modules_folder: std::env::temp_dir(),
-            persistent_folder: std::env::temp_dir()
+            temp_dir: std::env::temp_dir(),
+            modules_dir: std::env::temp_dir(),
+            persistent_dir: std::env::temp_dir()
         };
 
-        let allow_list = AllowList::default();
+        let scopes_list = ScopesList::default();
 
-        runtime.load_packages(&lock, &storage, &paths, &allow_list)?;
+        runtime.load_packages(&lock, &storage, &paths, &scopes_list)?;
 
         // Find some better and standardized way for querying loaded modules.
-        let Some(module) = runtime.get_value::<LuaTable>("fgkua9vq5ra7q#module")? else {
+        let Some(module) = runtime.get_value::<LuaTable>("0wbfqfvpsd5xfxx4wzkimxx9jb#module")? else {
             panic!("missing loaded module value");
         };
 

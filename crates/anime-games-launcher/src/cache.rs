@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ use crate::consts::CACHE_DIR;
 /// Get path to a file with provided cache key.
 #[inline]
 pub fn get_path(key: impl AsRef<[u8]>) -> PathBuf {
-    CACHE_DIR.join(Hash::from_bytes(key.as_ref()).to_base32())
+    CACHE_DIR.join(Hash::digitize(key.as_ref()).to_base32())
 }
 
 /// Check if a file with provided path is expired.

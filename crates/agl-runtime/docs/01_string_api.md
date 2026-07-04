@@ -27,6 +27,7 @@ Following table contains list of `StringEncoding` enum values.
 | `base32/nopad`           | RFC 4648 lower without padding.                      |
 | `base32/hex-pad`         | RFC 4648 hex lower with padding.                     |
 | `base32/hex-nopad`       | RFC 4648 hex lower without padding.                  |
+| `base32/nix` (1)         | Nix variant of base32 encoding.                      |
 | `base64`                 | Convert bytes array to base64 string (`base64/pad`). |
 | `base64/pad`             | Standard lower with padding.                         |
 | `base64/nopad`           | Standard lower without padding.                      |
@@ -34,13 +35,14 @@ Following table contains list of `StringEncoding` enum values.
 | `base64/urlsafe-nopad`   | URL-safe without padding.                            |
 | `json` or `json/compact` | Convert given value to a JSON string.                |
 | `json/pretty`            | Convert given value to a pretty JSON string.         |
-| `bson` \*                | Convert given value to a BSON binary string.         |
+| `bson` (2)               | Convert given value to a BSON binary string.         |
 | `toml` or `toml/compact` | Convert given value to a TOML string.                |
 | `toml/pretty`            | Convert given value to a pretty TOML string.         |
 | `yaml`                   | Convert given value to a YAML string.                |
 
-> \* Although BSON is a binary format since lua strings don't have any specific
->    text encoding it's possible to store binary data in them.
+1. Source: https://github.com/NixOS/nix/blob/master/doc/manual/source/protocols/nix32.md
+2. Although BSON is a binary format since lua strings don't have any specific
+   text encoding it's possible to store binary data in them.
 
 ## `str.to_bytes(value: any, [charset: string]) -> Bytes`
 

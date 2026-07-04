@@ -13,15 +13,14 @@
     <gresource prefix="/moe/launcher/anime-games-launcher/icons/scalable/actions">
         <!-- Game tags -->
 
-        <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">images/icons/dice3-symbolic.svg</file> <!-- gambling -->
-        <file preprocess="xml-stripblanks" alias="money-symbolic.svg">images/icons/money-symbolic.svg</file> <!-- payments -->
-        <file preprocess="xml-stripblanks" alias="violence-symbolic.svg">images/icons/violence-symbolic.svg</file> <!-- graphic-violence / kill running game button -->
+        <file preprocess="xml-stripblanks" alias="social-network-symbolic.svg">images/icons/social-network-symbolic.svg</file> <!-- free-to-play -->
         <file preprocess="xml-stripblanks" alias="system-users-symbolic.svg">images/icons/system-users-symbolic.svg</file> <!-- cooperative -->
-        <file preprocess="xml-stripblanks" alias="mail-unread-symbolic.svg">images/icons/mail-unread-symbolic.svg</file> <!-- social -->
-        <file preprocess="xml-stripblanks" alias="input-gaming-symbolic.svg">images/icons/input-gaming-symbolic.svg</file> <!-- controller / open library page game button -->
-        <file preprocess="xml-stripblanks" alias="speedometer4-symbolic.svg">images/icons/speedometer4-symbolic.svg</file> <!-- performance-issues -->
-        <file preprocess="xml-stripblanks" alias="background-app-ghost-symbolic.svg">images/icons/background-app-ghost-symbolic.svg</file> <!-- anti-cheat -->
-        <file preprocess="xml-stripblanks" alias="test-symbolic.svg">images/icons/test-symbolic.svg</file> <!-- workarounds -->
+        <file preprocess="xml-stripblanks" alias="mail-unread-symbolic.svg">images/icons/mail-unread-symbolic.svg</file> <!-- social-features -->
+        <file preprocess="xml-stripblanks" alias="input-gaming-symbolic.svg">images/icons/input-gaming-symbolic.svg</file> <!-- controller-support / open library page game button -->
+        <file preprocess="xml-stripblanks" alias="dice3-symbolic.svg">images/icons/dice3-symbolic.svg</file> <!-- gambling -->
+        <file preprocess="xml-stripblanks" alias="money-symbolic.svg">images/icons/money-symbolic.svg</file> <!-- in-game-purchases -->
+        <file preprocess="xml-stripblanks" alias="violence-symbolic.svg">images/icons/violence-symbolic.svg</file> <!-- graphic-violence / kill running game button -->
+        <file preprocess="xml-stripblanks" alias="nudity-symbolic.svg">images/icons/nudity-symbolic.svg</file> <!-- adult-content -->
 
         <!-- Pages -->
 

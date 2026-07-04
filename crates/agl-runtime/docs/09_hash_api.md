@@ -49,7 +49,7 @@ Calculate hash for a given bytes slice using specified algorithm.
 
 ```luau
 -- [236, 74, 195, 208]
-dbg(hash.digitize("crc32", "Hello, World!"))
+dbg(hash.digitize("crc32", "Hello, World!"):as_table())
 ```
 
 ## `hash.digitize_file(algorithm: HashAlgorithm, path: string) -> Promise<Bytes>`
@@ -62,7 +62,7 @@ is a background promise.
 fs.write_file("test.txt", "Hello, World!")
 
 -- [236, 74, 195, 208]
-dbg(hash.digitize_file("crc32", "test.txt"):await())
+dbg(hash.digitize_file("crc32", "test.txt"):await():as_table())
 ```
 
 ## `hash.hasher(algorithm: HashAlgorithm) -> number`

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -494,7 +494,7 @@ impl LuaUserData for Protobuf {
             Self::from(pool).into_lua(lua)
         });
 
-        methods.add_method("messages", |_lua: &Lua, schema: &Self, _: ()| {
+        methods.add_method("messages", |_lua: &Lua, schema: &Self, ()| {
             Ok(schema.all_messages()
                 .map(|message| message.name().to_string())
                 .collect::<Vec<String>>())
@@ -525,7 +525,7 @@ impl LuaUserData for Protobuf {
             protobuf_decode(lua, message)
         });
 
-        methods.add_method("as_bytes", |_lua: &Lua, protobuf: &Self, _: ()| {
+        methods.add_method("as_bytes", |_lua: &Lua, protobuf: &Self, ()| {
             Ok(Bytes::new(protobuf.encode_to_vec().into_boxed_slice()))
         });
 

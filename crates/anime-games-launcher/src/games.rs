@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 use anyhow::Context;
 use serde_json::{json, Value as Json};
 
+use agl_core::export::hashes::seahash;
+use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
@@ -29,10 +31,35 @@ use agl_games::manifest::GameManifest;
 use crate::config;
 use crate::cache;
 
-/// Get game lock filename from its manifest URL.
-#[inline]
-pub fn get_name(manifest_url: &str) -> String {
-    Hash::from_bytes(manifest_url.as_bytes()).to_base32()
+/// Get sanitized game name from optional manifest's `name` field and manifest
+/// downloading URL.
+pub fn get_name(name: Option<&str>, manifest_url: &str) -> String {
+    match name {
+        Some(name) => {
+            let hash = seahash::hash(name.as_bytes());
+
+            let name = name.chars()
+                .map(|char| {
+                    if char.is_ascii_alphanumeric() {
+                        char
+                    } else {
+                        '_'
+                    }
+                })
+                .collect::<String>();
+
+            let name = name.trim_matches('_')
+                .replace("__", "_");
+
+            if name.is_empty() {
+                format!("{hash:x}")
+            } else {
+                format!("{hash:x}-{name}")
+            }
+        }
+
+        None => Hash::digitize(manifest_url.as_bytes()).to_base32()
+    }
 }
 
 /// Lock file for a game package.
@@ -102,6 +129,13 @@ impl GameLock {
         })
     }
 
+    /// Get sanitized game name derived from either game manifest's `name` field
+    /// or the manifest's download URL.
+    #[inline]
+    pub fn name(&self) -> String {
+        get_name(self.manifest.game.name.as_deref(), self.url.as_str())
+    }
+
     /// Download game package and manifest files and lock them.
     pub async fn download(
         manifest_url: impl ToString,
@@ -139,8 +173,10 @@ impl GameLock {
         }
 
         // Read manifest file.
-        let manifest = std::fs::read(&manifest_path)?;
-        let manifest = serde_json::from_slice::<Json>(&manifest)?;
+        let manifest = tasks::fs::read(&manifest_path).await?;
+
+        let manifest = serde_json::from_slice::<Json>(&manifest)
+            .context("failed to decode json file with game manifest")?;
 
         let manifest = GameManifest::from_json(&manifest)
             .context("failed to deserialize game manifest")?;

@@ -69,9 +69,9 @@ you can use torrent files.
 
 ```ts
 type AddTorrentOptions = {
-    // Path to a folder where the torrent should be downloaded. If unset, the
-    // temporary folder is used.
-    output_folder?: string;
+    // Path to directory where the torrent should be downloaded. If unset, the
+    // temporary directory is used.
+    output_directory?: string;
 
     // List of extra trackers for this torrent.
     trackers?: string[];

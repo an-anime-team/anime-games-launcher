@@ -65,13 +65,10 @@ id = "Membuat folder-folder bawaan"
 it = "Creazione delle cartelle predefinite"
 ja = "デフォルトのフォルダを作成しています"
 
-[fetching_packages_allow_lists]
-en = "Fetching packages allow lists"
-ru = "Запрос белых списков пакетов"
-pt = "Adquirindo listas de permissão do pacote"
-de = "Rufe Paket-Whitelisten auf"
-id = "Mengunduh daftar paket yang diizinkan"
-it = "Recuperando le liste di pacchetti consentiti"
+[fetching_modules_scopes_lists]
+en = "Fetching modules scopes lists"
+ru = "Запрос списков привелегий пакетов"
+pt = "Buscando listas de escopo dos módulos"
 
 [fetching_games_registries]
 en = "Fetching games registries"
@@ -92,6 +89,7 @@ it = "Recuperando i manifest dei giochi"
 [clearing_cache]
 en = "Clearing cache"
 ru = "Очистка кэша"
+pt = "Limpando cache"
 
 [loading_added_games]
 en = "Loading added games"
@@ -122,6 +120,7 @@ ja = "{title} ゲームパッケージを更新しています"
 [collecting_garbage]
 en = "Collecting garbage"
 ru = "Сбор мусора"
+pt = "Coletando lixo"
 
 [adding_store_page_games]
 en = "Adding store page games"
@@ -332,6 +331,11 @@ de = "Kein Spiel ausgewählt"
 id = "Tidak ada game dipilih"
 it = "Nessun gioco selezionato"
 ja = "ゲームが選択されていません"
+
+[game_outdated_package_loaded_title]
+en = "Outdated game package was loaded"
+ru = "Был загружен устаревший игровой пакет"
+pt = "Um pacote de jogo desatualizado foi carregado"
 
 [game_play]
 en = "Play"

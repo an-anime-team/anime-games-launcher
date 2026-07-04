@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -267,15 +267,19 @@ pub struct PortalApi {
     portal_notify: LuaFunction,
     portal_dialog: LuaFunction,
     portal_open_file: LuaFunctionBuilder,
-    portal_open_folder: LuaFunctionBuilder,
+    portal_open_directory: LuaFunctionBuilder,
     portal_save_file: LuaFunctionBuilder
 }
 
 impl PortalApi {
-    pub fn new(lua: Lua, options: PortalApiOptions) -> Result<Self, LuaError> {
+    pub fn new(
+        lua: Lua,
+        api_context: ApiContext,
+        options: PortalApiOptions
+    ) -> Result<Self, LuaError> {
         Ok(Self {
             portal_toast: {
-                lua.create_function(move |_, toast_options: LuaTable| {
+                lua.create_function(move |_lua: &Lua, toast_options: LuaTable| {
                     (options.show_toast)(ToastOptions::from_lua(&toast_options)?);
 
                     Ok(())
@@ -283,7 +287,7 @@ impl PortalApi {
             },
 
             portal_notify: {
-                lua.create_function(move |_, notify_options: LuaTable| {
+                lua.create_function(move |_lua: &Lua, notify_options: LuaTable| {
                     (options.show_notification)(NotificationOptions::from_lua(&notify_options)?);
 
                     Ok(())
@@ -291,135 +295,224 @@ impl PortalApi {
             },
 
             portal_dialog: {
-                lua.create_function(move |_, dialog_options: LuaTable| {
+                lua.create_function(move |_lua: &Lua, dialog_options: LuaTable| {
                     (options.show_dialog)(DialogOptions::from_lua(&dialog_options)?);
 
                     Ok(())
                 })?
             },
 
-            portal_open_file: Box::new(move |lua, context| {
-                let module_scope = context.scope.clone();
+            portal_open_file: {
+                let api_context = api_context.clone();
 
-                lua.create_function(move |lua: &Lua, open_file_options: Option<LuaTable>| {
-                    let mut dialog = rfd::AsyncFileDialog::new();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_scope = module_context.scope.clone();
 
-                    let mut multiple = false;
+                    lua.create_function(move |lua: &Lua, open_file_options: Option<LuaTable>| {
+                        let mut dialog = rfd::AsyncFileDialog::new();
 
-                    if let Some(open_file_options) = open_file_options {
-                        if let Some(title) = open_file_options.get::<Option<LuaValue>>("title")? {
-                            let title = LocalizableString::from_lua(&title)?;
+                        let mut multiple = false;
 
-                            dialog = dialog.set_title((options.translate)(title));
+                        if let Some(open_file_options) = open_file_options {
+                            if let Some(title) = open_file_options.get::<Option<LuaValue>>("title")? {
+                                let title = LocalizableString::from_lua(&title)?;
+
+                                dialog = dialog.set_title((options.translate)(title));
+                            }
+
+                            if let Some(directory) = open_file_options.get::<Option<String>>("directory")? {
+                                dialog = dialog.set_directory(PathBuf::from(directory));
+                            }
+
+                            multiple = open_file_options.get::<bool>("multiple")
+                                .unwrap_or(false);
                         }
 
-                        if let Some(directory) = open_file_options.get::<Option<String>>("directory")? {
-                            dialog = dialog.set_directory(PathBuf::from(directory));
-                        }
+                        let api_context = api_context.clone();
+                        let module_scope = module_scope.clone();
 
-                        multiple = open_file_options.get::<bool>("multiple")
-                            .unwrap_or(false);
-                    }
+                        let value = PromiseValue::from_future(async move {
+                            #[allow(clippy::collapsible_else_if)]
+                            if multiple {
+                                if let Some(paths) = dialog.pick_files().await {
+                                    for path in &paths {
+                                        if !api_context.can_access_path(path.path()) {
+                                            return Err(LuaError::external("selected path cannot be accessed"));
+                                        }
+                                    }
 
-                    let module_scope = module_scope.clone();
+                                    let Ok(mut scope) = module_scope.write() else {
+                                        return Err(LuaError::external("failed to lock module scope"));
+                                    };
 
-                    let value = PromiseValue::from_future(async move {
-                        #[allow(clippy::collapsible_else_if)]
-                        if multiple {
-                            if let Some(paths) = dialog.pick_files().await {
-                                let Ok(mut scope) = module_scope.write() else {
-                                    return Err(LuaError::external("failed to lock module scope"));
-                                };
+                                    for path in &paths {
+                                        scope.sandbox_read_paths.push(path.path().to_path_buf());
+                                    }
 
-                                for path in &paths {
+                                    return Ok(Box::new(move |lua: &Lua| {
+                                        let result = lua.create_sequence_from(
+                                            paths.into_iter()
+                                                .map(|path| path.path().to_path_buf())
+                                        )?;
+
+                                        Ok(LuaValue::Table(result))
+                                    }) as TaskOutput);
+                                }
+                            }
+
+                            else {
+                                if let Some(path) = dialog.pick_file().await {
+                                    if !api_context.can_access_path(path.path()) {
+                                        return Err(LuaError::external("selected path cannot be accessed"));
+                                    }
+
+                                    let Ok(mut scope) = module_scope.write() else {
+                                        return Err(LuaError::external("failed to lock module scope"));
+                                    };
+
                                     scope.sandbox_read_paths.push(path.path().to_path_buf());
+
+                                    return Ok(Box::new(move |lua: &Lua| {
+                                        Ok(LuaValue::String(
+                                            lua.create_string(path.path().as_os_str().as_encoded_bytes())?
+                                        ))
+                                    }) as TaskOutput);
                                 }
-
-                                return Ok(Box::new(move |lua: &Lua| {
-                                    let result = lua.create_sequence_from(
-                                        paths.into_iter()
-                                            .map(|path| path.path().to_path_buf())
-                                    )?;
-
-                                    Ok(LuaValue::Table(result))
-                                }) as TaskOutput);
                             }
-                        }
 
-                        else {
-                            if let Some(path) = dialog.pick_file().await {
-                                let Ok(mut scope) = module_scope.write() else {
-                                    return Err(LuaError::external("failed to lock module scope"));
-                                };
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
 
-                                scope.sandbox_read_paths.push(path.path().to_path_buf());
-
-                                return Ok(Box::new(move |lua: &Lua| {
-                                    Ok(LuaValue::String(
-                                        lua.create_string(path.path().as_os_str().as_encoded_bytes())?
-                                    ))
-                                }) as TaskOutput);
-                            }
-                        }
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
                 })
-            }),
+            },
 
-            portal_open_folder: Box::new(move |lua, context| {
-                let module_scope = context.scope.clone();
+            portal_open_directory: {
+                let api_context = api_context.clone();
 
-                lua.create_function(move |lua, open_folder_options: Option<LuaTable>| {
-                    let mut dialog = rfd::AsyncFileDialog::new();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_scope = module_context.scope.clone();
 
-                    let mut multiple = false;
+                    lua.create_function(move |lua, open_directory_options: Option<LuaTable>| {
+                        let mut dialog = rfd::AsyncFileDialog::new();
 
-                    if let Some(open_folder_options) = open_folder_options {
-                        if let Some(title) = open_folder_options.get::<Option<LuaValue>>("title")? {
-                            let title = LocalizableString::from_lua(&title)?;
+                        let mut multiple = false;
 
-                            dialog = dialog.set_title((options.translate)(title));
+                        if let Some(open_directory_options) = open_directory_options {
+                            if let Some(title) = open_directory_options.get::<Option<LuaValue>>("title")? {
+                                let title = LocalizableString::from_lua(&title)?;
+
+                                dialog = dialog.set_title((options.translate)(title));
+                            }
+
+                            if let Some(directory) = open_directory_options.get::<Option<String>>("directory")? {
+                                dialog = dialog.set_directory(PathBuf::from(directory));
+                            }
+
+                            multiple = open_directory_options.get::<bool>("multiple")
+                                .unwrap_or(false);
                         }
 
-                        if let Some(directory) = open_folder_options.get::<Option<String>>("directory")? {
-                            dialog = dialog.set_directory(PathBuf::from(directory));
-                        }
+                        let api_context = api_context.clone();
+                        let module_scope = module_scope.clone();
 
-                        multiple = open_folder_options.get::<bool>("multiple")
-                            .unwrap_or(false);
-                    }
+                        let value = PromiseValue::from_future(async move {
+                            #[allow(clippy::collapsible_else_if)]
+                            if multiple {
+                                if let Some(paths) = dialog.pick_folders().await {
+                                    for path in &paths {
+                                        if !api_context.can_access_path(path.path()) {
+                                            return Err(LuaError::external("selected path cannot be accessed"));
+                                        }
+                                    }
 
-                    let module_scope = module_scope.clone();
+                                    let Ok(mut scope) = module_scope.write() else {
+                                        return Err(LuaError::external("failed to lock module scope"));
+                                    };
 
-                    let value = PromiseValue::from_future(async move {
-                        #[allow(clippy::collapsible_else_if)]
-                        if multiple {
-                            if let Some(paths) = dialog.pick_folders().await {
-                                let Ok(mut scope) = module_scope.write() else {
-                                    return Err(LuaError::external("failed to lock module scope"));
-                                };
+                                    for path in &paths {
+                                        scope.sandbox_write_paths.push(path.path().to_path_buf());
+                                    }
 
-                                for path in &paths {
-                                    scope.sandbox_write_paths.push(path.path().to_path_buf());
+                                    return Ok(Box::new(move |lua: &Lua| {
+                                        let result = lua.create_sequence_from(
+                                            paths.into_iter()
+                                                .map(|path| path.path().to_path_buf())
+                                        )?;
+
+                                        Ok(LuaValue::Table(result))
+                                    }) as TaskOutput);
                                 }
+                            }
 
-                                return Ok(Box::new(move |lua: &Lua| {
-                                    let result = lua.create_sequence_from(
-                                        paths.into_iter()
-                                            .map(|path| path.path().to_path_buf())
-                                    )?;
+                            else {
+                                if let Some(path) = dialog.pick_folder().await {
+                                    if !api_context.can_access_path(path.path()) {
+                                        return Err(LuaError::external("selected path cannot be accessed"));
+                                    }
 
-                                    Ok(LuaValue::Table(result))
-                                }) as TaskOutput);
+                                    let Ok(mut scope) = module_scope.write() else {
+                                        return Err(LuaError::external("failed to lock module scope"));
+                                    };
+
+                                    scope.sandbox_write_paths.push(path.path().to_path_buf());
+
+                                    return Ok(Box::new(move |lua: &Lua| {
+                                        Ok(LuaValue::String(
+                                            lua.create_string(path.path().as_os_str().as_encoded_bytes())?
+                                        ))
+                                    }) as TaskOutput);
+                                }
+                            }
+
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
+                })
+            },
+
+            portal_save_file: {
+                let api_context = api_context.clone();
+
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_scope = module_context.scope.clone();
+
+                    lua.create_function(move |lua, safe_file_options: Option<LuaTable>| {
+                        let mut dialog = rfd::AsyncFileDialog::new();
+
+                        if let Some(safe_file_options) = safe_file_options {
+                            if let Some(title) = safe_file_options.get::<Option<LuaValue>>("title")? {
+                                let title = LocalizableString::from_lua(&title)?;
+
+                                dialog = dialog.set_title((options.translate)(title));
+                            }
+
+                            if let Some(directory) = safe_file_options.get::<Option<String>>("directory")? {
+                                dialog = dialog.set_directory(PathBuf::from(directory));
+                            }
+
+                            if let Some(file_name) = safe_file_options.get::<Option<String>>("file_name")? {
+                                dialog = dialog.set_file_name(file_name);
                             }
                         }
 
-                        else {
-                            if let Some(path) = dialog.pick_folder().await {
+                        let api_context = api_context.clone();
+                        let module_scope = module_scope.clone();
+
+                        let value = PromiseValue::from_future(async move {
+                            if let Some(path) = dialog.save_file().await {
+                                if !api_context.can_access_path(path.path()) {
+                                    return Err(LuaError::external("selected path cannot be accessed"));
+                                }
+
                                 let Ok(mut scope) = module_scope.write() else {
                                     return Err(LuaError::external("failed to lock module scope"));
                                 };
@@ -432,77 +525,42 @@ impl PortalApi {
                                     ))
                                 }) as TaskOutput);
                             }
-                        }
 
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
+                            Ok(task_output(Ok(LuaValue::Nil)))
+                        });
 
-                    Promise::new(value)
-                        .into_lua(lua)
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
                 })
-            }),
-
-            portal_save_file: Box::new(move |lua, context| {
-                let module_scope = context.scope.clone();
-
-                lua.create_function(move |lua, safe_file_options: Option<LuaTable>| {
-                    let mut dialog = rfd::AsyncFileDialog::new();
-
-                    if let Some(safe_file_options) = safe_file_options {
-                        if let Some(title) = safe_file_options.get::<Option<LuaValue>>("title")? {
-                            let title = LocalizableString::from_lua(&title)?;
-
-                            dialog = dialog.set_title((options.translate)(title));
-                        }
-
-                        if let Some(directory) = safe_file_options.get::<Option<String>>("directory")? {
-                            dialog = dialog.set_directory(PathBuf::from(directory));
-                        }
-
-                        if let Some(file_name) = safe_file_options.get::<Option<String>>("file_name")? {
-                            dialog = dialog.set_file_name(file_name);
-                        }
-                    }
-
-                    let module_scope = module_scope.clone();
-
-                    let value = PromiseValue::from_future(async move {
-                        if let Some(path) = dialog.save_file().await {
-                            let Ok(mut scope) = module_scope.write() else {
-                                return Err(LuaError::external("failed to lock module scope"));
-                            };
-
-                            scope.sandbox_write_paths.push(path.path().to_path_buf());
-
-                            return Ok(Box::new(move |lua: &Lua| {
-                                Ok(LuaValue::String(
-                                    lua.create_string(path.path().as_os_str().as_encoded_bytes())?
-                                ))
-                            }) as TaskOutput);
-                        }
-
-                        Ok(task_output(Ok(LuaValue::Nil)))
-                    });
-
-                    Promise::new(value)
-                        .into_lua(lua)
-                })
-            }),
+            },
 
             lua
         })
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
-        let env = self.lua.create_table_with_capacity(0, 6)?;
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
+        let env = self.lua.create_table_with_capacity(0, 7)?;
+
+        let open_directory = (self.portal_open_directory)(&self.lua, context)?;
 
         env.raw_set("toast", &self.portal_toast)?;
         env.raw_set("notify", &self.portal_notify)?;
         env.raw_set("dialog", &self.portal_dialog)?;
         env.raw_set("open_file", (self.portal_open_file)(&self.lua, context)?)?;
-        env.raw_set("open_folder", (self.portal_open_folder)(&self.lua, context)?)?;
+        env.raw_set("open_directory", &open_directory)?;
         env.raw_set("save_file", (self.portal_save_file)(&self.lua, context)?)?;
+
+        env.raw_set("open_folder", self.lua.create_function(move |_, options: Option<LuaTable>| {
+            #[cfg(feature = "tracing")]
+            tracing::warn!("portal.open_folder API was renamed to portal.open_directory");
+
+            open_directory.call::<LuaValue>(options)
+        })?)?;
 
         Ok(env)
     }

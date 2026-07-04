@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
-use std::str::FromStr;
 
 use serde_json::{json, Value as Json};
 
@@ -60,6 +59,17 @@ pub enum GameInfoDeserializeError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameInfo {
+    /// Unique game identifier.
+    ///
+    /// This identifier will be used to select a single manifest for the same
+    /// game. For example, an application could pull manifests from different
+    /// locations. This field could hint the application that some of the pulled
+    /// manifests are made for the same game, and the application could choose
+    /// one of the manifests to show to the user.
+    ///
+    /// If unset - upstream implementation will decide how to identify the game.
+    pub name: Option<String>,
+
     /// Game title.
     pub title: LocalizableString,
 
@@ -93,6 +103,7 @@ pub struct GameInfo {
 impl GameInfo {
     pub fn to_json(&self) -> Json {
         json!({
+            "name": self.name,
             "title": self.title.to_json(),
             "description": self.description.to_json(),
             "developer": self.developer.to_json(),
@@ -108,6 +119,10 @@ impl GameInfo {
 
     pub fn from_json(value: &Json) -> Result<Self, GameInfoDeserializeError> {
         Ok(Self {
+            name: value.get("name")
+                .and_then(Json::as_str)
+                .map(String::from),
+
             title: value.get("title")
                 .ok_or(GameInfoDeserializeError::MissingTitle)
                 .and_then(|title| {
@@ -144,10 +159,7 @@ impl GameInfo {
                 .and_then(Json::as_array)
                 .map(|tags| {
                     tags.iter()
-                        .flat_map(|tag| {
-                            tag.as_str()
-                                .and_then(|tag| GameTag::from_str(tag).ok())
-                        })
+                        .flat_map(|tag| tag.as_str().map(GameTag::from))
                         .collect::<HashSet<_>>()
                 })
                 .unwrap_or_default(),

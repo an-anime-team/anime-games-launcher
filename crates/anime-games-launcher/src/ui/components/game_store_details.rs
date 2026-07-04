@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,14 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
 use agl_core::tasks;
 use agl_packages::storage::Storage;
-use agl_games::manifest::GameManifest;
+use agl_games::manifest::{GameManifest, GameTag};
 
-use crate::{config, i18n, games};
+use crate::{config, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 
@@ -390,12 +392,27 @@ impl SimpleAsyncComponent for GameStoreDetails {
                 ));
 
                 // Set game tags.
+                let mut tags = manifest.game.tags.iter()
+                    .cloned()
+                    .collect::<Vec<_>>();
+
+                // Sort standard tags, but keep unstandard tags in their
+                // original order if possible.
+                tags.sort_by(|a, b| {
+                    match (a, b) {
+                        (GameTag::Other(_), GameTag::Other(_)) => Ordering::Equal,
+                        (GameTag::Other(_), _) => Ordering::Greater,
+                        (_, GameTag::Other(_)) => Ordering::Less,
+                        (_, _) => a.cmp(b)
+                    }
+                });
+
                 let mut guard = self.tags.guard();
 
                 guard.clear();
 
-                for tag in &manifest.game.tags {
-                    guard.push_back(*tag);
+                for tag in tags {
+                    guard.push_back(tag);
                 }
 
                 drop(guard);
@@ -425,7 +442,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
             GameStoreDetailsInput::UpdateGameStatus => {
                 let config = config::get().await;
 
-                let path = config.games_path.join(games::get_name(&self.manifest_url));
+                let path = config.games_path.join(&self.name);
 
                 if path.is_file() {
                     self.status = GameStatus::Added;
@@ -538,7 +555,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 let config = config::get().await;
 
-                                let path = config.games_path.join(games::get_name(&lock.url));
+                                let path = config.games_path.join(&name);
 
                                 tracing::info!(?url, ?path, "game added");
 
@@ -548,7 +565,11 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     Err(err) => {
                                         sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
-                                        tracing::error!(?err, "failed to serialize game package lock");
+                                        tracing::error!(
+                                            ?err,
+                                            ?name,
+                                            "failed to serialize game package lock"
+                                        );
 
                                         dialogs::error(
                                             i18n!("failed_serialize_game_package_lock")
@@ -560,10 +581,14 @@ impl SimpleAsyncComponent for GameStoreDetails {
                                     }
                                 };
 
-                                if let Err(err) = std::fs::write(path, lock_bytes) {
+                                if let Err(err) = tasks::fs::write(path, lock_bytes).await {
                                     sender.input(GameStoreDetailsInput::SetGameStatus(GameStatus::NotAdded));
 
-                                    tracing::error!(?err, "failed to save game package lock");
+                                    tracing::error!(
+                                        ?err,
+                                        ?name,
+                                        "failed to save game package lock"
+                                    );
 
                                     dialogs::error(
                                         i18n!("failed_save_game_package_lock")

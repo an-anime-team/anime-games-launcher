@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ impl CompressionApi {
         let compression_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            compression_compress: lua.create_function(move |lua, (algorithm, value): (LuaString, Bytes)| {
+            compression_compress: lua.create_function(move |lua: &Lua, (algorithm, value): (LuaString, Bytes)| {
                 let mut compressor = Compressor::from_str(&algorithm.to_string_lossy())
                     .map_err(|err| {
                         LuaError::external("failed to create compressor")
@@ -110,7 +110,7 @@ impl CompressionApi {
                     .into_lua(lua)
             })?,
 
-            compression_decompress: lua.create_function(move |lua, (algorithm, value): (LuaString, Bytes)| {
+            compression_decompress: lua.create_function(move |lua: &Lua, (algorithm, value): (LuaString, Bytes)| {
                 let mut decompressor = Decompressor::from_str(&algorithm.to_string_lossy())
                     .map_err(|err| {
                         LuaError::external("failed to create decompressor")
@@ -143,7 +143,7 @@ impl CompressionApi {
             compression_compressor: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |_, algorithm: LuaString| {
+                lua.create_function(move |_lua: &Lua, algorithm: LuaString| {
                     let compressor = Compressor::from_str(&algorithm.to_string_lossy())
                         .map_err(|err| {
                             LuaError::external("failed to create compressor")
@@ -171,7 +171,7 @@ impl CompressionApi {
             compression_decompressor: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |_, algorithm: LuaString| {
+                lua.create_function(move |_lua: &Lua, algorithm: LuaString| {
                     let decompressor = Decompressor::from_str(&algorithm.to_string_lossy())
                         .map_err(|err| {
                             LuaError::external("failed to create decompressor")
@@ -199,7 +199,7 @@ impl CompressionApi {
             compression_read: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let mut handles = compression_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read compression handle")
@@ -226,7 +226,7 @@ impl CompressionApi {
             compression_write: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |_, (handle, value): (i32, Bytes)| {
+                lua.create_function(move |_: &Lua, (handle, value): (i32, Bytes)| {
                     let mut handles = compression_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read compression handle")
@@ -247,7 +247,7 @@ impl CompressionApi {
             compression_finish: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_: &Lua, handle: i32| {
                     let mut handles = compression_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read compression handle")
@@ -269,7 +269,7 @@ impl CompressionApi {
             compression_close: {
                 let compression_handles = compression_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_: &Lua, handle: i32| {
                     compression_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read compression handle")

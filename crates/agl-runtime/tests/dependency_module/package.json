@@ -2,13 +2,13 @@
     "inputs": {
         "module_1": {
             "uri": "module_1.luau",
-            "hash": "hlm1n2jp72hbg"
+            "hash": "6vq28ac1yw9dilf7ih4w2h0kdb"
         }
     },
     "outputs": {
         "module_2": {
             "uri": "module_2.luau",
-            "hash": "4rrnaukmvtkl4"
+            "hash": "4hnpqy6q7jjyga41s5vzdmz0yh"
         }
     }
 }

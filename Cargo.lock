@@ -73,8 +73,9 @@ version = "0.1.1"
 dependencies = [
  "agl-core",
  "base32",
+ "blake3",
  "fastrand",
- "seahash",
+ "nix-base32",
  "serde_json",
  "thiserror 1.0.69",
  "tracing",
@@ -96,6 +97,7 @@ dependencies = [
  "lazy_static",
  "librqbit",
  "mlua",
+ "nix-base32",
  "prost-reflect",
  "protox",
  "rand 0.10.1",
@@ -3005,6 +3007,12 @@ dependencies = [
  "cfg_aliases",
  "libc",
 ]
+
+[[package]]
+name = "nix-base32"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2628953ed836273ee4262e3708a8ef63ca38bd8a922070626eef7f9e5d8d536"
 
 [[package]]
 name = "nonzero_ext"

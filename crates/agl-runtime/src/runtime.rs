@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -30,10 +30,10 @@ use agl_packages::{
 };
 
 #[cfg(feature = "packages-support")]
-use crate::allow_list::AllowList;
+use crate::scopes_list::ScopesList;
 
 use crate::module::{Module, ModuleScope};
-use crate::api::{Api, ApiOptions, Context};
+use crate::api::{Api, ApiContext, ApiOptions, ModuleContext};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeError {
@@ -65,21 +65,21 @@ pub enum RuntimeError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ModulePaths {
-    /// Path to the folder where temporary files should be stored. This folder
-    /// is accessible by all the modules and is expected that will be cleaned
-    /// automatically eventually.
-    pub temp_folder: PathBuf,
+    /// Path to the directory where temporary files should be stored. This
+    /// directory is accessible by all the modules and is expected that will be
+    /// cleaned automatically eventually.
+    pub temp_dir: PathBuf,
 
-    /// Path to the folder where modules will have their own secure storages.
-    /// Each module will get a subfolder which can be accessed only by this
+    /// Path to the directory where modules will have their own secure storages.
+    /// Each module will get a subdirectory which can be accessed only by this
     /// module.
-    pub modules_folder: PathBuf,
+    pub modules_dir: PathBuf,
 
-    /// Path to the folder where persistent files should be stored. This folder
-    /// is accessible by all the modules and is expected that it will not be
-    /// cleaned in long amount of time, so that modules can store important
-    /// files there (e.g. downloaded game files).
-    pub persistent_folder: PathBuf
+    /// Path to the directory where persistent files should be stored. This
+    /// directory is accessible by all the modules and is expected that it will
+    /// not be cleaned in long amount of time, so that modules can store
+    /// important files there (e.g. downloaded game files).
+    pub persistent_dir: PathBuf
 }
 
 /// A host struct for luau scripts runtime. Allows to spawn new scripts and
@@ -91,7 +91,10 @@ pub struct Runtime {
 
 impl Runtime {
     /// Create new luau engine with provided API options.
-    pub fn new(options: ApiOptions) -> Result<Self, RuntimeError> {
+    pub fn new(
+        options: ApiOptions,
+        context: ApiContext
+    ) -> Result<Self, RuntimeError> {
         // Prepare tables and create a registry key to be able to access them
         // from the rust side.
         let engine_table = options.lua.create_table_with_capacity(0, 2)?;
@@ -110,7 +113,7 @@ impl Runtime {
 
         Ok(Self {
             lua: options.lua.clone(),
-            api: Api::new(options)?
+            api: Api::new(options, context)?
         })
     }
 
@@ -129,17 +132,17 @@ impl Runtime {
     /// Try to create a luau module environment from provided permissions scope.
     fn create_env_from_scope(
         &self,
-        temp_folder: PathBuf,
-        module_folder: PathBuf,
-        persistent_folder: PathBuf,
+        temp_dir: PathBuf,
+        module_dir: PathBuf,
+        persistent_dir: PathBuf,
         module_key: String,
         scope: ModuleScope
     ) -> Result<LuaTable, RuntimeError> {
         // Create environment table with the standard library APIs.
-        let env = self.api.create_env(&Context {
-            temp_folder,
-            module_folder,
-            persistent_folder,
+        let env = self.api.create_env(&ModuleContext {
+            temp_dir: Arc::new(temp_dir),
+            module_dir: Arc::new(module_dir),
+            persistent_dir: Arc::new(persistent_dir),
 
             scope: Arc::new(RwLock::new(scope))
         })?;
@@ -376,7 +379,7 @@ impl Runtime {
                 }
             })?;
 
-        let module_hash = Hash::from_bytes(&module_content);
+        let module_hash = Hash::digitize(&module_content);
 
         // Read the engine table from the registry key.
         let engine_table = self.lua.named_registry_value::<LuaTable>("engine")?;
@@ -386,9 +389,9 @@ impl Runtime {
 
         // Create environment for the module.
         let env = self.create_env_from_scope(
-            paths.temp_folder,
-            paths.modules_folder.join(module_hash.to_base32()),
-            paths.persistent_folder,
+            paths.temp_dir,
+            paths.modules_dir.join(module_hash.to_base32()),
+            paths.persistent_dir,
             key.clone(),
             module.scope
         )?;
@@ -413,7 +416,7 @@ impl Runtime {
         lock: &Lock,
         storage: &Storage,
         paths: &ModulePaths,
-        allow_list: &AllowList
+        scopes_list: &ScopesList
     ) -> Result<(), RuntimeError> {
         use std::collections::{VecDeque, HashSet, HashMap};
 
@@ -566,7 +569,7 @@ impl Runtime {
 
             let mut module = Module {
                 path: storage.resource_path(hash),
-                scope: allow_list.get_module_scope(hash)
+                scope: scopes_list.get_module_scope(hash)
                     .cloned()
                     .unwrap_or_default()
             };

@@ -153,36 +153,37 @@ if file_path then
 end
 ```
 
-## `portal.open_folder([options: OpenFolderOptions]) -> Promise<string | string[] | null>`
+## `portal.open_directory([options: OpenDirectoryOptions]) -> Promise<string | string[] | null>`
 
-Open a system folder selection dialog. Return background promise which will
-resolve into a path(s) to a selected folder or `nil` if no folder selected.
+Open a system directory selection dialog. Return background promise which will
+resolve into a path(s) to a selected directory or `nil` if no directory
+selected.
 
 Selected paths are temporary allowed to be written to (read-write access).
 
 ```ts
-type OpenFolderOptions = {
+type OpenDirectoryOptions = {
     // Title of the dialog.
     title?: string;
 
     // Path to the directory open by default.
     directory?: string;
 
-    // Allow selecting more than one folder.
+    // Allow selecting more than one directory.
     multiple?: boolean;
 };
 ```
 
 ```luau
-local folder_path = portal.open_folder({
-    title = "Open folder"
+local directory_path = portal.open_directory({
+    title = "Open directory"
 }):await()
 
-if folder_path then
-    print(`Selected path: {folder_path}`)
+if directory_path then
+    print(`Selected path: {directory_path}`)
 
     -- Selected path can be read
-    assert(path.permissions(folder_path).read)
+    assert(path.permissions(directory_path).read)
 end
 ```
 

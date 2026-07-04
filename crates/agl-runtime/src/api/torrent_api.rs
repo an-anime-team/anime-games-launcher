@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -617,97 +617,123 @@ pub struct TorrentApi {
 impl TorrentApi {
     pub fn new(
         lua: Lua,
+        api_context: ApiContext,
         server: TorrentServer
     ) -> Result<Self, LuaError> {
         Ok(Self {
-            torrent_create: Box::new(|lua, context| {
-                let context = context.clone();
+            torrent_create: {
+                let api_context = api_context.clone();
 
-                lua.create_function(move |lua: &Lua, (mut path, options): (PathBuf, Option<LuaTable>)| {
-                    let mut name = None;
-                    let mut piece_size = None;
-                    let mut trackers = vec![];
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
 
-                    if let Some(options) = options {
-                        name = options.get::<Option<String>>("name")?;
-                        piece_size = options.get::<Option<u32>>("piece_size")?;
+                    lua.create_function(move |lua: &Lua, (mut path, options): (PathBuf, Option<LuaTable>)| {
+                        let mut name = None;
+                        let mut piece_size = None;
+                        let mut trackers = vec![];
 
-                        if let Some(opt_trackers) = options.get::<Option<Vec<String>>>("trackers")? {
-                            trackers = opt_trackers;
-                        }
-                    }
+                        if let Some(options) = options {
+                            name = options.get::<Option<String>>("name")?;
+                            piece_size = options.get::<Option<u32>>("piece_size")?;
 
-                    if path.is_relative() {
-                        path = context.module_folder.join(path);
-                    }
-
-                    path = normalize_path(path, true)
-                        .map_err(|err| {
-                            LuaError::external(format!("failed to normalize path: {err}"))
-                        })?;
-
-                    if !context.can_read_path(&path)? {
-                        return Err(LuaError::external("no path read permissions"));
-                    }
-
-                    let value = PromiseValue::from_future(async move {
-                        let result = librqbit::create_torrent(
-                            &path,
-                            CreateTorrentOptions {
-                                name: name.as_deref(),
-                                piece_length: piece_size
+                            if let Some(opt_trackers) = options.get::<Option<Vec<String>>>("trackers")? {
+                                trackers = opt_trackers;
                             }
-                        ).await;
+                        }
 
-                        let torrent = result.map_err(|err| {
-                            LuaError::external(format!("failed to create torrent: {err}"))
-                        })?;
+                        if path.is_relative() {
+                            path = module_context.module_dir.join(path);
+                        }
 
-                        let mut magnet = Magnet::from_id20(
-                            torrent.info_hash(),
-                            trackers,
-                            None
-                        );
-
-                        magnet.name = name.clone();
-
-                        let content = torrent.as_bytes()
+                        path = normalize_path(path, true)
                             .map_err(|err| {
-                                LuaError::external(format!("failed to get torrent file content: {err}"))
+                                LuaError::external(format!("failed to normalize path: {err}"))
                             })?;
 
-                        Ok(Box::new(move |lua: &Lua| {
-                            let result = lua.create_table_with_capacity(0, 3)?;
+                        if !api_context.can_access_path(&path) {
+                            return Err(LuaError::external("this path cannot be accessed"));
+                        }
 
-                            result.raw_set("info_hash", torrent.info_hash().as_string())?;
-                            result.raw_set("magnet", magnet.to_string())?;
-                            result.raw_set("content", content.to_vec())?;
+                        if !module_context.can_read_path(&path) {
+                            return Err(LuaError::external("no path read permissions"));
+                        }
 
-                            Ok(LuaValue::Table(result))
-                        }) as TaskOutput)
-                    });
+                        let value = PromiseValue::from_future(async move {
+                            let result = librqbit::create_torrent(
+                                &path,
+                                CreateTorrentOptions {
+                                    name: name.as_deref(),
+                                    piece_length: piece_size
+                                }
+                            ).await;
 
-                    Promise::new(value)
-                        .into_lua(lua)
+                            let torrent = result.map_err(|err| {
+                                LuaError::external(format!("failed to create torrent: {err}"))
+                            })?;
+
+                            let mut magnet = Magnet::from_id20(
+                                torrent.info_hash(),
+                                trackers,
+                                None
+                            );
+
+                            magnet.name = name.clone();
+
+                            let content = torrent.as_bytes()
+                                .map_err(|err| {
+                                    LuaError::external(format!("failed to get torrent file content: {err}"))
+                                })?;
+
+                            Ok(Box::new(move |lua: &Lua| {
+                                let result = lua.create_table_with_capacity(0, 3)?;
+
+                                result.raw_set("info_hash", torrent.info_hash().as_string())?;
+                                result.raw_set("magnet", magnet.to_string())?;
+                                result.raw_set("content", content.to_vec())?;
+
+                                Ok(LuaValue::Table(result))
+                            }) as TaskOutput)
+                        });
+
+                        Promise::new(value)
+                            .into_lua(lua)
+                    })
                 })
-            }),
+            },
 
             torrent_add: {
+                let api_context = api_context.clone();
                 let torrent_server = server.clone();
 
-                Box::new(move |lua, context| {
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
                     let torrent_server = torrent_server.clone();
-                    let context = context.clone();
 
                     lua.create_function(move |lua: &Lua, (torrent, options): (Bytes, Option<LuaTable>)| {
-                        let mut output_folder = context.temp_folder.clone();
+                        let mut output_dir = module_context.temp_dir.to_path_buf();
                         let mut trackers = None;
                         let mut paused = false;
                         let mut restart = true;
 
                         if let Some(options) = options {
-                            if let Some(opt_output_folder) = options.get::<Option<String>>("output_folder")? {
-                                output_folder = PathBuf::from(opt_output_folder);
+                            // New option name.
+                            if let Some(opt_output_dir) = options.get::<Option<String>>("output_directory")? {
+                                output_dir = PathBuf::from(opt_output_dir);
+                            }
+
+                            // Alias for new option name.
+                            else if let Some(opt_output_dir) = options.get::<Option<String>>("output_dir")? {
+                                output_dir = PathBuf::from(opt_output_dir);
+                            }
+
+                            // Old option name.
+                            else if let Some(opt_output_dir) = options.get::<Option<String>>("output_folder")? {
+                                #[cfg(feature = "tracing")]
+                                tracing::warn!("output_folder option of the torrent.add API was renamed to output_directory");
+
+                                output_dir = PathBuf::from(opt_output_dir);
                             }
 
                             trackers = options.get::<Option<Vec<String>>>("trackers")?;
@@ -721,17 +747,21 @@ impl TorrentApi {
                             }
                         }
 
-                        if output_folder.is_relative() {
-                            output_folder = context.module_folder.join(output_folder);
+                        if output_dir.is_relative() {
+                            output_dir = module_context.module_dir.join(output_dir);
                         }
 
-                        output_folder = normalize_path(output_folder, true)
+                        output_dir = normalize_path(output_dir, true)
                             .map_err(|err| {
-                                LuaError::external(format!("failed to normalize output folder path: {err}"))
+                                LuaError::external(format!("failed to normalize output directory path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&output_folder)? {
-                            return Err(LuaError::external("no output folder write permissions"));
+                        if !api_context.can_access_path(&output_dir) {
+                            return Err(LuaError::external("output directory path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&output_dir) {
+                            return Err(LuaError::external("no output directory write permissions"));
                         }
 
                         let torrent_server = torrent_server.clone();
@@ -739,7 +769,7 @@ impl TorrentApi {
                         let value = PromiseValue::from_blocking(move || {
                             let result = torrent_server.add_torrent(
                                 (*torrent).clone(),
-                                output_folder,
+                                output_dir,
                                 trackers,
                                 paused,
                                 restart
@@ -764,7 +794,7 @@ impl TorrentApi {
             torrent_list: {
                 let torrent_server = server.clone();
 
-                lua.create_function(move |lua: &Lua, _: ()| {
+                lua.create_function(move |lua: &Lua, ()| {
                     let torrent_server = torrent_server.clone();
 
                     let value = PromiseValue::from_blocking(move || {
@@ -904,7 +934,10 @@ impl TorrentApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("create", (self.torrent_create)(&self.lua, context)?)?;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -47,11 +47,11 @@ impl ProcessApi {
         let process_handles = Arc::new(Mutex::new(HashMap::new()));
 
         Ok(Self {
-            process_exec: Box::new(|lua: &Lua, context: &Context| {
-                let module_folder = context.module_folder.clone();
+            process_exec: Box::new(|lua: &Lua, module_context: &ModuleContext| {
+                let module_dir = module_context.module_dir.to_path_buf();
 
-                lua.create_function(move |lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
-                    let module_folder = module_folder.clone();
+                lua.create_function(move |lua: &Lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
+                    let module_dir = module_dir.clone();
 
                     let args = args
                         .map(|args| {
@@ -88,14 +88,14 @@ impl ProcessApi {
                         let mut command = Command::new(binary);
 
                         let mut command = command
-                            .current_dir(&module_folder)
+                            .current_dir(&module_dir)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped());
 
                         // Create module folder if it doesn't exist.
-                        if !module_folder.is_dir() {
-                            std::fs::create_dir_all(&module_folder)?;
+                        if !module_dir.is_dir() {
+                            std::fs::create_dir_all(&module_dir)?;
                         }
 
                         // Apply command arguments.
@@ -138,22 +138,22 @@ impl ProcessApi {
             process_open: {
                 let process_handles = process_handles.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let module_folder = context.module_folder.clone();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let module_dir = module_context.module_dir.to_path_buf();
                     let process_handles = process_handles.clone();
 
-                    lua.create_function(move |_, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
+                    lua.create_function(move |_lua: &Lua, (binary, args, env): (String, Option<LuaTable>, Option<LuaTable>)| {
                         let mut command = Command::new(binary);
 
                         let mut command = command
-                            .current_dir(&module_folder)
+                            .current_dir(&module_dir)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped());
 
                         // Create module folder if it doesn't exist.
-                        if !module_folder.is_dir() {
-                            std::fs::create_dir_all(&module_folder)?;
+                        if !module_dir.is_dir() {
+                            std::fs::create_dir_all(&module_dir)?;
                         }
 
                         // Apply command arguments.
@@ -198,7 +198,7 @@ impl ProcessApi {
             process_stdin: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, (handle, data): (i32, Bytes)| {
+                lua.create_function(move |_lua: &Lua, (handle, data): (i32, Bytes)| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -218,7 +218,7 @@ impl ProcessApi {
             process_stdout: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -247,7 +247,7 @@ impl ProcessApi {
             process_stderr: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -276,7 +276,7 @@ impl ProcessApi {
             process_kill: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -295,7 +295,7 @@ impl ProcessApi {
             process_wait: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -324,7 +324,7 @@ impl ProcessApi {
             process_finished: {
                 let process_handles = process_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = process_handles.lock()
                         .map_err(|err| LuaError::external(format!("failed to read handle: {err}")))?;
 
@@ -341,7 +341,10 @@ impl ProcessApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(
+        &self,
+        context: &ModuleContext
+    ) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 8)?;
 
         env.raw_set("exec", (self.process_exec)(&self.lua, context)?)?;

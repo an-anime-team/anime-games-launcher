@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -117,6 +117,7 @@ pub struct ModuleScope {
     /// This API allows module to work with a sqlite database.
     ///
     /// Default: `true`.
+    #[cfg(feature = "sqlite-api")]
     pub allow_sqlite_api: bool,
 
     /// Allow module to access protobuf API.
@@ -139,11 +140,20 @@ pub struct ModuleScope {
     /// Allow module to access portal API.
     ///
     /// This API allows module to send system/application-level notifications
-    /// and open file/folder dialogs which can escape the filesystem sandbox.
+    /// and open file/direcotry dialogs which can escape the filesystem sandbox.
     ///
     /// Default: `true`.
     #[cfg(feature = "portal-api")]
     pub allow_portal_api: bool,
+
+    /// Allow module to access secrets API.
+    ///
+    /// This API can be used to read and write secret values, with guarded
+    /// access for every module.
+    ///
+    /// Default: `true`.
+    #[cfg(feature = "secrets-api")]
+    pub allow_secrets_api: bool,
 
     /// Allow module to access process API.
     ///
@@ -168,7 +178,15 @@ pub struct ModuleScope {
     /// files or folders/subfolders.
     ///
     /// Default: none.
-    pub sandbox_write_paths: Vec<PathBuf>
+    pub sandbox_write_paths: Vec<PathBuf>,
+
+    /// List of containers which module can read.
+    #[cfg(feature = "secrets-api")]
+    pub secrets_read_containers: Vec<String>,
+
+    /// List of containers to which module can write.
+    #[cfg(feature = "secrets-api")]
+    pub secrets_write_containers: Vec<String>
 }
 
 impl Default for ModuleScope {
@@ -197,10 +215,19 @@ impl Default for ModuleScope {
             #[cfg(feature = "portal-api")]
             allow_portal_api: true,
 
+            #[cfg(feature = "secrets-api")]
+            allow_secrets_api: true,
+
             allow_process_api: false,
 
             sandbox_read_paths: vec![],
-            sandbox_write_paths: vec![]
+            sandbox_write_paths: vec![],
+
+            #[cfg(feature = "secrets-api")]
+            secrets_read_containers: vec![],
+
+            #[cfg(feature = "secrets-api")]
+            secrets_write_containers: vec![]
         }
     }
 }
@@ -221,29 +248,42 @@ impl ModuleScope {
             "process": self.allow_process_api
         });
 
-        #[cfg(feature = "sqlite-api")] {
+        if cfg!(feature = "sqlite-api") {
             api_scope["sqlite"] = json!(self.allow_sqlite_api);
         }
 
-        #[cfg(feature = "protobuf-api")] {
+        if cfg!(feature = "protobuf-api") {
             api_scope["protobuf"] = json!(self.allow_protobuf_api);
         }
 
-        #[cfg(feature = "torrent-api")] {
+        if cfg!(feature = "torrent-api") {
             api_scope["torrent"] = json!(self.allow_torrent_api);
         }
 
-        #[cfg(feature = "portal-api")] {
+        if cfg!(feature = "portal-api") {
             api_scope["portal"] = json!(self.allow_portal_api);
         }
 
-        json!({
+        if cfg!(feature = "secrets-api") {
+            api_scope["secrets"] = json!(self.allow_secrets_api);
+        }
+
+        let mut module_scope = json!({
             "api": api_scope,
             "sandbox": {
                 "read_paths": self.sandbox_read_paths,
                 "write_paths": self.sandbox_write_paths
             }
-        })
+        });
+
+        if cfg!(feature = "secrets-api") {
+            module_scope["secrets"] = json!({
+                "read_containers": self.secrets_read_containers,
+                "write_containers": self.secrets_write_containers
+            });
+        }
+
+        module_scope
     }
 
     pub fn from_json(value: &Json) -> Self {
@@ -310,23 +350,53 @@ impl ModuleScope {
                 scope.allow_portal_api = allow;
             }
 
+            #[cfg(feature = "secrets-api")]
+            if let Some(allow) = api.get("secrets").and_then(Json::as_bool) {
+                scope.allow_secrets_api = allow;
+            }
+
             if let Some(allow) = api.get("process").and_then(Json::as_bool) {
                 scope.allow_process_api = allow;
             }
         }
 
         if let Some(sandbox) = value.get("sandbox") {
-            if let Some(read_paths) = sandbox.get("read_paths").and_then(Json::as_array) {
+            if let Some(read_paths) = sandbox.get("read_paths")
+                .and_then(Json::as_array)
+            {
                 scope.sandbox_read_paths = read_paths.iter()
                     .flat_map(Json::as_str)
                     .map(PathBuf::from)
                     .collect();
             }
 
-            if let Some(write_paths) = sandbox.get("write_paths").and_then(Json::as_array) {
+            if let Some(write_paths) = sandbox.get("write_paths")
+                .and_then(Json::as_array)
+            {
                 scope.sandbox_write_paths = write_paths.iter()
                     .flat_map(Json::as_str)
                     .map(PathBuf::from)
+                    .collect();
+            }
+        }
+
+        #[cfg(feature = "secrets-api")]
+        if let Some(secrets) = value.get("secrets") {
+            if let Some(read_containers) = secrets.get("read_containers")
+                .and_then(Json::as_array)
+            {
+                scope.secrets_read_containers = read_containers.iter()
+                    .flat_map(Json::as_str)
+                    .map(String::from)
+                    .collect();
+            }
+
+            if let Some(write_containers) = secrets.get("write_containers")
+                .and_then(Json::as_array)
+            {
+                scope.secrets_write_containers = write_containers.iter()
+                    .flat_map(Json::as_str)
+                    .map(String::from)
                     .collect();
             }
         }

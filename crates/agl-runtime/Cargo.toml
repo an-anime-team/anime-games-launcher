@@ -1,7 +1,7 @@
 [package]
 name = "agl-runtime"
 version = "0.2.1"
-authors = ["Nikita Podvirnyi <krypt0nn@vk.com>"]
+authors = ["Nikita Podvirnyi <krypt0nn@dawn.wine>"]
 license = "GPL-3.0-or-later"
 edition = "2024"
 publish = false
@@ -19,6 +19,7 @@ sqlite-api = ["dep:rusqlite"]
 protobuf-api = ["dep:protox", "dep:prost-reflect"]
 torrent-api = ["dep:librqbit"]
 portal-api = ["dep:rfd"]
+secrets-api = ["dep:rusqlite"]
 
 default = [
     "tracing",
@@ -26,7 +27,8 @@ default = [
     "protobuf-api",
     "sqlite-api",
     "torrent-api",
-    "portal-api"
+    "portal-api",
+    "secrets-api"
 ]
 
 [dependencies.agl-core]
@@ -92,5 +94,6 @@ seahash = "4.1"
 
 hex = "0.4"
 base32 = "0.5"
+nix-base32 = "0.2.0"
 base64 = "0.22"
 encoding_rs = "0.8"

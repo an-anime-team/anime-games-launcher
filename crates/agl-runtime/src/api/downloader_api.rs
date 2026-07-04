@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -42,7 +42,11 @@ pub struct DownloaderApi {
 }
 
 impl DownloaderApi {
-    pub fn new(lua: Lua, client: Client) -> Result<Self, LuaError> {
+    pub fn new(
+        lua: Lua,
+        api_context: ApiContext,
+        client: Client
+    ) -> Result<Self, LuaError> {
         let downloader_handles = Arc::new(Mutex::new(HashMap::new()));
         let tasks_handles = Arc::new(Mutex::new(HashMap::new()));
 
@@ -50,7 +54,7 @@ impl DownloaderApi {
             downloader_create: {
                 let downloader_handles = downloader_handles.clone();
 
-                lua.create_function(move |_, _: ()| {
+                lua.create_function(move |_lua: &Lua, ()| {
                     let downloader = Downloader::from_client(client.clone());
 
                     let mut handles = downloader_handles.lock()
@@ -72,11 +76,13 @@ impl DownloaderApi {
             },
 
             downloader_download: {
+                let api_context = api_context.clone();
                 let downloader_handles = downloader_handles.clone();
                 let tasks_handles = tasks_handles.clone();
 
-                Box::new(move |lua: &Lua, context: &Context| {
-                    let context = context.to_owned();
+                Box::new(move |lua: &Lua, module_context: &ModuleContext| {
+                    let api_context = api_context.clone();
+                    let module_context = module_context.clone();
                     let downloader_handles = downloader_handles.clone();
                     let tasks_handles = tasks_handles.clone();
 
@@ -85,7 +91,7 @@ impl DownloaderApi {
                         let mut output_file = options.get::<PathBuf>("output_file")?;
 
                         if output_file.is_relative() {
-                            output_file = context.module_folder.join(output_file);
+                            output_file = module_context.module_dir.join(output_file);
                         }
 
                         output_file = normalize_path(output_file, true)
@@ -93,7 +99,11 @@ impl DownloaderApi {
                                 LuaError::external(format!("failed to normalize output file path: {err}"))
                             })?;
 
-                        if !context.can_write_path(&output_file)? {
+                        if !api_context.can_access_path(&output_file) {
+                            return Err(LuaError::external("output file path cannot be accessed"));
+                        }
+
+                        if !module_context.can_write_path(&output_file) {
                             return Err(LuaError::external("no output file path write permissions"));
                         }
 
@@ -155,7 +165,7 @@ impl DownloaderApi {
             downloader_progress: {
                 let tasks_handles = tasks_handles.clone();
 
-                lua.create_function(move |lua, handle: i32| {
+                lua.create_function(move |lua: &Lua, handle: i32| {
                     let handles = tasks_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read downloader handle")
@@ -187,7 +197,7 @@ impl DownloaderApi {
             downloader_wait: {
                 let tasks_handles = tasks_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = tasks_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read downloader handle")
@@ -223,7 +233,7 @@ impl DownloaderApi {
             downloader_abort: {
                 let tasks_handles = tasks_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     let mut handles = tasks_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read downloader handle")
@@ -241,7 +251,7 @@ impl DownloaderApi {
             downloader_close: {
                 let downloader_handles = downloader_handles.clone();
 
-                lua.create_function(move |_, handle: i32| {
+                lua.create_function(move |_lua: &Lua, handle: i32| {
                     downloader_handles.lock()
                         .map_err(|err| {
                             LuaError::external("failed to read downloader handle")
@@ -258,7 +268,7 @@ impl DownloaderApi {
     }
 
     /// Create new lua table with API functions.
-    pub fn create_env(&self, context: &Context) -> Result<LuaTable, LuaError> {
+    pub fn create_env(&self, context: &ModuleContext) -> Result<LuaTable, LuaError> {
         let env = self.lua.create_table_with_capacity(0, 6)?;
 
         env.raw_set("create", &self.downloader_create)?;

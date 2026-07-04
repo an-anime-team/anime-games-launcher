@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-packages
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -46,16 +46,16 @@ fn get_test_dir(name: &str) -> std::io::Result<PathBuf> {
 async fn simple_no_inputs() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_url = format!("{TESTS_DIR_URL}/simple_no_inputs/package.json");
 
-    let manifest_hash = Hash::from_base32("0b5s62guc7us2").unwrap();
+    let manifest_hash = Hash::from_base32("5hm1v016pln6yfxp2wa5362c0c").unwrap();
 
     let resources = [
-        ("example_file",     format!("{TESTS_DIR_URL}/simple_no_inputs/example_file.txt"),          Hash::from_base32("dfhtkkli693ji").unwrap(), ResourceFormat::File),
-        ("example_tar",      format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar.tar"),           Hash::from_base32("bfcut078nb5sq").unwrap(), ResourceFormat::Archive),
-        ("example_tar_gz",   format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar_gz.tar.gz"),     Hash::from_base32("nuasi909r9ek2").unwrap(), ResourceFormat::Archive),
-        ("example_tar_bz2",  format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar_bz2.tar.bz2"),   Hash::from_base32("rl09ekeb9s9sm").unwrap(), ResourceFormat::Archive),
-        ("example_tar_zstd", format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar_zstd.tar.zstd"), Hash::from_base32("4ib8sfl2v57te").unwrap(), ResourceFormat::Archive),
-        ("example_zip",      format!("{TESTS_DIR_URL}/simple_no_inputs/example_zip.zip"),           Hash::from_base32("s4lst5543nd1k").unwrap(), ResourceFormat::Archive),
-        ("example_7z",       format!("{TESTS_DIR_URL}/simple_no_inputs/example_7z.7z"),             Hash::from_base32("i8bois3gmu8mk").unwrap(), ResourceFormat::Archive)
+        ("example_file",     format!("{TESTS_DIR_URL}/simple_no_inputs/example_file.txt"),          Hash::from_base32("25icmymkhv80gdn5vqrr5q6cv2").unwrap(), ResourceFormat::File),
+        ("example_tar",      format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar.tar"),           Hash::from_base32("0w7y7mfkyxfrhds8xynvngpdy3").unwrap(), ResourceFormat::Archive),
+        ("example_tar_gz",   format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar_gz.tar.gz"),     Hash::from_base32("24wny2wd32jg5y8kx1ai39klni").unwrap(), ResourceFormat::Archive),
+        ("example_tar_bz2",  format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar_bz2.tar.bz2"),   Hash::from_base32("5vy9hxy42hmcc5nm6pvq6lmwl9").unwrap(), ResourceFormat::Archive),
+        ("example_tar_zstd", format!("{TESTS_DIR_URL}/simple_no_inputs/example_tar_zstd.tar.zstd"), Hash::from_base32("6y406xav11v3cpzw3hmvx1jyzb").unwrap(), ResourceFormat::Archive),
+        ("example_zip",      format!("{TESTS_DIR_URL}/simple_no_inputs/example_zip.zip"),           Hash::from_base32("6w01wcjn5iplqg2j7ps771nd86").unwrap(), ResourceFormat::Archive),
+        ("example_7z",       format!("{TESTS_DIR_URL}/simple_no_inputs/example_7z.7z"),             Hash::from_base32("2550b8v7ayqqw776jj8inc4jx7").unwrap(), ResourceFormat::Archive)
     ];
 
     let downloader = Downloader::default();
@@ -101,16 +101,16 @@ async fn simple_no_inputs() -> Result<(), Box<dyn std::error::Error>> {
 async fn simple_no_outputs() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_url = format!("{TESTS_DIR_URL}/simple_no_outputs/package.json");
 
-    let manifest_hash = Hash::from_base32("unol2o7d19fl6").unwrap();
+    let manifest_hash = Hash::from_base32("3xvc6zjf4lkqnhmwmm0wff7vgy").unwrap();
 
     let resources = [
-        ("example_file",     format!("{TESTS_DIR_URL}/simple_no_outputs/example_file.txt"),          Hash::from_base32("dfhtkkli693ji").unwrap(), ResourceFormat::File),
-        ("example_tar",      format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar.tar"),           Hash::from_base32("bfcut078nb5sq").unwrap(), ResourceFormat::Archive),
-        ("example_tar_gz",   format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar_gz.tar.gz"),     Hash::from_base32("nuasi909r9ek2").unwrap(), ResourceFormat::Archive),
-        ("example_tar_bz2",  format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar_bz2.tar.bz2"),   Hash::from_base32("rl09ekeb9s9sm").unwrap(), ResourceFormat::Archive),
-        ("example_tar_zstd", format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar_zstd.tar.zstd"), Hash::from_base32("4ib8sfl2v57te").unwrap(), ResourceFormat::Archive),
-        ("example_zip",      format!("{TESTS_DIR_URL}/simple_no_outputs/example_zip.zip"),           Hash::from_base32("s4lst5543nd1k").unwrap(), ResourceFormat::Archive),
-        ("example_7z",       format!("{TESTS_DIR_URL}/simple_no_outputs/example_7z.7z"),             Hash::from_base32("i8bois3gmu8mk").unwrap(), ResourceFormat::Archive)
+        ("example_file",     format!("{TESTS_DIR_URL}/simple_no_outputs/example_file.txt"),          Hash::from_base32("25icmymkhv80gdn5vqrr5q6cv2").unwrap(), ResourceFormat::File),
+        ("example_tar",      format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar.tar"),           Hash::from_base32("0w7y7mfkyxfrhds8xynvngpdy3").unwrap(), ResourceFormat::Archive),
+        ("example_tar_gz",   format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar_gz.tar.gz"),     Hash::from_base32("24wny2wd32jg5y8kx1ai39klni").unwrap(), ResourceFormat::Archive),
+        ("example_tar_bz2",  format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar_bz2.tar.bz2"),   Hash::from_base32("5vy9hxy42hmcc5nm6pvq6lmwl9").unwrap(), ResourceFormat::Archive),
+        ("example_tar_zstd", format!("{TESTS_DIR_URL}/simple_no_outputs/example_tar_zstd.tar.zstd"), Hash::from_base32("6y406xav11v3cpzw3hmvx1jyzb").unwrap(), ResourceFormat::Archive),
+        ("example_zip",      format!("{TESTS_DIR_URL}/simple_no_outputs/example_zip.zip"),           Hash::from_base32("6w01wcjn5iplqg2j7ps771nd86").unwrap(), ResourceFormat::Archive),
+        ("example_7z",       format!("{TESTS_DIR_URL}/simple_no_outputs/example_7z.7z"),             Hash::from_base32("2550b8v7ayqqw776jj8inc4jx7").unwrap(), ResourceFormat::Archive)
     ];
 
     let downloader = Downloader::default();
@@ -157,8 +157,8 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_url = format!("{TESTS_DIR_URL}/duplicate_input_output/package.json");
     let file_url = format!("{TESTS_DIR_URL}/duplicate_input_output/example_file.txt");
 
-    let manifest_hash = Hash::from_base32("ukkgn5btkiu8s").unwrap();
-    let file_hash = Hash::from_base32("dfhtkkli693ji").unwrap();
+    let manifest_hash = Hash::from_base32("3mjxgfahdrkxgkk77lsrxpdgp2").unwrap();
+    let file_hash = Hash::from_base32("25icmymkhv80gdn5vqrr5q6cv2").unwrap();
 
     let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("duplicate_input_output")?)?;
@@ -207,7 +207,7 @@ async fn duplicate_input_output() -> Result<(), Box<dyn std::error::Error>> {
 async fn self_reference() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_url = format!("{TESTS_DIR_URL}/self_reference/package.json");
 
-    let manifest_hash = Hash::from_base32("6j83ocpqdtt36").unwrap();
+    let manifest_hash = Hash::from_base32("0zqj2hkzlp7qqzwndlw7lki7v3").unwrap();
 
     let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("self_reference")?)?;
@@ -257,8 +257,8 @@ async fn cycle() -> Result<(), Box<dyn std::error::Error>> {
     let package_1_url = format!("{TESTS_DIR_URL}/cycle/package_1.json");
     let package_2_url = format!("{TESTS_DIR_URL}/cycle/package_2.json");
 
-    let package_1_hash = Hash::from_base32("30mc77m5bcqje").unwrap();
-    let package_2_hash = Hash::from_base32("s7lffv3k21im0").unwrap();
+    let package_1_hash = Hash::from_base32("6awvchd5pqi2mm65j52g5bygvd").unwrap();
+    let package_2_hash = Hash::from_base32("51srw0zrz649jrjcrfdi334ra6").unwrap();
 
     let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("cycle")?)?;
@@ -300,10 +300,10 @@ async fn nested_packages() -> Result<(), Box<dyn std::error::Error>> {
     let package_3_url = format!("{TESTS_DIR_URL}/nested_packages/package_3.json");
     let file_url = format!("{TESTS_DIR_URL}/nested_packages/example_file.txt");
 
-    let package_1_hash = Hash::from_base32("30mc77m5bcqje").unwrap();
-    let package_2_hash = Hash::from_base32("rj722sqs9o8je").unwrap();
-    let package_3_hash = Hash::from_base32("gndmqnirsuij8").unwrap();
-    let file_hash = Hash::from_base32("dfhtkkli693ji").unwrap();
+    let package_1_hash = Hash::from_base32("6awvchd5pqi2mm65j52g5bygvd").unwrap();
+    let package_2_hash = Hash::from_base32("1gnz8f4cxh6jl630dy1k64vy03").unwrap();
+    let package_3_hash = Hash::from_base32("1d7rhhy4p8l8clicp22ypbyvr7").unwrap();
+    let file_hash = Hash::from_base32("25icmymkhv80gdn5vqrr5q6cv2").unwrap();
 
     let downloader = Downloader::default();
     let storage = Storage::open(get_test_dir("nested_packages")?)?;

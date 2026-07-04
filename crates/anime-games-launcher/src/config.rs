@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ use agl_core::export::network::reqwest;
 use agl_core::tasks;
 use agl_locale::unic_langid::LanguageIdentifier;
 
-use crate::consts::{DATA_DIR, CONFIG_FILE};
+use crate::consts::{HOME_DIR, DATA_DIR, CONFIG_FILE};
 
 lazy_static::lazy_static! {
     static ref STARTUP_CONFIG: Config = tasks::block_on(get());
@@ -74,11 +74,11 @@ pub struct Config {
     /// `cache.game_packages.duration`
     pub cache_game_packages_duration: Duration,
 
-    /// Duration of the runtime packages allow lists cache in seconds. If `0` is
-    /// set then no cache is used. Default is `28800` (8 hours).
+    /// Duration of the runtime modules scopes lists cache in seconds. If `0`
+    /// is set then no cache is used. Default is `28800` (8 hours).
     ///
-    /// `cache.packages_allow_lists.duration`
-    pub cache_packages_allow_lists_duration: Duration,
+    /// `cache.modules_scopes_lists.duration`
+    pub cache_modules_scopes_lists_duration: Duration,
 
     /// Duration since cache entry creation after which it will be automatically
     /// removed.
@@ -86,12 +86,12 @@ pub struct Config {
     /// `cache.collect_garbage_after`
     pub cache_collect_garbage_after: Duration,
 
-    /// URLs to the modules allow lists files.
+    /// URLs to the modules scopes lists files.
     ///
-    /// `packages.allow_lists`
-    pub packages_allow_lists: Vec<String>,
+    /// `packages.scopes_lists`
+    pub packages_scopes_lists: Vec<String>,
 
-    /// Path to the folder where package resources should be stored.
+    /// Path to the directory where package resources should be stored.
     ///
     /// `packages.resources.path`
     pub packages_resources_path: PathBuf,
@@ -101,7 +101,7 @@ pub struct Config {
     /// `packages.resources.collect_garbage`
     pub packages_resources_collect_garbage: bool,
 
-    /// Path to the folder where modules-specific files should be stored.
+    /// Path to the directory where modules-specific files should be stored.
     ///
     /// These will be kept privately for each module, so they can be used as
     /// secrets storage.
@@ -114,7 +114,7 @@ pub struct Config {
     /// `packages.modules.collect_garbage`
     pub packages_modules_collect_garbage: bool,
 
-    /// Path to the folder where persistent packages files should be stored.
+    /// Path to the directory where persistent packages files should be stored.
     ///
     /// These will be kept for as long as possible, and the primary usecase is
     /// to allow different modules to use the same files without needing to
@@ -123,7 +123,7 @@ pub struct Config {
     /// `packages.persistent.path`
     pub packages_persistent_path: PathBuf,
 
-    /// Path to the folder where temporary packages files should be stored.
+    /// Path to the directory where temporary packages files should be stored.
     ///
     /// These will be deleted automatically, depending on launcher
     /// configuration.
@@ -142,6 +142,11 @@ pub struct Config {
     ///
     /// `runtime.memory_limit`
     pub runtime_memory_limit: usize,
+
+    /// List of paths that runtime modules will be forbidden to access.
+    ///
+    /// `runtime.private_paths`
+    pub runtime_private_paths: Vec<PathBuf>,
 
     /// Enable torrent API support. If disabled - no runtime module will be able
     /// to interact with it, and no background service will be started at all.
@@ -169,12 +174,17 @@ pub struct Config {
     /// `runtime.torrent.blocklist_url`
     pub runtime_torrent_blocklist_url: Option<String>,
 
+    /// Path to the secrets API database file.
+    ///
+    /// `runtime.secrets.path`
+    pub runtime_secrets_path: PathBuf,
+
     /// URLs of the game registry files.
     ///
     /// `games.registries`
     pub games_registries: Vec<String>,
 
-    /// Path to the folder where game locks are stored.
+    /// Path to the directory where game locks are stored.
     ///
     /// `games.path`
     pub games_path: PathBuf
@@ -191,11 +201,11 @@ impl Default for Config {
             cache_game_registries_duration: Duration::from_hours(16),
             cache_game_manifests_duration: Duration::from_hours(24),
             cache_game_packages_duration: Duration::from_hours(8),
-            cache_packages_allow_lists_duration: Duration::from_hours(8),
+            cache_modules_scopes_lists_duration: Duration::from_hours(8),
             cache_collect_garbage_after: Duration::from_hours(72),
 
-            packages_allow_lists: vec![
-                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json")
+            packages_scopes_lists: vec![
+                String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/scopes.json")
             ],
 
             packages_resources_path: DATA_DIR.join("packages").join("resources"),
@@ -211,11 +221,59 @@ impl Default for Config {
 
             runtime_memory_limit: 1024 * 1024 * 1024,
 
+            runtime_private_paths: {
+                let mut paths = vec![
+                    // Linux accounts.
+                    PathBuf::from("/etc/shadow"),
+                    PathBuf::from("/etc/gshadow"),
+                    PathBuf::from("/etc/passwd"),
+                    PathBuf::from("/etc/group"),
+                    PathBuf::from("/etc/sudoers"),
+                    PathBuf::from("/etc/static/sudoers"),
+                    PathBuf::from("/etc/.pwd.lock"),
+
+                    // BSD accounts.
+                    //
+                    // https://man.freebsd.org/cgi/man.cgi?query=master.passwd&sektion=5&n=1
+                    PathBuf::from("/etc/master.passwd"),
+
+                    // Linux SSH and GnuPG info.
+                    PathBuf::from("/etc/ssh"),
+                    PathBuf::from("/etc/gnupg"),
+                    PathBuf::from("/etc/static/ssh"),
+                    PathBuf::from("/etc/static/gnupg"),
+
+                    // Linux LUKS encryption data.
+                    PathBuf::from("/etc/crypttab"),
+
+                    // Linux WIFI credentials.
+                    PathBuf::from("/etc/wpa_supplicant"),
+                    PathBuf::from("/etc/static/wpa_supplicant"),
+
+                    // Linux boot partition.
+                    PathBuf::from("/boot")
+                ];
+
+                // SSH private and public keys.
+                if let Some(path) = HOME_DIR.as_ref() {
+                    paths.push(path.join(".ssh"));
+                }
+
+                // GnuPG private and public keys.
+                if let Some(path) = HOME_DIR.as_ref() {
+                    paths.push(path.join(".gnupg"));
+                }
+
+                paths
+            },
+
             runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
             runtime_torrent_enable_upnp: false,
             runtime_torrent_trackers: vec![],
             runtime_torrent_blocklist_url: Some(String::from("https://raw.githubusercontent.com/Naunter/BT_BlockLists/master/bt_blocklists.gz")),
+
+            runtime_secrets_path: DATA_DIR.join("secrets.db"),
 
             games_registries: vec![
                 String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/games/registry.json")
@@ -250,11 +308,11 @@ impl Config {
             [cache.game_packages]
             duration = (self.cache_game_packages_duration.as_secs())
 
-            [cache.packages_allow_lists]
-            duration = (self.cache_packages_allow_lists_duration.as_secs())
+            [cache.modules_scopes_lists]
+            duration = (self.cache_modules_scopes_lists_duration.as_secs())
 
             [packages]
-            allow_lists = (self.packages_allow_lists.iter().map(|url| url.as_str()).collect::<Vec<_>>())
+            scopes_lists = (self.packages_scopes_lists.iter().map(|url| url.as_str()).collect::<Vec<_>>())
 
             [packages.resources]
             path = (self.packages_resources_path.to_string_lossy())
@@ -273,6 +331,9 @@ impl Config {
 
             [runtime]
             memory_limit = (self.runtime_memory_limit)
+            private_paths = (self.runtime_private_paths.iter()
+                .map(|path| path.to_string_lossy().to_string())
+                .collect::<Vec<_>>())
 
             [runtime.torrent]
             enable = (self.runtime_torrent_enable)
@@ -280,6 +341,9 @@ impl Config {
             enable_upnp = (self.runtime_torrent_enable_upnp)
             trackers = (self.runtime_torrent_trackers.iter().map(|url| url.as_str()).collect::<Vec<_>>())
             blocklist_url = (self.runtime_torrent_blocklist_url.as_deref().unwrap_or("none"))
+
+            [runtime.secrets]
+            path = (self.runtime_secrets_path.to_string_lossy())
 
             [games]
             registries = (self.games_registries.iter().map(|url| url.as_str()).collect::<Vec<_>>())
@@ -314,7 +378,7 @@ impl Config {
 
                 // `general.network.proxy`
                 if let Some(proxy) = network.get("proxy") {
-                    // New syntax (`general.network.proxy`).
+                    // New syntax (`general.network.proxy`)
                     if let Some(url) = proxy.as_str() {
                         config.general_network_proxy = if url == "system" {
                             None
@@ -323,8 +387,8 @@ impl Config {
                         };
                     }
 
-                    // Old syntax (`general.network.proxy.url`).
-                    if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
+                    // Old syntax (`general.network.proxy.url`)
+                    else if let Some(url) = proxy.get("url").and_then(Toml::as_str) {
                         config.general_network_proxy = if url == "system" {
                             None
                         } else {
@@ -369,11 +433,19 @@ impl Config {
                 }
             }
 
-            // `cache.packages_allow_lists.*`
-            if let Some(packages_allow_lists) = cache.get("packages_allow_lists") {
+            // New syntax (`cache.modules_scopes_lists.*`)
+            if let Some(modules_scopes_lists) = cache.get("modules_scopes_lists") {
+                // `cache.modules_scopes_lists.duration`
+                if let Some(duration) = modules_scopes_lists.get("duration").and_then(Toml::as_integer) {
+                    config.cache_modules_scopes_lists_duration = Duration::from_secs(duration as u64);
+                }
+            }
+
+            // Old syntax (`cache.packages_allow_lists.*`)
+            else if let Some(packages_allow_lists) = cache.get("packages_allow_lists") {
                 // `cache.packages_allow_lists.duration`
                 if let Some(duration) = packages_allow_lists.get("duration").and_then(Toml::as_integer) {
-                    config.cache_packages_allow_lists_duration = Duration::from_secs(duration as u64);
+                    config.cache_modules_scopes_lists_duration = Duration::from_secs(duration as u64);
                 }
             }
 
@@ -385,11 +457,25 @@ impl Config {
 
         // `packages.*`
         if let Some(packages) = value.get("packages") {
-            // `packages.allow_lists`
-            if let Some(allow_lists) = packages.get("allow_lists").and_then(Toml::as_array) {
-                config.packages_allow_lists = allow_lists.iter()
+            // New syntax (`packages.scopes_lists`)
+            if let Some(scopes_list) = packages.get("scopes_lists").and_then(Toml::as_array) {
+                config.packages_scopes_lists = scopes_list.iter()
                     .flat_map(Toml::as_str)
                     .map(String::from)
+                    .collect();
+            }
+
+            // Old syntax (`packages.allow_lists`)
+            else if let Some(allow_lists) = packages.get("allow_lists").and_then(Toml::as_array) {
+                config.packages_scopes_lists = allow_lists.iter()
+                    .flat_map(Toml::as_str)
+                    .map(|url| {
+                        if url == "https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/packages/allow_list.json" {
+                            String::from("https://raw.githubusercontent.com/an-anime-team/game-integrations/refs/heads/master/scopes.json")
+                        } else {
+                            String::from(url)
+                        }
+                    })
                     .collect();
             }
 
@@ -448,6 +534,14 @@ impl Config {
                 config.runtime_memory_limit = memory_limit as usize;
             }
 
+            // `runtime.private_paths`
+            if let Some(private_paths) = runtime.get("private_paths").and_then(Toml::as_array) {
+                config.runtime_private_paths = private_paths.iter()
+                    .flat_map(Toml::as_str)
+                    .map(PathBuf::from)
+                    .collect();
+            }
+
             // `runtime.torrent.*`
             if let Some(torrent) = runtime.get("torrent") {
                 // `runtime.torrent.enable`
@@ -480,6 +574,14 @@ impl Config {
                     } else {
                         Some(blocklist_url.to_string())
                     };
+                }
+            }
+
+            // `runtime.secrets.*`
+            if let Some(secrets) = runtime.get("secrets") {
+                // `runtime.secrets.path`
+                if let Some(path) = secrets.get("path").and_then(Toml::as_str) {
+                    config.runtime_secrets_path = PathBuf::from(path);
                 }
             }
         }

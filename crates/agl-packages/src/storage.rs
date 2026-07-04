@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-packages
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -164,7 +164,7 @@ impl Storage {
         let path: PathBuf = path.into();
 
         // Calculate hash of the resource file / folder.
-        let hash = Hash::from_path(path.clone())?;
+        let hash = Hash::digitize_path(path.clone())?;
 
         // Copy the resource into the storage folder.
         try_copy(path, self.resource_path(&hash)).await?;
@@ -205,7 +205,7 @@ impl Storage {
             return Ok(false);
         }
 
-        Ok(&Hash::from_path(path)? == hash)
+        Ok(&Hash::digitize_path(path)? == hash)
     }
 
     /// Verify that the storage has all the resources listed in the provided
@@ -342,7 +342,7 @@ impl Storage {
 
                 // Read the manifest file and calculate its hash.
                 let manifest = tasks::fs::read(&temp_path).await?;
-                let manifest_hash = Hash::from_bytes(&manifest);
+                let manifest_hash = Hash::digitize(&manifest);
 
                 // Deserialize package manifest.
                 let manifest = serde_json::from_slice::<Json>(&manifest)?;
@@ -519,7 +519,7 @@ impl Storage {
                 match resource_format {
                     ResourceFormat::File => {
                         // Calculate file hash.
-                        let resource_hash = Hash::from_path(&temp_path)?;
+                        let resource_hash = Hash::digitize_path(&temp_path)?;
 
                         // Compare expected file hash if it's provided with an
                         // actual hash and reject the file if it doesn't match.
@@ -581,7 +581,7 @@ impl Storage {
                         let _ = tasks::fs::remove_file(&temp_path).await;
 
                         // Calculate hash of the extracted archive.
-                        let resource_hash = Hash::from_path(&temp_extract_path)?;
+                        let resource_hash = Hash::digitize_path(&temp_extract_path)?;
 
                         // Compare expected file hash if it's provided with an
                         // actual hash and reject the file if it doesn't match.

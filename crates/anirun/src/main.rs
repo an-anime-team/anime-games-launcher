@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anirun
-// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -38,8 +38,8 @@ use agl_packages::lock::Lock;
 use agl_runtime::mlua::prelude::*;
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_runtime::module::{Module, ModuleScope};
-use agl_runtime::allow_list::AllowList;
-use agl_runtime::api::ApiOptions;
+use agl_runtime::scopes_list::ScopesList;
+use agl_runtime::api::{ApiContext, ApiOptions};
 use agl_runtime::api::portal_api::ToastOptions;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 
@@ -50,22 +50,25 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
-#[command(author = "Nikita Podvirnyi <krypt0nn@vk.com>")]
+#[command(author = "Nikita Podvirnyi <krypt0nn@dawn.wine>")]
 struct Cli {
     #[arg(long, alias = "resources")]
-    pub resources_folder: Option<PathBuf>,
+    pub resources_dir: Option<PathBuf>,
 
     #[arg(long, alias = "temp")]
-    pub temp_folder: Option<PathBuf>,
+    pub temp_dir: Option<PathBuf>,
 
     #[arg(long, alias = "modules")]
-    pub modules_folder: Option<PathBuf>,
+    pub modules_dir: Option<PathBuf>,
 
     #[arg(long, alias = "persistent", alias = "persist")]
-    pub persistent_folder: Option<PathBuf>,
+    pub persistent_dir: Option<PathBuf>,
+
+    #[arg(long, alias = "secret")]
+    pub secret_file: Option<PathBuf>,
 
     #[arg(long, alias = "lock-files", alias = "locks")]
-    pub lock_files_folder: Option<PathBuf>,
+    pub lock_files_dir: Option<PathBuf>,
 
     /// Optional proxy string. Used in all HTTP requests and, if socks5 string
     /// provided, in torrent runtime API.
@@ -85,7 +88,7 @@ struct Cli {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
-#[command(author = "Nikita Podvirnyi <krypt0nn@vk.com>")]
+#[command(author = "Nikita Podvirnyi <krypt0nn@dawn.wine>")]
 enum CliCommands {
     /// Packages manager commands.
     #[command(subcommand)]
@@ -284,6 +287,15 @@ struct CliModuleScope {
     #[arg(long)]
     pub portal_api: Option<bool>,
 
+    /// Allow module to access secrets API.
+    ///
+    /// This API can be used to read and write secret values, with guarded
+    /// access for every module.
+    ///
+    /// Default: `true`.
+    #[arg(long)]
+    pub secrets_api: Option<bool>,
+
     /// Allow module to access process API.
     ///
     /// This API allows module to spawn and control new processes on the host
@@ -310,7 +322,19 @@ struct CliModuleScope {
     ///
     /// Default: none.
     #[arg(long = "sandbox-write-path", alias = "sandbox-write")]
-    pub sandbox_write_paths: Vec<PathBuf>
+    pub sandbox_write_paths: Vec<PathBuf>,
+
+    /// List of containers which module can read.
+    ///
+    /// Default: none.
+    #[arg(long = "secrets-read-container", alias = "secrets-read")]
+    pub secrets_read_containers: Vec<String>,
+
+    /// List of containers which module can write.
+    ///
+    /// Default: none.
+    #[arg(long = "secrets-write-container", alias = "secrets-write")]
+    pub secrets_write_containers: Vec<String>
 }
 
 impl From<CliModuleScope> for ModuleScope {
@@ -330,9 +354,12 @@ impl From<CliModuleScope> for ModuleScope {
             allow_protobuf_api: value.protobuf_api.unwrap_or(true),
             allow_torrent_api: value.torrent_api.unwrap_or(false),
             allow_portal_api: value.portal_api.unwrap_or(true),
+            allow_secrets_api: value.secrets_api.unwrap_or(true),
             allow_process_api: value.process_api.unwrap_or(false),
             sandbox_read_paths: value.sandbox_read_paths,
-            sandbox_write_paths: value.sandbox_write_paths
+            sandbox_write_paths: value.sandbox_write_paths,
+            secrets_read_containers: value.secrets_read_containers,
+            secrets_write_containers: value.secrets_write_containers
         }
     }
 }
@@ -393,12 +420,13 @@ fn build_client(
 }
 
 fn build_runtime(
-    temp_folder: &Path,
+    temp_dir: &Path,
+    secrets_file: PathBuf,
     proxy: Option<String>,
     torrent: Option<TorrentOptionsCli>,
     reqwest_client: reqwest::Client
 ) -> anyhow::Result<Runtime> {
-    Ok(Runtime::new(ApiOptions {
+    let options = ApiOptions {
         lua: Lua::new(),
 
         reqwest_client,
@@ -406,7 +434,7 @@ fn build_runtime(
         torrent_server: torrent.map(|options| {
             TorrentServer::start(TorrentServerOptions {
                 default_folder: options.torrent_folder
-                    .unwrap_or_else(|| temp_folder.to_path_buf()),
+                    .unwrap_or_else(|| temp_dir.to_path_buf()),
 
                 socks_proxy: proxy.and_then(|proxy| {
                     proxy.starts_with("socks")
@@ -467,8 +495,11 @@ fn build_runtime(
             tracing::debug!("");
         }),
 
+        secrets_file,
         translate
-    })?)
+    };
+
+    Ok(Runtime::new(options, ApiContext::default())?)
 }
 
 fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {
@@ -532,28 +563,31 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Read paths or use default ones.
-    let mut resources_folder = cli.resources_folder
+    let mut resources_dir = cli.resources_dir
         .unwrap_or_else(|| PathBuf::from(".anirun/resources"));
 
-    let mut temp_folder = cli.temp_folder
+    let mut temp_dir = cli.temp_dir
         .unwrap_or_else(|| PathBuf::from(".anirun/temporary"));
 
-    let mut modules_folder = cli.modules_folder
+    let mut modules_dir = cli.modules_dir
         .unwrap_or_else(|| PathBuf::from(".anirun/modules"));
 
-    let mut persistent_folder = cli.persistent_folder
+    let mut persistent_dir = cli.persistent_dir
         .unwrap_or_else(|| PathBuf::from(".anirun/persistent"));
 
-    let mut lock_files_folder = cli.lock_files_folder
+    let secret_file = cli.secret_file
+        .unwrap_or_else(|| PathBuf::from(".anirun/secrets.db"));
+
+    let mut lock_files_dir = cli.lock_files_dir
         .unwrap_or_else(|| PathBuf::from(".anirun/locks"));
 
-    // Create folders if they don't exist and resolve relative ones.
+    // Create directories if they don't exist and resolve relative ones.
     for path in [
-        &mut resources_folder,
-        &mut temp_folder,
-        &mut modules_folder,
-        &mut persistent_folder,
-        &mut lock_files_folder
+        &mut resources_dir,
+        &mut temp_dir,
+        &mut modules_dir,
+        &mut persistent_dir,
+        &mut lock_files_dir
     ] {
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
@@ -573,7 +607,7 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         CliCommands::Package(command) => match command {
             CliPackageCommands::Download { source, lock_name } => {
-                let storage = Storage::open(&resources_folder)
+                let storage = Storage::open(&resources_dir)
                     .context("failed to open resources storage")?;
 
                 let downloader = Downloader::from_client(client.clone());
@@ -593,7 +627,7 @@ fn main() -> anyhow::Result<()> {
 
                 tracing::info!("downloading finished");
 
-                let path = lock_files_folder.join(lock_name);
+                let path = lock_files_dir.join(lock_name);
 
                 tracing::info!(?path, "saving lock file");
 
@@ -606,7 +640,7 @@ fn main() -> anyhow::Result<()> {
             }
 
             CliPackageCommands::Run { source, scope, torrent } => {
-                let storage = Storage::open(&resources_folder)
+                let storage = Storage::open(&resources_dir)
                     .context("failed to open resources storage")?;
 
                 let lock = if !PathBuf::from(&source).exists() {
@@ -638,7 +672,8 @@ fn main() -> anyhow::Result<()> {
                 tracing::info!("preparing modules runtime");
 
                 let runtime = build_runtime(
-                    &temp_folder,
+                    &temp_dir,
+                    secret_file,
                     cli.proxy.clone(),
                     scope.torrent_api.and_then(|enabled| enabled.then_some(torrent)),
                     client
@@ -646,10 +681,10 @@ fn main() -> anyhow::Result<()> {
 
                 tracing::info!("preparing allow list");
 
-                let mut allow_list = AllowList::default();
+                let mut scopes_list = ScopesList::default();
 
                 for resource in lock.resources.keys().copied() {
-                    allow_list.add_module_scope(
+                    scopes_list.add_module_scope(
                         resource,
                         ModuleScope::from(scope.clone())
                     );
@@ -658,16 +693,16 @@ fn main() -> anyhow::Result<()> {
                 tracing::info!("loading resources from the lock file");
 
                 let paths = ModulePaths {
-                    temp_folder,
-                    modules_folder,
-                    persistent_folder
+                    temp_dir,
+                    modules_dir,
+                    persistent_dir
                 };
 
                 runtime.load_packages(
                     &lock,
                     &storage,
                     &paths,
-                    &allow_list
+                    &scopes_list
                 )?;
 
                 for (package_hash, package) in lock.packages.iter() {
@@ -696,8 +731,9 @@ fn main() -> anyhow::Result<()> {
                 let mut source_path = PathBuf::from(&source);
 
                 if !source_path.exists() {
-                    let temp_path = temp_folder
-                        .join(Hash::from_bytes(source.as_bytes()).to_string());
+                    let temp_path = temp_dir.join(
+                        Hash::digitize(source.as_bytes()).to_base32()
+                    );
 
                     tracing::debug!(?source, ?temp_path, "provided module source is not a file path, attempting to download it");
 
@@ -714,7 +750,8 @@ fn main() -> anyhow::Result<()> {
                 tracing::info!("preparing modules runtime");
 
                 let runtime = build_runtime(
-                    &temp_folder,
+                    &temp_dir,
+                    secret_file,
                     cli.proxy.clone(),
                     scope.torrent_api.and_then(|enabled| enabled.then_some(torrent)),
                     client
@@ -726,9 +763,9 @@ fn main() -> anyhow::Result<()> {
                 };
 
                 let paths = ModulePaths {
-                    temp_folder,
-                    modules_folder,
-                    persistent_folder
+                    temp_dir,
+                    modules_dir,
+                    persistent_dir
                 };
 
                 tracing::info!("loading module");

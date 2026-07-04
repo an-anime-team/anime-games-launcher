@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-runtime
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,9 +26,9 @@ use super::module::ModuleScope;
 
 /// List of scopes for luau modules.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct AllowList(HashMap<Hash, ModuleScope>);
+pub struct ScopesList(HashMap<Hash, ModuleScope>);
 
-impl AllowList {
+impl ScopesList {
     pub fn to_json(&self) -> Json {
         json!(self.0.iter()
             .map(|(k, v)| (k.to_base32(), v.to_json()))
@@ -53,14 +53,14 @@ impl AllowList {
         &self.0
     }
 
-    /// Merge current allow list with provided one.
+    /// Merge current control list with provided one.
     pub fn merge_with(&mut self, another_list: Self) {
         for (hash, scope) in another_list.0 {
             self.add_module_scope(hash, scope);
         }
     }
 
-    /// Add module scope to the allow list, merging it with existing one if it
+    /// Add module scope to the control list, merging it with existing one if it
     /// is available.
     pub fn add_module_scope(&mut self, hash: Hash, scope: ModuleScope) {
         let entry = self.0.entry(hash)
@@ -77,16 +77,20 @@ impl AllowList {
         entry.allow_hash_api        |= scope.allow_hash_api;
         entry.allow_compression_api |= scope.allow_compression_api;
 
-        #[cfg(feature = "sqlite-api")] {
+        if cfg!(feature = "sqlite-api") {
             entry.allow_sqlite_api |= scope.allow_sqlite_api;
         }
 
-        #[cfg(feature = "torrent-api")] {
+        if cfg!(feature = "torrent-api") {
             entry.allow_torrent_api |= scope.allow_torrent_api;
         }
 
-        #[cfg(feature = "portal-api")] {
+        if cfg!(feature = "portal-api") {
             entry.allow_portal_api |= scope.allow_portal_api;
+        }
+
+        if cfg!(feature = "secrets-api") {
+            entry.allow_secrets_api |= scope.allow_secrets_api;
         }
 
         entry.allow_process_api |= scope.allow_process_api;
@@ -96,6 +100,12 @@ impl AllowList {
 
         entry.sandbox_read_paths.dedup();
         entry.sandbox_write_paths.dedup();
+
+        entry.secrets_read_containers.extend(scope.secrets_read_containers);
+        entry.secrets_write_containers.extend(scope.secrets_write_containers);
+
+        entry.secrets_read_containers.dedup();
+        entry.secrets_write_containers.dedup();
     }
 
     /// Try to get scope for a module with provided hash if it's stored in the

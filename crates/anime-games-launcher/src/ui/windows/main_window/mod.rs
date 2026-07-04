@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::io::Read;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -36,8 +36,8 @@ use agl_locale::string::LocalizableString;
 use agl_packages::hash::Hash;
 use agl_packages::storage::Storage;
 use agl_runtime::mlua::prelude::*;
-use agl_runtime::allow_list::AllowList;
-use agl_runtime::api::ApiOptions;
+use agl_runtime::scopes_list::ScopesList;
+use agl_runtime::api::{ApiOptions, ApiContext};
 use agl_runtime::api::bytes::Bytes;
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 use agl_runtime::api::portal_api::{
@@ -99,10 +99,10 @@ pub enum MainWindowMsg {
 
     SetLoadingStatus(Option<String>),
 
-    AddAllowList(AllowList),
+    AddScopesList(ScopesList),
 
     AddStorePageGame {
-        /// Unique game name. A game package lock filename is expected be used.
+        /// Unique game name.
         name: String,
 
         /// URL to the game's manifest file.
@@ -113,11 +113,14 @@ pub enum MainWindowMsg {
     },
 
     AddLibraryPageGame {
-        /// Unique game name. A game package lock filename is expected be used.
+        /// Unique game name.
         name: String,
 
         /// Game package lock.
-        lock: GameLock
+        lock: GameLock,
+
+        /// If true, launcher failed to update game package at startup.
+        outdated: bool
     },
 
     /// Delete game package for the given game name.
@@ -171,7 +174,13 @@ pub enum MainWindowMsg {
         game_launch_info: GameLaunchInfo
     },
 
-    ReloadSelectedLibraryGameInfo
+    ReloadSelectedLibraryGameInfo {
+        launch_info: bool,
+        actions_pipeline: bool,
+        components_layout: bool,
+        tools_layout: bool,
+        settings_layout: bool
+    }
 }
 
 pub struct MainWindow {
@@ -194,7 +203,7 @@ pub struct MainWindow {
 
     storage: Storage,
     runtime: Runtime,
-    allow_list: AllowList
+    scopes_list: ScopesList
 }
 
 impl std::fmt::Debug for MainWindow {
@@ -215,7 +224,7 @@ impl std::fmt::Debug for MainWindow {
             .field("show_back_button", &self.show_back_button)
             .field("storage", &self.storage)
             .field("runtime", &"Runtime")
-            .field("allow_list", &self.allow_list)
+            .field("scopes_list", &self.scopes_list)
             .finish()
     }
 }
@@ -390,7 +399,7 @@ impl SimpleAsyncComponent for MainWindow {
             str.to_string()
         }
 
-        let runtime = Runtime::new(ApiOptions {
+        let options = ApiOptions {
             lua,
             reqwest_client,
             torrent_server,
@@ -419,8 +428,19 @@ impl SimpleAsyncComponent for MainWindow {
                 })
             },
 
+            secrets_file: config.runtime_secrets_path.clone(),
+
             translate
-        }).expect("failed to initialize packages runtime");
+        };
+
+        let context = ApiContext::default();
+
+        if let Ok(mut private_paths) = context.private_paths.write() {
+            private_paths.extend(config.runtime_private_paths.clone());
+        }
+
+        let runtime = Runtime::new(options, context)
+            .expect("failed to initialize packages runtime");
 
         let model = Self {
             about_window: AboutWindow::builder()
@@ -434,7 +454,7 @@ impl SimpleAsyncComponent for MainWindow {
                         => MainWindowMsg::SetShowBackButton(show),
 
                     StorePageOutput::AddLibraryPageGame { name, lock }
-                        => MainWindowMsg::AddLibraryPageGame { name, lock },
+                        => MainWindowMsg::AddLibraryPageGame { name, lock, outdated: false },
 
                     StorePageOutput::ShowLibraryGameWithUrl(url)
                         => MainWindowMsg::ShowLibraryGameWithUrl(url)
@@ -483,7 +503,13 @@ impl SimpleAsyncComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     // FIXME: this is a hack
                     GameApplyComponentsWindowOutput::UpdateGameInfo(_)
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo,
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                            launch_info: true,
+                            actions_pipeline: true,
+                            components_layout: true,
+                            tools_layout: true,
+                            settings_layout: true
+                        },
 
                     GameApplyComponentsWindowOutput::DeleteGamePackage(name)
                         => MainWindowMsg::DeleteGamePackage(name)
@@ -492,8 +518,19 @@ impl SimpleAsyncComponent for MainWindow {
             game_settings_window: GameSettingsWindow::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
-                    GameSettingsWindowOutput::ReloadGameInfo
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                    GameSettingsWindowOutput::ReloadGameInfo {
+                        launch_info,
+                        actions_pipeline,
+                        components_layout,
+                        tools_layout,
+                        settings_layout
+                    } => MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                        launch_info,
+                        actions_pipeline,
+                        components_layout,
+                        tools_layout,
+                        settings_layout
+                    }
                 }),
 
             game_actions_pipeline_window: GameActionsPipelineWindow::builder()
@@ -501,7 +538,13 @@ impl SimpleAsyncComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     // FIXME: this is a hack
                     GameActionsPipelineWindowOutput::UpdateGameInfo(_)
-                        => MainWindowMsg::ReloadSelectedLibraryGameInfo
+                        => MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                            launch_info: true,
+                            actions_pipeline: true,
+                            components_layout: true,
+                            tools_layout: true,
+                            settings_layout: true
+                        }
                 }),
 
             game_running_window: GameRunningWindow::builder()
@@ -518,7 +561,8 @@ impl SimpleAsyncComponent for MainWindow {
 
             storage,
             runtime,
-            allow_list: AllowList::default()
+
+            scopes_list: ScopesList::default()
         };
 
         // Named like this to supress relm4 view macro warning.
@@ -582,39 +626,39 @@ impl SimpleAsyncComponent for MainWindow {
             // Prepare downloader and files cache.
             let downloader = Downloader::from_client(client);
 
-            // Fetch packages allow lists.
+            // Fetch modules scopes lists.
 
             tracing::debug!(
-                allow_lists = ?config.packages_allow_lists,
-                "fetching packages allow lists"
+                scopes_lists = ?config.packages_scopes_lists,
+                "fetching modules scopes lists"
             );
 
             sender.input(MainWindowMsg::SetLoadingStatus(Some(
-                i18n!("fetching_packages_allow_lists")
-                    .unwrap_or("Fetching packages allow lists")
+                i18n!("fetching_modules_scopes_lists")
+                    .unwrap_or("Fetching modules scopes lists")
                     .to_string()
             )));
 
-            let mut tasks = Vec::with_capacity(config.packages_allow_lists.len());
-            let mut paths = Vec::with_capacity(tasks.capacity());
+            let mut tasks = Vec::with_capacity(config.packages_scopes_lists.len());
+            let mut paths = Vec::with_capacity(config.packages_scopes_lists.len());
 
             let mut cache_hits = HashSet::new();
 
-            // Either fetch package allow list or use cached one.
-            for url in &config.packages_allow_lists {
+            // Either fetch package scopes list or use cached one.
+            for url in &config.packages_scopes_lists {
                 let cache_path = cache::get_path(url);
 
                 cache_hits.insert(cache_path.clone());
 
-                tracing::trace!(?url, ?cache_path, "fetching packages allow list");
+                tracing::trace!(?url, ?cache_path, "fetching modules scopes list");
 
-                // If cache for this allow list is expired - request the list
+                // If cache for this scopes list is expired - request the list
                 // again.
                 if cache::is_expired(
                     &cache_path,
-                    config.cache_packages_allow_lists_duration
+                    config.cache_modules_scopes_lists_duration
                 ).await? {
-                    tracing::trace!(?url, ?cache_path, "packages allow list cache is expired");
+                    tracing::trace!(?url, ?cache_path, "modules scopes list cache is expired");
 
                     let task = downloader.download_with_options(
                         url,
@@ -626,43 +670,51 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url, cache_path.clone(), task));
+                    tasks.push((url, cache_path, task));
                 }
 
-                paths.push(cache_path);
+                // Otherwise add the cached path.
+                else {
+                    paths.push(cache_path);
+                }
             }
 
-            // Wait for all the allow lists to be downloaded.
+            // Wait for all the modules scopes lists to be downloaded.
             for (url, path, task) in tasks {
-                tracing::trace!(?url, ?path, "awaiting packages allow list downloading");
+                tracing::trace!(?url, ?path, "awaiting modules scopes list downloading");
 
-                let result = task.wait().await
-                    .context("failed to await packages allow list fetching");
+                match task.wait().await {
+                    Ok(_) => {
+                        paths.push(path);
+                    }
 
-                if let Err(err) = result {
-                    // Remove half-downloaded/broken file.
-                    let _ = tasks::fs::remove_file(path).await;
+                    Err(err) => {
+                        tracing::error!(?url, ?err, "failed to download modules scopes list");
 
-                    return Err(err);
+                        // Remove half-downloaded/broken file.
+                        let _ = tasks::fs::remove_file(path).await;
+                    }
                 }
             }
 
             for path in paths {
-                tracing::trace!(?path, "reading packages allow list");
+                tracing::trace!(?path, "reading modules scopes list");
 
-                let allow_list = tasks::fs::read(path).await?;
-                let allow_list = serde_json::from_slice::<Json>(&allow_list)?;
+                let scopes_list = tasks::fs::read(path).await?;
 
-                let allow_list = AllowList::from_json(&allow_list)
-                    .context("failed to deserialize packages allow list")?;
+                let scopes_list = serde_json::from_slice::<Json>(&scopes_list)
+                    .context("failed to decode json file with modules scopes list")?;
 
-                sender.input(MainWindowMsg::AddAllowList(allow_list));
+                let scopes_list = ScopesList::from_json(&scopes_list)
+                    .context("failed to deserialize modules scopes list")?;
+
+                sender.input(MainWindowMsg::AddScopesList(scopes_list));
             }
 
             // Fetch game registries.
 
             tracing::debug!(
-                registries = ?config::startup().games_registries,
+                registries = ?config.games_registries,
                 "fetching games registries"
             );
 
@@ -673,10 +725,10 @@ impl SimpleAsyncComponent for MainWindow {
             )));
 
             let mut tasks = Vec::with_capacity(config.games_registries.len());
-            let mut paths = Vec::with_capacity(tasks.capacity());
+            let mut paths = Vec::with_capacity(config.games_registries.len());
 
             // Either fetch game registry manifest or use cached one.
-            for url in &config.games_registries {
+            for (i, url) in config.games_registries.iter().enumerate() {
                 let cache_path = cache::get_path(url);
 
                 cache_hits.insert(cache_path.clone());
@@ -701,34 +753,45 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url, cache_path.clone(), task));
+                    tasks.push((url, cache_path, task, i));
                 }
 
-                paths.push(cache_path);
+                // Otherwise add the cached path.
+                else {
+                    paths.push((i, cache_path));
+                }
             }
 
             // Wait for all the game registries to be downloaded.
-            for (url, path, task) in tasks {
+            for (url, path, task, i) in tasks {
                 tracing::trace!(?url, ?path, "awaiting game registry downloading");
 
-                let result = task.wait().await
-                    .context("failed to await game registry fetching");
+                match task.wait().await {
+                    Ok(_) => {
+                        paths.push((i, path));
+                    }
 
-                if let Err(err) = result {
-                    // Remove half-downloaded/broken file.
-                    let _ = tasks::fs::remove_file(path).await;
+                    Err(err) => {
+                        tracing::error!(?url, ?err, "failed to download games registries");
 
-                    return Err(err);
+                        // Remove half-downloaded/broken file.
+                        let _ = tasks::fs::remove_file(path).await;
+                    }
                 }
             }
 
-            let mut games_manifests = HashMap::<String, bool>::new();
+            // Restore original games registries order.
+            paths.sort_by_key(|(i, _)| *i);
 
-            for path in paths {
+            let mut games_manifests = Vec::with_capacity(paths.len());
+
+            for (_, path) in paths {
                 tracing::trace!(?path, "reading game registry");
 
                 let registry = tasks::fs::read(path).await?;
-                let registry = serde_json::from_slice::<Json>(&registry)?;
+
+                let registry = serde_json::from_slice::<Json>(&registry)
+                    .context("failed to decode json file with games registry")?;
 
                 let registry = GamesRegistryManifest::from_json(&registry)
                     .context("failed to deserialize games registry")?;
@@ -736,16 +799,17 @@ impl SimpleAsyncComponent for MainWindow {
                 // List all the games manifests' URLs and whether they're
                 // featured.
                 for game in registry.games {
-                    *games_manifests.entry(game.url)
-                        .or_default() |= game.featured;
+                    match games_manifests.iter_mut().find(|(url, _)| url == &game.url) {
+                        Some((_, featured)) => *featured |= game.featured,
+                        None => games_manifests.push((game.url, game.featured))
+                    }
                 }
             }
 
             // Fetch game manifests.
 
             tracing::debug!(
-                urls = ?games_manifests.keys()
-                    .collect::<Vec<_>>(),
+                manifests = ?games_manifests,
                 "fetching games manifests"
             );
 
@@ -784,26 +848,35 @@ impl SimpleAsyncComponent for MainWindow {
                         }
                     );
 
-                    tasks.push((url.clone(), cache_path.clone(), task));
+                    tasks.push((
+                        url,
+                        is_featured,
+                        cache_path,
+                        task
+                    ));
                 }
 
-                let game_name = games::get_name(&url);
-
-                paths.push((game_name, url, cache_path, is_featured));
+                // Otherwise add the cached path and info.
+                else {
+                    paths.push((url, cache_path, is_featured));
+                }
             }
 
             // Wait for all the game manifests to be downloaded.
-            for (url, path, task) in tasks {
+            for (url, is_featured, path, task) in tasks {
                 tracing::trace!(?url, ?path, "awaiting game manifest downloading");
 
-                let result = task.wait().await
-                    .context("failed to await game manifest fetching");
+                match task.wait().await {
+                    Ok(_) => {
+                        paths.push((url, path, is_featured));
+                    }
 
-                if let Err(err) = result {
-                    // Remove half-downloaded/broken file.
-                    let _ = tasks::fs::remove_file(path).await;
+                    Err(err) => {
+                        tracing::error!(?url, ?err, "failed to download game manifest");
 
-                    return Err(err);
+                        // Remove half-downloaded/broken file.
+                        let _ = tasks::fs::remove_file(path).await;
+                    }
                 }
             }
 
@@ -862,18 +935,15 @@ impl SimpleAsyncComponent for MainWindow {
             for entry in config.games_path.read_dir()? {
                 let entry = entry?;
 
-                let game_name = entry.file_name()
-                    .to_string_lossy()
-                    .to_string();
-
                 tracing::trace!(
                     path = ?entry.path(),
-                    ?game_name,
                     "loading added game package lock"
                 );
 
                 let lock = tasks::fs::read(entry.path()).await?;
-                let lock = serde_json::from_slice::<Json>(&lock)?;
+
+                let lock = serde_json::from_slice::<Json>(&lock)
+                    .context("failed to decode json file with game package lock")?;
 
                 let mut lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
@@ -888,13 +958,33 @@ impl SimpleAsyncComponent for MainWindow {
                         .unwrap_or_else(|| format!("Loading {title} game package"))
                 )));
 
+                let name = lock.name();
+                let expected_path = config.games_path.join(&name);
+
+                // If loaded game name is different from its file name then
+                // rename it.
+                if expected_path != entry.path() {
+                    tracing::warn!(
+                        actual_path = ?entry.path(),
+                        ?expected_path,
+                        "added game is stored under invalid file name; renaming it"
+                    );
+
+                    tasks::fs::rename(
+                        entry.path(),
+                        &expected_path
+                    ).await?;
+                }
+
+                let mut outdated = false;
+
                 if cache::is_expired(
                     &entry.path(),
                     config.cache_game_packages_duration
                 ).await? {
                     tracing::trace!(
                         path = ?entry.path(),
-                        ?game_name,
+                        ?name,
                         ?title,
                         "updating added game package lock, cache is expired"
                     );
@@ -904,24 +994,45 @@ impl SimpleAsyncComponent for MainWindow {
                             .unwrap_or_else(|| format!("Updating {title} game package"))
                     )));
 
-                    let prev_scope = lock.scope;
+                    // Keep package scope from the current package lock.
+                    let prev_scope = lock.scope.clone();
 
-                    lock = GameLock::download(&lock.url, &storage).await
-                        .context("failed to update game package lock")?;
+                    // Try to update game package.
+                    match GameLock::download(&lock.url, &storage).await {
+                        // If succeeded, then replace old package file by a
+                        // new one.
+                        Ok(mut new_lock) => {
+                            new_lock.scope = prev_scope;
 
-                    lock.scope = prev_scope;
+                            tasks::fs::write(
+                                expected_path,
+                                serde_json::to_vec_pretty(&new_lock.to_json())?
+                            ).await?;
 
-                    tasks::fs::write(
-                        entry.path(),
-                        serde_json::to_vec_pretty(&lock.to_json())?
-                    ).await?;
+                            lock = new_lock;
+                        }
 
-                    resources.extend(lock.lock.resources.keys().copied());
+                        // If failed, then still load the game package but
+                        // mark it as outdated.
+                        Err(err) => {
+                            tracing::error!(
+                                ?err,
+                                ?name,
+                                ?title,
+                                "failed to update game package lock"
+                            );
+
+                            outdated = true;
+                        }
+                    }
                 }
 
+                resources.extend(lock.lock.resources.keys().copied());
+
                 sender.input(MainWindowMsg::AddLibraryPageGame {
-                    name: game_name,
-                    lock
+                    name,
+                    lock,
+                    outdated
                 });
             }
 
@@ -998,10 +1109,6 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Add store page games.
 
-            // Show featured games first.
-            #[allow(clippy::unnecessary_sort_by)]
-            paths.sort_by(|a, b| b.3.cmp(&a.3));
-
             tracing::debug!(?paths, "adding store page games");
 
             sender.input(MainWindowMsg::SetLoadingStatus(Some(
@@ -1010,18 +1117,48 @@ impl SimpleAsyncComponent for MainWindow {
                     .to_string()
             )));
 
-            for (game_name, url, path, _is_featured) in paths {
+            let mut games = Vec::with_capacity(paths.len());
+
+            // Read games manifests.
+            for (url, path, is_featured) in paths {
                 tracing::trace!(?url, ?path, "reading game manifest");
 
                 let manifest = tasks::fs::read(path).await?;
-                let manifest = serde_json::from_slice::<Json>(&manifest)?;
+
+                let manifest = serde_json::from_slice::<Json>(&manifest)
+                    .context("failed to decode json file with game manifest")?;
 
                 let manifest = GameManifest::from_json(&manifest)
                     .context("failed to deserialize game manifest")?;
 
+                let name = games::get_name(
+                    manifest.game.name.as_deref(),
+                    url.as_str()
+                );
+
+                // If there's yet no game with the same name then add it.
+                if !games.iter().any(|(game_name, _, _, _)| game_name == &name) {
+                    games.push((name, url, is_featured, manifest));
+                }
+
+                else {
+                    tracing::warn!(
+                        ?url,
+                        ?name,
+                        title = manifest.game.title.default_translation(),
+                        "a game with the same name has already been added to the store page"
+                    );
+                }
+            }
+
+            // Show featured games first.
+            #[allow(clippy::unnecessary_sort_by)]
+            games.sort_by(|a, b| b.2.cmp(&a.2));
+
+            for (name, manifest_url, _, manifest) in games {
                 sender.input(MainWindowMsg::AddStorePageGame {
-                    name: game_name,
-                    manifest_url: url,
+                    name,
+                    manifest_url,
                     manifest
                 });
             }
@@ -1079,8 +1216,8 @@ impl SimpleAsyncComponent for MainWindow {
                 self.loading_status = status;
             }
 
-            MainWindowMsg::AddAllowList(allow_list) => {
-                self.allow_list.merge_with(allow_list);
+            MainWindowMsg::AddScopesList(scopes_list) => {
+                self.scopes_list.merge_with(scopes_list);
             }
 
             MainWindowMsg::AddStorePageGame {
@@ -1095,7 +1232,7 @@ impl SimpleAsyncComponent for MainWindow {
                 });
             }
 
-            MainWindowMsg::AddLibraryPageGame { name, lock } => {
+            MainWindowMsg::AddLibraryPageGame { name, lock, outdated } => {
                 let config = config::get().await;
 
                 let lang = config.language();
@@ -1106,15 +1243,15 @@ impl SimpleAsyncComponent for MainWindow {
                 };
 
                 let paths = ModulePaths {
-                    temp_folder: config.packages_temporary_path.clone(),
-                    modules_folder: config.packages_modules_path.clone(),
-                    persistent_folder: config.packages_persistent_path.clone()
+                    temp_dir: config.packages_temporary_path.clone(),
+                    modules_dir: config.packages_modules_path.clone(),
+                    persistent_dir: config.packages_persistent_path.clone()
                 };
 
                 // Add game's scope to all the game integration resources.
                 if let Some(scope) = &lock.scope {
                     for hash in lock.lock.resources.keys() {
-                        self.allow_list.add_module_scope(*hash, scope.clone());
+                        self.scopes_list.add_module_scope(*hash, scope.clone());
                     }
                 }
 
@@ -1123,14 +1260,14 @@ impl SimpleAsyncComponent for MainWindow {
                     &lock.lock,
                     &self.storage,
                     &paths,
-                    &self.allow_list
+                    &self.scopes_list
                 );
 
                 if let Err(err) = result {
                     tracing::error!(
                         ?err,
-                        ?name,
                         url = lock.url,
+                        ?name,
                         title = lock.manifest.game.title.default_translation(),
                         "failed to load game package"
                     );
@@ -1163,8 +1300,8 @@ impl SimpleAsyncComponent for MainWindow {
 
                 let Some(module_key) = find_module_key(&lock) else {
                     tracing::error!(
-                        ?name,
                         url = lock.url,
+                        ?name,
                         title = lock.manifest.game.title.default_translation(),
                         "failed to find game integration module in package lock"
                     );
@@ -1194,8 +1331,8 @@ impl SimpleAsyncComponent for MainWindow {
                     Some(Err(err)) => {
                         tracing::error!(
                             ?err,
-                            ?name,
                             url = lock.url,
+                            ?name,
                             title = lock.manifest.game.title.default_translation(),
                             "failed to read game integration from the runtime"
                         );
@@ -1211,8 +1348,8 @@ impl SimpleAsyncComponent for MainWindow {
 
                     None => {
                         tracing::error!(
-                            ?name,
                             url = lock.url,
+                            ?name,
                             title = lock.manifest.game.title.default_translation(),
                             "game integration module is missing in the runtime"
                         );
@@ -1240,8 +1377,8 @@ impl SimpleAsyncComponent for MainWindow {
                     Err(err) => {
                         tracing::error!(
                             ?err,
-                            ?name,
                             url = lock.url,
+                            ?name,
                             title = lock.manifest.game.title.default_translation(),
                             "failed to build game integration"
                         );
@@ -1259,7 +1396,8 @@ impl SimpleAsyncComponent for MainWindow {
                 self.library_page.emit(LibraryPageInput::AddGame {
                     name,
                     package: lock,
-                    integration: game_integration
+                    integration: game_integration,
+                    outdated
                 });
             }
 
@@ -1581,8 +1719,20 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
-            MainWindowMsg::ReloadSelectedLibraryGameInfo => {
-                self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo);
+            MainWindowMsg::ReloadSelectedLibraryGameInfo {
+                launch_info,
+                actions_pipeline,
+                components_layout,
+                tools_layout,
+                settings_layout
+            } => {
+                self.library_page.emit(LibraryPageInput::UpdateSelectedGameInfo {
+                    launch_info,
+                    actions_pipeline,
+                    components_layout,
+                    tools_layout,
+                    settings_layout
+                });
             }
         }
     }

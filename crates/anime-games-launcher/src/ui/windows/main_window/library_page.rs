@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // anime-games-launcher
-// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@vk.com>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -22,12 +22,13 @@ use std::sync::Arc;
 use relm4::prelude::*;
 use adw::prelude::*;
 
+use agl_core::tasks;
 use agl_games::api::{
     ActionsPipeline, GameComponentsGroup, GameEdition, GameIntegration,
     GameLaunchInfo, GameSettingsGroup, GameVariant
 };
 
-use crate::{consts, config, games, i18n};
+use crate::{consts, config, i18n};
 use crate::games::GameLock;
 use crate::ui::dialogs;
 use crate::ui::components::lazy_picture::ImagePath;
@@ -42,6 +43,7 @@ use crate::ui::components::game_library_details::{
 struct LoadedGameInfo {
     pub package: GameLock,
     pub integration: Arc<GameIntegration>,
+    pub outdated: bool,
     pub editions: Option<Box<[GameEdition]>>,
     pub card_index: DynamicIndex
 }
@@ -50,15 +52,18 @@ struct LoadedGameInfo {
 #[derive(Debug, Clone)]
 pub enum LibraryPageInput {
     AddGame {
-        /// Unique game name (internal identifier). A game package lock filename
-        /// is expected to be used, though any unique value is suitable.
+        /// Unique game name.
         name: String,
 
         /// Loaded game package info.
         package: GameLock,
 
         /// Loaded game integration object.
-        integration: Arc<GameIntegration>
+        integration: Arc<GameIntegration>,
+
+        /// If true, launcher failed to update game package at startup, and
+        /// older package was loaded.
+        outdated: bool
     },
 
     /// Delete game package for the given game name.
@@ -93,7 +98,13 @@ pub enum LibraryPageInput {
 
     CollapseGamesExceptIndex(DynamicIndex),
 
-    UpdateSelectedGameInfo,
+    UpdateSelectedGameInfo {
+        launch_info: bool,
+        actions_pipeline: bool,
+        components_layout: bool,
+        tools_layout: bool,
+        settings_layout: bool
+    },
 
     ScheduleGameActionsPipeline {
         game_name: String,
@@ -271,11 +282,16 @@ impl SimpleAsyncComponent for LibraryPage {
         sender: AsyncComponentSender<Self>
     ) {
         match msg {
-            LibraryPageInput::AddGame { name, package, integration } => {
+            LibraryPageInput::AddGame {
+                name,
+                package,
+                integration,
+                outdated
+            } => {
                 if self.games.contains_key(&name) {
                     tracing::warn!(
-                        ?name,
                         url = package.url,
+                        ?name,
                         title = package.manifest.game.title.default_translation(),
                         "attempted to load a game package for a game that is already registered"
                     );
@@ -284,8 +300,8 @@ impl SimpleAsyncComponent for LibraryPage {
                 }
 
                 tracing::debug!(
-                    ?name,
                     url = package.url,
+                    ?name,
                     title = package.manifest.game.title.default_translation(),
                     "loading game package"
                 );
@@ -306,8 +322,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     Err(err) => {
                         tracing::error!(
                             ?err,
-                            ?name,
                             url = package.url,
+                            ?name,
                             title = package.manifest.game.title.default_translation(),
                             "failed to request game integration editions"
                         );
@@ -342,6 +358,7 @@ impl SimpleAsyncComponent for LibraryPage {
                 self.games.insert(name, LoadedGameInfo {
                     package,
                     integration,
+                    outdated,
                     editions,
                     card_index
                 });
@@ -359,8 +376,8 @@ impl SimpleAsyncComponent for LibraryPage {
                     };
 
                     tracing::info!(
+                        url = ?game_info.package.url,
                         ?name,
-                        manifest_url = ?game_info.package.url,
                         ?title,
                         "deleting game package"
                     );
@@ -370,13 +387,13 @@ impl SimpleAsyncComponent for LibraryPage {
 
                     self.game_details.emit(GameLibraryDetailsInput::Clear);
 
-                    let path = config.games_path.join(games::get_name(&game_info.package.url));
+                    let path = config.games_path.join(&name);
 
-                    if path.exists() && let Err(err) = std::fs::remove_file(path) {
+                    if path.exists() && let Err(err) = tasks::fs::remove_file(path).await {
                         tracing::error!(
                             ?err,
+                            url = ?game_info.package.url,
                             ?name,
-                            manifest_url = ?game_info.package.url,
                             ?title,
                             "failed to delete game package"
                         );
@@ -419,7 +436,8 @@ impl SimpleAsyncComponent for LibraryPage {
                         variant: GameVariant {
                             platform: *consts::CURRENT_PLATFORM,
                             edition
-                        }
+                        },
+                        outdated: game_info.outdated
                     });
                 }
             }
@@ -448,7 +466,8 @@ impl SimpleAsyncComponent for LibraryPage {
                         variant: GameVariant {
                             platform: *consts::CURRENT_PLATFORM,
                             edition
-                        }
+                        },
+                        outdated: game_info.outdated
                     });
                 }
             }
@@ -470,8 +489,20 @@ impl SimpleAsyncComponent for LibraryPage {
                 self.cards_list.broadcast(CardsListInput::HideVariantsExcept(index));
             }
 
-            LibraryPageInput::UpdateSelectedGameInfo => {
-                self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo);
+            LibraryPageInput::UpdateSelectedGameInfo {
+                launch_info,
+                actions_pipeline,
+                components_layout,
+                tools_layout,
+                settings_layout
+            } => {
+                self.game_details.emit(GameLibraryDetailsInput::UpdateGameInfo {
+                    launch_info,
+                    actions_pipeline,
+                    components_layout,
+                    tools_layout,
+                    settings_layout
+                });
             }
 
             LibraryPageInput::ScheduleGameActionsPipeline {
