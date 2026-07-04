@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added [`TRACE`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/TRACE)
   request method to HTTP API.
 - More operations in the launcher were replaced by async alternatives.
+- Added `base32/nix` text encoding to `str.encode` and `str.decode` APIs.
 
 ### Fixed
 
