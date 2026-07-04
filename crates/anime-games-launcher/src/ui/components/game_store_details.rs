@@ -16,12 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
 use agl_core::tasks;
 use agl_packages::storage::Storage;
-use agl_games::manifest::GameManifest;
+use agl_games::manifest::{GameManifest, GameTag};
 
 use crate::{config, i18n};
 use crate::games::GameLock;
@@ -394,7 +396,16 @@ impl SimpleAsyncComponent for GameStoreDetails {
                     .cloned()
                     .collect::<Vec<_>>();
 
-                tags.sort();
+                // Sort standard tags, but keep unstandard tags in their
+                // original order if possible.
+                tags.sort_by(|a, b| {
+                    match (a, b) {
+                        (GameTag::Other(_), GameTag::Other(_)) => Ordering::Equal,
+                        (GameTag::Other(_), _) => Ordering::Greater,
+                        (_, GameTag::Other(_)) => Ordering::Less,
+                        (_, _) => a.cmp(b)
+                    }
+                });
 
                 let mut guard = self.tags.guard();
 
