@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed launcher settings UI updating after `reactivity = none` entries changes.
+- Fixed launcher's garbage collector deleting games integrations resources.
 
 ### Changed
 

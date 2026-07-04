@@ -945,6 +945,8 @@ impl SimpleAsyncComponent for MainWindow {
                 let mut lock = GameLock::from_json(&lock)
                     .context("failed to deserialize game package lock")?;
 
+                resources.extend(lock.lock.resources.keys().copied());
+
                 let name = lock.name();
                 let expected_path = config.games_path.join(&name);
 
@@ -1000,8 +1002,6 @@ impl SimpleAsyncComponent for MainWindow {
                         expected_path,
                         serde_json::to_vec_pretty(&lock.to_json())?
                     ).await?;
-
-                    resources.extend(lock.lock.resources.keys().copied());
                 }
 
                 sender.input(MainWindowMsg::AddLibraryPageGame {
