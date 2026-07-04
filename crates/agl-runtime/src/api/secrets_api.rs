@@ -120,7 +120,7 @@ impl SecretsApi {
                     let database = database.clone();
                     let context = context.to_owned();
 
-                    lua.create_function(move |lua: &Lua, (container, key): (String, String)| {
+                    lua.create_function(move |_lua: &Lua, (container, key): (String, String)| -> Result<Option<Bytes>, LuaError> {
                         if !context.can_read_secrets_container(&container) {
                             return Err(LuaError::external("no secrets container read permissions"));
                         }
@@ -147,8 +147,7 @@ impl SecretsApi {
                                 LuaError::external("failed to read secret container entry")
                                     .context(err)
                             })?
-                            .map(|value| value.into_lua(lua))
-                            .transpose()?;
+                            .map(Bytes::new);
 
                         Ok(value)
                     })
