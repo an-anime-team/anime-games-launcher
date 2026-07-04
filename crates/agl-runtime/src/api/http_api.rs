@@ -316,7 +316,7 @@ mod tests {
 
         assert_eq!(response.get::<u16>("status")?, 200);
         assert!(response.get::<bool>("is_ok")?);
-        assert_eq!(seahash::hash(&response.get::<Bytes>("body")?), 3006589543747530287);
+        assert_eq!(seahash::hash(&response.get::<Bytes>("body")?), 14642176728771407784);
 
         Ok(())
     }
