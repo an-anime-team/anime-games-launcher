@@ -81,6 +81,32 @@ We provide official nix flake for installing the launcher:
 }
 ```
 
+Or using [niv](https://github.com/nmattia/niv) and [flake-compat](https://github.com/NixOS/flake-compat):
+
+```nix
+#$ niv add an-anime-team/anime-games-launcher
+#$ niv add nixos/flake-compat
+{ ... }:
+let
+  sources = import ./sources.nix;
+  flake-compat = import sources.flake-compat;
+  # Use launcher flake output on stable Nix
+  agl = (flake-compat { src = sources.anime-games-launcher; }).outputs;
+in
+{
+  # Add launcher's nixos module
+  imports = [
+    agl.nixosModules.anime-games-launcher
+  ];
+
+  # Add the launcher or anirun CLI
+  programs.anime-games-launcher = {
+    enable = true;
+    anirun.enable = true;
+  };
+}
+```
+
 ## Useful links
 
 - [Packages manager documentation](./crates/agl-packages/README.md)
