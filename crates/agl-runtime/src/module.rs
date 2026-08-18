@@ -234,6 +234,7 @@ impl Default for ModuleScope {
 
 impl ModuleScope {
     pub fn to_json(&self) -> Json {
+        #[allow(unused_mut)]
         let mut api_scope = json!({
             "string": self.allow_string_api,
             "path": self.allow_path_api,
@@ -248,26 +249,27 @@ impl ModuleScope {
             "process": self.allow_process_api
         });
 
-        if cfg!(feature = "sqlite-api") {
+        #[cfg(feature = "sqlite-api")] {
             api_scope["sqlite"] = json!(self.allow_sqlite_api);
         }
 
-        if cfg!(feature = "protobuf-api") {
+        #[cfg(feature = "protobuf-api")] {
             api_scope["protobuf"] = json!(self.allow_protobuf_api);
         }
 
-        if cfg!(feature = "torrent-api") {
+        #[cfg(feature = "torrent-api")] {
             api_scope["torrent"] = json!(self.allow_torrent_api);
         }
 
-        if cfg!(feature = "portal-api") {
+        #[cfg(feature = "portal-api")] {
             api_scope["portal"] = json!(self.allow_portal_api);
         }
 
-        if cfg!(feature = "secrets-api") {
+        #[cfg(feature = "secrets-api")] {
             api_scope["secrets"] = json!(self.allow_secrets_api);
         }
 
+        #[allow(unused_mut)]
         let mut module_scope = json!({
             "api": api_scope,
             "sandbox": {
@@ -276,7 +278,7 @@ impl ModuleScope {
             }
         });
 
-        if cfg!(feature = "secrets-api") {
+        #[cfg(feature = "secrets-api")] {
             module_scope["secrets"] = json!({
                 "read_containers": self.secrets_read_containers,
                 "write_containers": self.secrets_write_containers

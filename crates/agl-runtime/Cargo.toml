@@ -24,8 +24,8 @@ secrets-api = ["dep:rusqlite"]
 default = [
     "tracing",
     "packages-support",
-    "protobuf-api",
     "sqlite-api",
+    "protobuf-api",
     "torrent-api",
     "portal-api",
     "secrets-api"

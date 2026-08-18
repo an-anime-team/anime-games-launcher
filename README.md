@@ -58,21 +58,46 @@ We provide official nix flake for installing the launcher:
 ```nix
 {
     inputs = {
-        # Add launcher flake as input
+        # Add launcher flake as input.
         anime-games-launcher.url = "github:an-anime-team/anime-games-launcher";
     };
 
     outputs = { anime-games-launcher, ... }: {
         nixosConfigurations.default = nixpkgs.lib.nixosSystem {
             modules = [
-                # Add launcher's nixos module from the flake
+                # Add launcher's nixos module from the flake.
                 anime-games-launcher.nixosModules.anime-games-launcher
 
-                # Add the launcher or anirun CLI
+                # Add the launcher or anirun CLI.
                 ({ ... }: {
                     programs.anime-games-launcher = {
+                        # Enable launcher.
                         enable = true;
-                        anirun.enable = true;
+
+                        # Optional API configuration. Presented values are
+                        # set by default.
+                        api = {
+                            sqlite = true;
+                            protobuf = true;
+                            torrent = true;
+                            portal = true;
+                            secrets = true;
+                        };
+
+                        # Enable launcher packages debugging tool called anirun.
+                        anirun = {
+                            enable = true;
+
+                            # Optional API configuration. Presented values are
+                            # set by default.
+                            api = {
+                                sqlite = true;
+                                protobuf = true;
+                                torrent = true;
+                                portal = true;
+                                secrets = true;
+                            };
+                        };
                     };
                 })
             ];

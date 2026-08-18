@@ -77,19 +77,19 @@ impl ScopesList {
         entry.allow_hash_api        |= scope.allow_hash_api;
         entry.allow_compression_api |= scope.allow_compression_api;
 
-        if cfg!(feature = "sqlite-api") {
+        #[cfg(feature = "sqlite-api")] {
             entry.allow_sqlite_api |= scope.allow_sqlite_api;
         }
 
-        if cfg!(feature = "torrent-api") {
+        #[cfg(feature = "torrent-api")] {
             entry.allow_torrent_api |= scope.allow_torrent_api;
         }
 
-        if cfg!(feature = "portal-api") {
+        #[cfg(feature = "portal-api")] {
             entry.allow_portal_api |= scope.allow_portal_api;
         }
 
-        if cfg!(feature = "secrets-api") {
+        #[cfg(feature = "secrets-api")] {
             entry.allow_secrets_api |= scope.allow_secrets_api;
         }
 
@@ -101,11 +101,13 @@ impl ScopesList {
         entry.sandbox_read_paths.dedup();
         entry.sandbox_write_paths.dedup();
 
-        entry.secrets_read_containers.extend(scope.secrets_read_containers);
-        entry.secrets_write_containers.extend(scope.secrets_write_containers);
+        #[cfg(feature = "secrets-api")] {
+            entry.secrets_read_containers.extend(scope.secrets_read_containers);
+            entry.secrets_write_containers.extend(scope.secrets_write_containers);
 
-        entry.secrets_read_containers.dedup();
-        entry.secrets_write_containers.dedup();
+            entry.secrets_read_containers.dedup();
+            entry.secrets_write_containers.dedup();
+        }
     }
 
     /// Try to get scope for a module with provided hash if it's stored in the

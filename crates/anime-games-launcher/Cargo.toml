@@ -13,7 +13,20 @@ publish = false
 [features]
 mimalloc = ["dep:mimalloc"]
 
-default = ["mimalloc"]
+sqlite-api = ["agl-runtime/sqlite-api"]
+protobuf-api = ["agl-runtime/protobuf-api"]
+torrent-api = ["agl-runtime/torrent-api"]
+portal-api = ["agl-runtime/portal-api", "dep:notify-rust"]
+secrets-api = ["agl-runtime/secrets-api"]
+
+default = [
+    "mimalloc",
+    "sqlite-api",
+    "protobuf-api",
+    "torrent-api",
+    "portal-api",
+    "secrets-api"
+]
 
 [build-dependencies]
 glib-build-tools = "0.21.0"
@@ -34,17 +47,24 @@ features = ["v1_7"]
 
 [dependencies.agl-core]
 path = "../agl-core"
+default-features = false
 features = [
     "tasks",
     "network-all",
     "tracing"
 ]
+
+[dependencies.agl-runtime]
+path = "../agl-runtime"
 default-features = false
+features = [
+    "tracing",
+    "packages-support"
+]
 
 [dependencies]
 agl-locale = { path = "../agl-locale", default-features = false }
 agl-packages = { path = "../agl-packages" }
-agl-runtime = { path = "../agl-runtime" }
 agl-games = { path = "../agl-games" }
 
 anyhow = "1.0"
@@ -54,7 +74,8 @@ serde_json = "1.0"
 
 time = "0.3"
 
-notify-rust = "4.17"
+# Portal API
+notify-rust = { version = "4.17", optional = true }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"

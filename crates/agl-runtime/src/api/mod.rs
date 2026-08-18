@@ -226,6 +226,7 @@ pub struct ApiOptions {
     pub translate: fn(agl_locale::string::LocalizableString) -> String,
 
     /// Path to the secrets API database file.
+    #[cfg(feature = "secrets-api")]
     pub secrets_file: PathBuf
 }
 
@@ -275,7 +276,9 @@ impl Api {
         api_context: ApiContext
     ) -> Result<Self, LuaError> {
         // Append secrets API database file to the list of no access files.
+        #[allow(unused_must_use, unused_mut)]
         if let Ok(mut private_paths) = api_context.private_paths.write() {
+            #[cfg(feature = "secrets-api")]
             private_paths.push(options.secrets_file.clone());
         }
 

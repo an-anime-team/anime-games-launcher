@@ -39,10 +39,15 @@ use agl_runtime::mlua::prelude::*;
 use agl_runtime::scopes_list::ScopesList;
 use agl_runtime::api::{ApiOptions, ApiContext};
 use agl_runtime::api::bytes::Bytes;
+
+#[cfg(feature = "torrent-api")]
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
+
+#[cfg(feature = "portal-api")]
 use agl_runtime::api::portal_api::{
     ToastOptions, NotificationOptions, DialogOptions, DialogButtonStatus
 };
+
 use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_games::manifest::{GamesRegistryManifest, GameManifest};
 use agl_games::api::{
@@ -126,8 +131,13 @@ pub enum MainWindowMsg {
     /// Delete game package for the given game name.
     DeleteGamePackage(String),
 
+    #[cfg(feature = "portal-api")]
     ShowToast(ToastOptions),
+
+    #[cfg(feature = "portal-api")]
     ShowNotification(NotificationOptions),
+
+    #[cfg(feature = "portal-api")]
     ShowDialog(DialogOptions),
 
     SetShowBackButton(bool),
@@ -369,6 +379,7 @@ impl SimpleAsyncComponent for MainWindow {
         let storage = Storage::open(&config.packages_resources_path)
             .expect("failed to open packages storage");
 
+        #[cfg(feature = "torrent-api")]
         let torrent_server = config.runtime_torrent_enable.then(|| {
             TorrentServer::start(TorrentServerOptions {
                 default_folder: config.packages_temporary_path.clone(),
@@ -402,8 +413,11 @@ impl SimpleAsyncComponent for MainWindow {
         let options = ApiOptions {
             lua,
             reqwest_client,
+
+            #[cfg(feature = "torrent-api")]
             torrent_server,
 
+            #[cfg(feature = "portal-api")]
             show_toast: {
                 let sender = sender.clone();
 
@@ -412,6 +426,7 @@ impl SimpleAsyncComponent for MainWindow {
                 })
             },
 
+            #[cfg(feature = "portal-api")]
             show_notification: {
                 let sender = sender.clone();
 
@@ -420,6 +435,7 @@ impl SimpleAsyncComponent for MainWindow {
                 })
             },
 
+            #[cfg(feature = "portal-api")]
             show_dialog: {
                 let sender = sender.clone();
 
@@ -428,6 +444,7 @@ impl SimpleAsyncComponent for MainWindow {
                 })
             },
 
+            #[cfg(feature = "secrets-api")]
             secrets_file: config.runtime_secrets_path.clone(),
 
             translate
@@ -1405,6 +1422,7 @@ impl SimpleAsyncComponent for MainWindow {
                 self.library_page.emit(LibraryPageInput::DeleteGamePackage(name));
             }
 
+            #[cfg(feature = "portal-api")]
             MainWindowMsg::ShowToast(options) => {
                 let lang = config::get().await
                     .language();
@@ -1445,6 +1463,7 @@ impl SimpleAsyncComponent for MainWindow {
                 self.toast_overlay.add_toast(toast);
             }
 
+            #[cfg(feature = "portal-api")]
             MainWindowMsg::ShowNotification(options) => {
                 let lang = config::get().await
                     .language();
@@ -1481,6 +1500,7 @@ impl SimpleAsyncComponent for MainWindow {
                 }
             }
 
+            #[cfg(feature = "portal-api")]
             MainWindowMsg::ShowDialog(options) => {
                 let lang = config::get().await
                     .language();

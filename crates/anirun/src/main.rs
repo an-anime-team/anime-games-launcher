@@ -40,7 +40,11 @@ use agl_runtime::runtime::{Runtime, ModulePaths};
 use agl_runtime::module::{Module, ModuleScope};
 use agl_runtime::scopes_list::ScopesList;
 use agl_runtime::api::{ApiContext, ApiOptions};
+
+#[cfg(feature = "portal-api")]
 use agl_runtime::api::portal_api::ToastOptions;
+
+#[cfg(feature = "torrent-api")]
 use agl_runtime::api::torrent_api::{TorrentServer, TorrentServerOptions};
 
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -134,6 +138,7 @@ enum CliPackageCommands {
         #[command(flatten)]
         scope: CliModuleScope,
 
+        #[cfg(feature = "torrent-api")]
         #[command(flatten)]
         torrent: TorrentOptionsCli
     }
@@ -157,6 +162,7 @@ enum CliModuleCommands {
         #[command(flatten)]
         scope: CliModuleScope,
 
+        #[cfg(feature = "torrent-api")]
         #[command(flatten)]
         torrent: TorrentOptionsCli
     }
@@ -258,6 +264,7 @@ struct CliModuleScope {
     /// This API allows module to work with a sqlite database.
     ///
     /// Default: `true`.
+    #[cfg(feature = "sqlite-api")]
     #[arg(long)]
     pub sqlite_api: Option<bool>,
 
@@ -266,6 +273,7 @@ struct CliModuleScope {
     /// This API allows module to create, encode and decode protobuf messages.
     ///
     /// Default: `true`.
+    #[cfg(feature = "protobuf-api")]
     #[arg(long)]
     pub protobuf_api: Option<bool>,
 
@@ -275,6 +283,7 @@ struct CliModuleScope {
     /// share files using DHT, magnet links and torrent files.
     ///
     /// Default: `false`.
+    #[cfg(feature = "torrent-api")]
     #[arg(long)]
     pub torrent_api: Option<bool>,
 
@@ -284,6 +293,7 @@ struct CliModuleScope {
     /// and open file/folder dialogs which can escape the filesystem sandbox.
     ///
     /// Default: `true`.
+    #[cfg(feature = "portal-api")]
     #[arg(long)]
     pub portal_api: Option<bool>,
 
@@ -293,6 +303,7 @@ struct CliModuleScope {
     /// access for every module.
     ///
     /// Default: `true`.
+    #[cfg(feature = "secrets-api")]
     #[arg(long)]
     pub secrets_api: Option<bool>,
 
@@ -327,12 +338,14 @@ struct CliModuleScope {
     /// List of containers which module can read.
     ///
     /// Default: none.
+    #[cfg(feature = "secrets-api")]
     #[arg(long = "secrets-read-container", alias = "secrets-read")]
     pub secrets_read_containers: Vec<String>,
 
     /// List of containers which module can write.
     ///
     /// Default: none.
+    #[cfg(feature = "secrets-api")]
     #[arg(long = "secrets-write-container", alias = "secrets-write")]
     pub secrets_write_containers: Vec<String>
 }
@@ -350,20 +363,37 @@ impl From<CliModuleScope> for ModuleScope {
             allow_archive_api: value.archive_api.unwrap_or(true),
             allow_hash_api: value.hash_api.unwrap_or(true),
             allow_compression_api: value.compression_api.unwrap_or(true),
+
+            #[cfg(feature = "sqlite-api")]
             allow_sqlite_api: value.sqlite_api.unwrap_or(true),
+
+            #[cfg(feature = "protobuf-api")]
             allow_protobuf_api: value.protobuf_api.unwrap_or(true),
+
+            #[cfg(feature = "torrent-api")]
             allow_torrent_api: value.torrent_api.unwrap_or(false),
+
+            #[cfg(feature = "portal-api")]
             allow_portal_api: value.portal_api.unwrap_or(true),
+
+            #[cfg(feature = "secrets-api")]
             allow_secrets_api: value.secrets_api.unwrap_or(true),
+
             allow_process_api: value.process_api.unwrap_or(false),
+
             sandbox_read_paths: value.sandbox_read_paths,
             sandbox_write_paths: value.sandbox_write_paths,
+
+            #[cfg(feature = "secrets-api")]
             secrets_read_containers: value.secrets_read_containers,
+
+            #[cfg(feature = "secrets-api")]
             secrets_write_containers: value.secrets_write_containers
         }
     }
 }
 
+#[cfg(feature = "torrent-api")]
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
 struct TorrentOptionsCli {
     /// Default path to the folder where torrents should be downloaded.
@@ -419,18 +449,22 @@ fn build_client(
     client.build().context("failed to build HTTP client")
 }
 
+#[allow(unused)]
 fn build_runtime(
     temp_dir: &Path,
     secrets_file: PathBuf,
     proxy: Option<String>,
-    torrent: Option<TorrentOptionsCli>,
-    reqwest_client: reqwest::Client
+    reqwest_client: reqwest::Client,
+
+    #[cfg(feature = "torrent-api")]
+    torrent: Option<TorrentOptionsCli>
 ) -> anyhow::Result<Runtime> {
     let options = ApiOptions {
         lua: Lua::new(),
 
         reqwest_client,
 
+        #[cfg(feature = "torrent-api")]
         torrent_server: torrent.map(|options| {
             TorrentServer::start(TorrentServerOptions {
                 default_folder: options.torrent_folder
@@ -449,6 +483,7 @@ fn build_runtime(
             })
         }),
 
+        #[cfg(feature = "portal-api")]
         show_toast: Box::new(|options| {
             let message = match options {
                 ToastOptions::Simple(message) |
@@ -460,6 +495,7 @@ fn build_runtime(
             tracing::debug!("");
         }),
 
+        #[cfg(feature = "portal-api")]
         show_notification: Box::new(|options| {
             let mut notification = notify_rust::Notification::new();
             let mut notification = notification.summary(&translate(options.title));
@@ -479,6 +515,7 @@ fn build_runtime(
             }
         }),
 
+        #[cfg(feature = "portal-api")]
         show_dialog: Box::new(|options| {
             let title = translate(options.title);
             let message = translate(options.message);
@@ -639,7 +676,13 @@ fn main() -> anyhow::Result<()> {
                 tracing::info!("done");
             }
 
-            CliPackageCommands::Run { source, scope, torrent } => {
+            CliPackageCommands::Run {
+                source,
+                scope,
+
+                #[cfg(feature = "torrent-api")]
+                torrent
+            } => {
                 let storage = Storage::open(&resources_dir)
                     .context("failed to open resources storage")?;
 
@@ -675,8 +718,10 @@ fn main() -> anyhow::Result<()> {
                     &temp_dir,
                     secret_file,
                     cli.proxy.clone(),
-                    scope.torrent_api.and_then(|enabled| enabled.then_some(torrent)),
-                    client
+                    client,
+
+                    #[cfg(feature = "torrent-api")]
+                    scope.torrent_api.and_then(|enabled| enabled.then_some(torrent))
                 )?;
 
                 tracing::info!("preparing allow list");
@@ -727,7 +772,13 @@ fn main() -> anyhow::Result<()> {
         }
 
         CliCommands::Module(command) => match command {
-            CliModuleCommands::Run { source, scope, torrent } => {
+            CliModuleCommands::Run {
+                source,
+                scope,
+
+                #[cfg(feature = "torrent-api")]
+                torrent
+            } => {
                 let mut source_path = PathBuf::from(&source);
 
                 if !source_path.exists() {
@@ -753,8 +804,10 @@ fn main() -> anyhow::Result<()> {
                     &temp_dir,
                     secret_file,
                     cli.proxy.clone(),
-                    scope.torrent_api.and_then(|enabled| enabled.then_some(torrent)),
-                    client
+                    client,
+
+                    #[cfg(feature = "torrent-api")]
+                    scope.torrent_api.and_then(|enabled| enabled.then_some(torrent))
                 )?;
 
                 let module = Module {
