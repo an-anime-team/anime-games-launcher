@@ -109,6 +109,7 @@ dependencies = [
  "time",
  "toml",
  "tracing",
+ "urlencoding",
 ]
 
 [[package]]

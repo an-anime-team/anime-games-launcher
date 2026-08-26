@@ -59,6 +59,7 @@ enum StringEncoding {
     Base32(base32::Alphabet),
     Base32Nix,
     Base64(base64::engine::GeneralPurpose),
+    Urlencode,
     Json { pretty: bool },
     Bson,
     Toml { pretty: bool },
@@ -66,7 +67,11 @@ enum StringEncoding {
 }
 
 impl StringEncoding {
-    pub fn encode(&self, lua: &Lua, value: LuaValue) -> Result<LuaString, LuaError> {
+    pub fn encode(
+        &self,
+        lua: &Lua,
+        value: LuaValue
+    ) -> Result<LuaString, LuaError> {
         use base64::Engine;
 
         match self {
@@ -92,6 +97,14 @@ impl StringEncoding {
                 let value = Bytes::from_lua(value, lua)?;
 
                 lua.create_string(engine.encode(value.as_slice()))
+            }
+
+            Self::Urlencode => {
+                let value = Bytes::from_lua(value, lua)?;
+
+                lua.create_string(
+                    urlencoding::encode_binary(value.as_slice()).as_bytes()
+                )
             }
 
             Self::Json { pretty } => {
@@ -130,7 +143,11 @@ impl StringEncoding {
         }
     }
 
-    pub fn decode(&self, lua: &Lua, string: LuaString) -> Result<LuaValue, LuaError> {
+    pub fn decode(
+        &self,
+        lua: &Lua,
+        string: LuaString
+    ) -> Result<LuaValue, LuaError> {
         use base64::Engine;
 
         match self {
@@ -167,6 +184,14 @@ impl StringEncoding {
             Self::Base64(engine) => {
                 let value = engine.decode(string.as_bytes())
                     .map_err(LuaError::external)?;
+
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
+            }
+
+            Self::Urlencode => {
+                let value = urlencoding::decode_binary(&string.as_bytes())
+                    .to_vec();
 
                 Bytes::new(value.into_boxed_slice())
                     .into_lua(lua)
@@ -275,6 +300,8 @@ impl FromStr for StringEncoding {
 
                 Ok(Self::Base64(encoding))
             }
+
+            "urlencoding" | "urlencode" | "urldecode" | "url" => Ok(Self::Urlencode),
 
             "json" | "json/compact"  => Ok(Self::Json { pretty: false }),
             "json/pretty" => Ok(Self::Json { pretty: true }),
