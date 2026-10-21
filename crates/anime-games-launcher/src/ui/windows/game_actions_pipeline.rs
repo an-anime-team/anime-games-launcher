@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use adw::prelude::*;
 use relm4::prelude::*;
@@ -52,6 +53,7 @@ pub enum GameActionsPipelineWindowInput {
         name: String
     },
 
+    EmitStop,
     EmitClose
 }
 
@@ -67,7 +69,10 @@ pub struct GameActionsPipelineWindow {
     window: adw::Dialog,
 
     game_name: Option<String>,
-    game_title: Option<String>
+    game_title: Option<String>,
+
+    cancellation_flag: Option<Arc<AtomicBool>>,
+    is_stopping: bool
 }
 
 #[relm4::component(pub, async)]
@@ -94,14 +99,38 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
 
                 set_orientation: gtk::Orientation::Vertical,
 
-                gtk::Label {
-                    set_margin_top: 16,
-                    set_margin_bottom: 16,
+                gtk::Box {
+                    set_hexpand: true,
 
-                    #[watch]
-                    set_label: match &model.game_title {
-                        Some(title) => title,
-                        None => ""
+                    set_orientation: gtk::Orientation::Horizontal,
+
+                    gtk::Label {
+                        set_hexpand: true,
+
+                        set_margin_top: 16,
+                        set_margin_bottom: 16,
+                        set_margin_start: 8,
+
+                        #[watch]
+                        set_label: match &model.game_title {
+                            Some(title) => title,
+                            None => ""
+                        }
+                    },
+
+                    gtk::Button {
+                        add_css_class: "destructive-action",
+                        add_css_class: "flat",
+
+                        set_valign: gtk::Align::Center,
+                        set_margin_end: 8,
+
+                        set_label?: i18n!("stop"),
+
+                        #[watch]
+                        set_sensitive: model.cancellation_flag.is_some() && !model.is_stopping,
+
+                        connect_clicked => GameActionsPipelineWindowInput::EmitStop
                     }
                 },
 
@@ -126,7 +155,10 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
             window: root.clone(),
 
             game_name: None,
-            game_title: None
+            game_title: None,
+
+            cancellation_flag: None,
+            is_stopping: false
         };
 
         let widgets = view_output!();
@@ -199,8 +231,19 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                     actions.push((name, action.clone()));
                 }
 
+                let cancellation_flag = Arc::new(AtomicBool::new(false));
+
+                actions_pipeline.set_interrupt(cancellation_flag.clone());
+
+                self.cancellation_flag = Some(cancellation_flag.clone());
+                self.is_stopping = false;
+
                 tasks::spawn_blocking(move || {
                     for (name, action) in actions {
+                        if cancellation_flag.load(Ordering::Relaxed) {
+                            break;
+                        }
+
                         sender.input(GameActionsPipelineWindowInput::MarkStarted {
                             name: name.clone()
                         });
@@ -210,7 +253,7 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                             let name = name.clone();
                             let sender = sender.clone();
 
-                            action.before(move |progress| {
+                            action.before(cancellation_flag.clone(), move |progress| {
                                 let fraction = progress.fraction();
 
                                 let text = progress.format().ok()
@@ -241,7 +284,7 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                                 let name = name.clone();
                                 let sender = sender.clone();
 
-                                let result = action.perform(move |progress| {
+                                let result = action.perform(cancellation_flag.clone(), move |progress| {
                                     let fraction = progress.fraction();
 
                                     let text = progress.format().ok()
@@ -266,6 +309,12 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                                 });
 
                                 if let Err(err) = result {
+                                    if cancellation_flag.load(Ordering::Relaxed) {
+                                        tracing::info!("pipeline action was interrupted by user");
+
+                                        break;
+                                    }
+
                                     tracing::error!(?err, "failed to perform pipeline action");
 
                                     dialogs::error(
@@ -281,6 +330,12 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                             Ok(Some(false)) => (),
 
                             Err(err) => {
+                                if cancellation_flag.load(Ordering::Relaxed) {
+                                    tracing::info!("pipeline action was interrupted by user");
+
+                                    break;
+                                }
+
                                 tracing::error!(?err, "failed to perform pipeline action");
 
                                 dialogs::error(
@@ -303,6 +358,8 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                             name
                         });
                     }
+
+                    actions_pipeline.remove_interrupt();
 
                     sender.input(GameActionsPipelineWindowInput::EmitClose);
                 });
@@ -332,6 +389,14 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                 });
             }
 
+            GameActionsPipelineWindowInput::EmitStop => {
+                if let Some(cancellation_flag) = &self.cancellation_flag {
+                    cancellation_flag.store(true, Ordering::Relaxed);
+
+                    self.is_stopping = true;
+                }
+            }
+
             GameActionsPipelineWindowInput::EmitClose => {
                 self.graph_group.emit(GraphProgressGroupMsg::ClearGraph);
                 self.graph_group.emit(GraphProgressGroupMsg::ClearProgressRows);
@@ -341,6 +406,9 @@ impl SimpleAsyncComponent for GameActionsPipelineWindow {
                         name.clone()
                     ));
                 }
+
+                self.cancellation_flag = None;
+                self.is_stopping = false;
 
                 self.window.force_close();
             }
