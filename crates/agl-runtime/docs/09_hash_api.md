@@ -43,6 +43,9 @@ algorithms are provided by the `agl-core` library.
 | `sha3-384`        | 384  | Yes           | https://crates.io/crates/sha3        |
 | `sha3-512`        | 256  | Yes           | https://crates.io/crates/sha3        |
 
+Note that this is an overview. Refer to code to see actual list of supported
+hashes and their variants.
+
 ## `hash.digitize(algorithm: HashAlgorithm, value: Bytes) -> Bytes`
 
 Calculate hash for a given bytes slice using specified algorithm.
