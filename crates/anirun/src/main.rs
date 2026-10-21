@@ -478,8 +478,7 @@ fn build_runtime(
                 trackers: options.torrent_tracker.into_iter().collect(),
                 blocklist_url: options.torrent_blocklist_url,
 
-                enable_dht: options.torrent_enable_dht,
-                enable_upnp: options.torrent_enable_upnp
+                enable_dht: options.torrent_enable_dht
             })
         }),
 
@@ -552,14 +551,14 @@ fn resolve_lua_value(value: LuaValue) -> anyhow::Result<LuaValue> {
         }
 
         LuaValue::UserData(object) => {
-            match object.type_name()?.as_deref() {
-                Some("Promise") => {
+            match &*object.type_name()?.as_bytes() {
+                b"Promise" => {
                     let value = object.call_method::<LuaValue>("await", ())?;
 
                     resolve_lua_value(value)
                 }
 
-                Some("Bytes") => {
+                b"Bytes" => {
                     Ok(object.call_method::<LuaValue>("as_string", ())?)
                 }
 

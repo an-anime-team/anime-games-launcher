@@ -48,7 +48,7 @@ default-features = false
 optional = true
 
 [dependencies.mlua]
-version = "0.11"
+version = "0.12"
 features = [
     "luau-jit",
     "async",
@@ -61,7 +61,6 @@ features = [
 agl-locale = { path = "../agl-locale" }
 
 thiserror = "1.0"
-lazy_static = "1.5"
 
 # Tracing
 tracing = { version = "0.1", optional = true }
@@ -70,14 +69,14 @@ tracing = { version = "0.1", optional = true }
 bufrw = "0.2.0"
 
 ## SQLite API
-rusqlite = { version = "0.39", features = ["bundled"], optional = true }
+rusqlite = { version = "0.40", features = ["bundled"], optional = true }
 
 ## Protobuf API
-protox = { version = "0.9", optional = true }
+protox = { version = "0.10", optional = true }
 prost-reflect = { version = "0.16", optional = true }
 
 ## Torrent API
-librqbit = { version = "8.1", features = ["rust-tls"], default-features = false, optional = true }
+librqbit = { version = "9.0", features = ["rust-tls"], default-features = false, optional = true }
 
 ## Portal API
 rfd = { version = "0.17", optional = true }
@@ -86,7 +85,7 @@ time = { version = "0.3", features = ["local-offset", "formatting"] }
 
 toml = "1.1"
 serde_json = "1.0"
-serde_yml = "0.0.12"
+noyalib = { version = "0.0", features = ["compat-serde-yaml"] }
 bson = { version = "3.1", features = ["serde"] }
 
 rand = "0.10"
@@ -95,6 +94,6 @@ seahash = "4.1"
 hex = "0.4"
 base32 = "0.5"
 nix-base32 = "0.2.0"
-base64 = "0.22"
+base64 = "0.23"
 encoding_rs = "0.8"
-urlencoding = "2.1"
+urlencoding = "2.1.3"

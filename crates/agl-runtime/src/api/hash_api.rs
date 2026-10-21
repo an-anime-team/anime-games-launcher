@@ -25,8 +25,6 @@ use agl_core::tasks::fs::File;
 use agl_core::tasks::io::{BufReader, AsyncReadExt};
 use agl_core::hashes::{Hasher, HashAlgorithm};
 
-use mlua::prelude::*;
-
 use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue};
 use super::*;

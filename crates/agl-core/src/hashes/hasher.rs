@@ -111,10 +111,19 @@ pub enum Hasher {
     Sha3_512(sha3::Sha3_512),
 
     #[cfg(feature = "hashes-blake2")]
-    Blake2s(blake2::Blake2s256),
+    Blake2s_128(blake2::Blake2s128),
 
     #[cfg(feature = "hashes-blake2")]
-    Blake2b(blake2::Blake2b512),
+    Blake2s_256(blake2::Blake2s256),
+
+    #[cfg(feature = "hashes-blake2")]
+    Blake2b_128(blake2::Blake2b128),
+
+    #[cfg(feature = "hashes-blake2")]
+    Blake2b_256(blake2::Blake2b256),
+
+    #[cfg(feature = "hashes-blake2")]
+    Blake2b_512(blake2::Blake2b512),
 
     #[cfg(feature = "hashes-blake3")]
     Blake3(Box<blake3::Hasher>)
@@ -295,10 +304,19 @@ impl Hasher {
             HashAlgorithm::Sha3_512 => Self::Sha3_512(Default::default()),
 
             #[cfg(feature = "hashes-blake2")]
-            HashAlgorithm::Blake2s => Self::Blake2s(Default::default()),
+            HashAlgorithm::Blake2s_128 => Self::Blake2s_128(Default::default()),
 
             #[cfg(feature = "hashes-blake2")]
-            HashAlgorithm::Blake2b => Self::Blake2b(Default::default()),
+            HashAlgorithm::Blake2s_256 => Self::Blake2s_256(Default::default()),
+
+            #[cfg(feature = "hashes-blake2")]
+            HashAlgorithm::Blake2b_128 => Self::Blake2b_128(Default::default()),
+
+            #[cfg(feature = "hashes-blake2")]
+            HashAlgorithm::Blake2b_256 => Self::Blake2b_256(Default::default()),
+
+            #[cfg(feature = "hashes-blake2")]
+            HashAlgorithm::Blake2b_512 => Self::Blake2b_512(Default::default()),
 
             #[cfg(feature = "hashes-blake3")]
             HashAlgorithm::Blake3 => Self::Blake3(Default::default())
@@ -723,21 +741,48 @@ impl Hasher {
             }
 
             #[cfg(feature = "hashes-blake2")]
-            HashAlgorithm::Blake2s => {
+            HashAlgorithm::Blake2s_128 => {
+                use blake2::Digest;
+
+                let hasher = blake2::Blake2s128::new_with_prefix(seed);
+
+                Self::Blake2s_128(hasher)
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            HashAlgorithm::Blake2s_256 => {
                 use blake2::Digest;
 
                 let hasher = blake2::Blake2s256::new_with_prefix(seed);
 
-                Self::Blake2s(hasher)
+                Self::Blake2s_256(hasher)
             }
 
             #[cfg(feature = "hashes-blake2")]
-            HashAlgorithm::Blake2b => {
+            HashAlgorithm::Blake2b_128 => {
+                use blake2::Digest;
+
+                let hasher = blake2::Blake2b128::new_with_prefix(seed);
+
+                Self::Blake2b_128(hasher)
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            HashAlgorithm::Blake2b_256 => {
+                use blake2::Digest;
+
+                let hasher = blake2::Blake2b256::new_with_prefix(seed);
+
+                Self::Blake2b_256(hasher)
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            HashAlgorithm::Blake2b_512 => {
                 use blake2::Digest;
 
                 let hasher = blake2::Blake2b512::new_with_prefix(seed);
 
-                Self::Blake2b(hasher)
+                Self::Blake2b_512(hasher)
             }
 
             #[cfg(feature = "hashes-blake3")]
@@ -840,12 +885,21 @@ impl Hasher {
             Self::Sha3_512(_) => HashAlgorithm::Sha3_512,
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2s(_) => HashAlgorithm::Blake2s,
+            Self::Blake2s_128(_) => HashAlgorithm::Blake2s_128,
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2b(_) => HashAlgorithm::Blake2b,
+            Self::Blake2s_256(_) => HashAlgorithm::Blake2s_256,
 
             #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_128(_) => HashAlgorithm::Blake2b_128,
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_256(_) => HashAlgorithm::Blake2b_256,
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_512(_) => HashAlgorithm::Blake2b_512,
+
+            #[cfg(feature = "hashes-blake3")]
             Self::Blake3(_) => HashAlgorithm::Blake3
         }
     }
@@ -1155,7 +1209,7 @@ impl Hasher {
             }
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2s(hasher) => {
+            Self::Blake2s_128(hasher) => {
                 use blake2::Digest;
 
                 let hash = hasher.finalize()
@@ -1166,7 +1220,40 @@ impl Hasher {
             }
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2b(hasher) => {
+            Self::Blake2s_256(hasher) => {
+                use blake2::Digest;
+
+                let hash = hasher.finalize()
+                    .to_vec()
+                    .into_boxed_slice();
+
+                (hash, None)
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_128(hasher) => {
+                use blake2::Digest;
+
+                let hash = hasher.finalize()
+                    .to_vec()
+                    .into_boxed_slice();
+
+                (hash, None)
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_256(hasher) => {
+                use blake2::Digest;
+
+                let hash = hasher.finalize()
+                    .to_vec()
+                    .into_boxed_slice();
+
+                (hash, None)
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_512(hasher) => {
                 use blake2::Digest;
 
                 let hash = hasher.finalize()
@@ -1347,12 +1434,27 @@ impl std::fmt::Debug for Hasher {
                 .finish(),
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2s(hasher) => f.debug_struct("Hasher")
+            Self::Blake2s_128(hasher) => f.debug_struct("Hasher")
                 .field("inner", hasher)
                 .finish(),
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2b(hasher) => f.debug_struct("Hasher")
+            Self::Blake2s_256(hasher) => f.debug_struct("Hasher")
+                .field("inner", hasher)
+                .finish(),
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_128(hasher) => f.debug_struct("Hasher")
+                .field("inner", hasher)
+                .finish(),
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_256(hasher) => f.debug_struct("Hasher")
+                .field("inner", hasher)
+                .finish(),
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_512(hasher) => f.debug_struct("Hasher")
                 .field("inner", hasher)
                 .finish(),
 
@@ -1626,12 +1728,51 @@ impl Write for Hasher {
             }
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2s(hasher) => hasher.write(buf),
+            Self::Blake2s_128(hasher) => {
+                use blake2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2b(hasher) => hasher.write(buf),
+            Self::Blake2s_256(hasher) => {
+                use blake2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
 
             #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_128(hasher) => {
+                use blake2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_256(hasher) => {
+                use blake2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_512(hasher) => {
+                use blake2::Digest;
+
+                hasher.update(buf);
+
+                Ok(buf.len())
+            }
+
+            #[cfg(feature = "hashes-blake3")]
             Self::Blake3(hasher) => hasher.write(buf)
         }
     }

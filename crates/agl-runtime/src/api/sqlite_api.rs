@@ -19,8 +19,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use mlua::prelude::*;
-
 use rusqlite::{Connection, ToSql};
 use rusqlite::types::{ValueRef, ToSqlOutput, FromSql, FromSqlResult};
 
@@ -57,14 +55,14 @@ impl FromLua for SqliteParam {
             }
 
             // Decode param from a Promise result.
-            LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Promise") => {
+            LuaValue::UserData(ref object) if object.type_name()?.as_bytes() == b"Promise" => {
                 let value = object.call_method::<LuaValue>("await", ())?;
 
                 Self::from_lua(value, lua)
             }
 
             // Use Bytes as Blob.
-            LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Bytes") => {
+            LuaValue::UserData(ref object) if object.type_name()?.as_bytes() == b"Bytes" => {
                 Bytes::from_lua(value, lua).map(Self::Blob)
             }
 

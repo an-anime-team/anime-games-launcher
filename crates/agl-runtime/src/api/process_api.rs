@@ -21,8 +21,6 @@ use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 
-use mlua::prelude::*;
-
 use super::bytes::Bytes;
 use super::task_api::{Promise, PromiseValue, TaskOutput};
 use super::*;

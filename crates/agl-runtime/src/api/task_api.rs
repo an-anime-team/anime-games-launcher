@@ -85,7 +85,9 @@ impl PromiseValue {
             LuaValue::Thread(coroutine) => Self::Coroutine(coroutine),
 
             LuaValue::UserData(object) => {
-                if object.type_name().ok().flatten().as_deref() == Some("Promise") {
+                if object.type_name().ok()
+                    .map(|name| name.as_bytes() == b"Promise") == Some(true)
+                {
                     Self::LuaPromise(object)
                 } else {
                     Self::Value(LuaValue::UserData(object))
@@ -201,7 +203,9 @@ impl LuaUserData for Promise {
                         LuaThreadStatus::Finished => Ok((Some(true), value)),
                         LuaThreadStatus::Error => Ok((None, value)),
 
-                        LuaThreadStatus::Resumable | LuaThreadStatus::Running => {
+                        LuaThreadStatus::Resumable |
+                        LuaThreadStatus::Running |
+                        LuaThreadStatus::Normal => {
                             *lock = Some(PromiseValue::Coroutine(coroutine));
 
                             Ok((Some(false), value))
@@ -314,7 +318,9 @@ impl LuaUserData for Promise {
                                 return Ok(value);
                             }
 
-                            LuaThreadStatus::Resumable | LuaThreadStatus::Running => ()
+                            LuaThreadStatus::Resumable |
+                            LuaThreadStatus::Running |
+                            LuaThreadStatus::Normal => ()
                         }
                     }
                 }

@@ -18,8 +18,6 @@
 
 use std::str::FromStr;
 
-use mlua::prelude::*;
-
 use agl_locale::string::LocalizableString;
 
 use super::task_api::{Promise, PromiseValue, TaskOutput, task_output};

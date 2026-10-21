@@ -79,7 +79,7 @@ default = [
 ]
 
 [dependencies.tokio]
-version = "1.52"
+version = "1.54"
 features = [
     "rt-multi-thread",
     "macros",
@@ -91,10 +91,9 @@ optional = true
 [dependencies.reqwest]
 version = "0.13"
 features = [
-    "gzip",
-    "brotli",
-    "zstd",
     "deflate",
+    "gzip",
+    "zstd",
     "stream",
     "socks",
     "system-proxy"
@@ -103,7 +102,6 @@ optional = true
 
 [dependencies]
 thiserror = "1.0"
-lazy_static = "1.5"
 
 # Tracing
 tracing = { version = "0.1", optional = true }
@@ -117,12 +115,12 @@ md-5 = { version = "0.11", optional = true }
 sha1 = { version = "0.11", optional = true }
 sha2 = { version = "0.11", optional = true }
 sha3 = { version = "0.11", optional = true }
-blake2 = { version = "0.10", optional = true }
+blake2 = { version = "0.11", optional = true }
 blake3 = { version = "1.8", optional = true }
 
 # Compression
-lz4_flex = { version = "0.13", optional = true }
+lz4_flex = { version = "0.14", optional = true }
 bzip2 = { version = "0.6", features = ["static"], optional = true }
 flate2 = { version = "1.1", features = ["zlib-rs"], optional = true }
-zstd = { version = "0.13", optional = true }
+zstd = { version = "0.14", optional = true }
 # lzma-rust = { version = "0.1.7", optional = true }

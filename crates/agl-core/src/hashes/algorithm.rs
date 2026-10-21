@@ -62,7 +62,10 @@ use std::str::FromStr;
 /// | sha     | sha3            | 256  | `sha3-256`        |
 /// | sha     | sha3            | 384  | `sha3-384`        |
 /// | sha     | sha3            | 512  | `sha3-512`        |
+/// | blake   | blake2s         | 128  | `blake2s-128`     |
 /// | blake   | blake2s         | 256  | `blake2s`         |
+/// | blake   | blake2b         | 128  | `blake2b-128`     |
+/// | blake   | blake2b         | 256  | `blake2b-256`     |
 /// | blake   | blake2b         | 512  | `blake2b`         |
 /// | blake   | blake3          | 256  | `blake3`          |
 #[allow(non_camel_case_types)]
@@ -260,13 +263,29 @@ pub enum HashAlgorithm {
     #[cfg(feature = "hashes-sha3")]
     Sha3_512,
 
-    /// Blake2s (`blake2s`)
+    /// Blake2s 128 bit (`blake2s-128`)
     #[cfg(feature = "hashes-blake2")]
-    Blake2s,
+    Blake2s_128,
 
-    /// Blake2b (`blake2b`)
+    /// Blake2s 256 bit (`blake2s`, `blake2s-256`)
+    ///
+    /// This is the standard blake2s variant.
     #[cfg(feature = "hashes-blake2")]
-    Blake2b,
+    Blake2s_256,
+
+    /// Blake2b 128 bit (`blake2b-128`)
+    #[cfg(feature = "hashes-blake2")]
+    Blake2b_128,
+
+    /// Blake2b 256 bit (`blake2b-256`)
+    #[cfg(feature = "hashes-blake2")]
+    Blake2b_256,
+
+    /// Blake2b 512 bit (`blake2b`, `blake2b-512`)
+    ///
+    /// This is the standard blake2b variant.
+    #[cfg(feature = "hashes-blake2")]
+    Blake2b_512,
 
     /// Blake3 (`blake3`)
     #[cfg(feature = "hashes-blake3")]
@@ -403,10 +422,19 @@ impl HashAlgorithm {
             Self::Sha3_512 => "sha3-512",
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2s => "blake2s",
+            Self::Blake2s_128 => "blake2s-128",
 
             #[cfg(feature = "hashes-blake2")]
-            Self::Blake2b => "blake2b",
+            Self::Blake2s_256 => "blake2s-256",
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_128 => "blake2b-128",
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_256 => "blake2b-256",
+
+            #[cfg(feature = "hashes-blake2")]
+            Self::Blake2b_512 => "blake2b-512",
 
             #[cfg(feature = "hashes-blake2")]
             Self::Blake3 => "blake3"
@@ -546,10 +574,19 @@ impl FromStr for HashAlgorithm {
             "sha3-512" => Ok(Self::Sha3_512),
 
             #[cfg(feature = "hashes-blake2")]
-            "blake2s" => Ok(Self::Blake2s),
+            "blake2s-128" => Ok(Self::Blake2s_128),
 
             #[cfg(feature = "hashes-blake2")]
-            "blake2b" => Ok(Self::Blake2b),
+            "blake2s-256" | "blake2s" => Ok(Self::Blake2s_256),
+
+            #[cfg(feature = "hashes-blake2")]
+            "blake2b-128" => Ok(Self::Blake2b_128),
+
+            #[cfg(feature = "hashes-blake2")]
+            "blake2b-256" => Ok(Self::Blake2b_256),
+
+            #[cfg(feature = "hashes-blake2")]
+            "blake2b-512" | "blake2b" => Ok(Self::Blake2b_512),
 
             #[cfg(feature = "hashes-blake3")]
             "blake3" => Ok(Self::Blake3),

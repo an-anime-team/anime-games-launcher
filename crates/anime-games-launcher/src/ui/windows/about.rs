@@ -16,18 +16,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::LazyLock;
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
 use crate::consts;
 
-lazy_static::lazy_static! {
-    static ref APP_VERSION: String = if *consts::APP_DEBUG && !consts::APP_VERSION.contains('-') {
+static APP_VERSION_STRING: LazyLock<String> = LazyLock::new(|| {
+    if *consts::APP_DEBUG && !consts::APP_VERSION.contains('-') {
         format!("{}-dev", consts::APP_VERSION)
     } else {
         consts::APP_VERSION.to_string()
-    };
-}
+    }
+});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AboutWindow;
@@ -51,7 +53,7 @@ impl SimpleAsyncComponent for AboutWindow {
             set_support_url: "https://discord.gg/ck37X6UWBp",
 
             set_license_type: gtk::License::Gpl30,
-            set_version: &APP_VERSION,
+            set_version: &APP_VERSION_STRING,
 
             set_developer_name: "Nikita Podvirnyi",
 
@@ -92,7 +94,7 @@ impl SimpleAsyncComponent for AboutWindow {
                 format!("cairo: {}", gtk::cairo::version_string())
             ].join("\n"),
 
-            set_release_notes_version: &APP_VERSION,
+            set_release_notes_version: &APP_VERSION_STRING,
             set_release_notes: r#"
                 <p>Added</p>
 

@@ -16,15 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::LazyLock;
 use std::str::FromStr;
 
-lazy_static::lazy_static! {
-    static ref SYSTEM_INFO: os_info::Info = os_info::get();
+static SYSTEM_INFO: LazyLock<os_info::Info> = LazyLock::new(os_info::get);
 
-    static ref CPU_ARCH: Option<Arch> = SYSTEM_INFO.architecture()
-        .and_then(|arch| Arch::from_str(arch).ok());
+static CPU_ARCH: LazyLock<Option<Arch>> = LazyLock::new(|| {
+    SYSTEM_INFO.architecture()
+        .and_then(|arch| Arch::from_str(arch).ok())
+});
 
-    static ref OS_FAMILY: Option<System> = match SYSTEM_INFO.os_type() {
+static OS_FAMILY: LazyLock<Option<System>> = LazyLock::new(|| {
+    match SYSTEM_INFO.os_type() {
         os_info::Type::Windows => Some(System::Windows),
         os_info::Type::Macos => Some(System::Darwin),
 
@@ -35,16 +38,16 @@ lazy_static::lazy_static! {
 
         // Not very accurate.
         _ => Some(System::Linux)
-    };
+    }
+});
 
-    static ref PLATFORM: Option<Platform> = {
-        if let (Some(arch), Some(system)) = (*CPU_ARCH, *OS_FAMILY) {
-            Some(Platform { arch, system })
-        } else {
-            None
-        }
-    };
-}
+static PLATFORM: LazyLock<Option<Platform>> = LazyLock::new(|| {
+    if let (Some(arch), Some(system)) = (*CPU_ARCH, *OS_FAMILY) {
+        Some(Platform { arch, system })
+    } else {
+        None
+    }
+});
 
 /// CPU architecture.
 #[allow(non_camel_case_types)]
@@ -79,8 +82,8 @@ impl FromStr for Arch {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "x86_64" | "amd64" | "x64" => Ok(Self::X86_64),
-            "aarch64" | "arm64"        => Ok(Self::Aarch64),
+            "x86_64"  | "amd64" | "x64" => Ok(Self::X86_64),
+            "aarch64" | "arm64"         => Ok(Self::Aarch64),
 
             _ => Err(())
         }

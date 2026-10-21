@@ -44,7 +44,7 @@ fn filter_lua_value(value: LuaValue) -> Result<LuaValue, LuaError> {
         }
 
         // Bytes userdata
-        LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Bytes") => {
+        LuaValue::UserData(object) if object.type_name()?.as_bytes() == b"Bytes" => {
             object.call_method::<LuaTable>("as_table", ())
                 .map(LuaValue::Table)
         }
@@ -135,7 +135,7 @@ impl StringEncoding {
             }
 
             Self::Yaml => {
-                let value = serde_yml::to_string(&value)
+                let value = noyalib::to_string(&value)
                     .map_err(LuaError::external)?;
 
                 lua.create_string(value)
@@ -222,7 +222,7 @@ impl StringEncoding {
             }
 
             Self::Yaml => {
-                let value = serde_yml::from_slice::<serde_yml::Value>(&string.as_bytes())
+                let value = noyalib::from_slice::<noyalib::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 Ok(filter_lua_value(lua.to_value(&value)?)?)
