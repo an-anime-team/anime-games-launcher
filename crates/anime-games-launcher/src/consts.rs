@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::LazyLock;
 use std::path::PathBuf;
 
 use agl_games::platform::Platform;
@@ -24,17 +25,19 @@ pub const APP_ID: &str = "moe.launcher.anime-games-launcher";
 pub const APP_RESOURCE_PREFIX: &str = "/moe/launcher/anime-games-launcher";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-lazy_static::lazy_static! {
-    pub static ref APP_DEBUG: bool = cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--agl-debug");
+pub static APP_DEBUG: LazyLock<bool> = LazyLock::new(|| {
+    cfg!(debug_assertions) || std::env::args().any(|arg| arg == "--agl-debug")
+});
 
-    pub static ref CURRENT_PLATFORM: Platform = {
-        let platform = Platform::current();
+pub static CURRENT_PLATFORM: LazyLock<Platform> = LazyLock::new(|| {
+    let platform = Platform::current();
 
-        platform.expect("failed to detect current system platform")
-    };
+    platform.expect("failed to detect current system platform")
+});
 
-    /// Path to the current user's home directory.
-    pub static ref HOME_DIR: Option<PathBuf> = std::env::var("HOME")
+/// Path to the current user's home directory.
+pub static HOME_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
+    std::env::var("HOME")
         .or_else(|_| {
             std::env::var("USER")
                 .or_else(|_| std::env::var("USERNAME"))
@@ -43,101 +46,101 @@ lazy_static::lazy_static! {
         .map(PathBuf::from)
         .map_err(std::io::Error::other)
         .and_then(|path| path.canonicalize())
-        .ok();
+        .ok()
+});
 
-    /// Path to the data folder.
-    ///
-    /// Default is `$XDG_DATA_HOME/anime-games-launcher`.
-    /// Can be overriden by `LAUNCHER_DATA_DIR` variable.
-    pub static ref DATA_DIR: PathBuf = {
-        if let Ok(path) = std::env::var("LAUNCHER_DATA_DIR")
-            .or_else(|_| std::env::var("LAUNCHER_DATA_FOLDER"))
-        {
-            return PathBuf::from(path);
-        }
+/// Path to the data folder.
+///
+/// Default is `$XDG_DATA_HOME/anime-games-launcher`.
+/// Can be overriden by `LAUNCHER_DATA_DIR` variable.
+pub static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    if let Ok(path) = std::env::var("LAUNCHER_DATA_DIR")
+        .or_else(|_| std::env::var("LAUNCHER_DATA_FOLDER"))
+    {
+        return PathBuf::from(path);
+    }
 
-        let path = std::env::var("XDG_DATA_HOME")
-            .map(|data| PathBuf::from(data).join("anime-games-launcher"))
-            .or_else(|_| {
-                HOME_DIR.as_ref()
-                    .map(|dir| dir.join(".local/share/anime-games-launcher"))
-                    .ok_or(std::env::VarError::NotPresent)
-            })
-            .or_else(|_| {
-                std::env::current_dir()
-                    .map(|current| current.join("data"))
-            })
-            .expect("failed to locate data directory");
+    let path = std::env::var("XDG_DATA_HOME")
+        .map(|data| PathBuf::from(data).join("anime-games-launcher"))
+        .or_else(|_| {
+            HOME_DIR.as_ref()
+                .map(|dir| dir.join(".local/share/anime-games-launcher"))
+                .ok_or(std::env::VarError::NotPresent)
+        })
+        .or_else(|_| {
+            std::env::current_dir()
+                .map(|current| current.join("data"))
+        })
+        .expect("failed to locate data directory");
 
-        path.canonicalize().unwrap_or(path)
-    };
+    path.canonicalize().unwrap_or(path)
+});
 
-    /// Path to the config folder.
-    ///
-    /// Default is `$XDG_CONFIG_HOME/anime-games-launcher`.
-    /// Can be overriden by `LAUNCHER_CONFIG_DIR` variable.
-    pub static ref CONFIG_DIR: PathBuf = {
-        if let Ok(path) = std::env::var("LAUNCHER_CONFIG_DIR")
-            .or_else(|_| std::env::var("LAUNCHER_CONFIG_FOLDER"))
-        {
-            return PathBuf::from(path);
-        }
+/// Path to the config folder.
+///
+/// Default is `$XDG_CONFIG_HOME/anime-games-launcher`.
+/// Can be overriden by `LAUNCHER_CONFIG_DIR` variable.
+pub static CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    if let Ok(path) = std::env::var("LAUNCHER_CONFIG_DIR")
+        .or_else(|_| std::env::var("LAUNCHER_CONFIG_FOLDER"))
+    {
+        return PathBuf::from(path);
+    }
 
-        let path = std::env::var("XDG_CONFIG_HOME")
-            .map(|config| PathBuf::from(config).join("anime-games-launcher"))
-            .or_else(|_| {
-                HOME_DIR.as_ref()
-                    .map(|dir| dir.join(".config/anime-games-launcher"))
-                    .ok_or(std::env::VarError::NotPresent)
-            })
-            .or_else(|_| {
-                std::env::current_dir()
-                    .map(|current| current.join("config"))
-            })
-            .expect("failed to locate config directory");
+    let path = std::env::var("XDG_CONFIG_HOME")
+        .map(|config| PathBuf::from(config).join("anime-games-launcher"))
+        .or_else(|_| {
+            HOME_DIR.as_ref()
+                .map(|dir| dir.join(".config/anime-games-launcher"))
+                .ok_or(std::env::VarError::NotPresent)
+        })
+        .or_else(|_| {
+            std::env::current_dir()
+                .map(|current| current.join("config"))
+        })
+        .expect("failed to locate config directory");
 
-        path.canonicalize().unwrap_or(path)
-    };
+    path.canonicalize().unwrap_or(path)
+});
 
-    /// Path to the cache folder.
-    ///
-    /// Default is `$XDG_CACHE_HOME/anime-games-launcher`.
-    /// Can be overriden by `LAUNCHER_CACHE_DIR` variable.
-    pub static ref CACHE_DIR: PathBuf = {
-        if let Ok(path) = std::env::var("LAUNCHER_CACHE_DIR")
-            .or_else(|_| std::env::var("LAUNCHER_CACHE_FOLDER"))
-        {
-            return PathBuf::from(path);
-        }
+/// Path to the cache folder.
+///
+/// Default is `$XDG_CACHE_HOME/anime-games-launcher`.
+/// Can be overriden by `LAUNCHER_CACHE_DIR` variable.
+pub static CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    if let Ok(path) = std::env::var("LAUNCHER_CACHE_DIR")
+        .or_else(|_| std::env::var("LAUNCHER_CACHE_FOLDER"))
+    {
+        return PathBuf::from(path);
+    }
 
-        let path = std::env::var("XDG_CACHE_HOME")
-            .map(|cache| PathBuf::from(cache).join("anime-games-launcher"))
-            .or_else(|_| {
-                HOME_DIR.as_ref()
-                    .map(|dir| dir.join(".cache/anime-games-launcher"))
-                    .ok_or(std::env::VarError::NotPresent)
-            })
-            .or_else(|_| {
-                std::env::current_dir()
-                    .map(|current| current.join("cache"))
-            })
-            .expect("failed to locate cache directory");
+    let path = std::env::var("XDG_CACHE_HOME")
+        .map(|cache| PathBuf::from(cache).join("anime-games-launcher"))
+        .or_else(|_| {
+            HOME_DIR.as_ref()
+                .map(|dir| dir.join(".cache/anime-games-launcher"))
+                .ok_or(std::env::VarError::NotPresent)
+        })
+        .or_else(|_| {
+            std::env::current_dir()
+                .map(|current| current.join("cache"))
+        })
+        .expect("failed to locate cache directory");
 
-        path.canonicalize().unwrap_or(path)
-    };
+    path.canonicalize().unwrap_or(path)
+});
 
-    /// Path to the config file.
-    ///
-    /// Default is `CONFIG_FOLDER/config.toml`.
-    pub static ref CONFIG_FILE: PathBuf = CONFIG_DIR.join("config.toml");
+/// Path to the config file.
+///
+/// Default is `CONFIG_FOLDER/config.toml`.
+pub static CONFIG_FILE: LazyLock<PathBuf> = LazyLock::new(|| CONFIG_DIR.join("config.toml"));
 
-    /// Path to the debug log file.
-    ///
-    /// Default is `DATA_FOLDER/debug.log`.
-    pub static ref DEBUG_FILE: PathBuf = DATA_DIR.join("debug.log");
+/// Path to the debug log file.
+///
+/// Default is `DATA_FOLDER/debug.log`.
+pub static DEBUG_FILE: LazyLock<PathBuf> = LazyLock::new(|| DATA_DIR.join("debug.log"));
 
-    /// Path to the trace log file.
-    ///
-    /// Default is `DATA_FOLDER/trace.log`.
-    pub static ref TRACE_FILE: PathBuf = DATA_DIR.join("trace.log");
-}
+/// Path to the trace log file.
+///
+/// Default is `DATA_FOLDER/trace.log`.
+pub static TRACE_FILE: LazyLock<PathBuf> = LazyLock::new(|| DATA_DIR.join("trace.log"));

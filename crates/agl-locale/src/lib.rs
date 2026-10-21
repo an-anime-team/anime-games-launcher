@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::str::FromStr;
-use std::sync::RwLock;
+use std::sync::{RwLock, LazyLock};
 
 pub use unic_langid;
 
@@ -26,46 +26,46 @@ use unic_langid::LanguageIdentifier;
 pub mod string;
 pub mod bundle;
 
-lazy_static::lazy_static! {
-    pub static ref ENGLISH_LANG: LanguageIdentifier = LanguageIdentifier::from_str("en")
-        .expect("failed to parse English language code");
+pub static ENGLISH_LANG: LazyLock<LanguageIdentifier> = LazyLock::new(|| {
+    LanguageIdentifier::from_str("en")
+        .expect("failed to parse English language code")
+});
 
-    pub static ref SYSTEM_LANG: LanguageIdentifier = {
-        let lang = std::env::var("AGL_LOCALE").ok()
-            .or_else(|| std::env::var("AGL_LANG").ok())
-            .or_else(|| std::env::var("AGL_LANGUAGE").ok())
-            .or_else(|| std::env::var("LANG").ok())
-            .or_else(|| std::env::var("LANGUAGE").ok())
-            .or_else(|| std::env::var("LC_MESSAGES").ok())
-            .or_else(|| std::env::var("LC_ALL").ok())
-            .unwrap_or_else(|| String::from("en"));
+pub static SYSTEM_LANG: LazyLock<LanguageIdentifier> = LazyLock::new(|| {
+    let lang = std::env::var("AGL_LOCALE").ok()
+        .or_else(|| std::env::var("AGL_LANG").ok())
+        .or_else(|| std::env::var("AGL_LANGUAGE").ok())
+        .or_else(|| std::env::var("LANG").ok())
+        .or_else(|| std::env::var("LANGUAGE").ok())
+        .or_else(|| std::env::var("LC_MESSAGES").ok())
+        .or_else(|| std::env::var("LC_ALL").ok())
+        .unwrap_or_else(|| String::from("en"));
 
-        // Strip down unnecessary info ("en_US.UTF-8").
-        let (lang, _) = lang.split_once('.')
-            .unwrap_or((lang.as_str(), ""));
+    // Strip down unnecessary info ("en_US.UTF-8").
+    let (lang, _) = lang.split_once('.')
+        .unwrap_or((lang.as_str(), ""));
 
-        lang.parse::<LanguageIdentifier>()
-            .or_else(|_| {
-                // "en-us", "en_US", ..
-                lang.chars()
-                    .take(5)
-                    .collect::<String>()
-                    .parse::<LanguageIdentifier>()
-            })
-            .or_else(|_| {
-                // "en"
-                lang.chars()
-                    .take(2)
-                    .collect::<String>()
-                    .parse::<LanguageIdentifier>()
-            })
-            .unwrap_or_else(|_| ENGLISH_LANG.clone())
-    };
+    lang.parse::<LanguageIdentifier>()
+        .or_else(|_| {
+            // "en-us", "en_US", ..
+            lang.chars()
+                .take(5)
+                .collect::<String>()
+                .parse::<LanguageIdentifier>()
+        })
+        .or_else(|_| {
+            // "en"
+            lang.chars()
+                .take(2)
+                .collect::<String>()
+                .parse::<LanguageIdentifier>()
+        })
+        .unwrap_or_else(|_| ENGLISH_LANG.clone())
+});
 
-    pub static ref DEFAULT_BUNDLE: RwLock<bundle::LocalizationBundle> = {
-        RwLock::new(bundle::LocalizationBundle::default())
-    };
-}
+pub static DEFAULT_BUNDLE: LazyLock<RwLock<bundle::LocalizationBundle>> = LazyLock::new(|| {
+    RwLock::new(bundle::LocalizationBundle::default())
+});
 
 /// Include translations file in the `DEFAULT_BUNDLE`.
 #[macro_export]

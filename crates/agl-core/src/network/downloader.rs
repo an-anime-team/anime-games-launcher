@@ -19,7 +19,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::io::SeekFrom;
 
 use tokio::fs::File;
@@ -35,12 +35,12 @@ use reqwest::Client;
 /// downloading speed.
 const DOWNLOADER_CHUNKS_REQUESTS_TIMEOUT: Option<Duration> = None;
 
-lazy_static::lazy_static! {
-    static ref CLIENT: Client = Client::builder()
+static CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    Client::builder()
         .user_agent(format!("agl-core/{}", crate::VERSION))
         .build()
-        .expect("failed to build reqwest client");
-}
+        .expect("failed to build reqwest client")
+});
 
 #[derive(Debug, thiserror::Error)]
 pub enum DownloaderError {

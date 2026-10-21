@@ -44,7 +44,7 @@ fn filter_lua_value(value: LuaValue) -> Result<LuaValue, LuaError> {
         }
 
         // Bytes userdata
-        LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Bytes") => {
+        LuaValue::UserData(object) if object.type_name()?.as_bytes() == b"Bytes" => {
             object.call_method::<LuaTable>("as_table", ())
                 .map(LuaValue::Table)
         }
@@ -59,6 +59,7 @@ enum StringEncoding {
     Base32(base32::Alphabet),
     Base32Nix,
     Base64(base64::engine::GeneralPurpose),
+    Urlencode,
     Json { pretty: bool },
     Bson,
     Toml { pretty: bool },
@@ -66,14 +67,18 @@ enum StringEncoding {
 }
 
 impl StringEncoding {
-    pub fn encode(&self, lua: &Lua, value: LuaValue) -> Result<LuaString, LuaError> {
+    pub fn encode(
+        &self,
+        lua: &Lua,
+        value: LuaValue
+    ) -> Result<LuaString, LuaError> {
         use base64::Engine;
 
         match self {
             Self::Base16 => {
                 let value = Bytes::from_lua(value, lua)?;
 
-                lua.create_string(hex::encode(value.as_slice()))
+                lua.create_string(faster_hex::hex_string(value.as_slice()))
             }
 
             Self::Base32(alphabet) => {
@@ -92,6 +97,14 @@ impl StringEncoding {
                 let value = Bytes::from_lua(value, lua)?;
 
                 lua.create_string(engine.encode(value.as_slice()))
+            }
+
+            Self::Urlencode => {
+                let value = Bytes::from_lua(value, lua)?;
+
+                lua.create_string(
+                    urlencoding::encode_binary(value.as_slice()).as_bytes()
+                )
             }
 
             Self::Json { pretty } => {
@@ -122,7 +135,7 @@ impl StringEncoding {
             }
 
             Self::Yaml => {
-                let value = serde_yml::to_string(&value)
+                let value = noyalib::to_string(&value)
                     .map_err(LuaError::external)?;
 
                 lua.create_string(value)
@@ -130,12 +143,16 @@ impl StringEncoding {
         }
     }
 
-    pub fn decode(&self, lua: &Lua, string: LuaString) -> Result<LuaValue, LuaError> {
+    pub fn decode(
+        &self,
+        lua: &Lua,
+        string: LuaString
+    ) -> Result<LuaValue, LuaError> {
         use base64::Engine;
 
         match self {
             Self::Base16 => {
-                let value = hex::decode(string.as_bytes())
+                let value = faster_hex::hex_decode_vec(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 Bytes::new(value.into_boxed_slice())
@@ -172,6 +189,14 @@ impl StringEncoding {
                     .into_lua(lua)
             }
 
+            Self::Urlencode => {
+                let value = urlencoding::decode_binary(&string.as_bytes())
+                    .to_vec();
+
+                Bytes::new(value.into_boxed_slice())
+                    .into_lua(lua)
+            }
+
             Self::Json { .. } => {
                 let value = serde_json::from_slice::<serde_json::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
@@ -197,7 +222,7 @@ impl StringEncoding {
             }
 
             Self::Yaml => {
-                let value = serde_yml::from_slice::<serde_yml::Value>(&string.as_bytes())
+                let value = noyalib::from_slice::<noyalib::Value>(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 Ok(filter_lua_value(lua.to_value(&value)?)?)
@@ -275,6 +300,8 @@ impl FromStr for StringEncoding {
 
                 Ok(Self::Base64(encoding))
             }
+
+            "urlencoding" | "urlencode" | "urldecode" | "url" => Ok(Self::Urlencode),
 
             "json" | "json/compact"  => Ok(Self::Json { pretty: false }),
             "json/pretty" => Ok(Self::Json { pretty: true }),

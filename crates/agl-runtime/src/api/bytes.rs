@@ -191,7 +191,7 @@ impl FromLua for Bytes {
                 Ok(Self::new(bytes))
             }
 
-            LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Bytes") => {
+            LuaValue::UserData(object) if object.type_name()?.as_bytes() == b"Bytes" => {
                 let bytes = object.call_method::<LuaTable>("as_table", ())?
                     .sequence_values::<u8>()
                     .collect::<Result<Box<[u8]>, LuaError>>()?;

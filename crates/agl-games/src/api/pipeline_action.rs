@@ -16,7 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use mlua::prelude::*;
+use mlua::VmState;
 
 use agl_locale::string::LocalizableString;
 
@@ -66,13 +70,42 @@ impl PipelineAction {
         self.description.as_ref()
     }
 
+    /// Set an interrupt flag which aborts execution of any Luau code of the
+    /// action when `cancellation_flag` becomes `true`.
+    ///
+    /// The Luau VM checks the flag at yieldable points of execution (function
+    /// calls, loop iterations, etc), so the running code is interrupted
+    /// cooperatively and the error is propagated to the caller of
+    /// `before`/`perform` instead of leaving the blocking thread hanging.
+    pub fn set_interrupt(&self, cancellation_flag: Arc<AtomicBool>) {
+        self.lua.set_interrupt(move |_| {
+            if cancellation_flag.load(Ordering::Relaxed) {
+                Err(LuaError::runtime("pipeline action interrupted"))
+            } else {
+                Ok(VmState::Continue)
+            }
+        });
+    }
+
+    /// Remove the interrupt function previously set by `set_interrupt`.
+    /// Does nothing if no interrupt was set.
+    ///
+    /// Must be called only when no Lua code is running.
+    pub fn remove_interrupt(&self) {
+        self.lua.remove_interrupt();
+    }
+
     /// Try to call `before` function if it's specified or return `None`.
     ///
     /// If `Some(true)` is returned, then the action should be started.
     /// Otherwise, if `Some(false)` is returned, then the action should be
     /// skipped.
+    ///
+    /// The `cancellation_flag` is checked every time the action reports its
+    /// progress, so even long running operations can be interrupted.
     pub fn before(
         &self,
+        cancellation_flag: Arc<AtomicBool>,
         progress: impl Fn(ProgressReport) + Send + 'static
     ) -> Result<Option<bool>, LuaError> {
         let Some(before) = &self.before else {
@@ -80,6 +113,10 @@ impl PipelineAction {
         };
 
         let progress = self.lua.create_function(move |_, report: LuaTable| {
+            if cancellation_flag.load(Ordering::Relaxed) {
+                return Err(LuaError::runtime("pipeline action interrupted"));
+            }
+
             progress(ProgressReport::from_lua(&report)?);
 
             Ok(())
@@ -93,11 +130,19 @@ impl PipelineAction {
     /// If `true` is returned, then the next action should be executed.
     /// Otherwise, if `false` is returned, then current action has failed and
     /// pipeline should be stopped.
+    ///
+    /// The `cancellation_flag` is checked every time the action reports its
+    /// progress, so even long running operations can be interrupted.
     pub fn perform(
         &self,
+        cancellation_flag: Arc<AtomicBool>,
         progress: impl Fn(ProgressReport) + Send + 'static
     ) -> Result<(), LuaError> {
         let progress = self.lua.create_function(move |_, report: LuaTable| {
+            if cancellation_flag.load(Ordering::Relaxed) {
+                return Err(LuaError::runtime("pipeline action interrupted"));
+            }
+
             progress(ProgressReport::from_lua(&report)?);
 
             Ok(())

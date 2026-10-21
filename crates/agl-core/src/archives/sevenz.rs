@@ -19,30 +19,27 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 
 use super::*;
 
-lazy_static::lazy_static! {
-    /// Name of the 7z binary installed on the system.
-    pub static ref SEVENZ_BINARY: Option<&'static str> = {
-        for binary in ["7z", "7za", "7zz"] {
-            let result = Command::new(binary)
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .output();
+pub static SEVENZ_BINARY: LazyLock<Option<&'static str>> = LazyLock::new(|| {
+    for binary in ["7z", "7za", "7zz"] {
+        let result = Command::new(binary)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .output();
 
-            if result.is_ok() {
-                return Some(binary);
-            }
+        if result.is_ok() {
+            return Some(binary);
         }
+    }
 
-        None
-    };
-}
+    None
+});
 
 pub fn get_entries(
     path: impl AsRef<Path>

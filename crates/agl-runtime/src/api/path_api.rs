@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use mlua::prelude::*;
-
 use super::*;
 
 fn normalize_path_parts(parts: &[impl AsRef<str>]) -> Option<Vec<String>> {

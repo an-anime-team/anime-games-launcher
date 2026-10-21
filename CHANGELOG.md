@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added "Stop" button to stop currently running actions pipeline. This button
+  *will not* kill spawned processes, so pipelines for games that rely on
+  external downloader binaries will not be stopped correctly. This can change in
+  future updates.
+- Added different blake2s and blake2b hash variants support to hashes API.
+- Added multiple crc16/crc32/crc64 hashes variants to hashes API.
+- Added `urlencoding` to `str.encode` and `str.decode` APIs.
+
+### Changed
+
+- Breaking: reworked hashes API. Instead of big endian all hashes are now using
+  little endian encoding. Previously used big endian encoding was factually
+  incorrect, introduced in earlier stages of development, and survived through
+  multiple refactors of the runtime. Affected algorithms: all xxh and crc
+  variants, 64 bit siphash variants and seahash.
+
 ## [v2.2.0] - 04.07.2026
 
 ### Added

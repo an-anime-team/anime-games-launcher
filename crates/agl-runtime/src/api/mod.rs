@@ -370,7 +370,7 @@ impl Api {
                         callback.call(())
                     }
 
-                    LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Promise") => {
+                    LuaValue::UserData(object) if object.type_name()?.as_bytes() == b"Promise" => {
                         object.call_method::<LuaValue>("await", ())
                     }
 

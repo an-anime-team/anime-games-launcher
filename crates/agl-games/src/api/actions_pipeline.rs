@@ -16,6 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+
 use mlua::prelude::*;
 
 use agl_locale::string::LocalizableString;
@@ -70,5 +73,23 @@ impl ActionsPipeline {
     #[inline(always)]
     pub const fn actions(&self) -> &[PipelineAction] {
         &self.pipeline
+    }
+
+    /// Set an interrupt flag which aborts execution of the pipeline actions
+    /// when `cancellation_flag` becomes `true`.
+    pub fn set_interrupt(&self, cancellation_flag: Arc<AtomicBool>) {
+        if let Some(action) = self.pipeline.first() {
+            action.set_interrupt(cancellation_flag);
+        }
+    }
+
+    /// Remove the interrupt function previously set by `set_interrupt`.
+    /// Does nothing if no interrupt was set.
+    ///
+    /// Must be called only when no Lua code is running.
+    pub fn remove_interrupt(&self) {
+        if let Some(action) = self.pipeline.first() {
+            action.remove_interrupt();
+        }
     }
 }

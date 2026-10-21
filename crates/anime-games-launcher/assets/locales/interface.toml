@@ -18,6 +18,10 @@ id = "Batal"
 it = "Annulla"
 ja = "キャンセル"
 
+[stop]
+en = "Stop"
+ru = "Остановить"
+
 [close]
 en = "Close"
 ru = "Закрыть"

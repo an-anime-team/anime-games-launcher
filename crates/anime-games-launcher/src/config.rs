@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::LazyLock;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -28,9 +29,7 @@ use agl_locale::unic_langid::LanguageIdentifier;
 
 use crate::consts::{HOME_DIR, DATA_DIR, CONFIG_FILE};
 
-lazy_static::lazy_static! {
-    static ref STARTUP_CONFIG: Config = tasks::block_on(get());
-}
+static STARTUP_CONFIG: LazyLock<Config> = LazyLock::new(|| tasks::block_on(get()));
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Config {
@@ -159,11 +158,6 @@ pub struct Config {
     /// `runtime.torrent.dht`
     pub runtime_torrent_enable_dht: bool,
 
-    /// Open BitTorrent protocol port using UPnP.
-    ///
-    /// `runtime.torrent.upnp`
-    pub runtime_torrent_enable_upnp: bool,
-
     /// List of torrent trackers used by the torrent API.
     ///
     /// `runtime.torrent.trackers`
@@ -269,7 +263,6 @@ impl Default for Config {
 
             runtime_torrent_enable: false,
             runtime_torrent_enable_dht: true,
-            runtime_torrent_enable_upnp: false,
             runtime_torrent_trackers: vec![],
             runtime_torrent_blocklist_url: Some(String::from("https://raw.githubusercontent.com/Naunter/BT_BlockLists/master/bt_blocklists.gz")),
 
@@ -338,7 +331,6 @@ impl Config {
             [runtime.torrent]
             enable = (self.runtime_torrent_enable)
             enable_dht = (self.runtime_torrent_enable_dht)
-            enable_upnp = (self.runtime_torrent_enable_upnp)
             trackers = (self.runtime_torrent_trackers.iter().map(|url| url.as_str()).collect::<Vec<_>>())
             blocklist_url = (self.runtime_torrent_blocklist_url.as_deref().unwrap_or("none"))
 
@@ -554,11 +546,6 @@ impl Config {
                     config.runtime_torrent_enable_dht = enable_dht;
                 }
 
-                // `runtime.torrent.enable_upnp`
-                if let Some(enable_upnp) = torrent.get("enable_upnp").and_then(Toml::as_bool) {
-                    config.runtime_torrent_enable_upnp = enable_upnp;
-                }
-
                 // `runtime.torrent.trackers`
                 if let Some(trackers) = torrent.get("trackers").and_then(Toml::as_array) {
                     config.runtime_torrent_trackers = trackers.iter()
@@ -621,7 +608,7 @@ impl Config {
     /// network settings.
     pub fn client_builder(&self) -> anyhow::Result<reqwest::ClientBuilder> {
         let mut builder = reqwest::ClientBuilder::new()
-            .user_agent(format!("anime-games-launcher/v{}", crate::consts::APP_VERSION))
+            .user_agent(format!("anime-games-launcher/{}", crate::consts::APP_VERSION))
             .connect_timeout(self.general_network_timeout);
 
         if let Some(proxy_url) = &self.general_network_proxy {

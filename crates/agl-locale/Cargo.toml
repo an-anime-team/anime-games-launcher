@@ -13,9 +13,7 @@ mlua = ["dep:mlua"]
 default = ["json", "mlua"]
 
 [dependencies]
-lazy_static = "1.5"
 unic-langid = "0.9"
-
 toml = "1.1"
 serde_json = { version = "1.0", optional = true }
-mlua = { version = "0.11", features = ["luau-jit"], optional = true }
+mlua = { version = "0.12", features = ["luau-jit"], optional = true }

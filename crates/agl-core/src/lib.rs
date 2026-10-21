@@ -66,11 +66,8 @@ pub mod export {
         #[cfg(feature = "hashes-seahash")]
         pub use seahash;
 
-        #[cfg(feature = "hashes-crc32")]
-        pub use crc32fast as crc32;
-
-        #[cfg(feature = "hashes-crc32c")]
-        pub use crc32c;
+        #[cfg(feature = "hashes-crc")]
+        pub use crc_fast as crc;
 
         #[cfg(feature = "hashes-xxh")]
         pub use xxhash_rust as xxh;

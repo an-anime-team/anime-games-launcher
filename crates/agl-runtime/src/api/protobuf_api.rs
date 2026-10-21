@@ -228,7 +228,7 @@ fn lua_to_protobuf_value(
 
         LuaValue::Function(function) => lua_to_protobuf_value(function.call::<LuaValue>(())?, field),
 
-        LuaValue::UserData(ref object) if object.type_name()?.as_deref() == Some("Bytes") => {
+        LuaValue::UserData(ref object) if object.type_name()?.as_bytes() == b"Bytes" => {
             let bytes = object.call_method::<Vec<u8>>("as_table", ())?;
 
             Ok(ProtobufValue::Bytes(bytes.into()))
@@ -455,7 +455,7 @@ impl FromLua for Protobuf {
                 Ok(protobuf)
             }
 
-            LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Bytes") => {
+            LuaValue::UserData(object) if object.type_name()?.as_bytes() == b"Bytes" => {
                 let table = object.call_method::<LuaTable>("as_table", ())?;
 
                 let bytes = table.sequence_values::<u8>()
@@ -469,7 +469,7 @@ impl FromLua for Protobuf {
                 Ok(protobuf)
             }
 
-            LuaValue::UserData(object) if object.type_name()?.as_deref() == Some("Protobuf") => {
+            LuaValue::UserData(object) if object.type_name()?.as_bytes() == b"Protobuf" => {
                 let bytes = object.call_method::<Bytes>("as_bytes", ())?;
 
                 let mut protobuf = Protobuf::default();

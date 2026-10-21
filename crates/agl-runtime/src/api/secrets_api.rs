@@ -18,8 +18,6 @@
 
 use std::sync::{Arc, Mutex};
 
-use mlua::prelude::*;
-
 use super::bytes::Bytes;
 use super::*;
 

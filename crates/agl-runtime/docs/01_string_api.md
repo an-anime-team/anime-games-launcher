@@ -33,6 +33,7 @@ Following table contains list of `StringEncoding` enum values.
 | `base64/nopad`           | Standard lower without padding.                      |
 | `base64/urlsafe-pad`     | URL-safe with padding.                               |
 | `base64/urlsafe-nopad`   | URL-safe without padding.                            |
+| `urlencoding` or `url`   | Convert general string into URL-encoded string.      |
 | `json` or `json/compact` | Convert given value to a JSON string.                |
 | `json/pretty`            | Convert given value to a pretty JSON string.         |
 | `bson` (2)               | Convert given value to a BSON binary string.         |

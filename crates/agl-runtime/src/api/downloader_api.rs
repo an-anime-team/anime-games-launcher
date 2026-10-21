@@ -24,8 +24,6 @@ use agl_core::export::network::reqwest::Client;
 use agl_core::tasks;
 use agl_core::network::downloader::{Downloader, DownloadOptions};
 
-use mlua::prelude::*;
-
 use super::*;
 
 pub const DOWNLOADER_WAIT_UPDATE_INTERVAL: Duration = Duration::from_millis(50);

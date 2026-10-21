@@ -22,8 +22,6 @@ use std::fs::File;
 use std::io::{Read, Write, Seek, SeekFrom};
 use std::time::{Duration, UNIX_EPOCH};
 
-use mlua::prelude::*;
-
 use bufrw::BufReaderWriter;
 
 use agl_core::tasks::fs;

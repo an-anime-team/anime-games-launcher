@@ -57,7 +57,6 @@
                             {
                                 name = "Nikita Podvirnyi";
                                 email = "krypt0nn@dawn.wine";
-                                matrix = "@krypt0nn:mozilla.org";
                                 github = "krypt0nn";
                                 githubId = 29639507;
                             }
@@ -142,7 +141,6 @@
                             {
                                 name = "Nikita Podvirnyi";
                                 email = "krypt0nn@dawn.wine";
-                                matrix = "@krypt0nn:mozilla.org";
                                 github = "krypt0nn";
                                 githubId = 29639507;
                             }

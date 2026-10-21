@@ -16,18 +16,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::LazyLock;
+
 use relm4::prelude::*;
 use adw::prelude::*;
 
 use crate::consts;
 
-lazy_static::lazy_static! {
-    static ref APP_VERSION: String = if *consts::APP_DEBUG && !consts::APP_VERSION.contains('-') {
+static APP_VERSION_STRING: LazyLock<String> = LazyLock::new(|| {
+    if *consts::APP_DEBUG && !consts::APP_VERSION.contains('-') {
         format!("{}-dev", consts::APP_VERSION)
     } else {
         consts::APP_VERSION.to_string()
-    };
-}
+    }
+});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AboutWindow;
@@ -51,7 +53,7 @@ impl SimpleAsyncComponent for AboutWindow {
             set_support_url: "https://discord.gg/ck37X6UWBp",
 
             set_license_type: gtk::License::Gpl30,
-            set_version: &APP_VERSION,
+            set_version: &APP_VERSION_STRING,
 
             set_developer_name: "Nikita Podvirnyi",
 
@@ -92,51 +94,21 @@ impl SimpleAsyncComponent for AboutWindow {
                 format!("cairo: {}", gtk::cairo::version_string())
             ].join("\n"),
 
-            set_release_notes_version: &APP_VERSION,
+            set_release_notes_version: &APP_VERSION_STRING,
             set_release_notes: r#"
                 <p>Added</p>
 
                 <ul>
-                    <li>Games manifests got optional "manifest.game.name" field</li>
-                    <li>Added "free-to-play" and "adult-content" game manifest tags</li>
-                    <li>Launcher will now show unstandard game manifest tags on the store page</li>
-                    <li>Added Secrets API as universal solution to keep secret information that persists between module updates</li>
-                    <li>Runtime APIs now accept list of paths that they cannot access. Secrets API database is automatically added to this list</li>
-                    <li>Added "runtime.private_paths" launcher config property to configure list of paths to which runtime APIs will never have access</li>
-                    <li>Added "TRACE" request method to HTTP API</li>
-                    <li>More operations in the launcher were replaced by async alternatives</li>
-                    <li>Added "base32/nix" text encoding to "str.encode" and "str.decode" APIs</li>
-                </ul>
-
-                <p>Fixed</p>
-
-                <ul>
-                    <li>Fixed launcher settings UI updating after "reactivity = none" entries changes</li>
-                    <li>Fixed launcher's garbage collector deleting games integrations resources</li>
+                    <li>Added "Stop" button to stop currently running actions pipeline. Spawned processes are not killed automatically.</li>
+                    <li>Added different blake2s and blake2b hash variants support to hashes API.</li>
+                    <li>Added multiple crc16/crc32/crc64 hashes variants to hashes API.</li>
+                    <li>Added "urlencoding" to "str.encode" and "str.decode" APIs.</li>
                 </ul>
 
                 <p>Changed</p>
 
                 <ul>
-                    <li>Renamed some game manifest tags, old variants kept as aliases</li>
-                    <li>Game tags on the launcher's store page are now sorted</li>
-                    <li>"torrent.add" API's "output_folder" option was renamed to "output_directory". Old variant is kept as alias for backward compatibility</li>
-                    <li>"portal.open_folder" API was renamed to "portal.open_directory". Old function is kept as alias for backward compatibility</li>
-                    <li>Modules allow lists were renamed to scopes lists. Launcher will automatically rename the standard game-integrations URL to the new one</li>
-                    <li>Reduced Filesystem API's files RAM buffer size from 4 MiB to 64 KiB</li>
-                    <li>Some Filesystem API functions now make symlinks only if target of family is unix</li>
-                    <li>"fs.read_dir" API now uses real async operations instead of blocking function</li>
-                    <li>Now launcher will silently ignore games registries and games manifests updating during startup</li>
-                    <li>Games cards on the store page are now loaded in the order of their appearance in the games registries</li>
-                    <li>Games lock files are now stored under "[name_hash]-[sanitized_name]" file name. Old file names will automatically be renamed to the new format if possible</li>
-                    <li>Launcher will load old game packages, but show a message about game package being outdated</li>
-                    <li>Changed packages hash format to "nix_base32(blake3_128([...]))"</li>
-                </ul>
-
-                <p>Removed</p>
-
-                <ul>
-                    <li>Removed some game manifest tags</li>
+                    <li>Breaking: reworked hashes API. Instead of big endian all hashes are now using little endian encoding. Affected algorithms: all xxh and crc variants, 64 bit siphash variants and seahash.</li>
                 </ul>
             "#
         }

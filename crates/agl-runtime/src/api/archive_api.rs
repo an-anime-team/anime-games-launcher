@@ -22,8 +22,6 @@ use std::sync::{Arc, Mutex};
 
 use agl_core::archives::{Archive, ArchiveFormat};
 
-use mlua::prelude::*;
-
 use super::*;
 
 pub struct ArchiveApi {

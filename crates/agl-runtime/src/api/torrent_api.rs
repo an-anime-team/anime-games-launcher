@@ -21,17 +21,13 @@ use std::path::PathBuf;
 use std::borrow::Cow;
 use std::sync::mpsc::Sender;
 
-use mlua::prelude::*;
-
 use librqbit::{
-    Session as TorrentSession,
-    SessionOptions as TorrentSessionOptions,
-    AddTorrent as AddTorrentInfo,
-    AddTorrentOptions,
-    AddTorrentResponse,
-    CreateTorrentOptions,
-    Magnet
+    AddTorrent as AddTorrentInfo, AddTorrentOptions, AddTorrentResponse,
+    ConnectionOptions, CreateTorrentOptions, DhtSessionConfig, Magnet,
+    Session as TorrentSession, SessionOptions as TorrentSessionOptions
 };
+
+use librqbit::spawn_utils::BlockingSpawner;
 
 use librqbit::api::TorrentIdOrHash;
 
@@ -80,10 +76,7 @@ pub struct TorrentServerOptions {
     pub blocklist_url: Option<String>,
 
     /// Enable DHT.
-    pub enable_dht: bool,
-
-    /// Enable UPnP.
-    pub enable_upnp: bool
+    pub enable_dht: bool
 }
 
 impl Default for TorrentServerOptions {
@@ -93,8 +86,7 @@ impl Default for TorrentServerOptions {
             socks_proxy: None,
             trackers: HashSet::new(),
             blocklist_url: None,
-            enable_dht: true,
-            enable_upnp: true
+            enable_dht: true
         }
     }
 }
@@ -210,17 +202,24 @@ impl TorrentServer {
             let session = TorrentSession::new_with_opts(
                 options.default_folder,
                 TorrentSessionOptions {
+                    dht: options.enable_dht.then_some(DhtSessionConfig {
+                        bootstrap_addrs: None,
+                        port: None,
+                        persistence: None
+                    }),
+
                     persistence: None,
 
-                    socks_proxy_url: options.socks_proxy,
+                    connect: Some(ConnectionOptions {
+                        proxy_url: options.socks_proxy,
+                        ..ConnectionOptions::default()
+                    }),
 
                     trackers: options.trackers.iter()
                         .flat_map(|url| url.parse())
                         .collect(),
 
                     blocklist_url: options.blocklist_url,
-                    disable_dht: !options.enable_dht,
-                    enable_upnp_port_forwarding: options.enable_upnp,
 
                     ..TorrentSessionOptions::default()
                 }
@@ -297,7 +296,6 @@ impl TorrentServer {
                         let options = AddTorrentOptions {
                             output_folder: Some(output_folder.to_string_lossy().to_string()),
                             overwrite: true,
-                            defer_writes: Some(false),
                             trackers: Some(trackers.clone()),
                             paused,
 
@@ -341,7 +339,6 @@ impl TorrentServer {
                             let options = AddTorrentOptions {
                                 output_folder: Some(output_folder.to_string_lossy().to_string()),
                                 overwrite: true,
-                                defer_writes: Some(false),
                                 trackers: Some(trackers),
                                 paused,
 
@@ -664,8 +661,10 @@ impl TorrentApi {
                                 &path,
                                 CreateTorrentOptions {
                                     name: name.as_deref(),
-                                    piece_length: piece_size
-                                }
+                                    piece_length: piece_size,
+                                    trackers: vec![]
+                                },
+                                &BlockingSpawner::new(4)
                             ).await;
 
                             let torrent = result.map_err(|err| {

@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::LazyLock;
 use std::fs::File;
 
 use relm4::prelude::*;
@@ -30,13 +31,11 @@ pub mod cache;
 pub mod games;
 pub mod ui;
 
-lazy_static::lazy_static! {
-    pub static ref STARTUP_LANG: agl_locale::unic_langid::LanguageIdentifier = {
-        config::startup()
-            .language()
-            .unwrap_or_else(|_| agl_locale::SYSTEM_LANG.clone())
-    };
-}
+pub static STARTUP_LANG: LazyLock<agl_locale::unic_langid::LanguageIdentifier> = LazyLock::new(|| {
+    config::startup()
+        .language()
+        .unwrap_or_else(|_| agl_locale::SYSTEM_LANG.clone())
+});
 
 /// Custom `i18n` macro based on the `agl-locale`'s one which respects
 /// launcher's config file.
