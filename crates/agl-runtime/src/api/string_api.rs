@@ -78,7 +78,7 @@ impl StringEncoding {
             Self::Base16 => {
                 let value = Bytes::from_lua(value, lua)?;
 
-                lua.create_string(hex::encode(value.as_slice()))
+                lua.create_string(faster_hex::hex_string(value.as_slice()))
             }
 
             Self::Base32(alphabet) => {
@@ -152,7 +152,7 @@ impl StringEncoding {
 
         match self {
             Self::Base16 => {
-                let value = hex::decode(string.as_bytes())
+                let value = faster_hex::hex_decode_vec(&string.as_bytes())
                     .map_err(LuaError::external)?;
 
                 Bytes::new(value.into_boxed_slice())
