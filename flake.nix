@@ -179,7 +179,7 @@
                     packages = rec {
                         default = anime-games-launcher;
 
-                        anime-games-launcher = buildLauncher pkgs;
+                        anime-games-launcher = buildLauncher { inherit pkgs; };
                         anirun = buildAnirun { inherit pkgs; };
                     };
 
