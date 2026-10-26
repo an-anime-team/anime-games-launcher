@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-games
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@dawn.wine>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -22,3 +22,4 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod platform;
 pub mod manifest;
 pub mod api;
+pub mod sandbox;

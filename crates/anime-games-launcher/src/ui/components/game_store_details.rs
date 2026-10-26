@@ -226,7 +226,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     #[watch]
                                     set_text: i18n!("game_developer", { name => &model.developer })
-                                        .unwrap_or_else(|| format!("Developer: {}", &model.developer))
+                                        .unwrap_or_else(|| format!("Developer: {}", model.developer))
                                         .as_str()
                                 },
 
@@ -241,7 +241,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     #[watch]
                                     set_text: i18n!("game_publisher", { name => &model.publisher })
-                                        .unwrap_or_else(|| format!("Publisher: {}", &model.publisher))
+                                        .unwrap_or_else(|| format!("Publisher: {}", model.publisher))
                                         .as_str()
                                 }
                             },

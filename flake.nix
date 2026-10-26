@@ -200,14 +200,14 @@
                             libnotify
                             dbus
 
+                            python3
                             unzip
                             p7zip
+                            bubblewrap
 
                             # adwaita-1-demo
                             libadwaita.devdoc
                             icon-library
-
-                            python3
                         ];
 
                         buildInputs = with pkgs; [

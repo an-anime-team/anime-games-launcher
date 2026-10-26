@@ -1649,33 +1649,49 @@ impl SimpleAsyncComponent for MainWindow {
             }
 
             MainWindowMsg::LaunchGame { game_title, game_launch_info } => {
-                let mut command = &mut Command::new(&game_launch_info.binary);
+                let mut command = Command::new(&game_launch_info.binary);
 
+                // Prepare game launch command.
                 if let Some(parent_folder) = game_launch_info.binary.parent()
                     && parent_folder.is_dir()
                 {
-                    command = command.current_dir(parent_folder);
+                    command.current_dir(parent_folder);
                 }
 
                 if let Some(args) = &game_launch_info.args {
-                    command = command.args(args);
+                    command.args(args);
                 }
 
                 if let Some(env) = &game_launch_info.env {
-                    command = command.envs(env);
+                    command.envs(env);
                 }
 
                 if game_launch_info.stdout.is_some() {
-                    command = command.stdout(Stdio::piped());
+                    command.stdout(Stdio::piped());
                 } else {
-                    command = command.stdout(Stdio::inherit());
+                    command.stdout(Stdio::inherit());
                 }
 
                 if game_launch_info.stderr.is_some() {
-                    command = command.stderr(Stdio::piped());
+                    command.stderr(Stdio::piped());
                 } else {
-                    command = command.stderr(Stdio::inherit());
+                    command.stderr(Stdio::inherit());
                 }
+
+                // Wrap command to run in sandbox.
+                // FIXME: `match` is needed to fight borrow checker only; will
+                //        eventually be fixed in future rust releases.
+                let mut command = match agl_games::sandbox::wrap(
+                    &command,
+                    &Default::default()
+                ) {
+                    Ok(command) => command,
+                    Err(_) => {
+                        tracing::warn!("failed to build sandboxed command; game will launch without sandboxing");
+
+                        command
+                    }
+                };
 
                 tracing::info!(?command, "launching game");
 
