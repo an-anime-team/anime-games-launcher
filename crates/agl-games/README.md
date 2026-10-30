@@ -163,6 +163,14 @@ type GameVariant = {
     edition?: string;
 };
 
+type SandboxInfo = {
+    // Game data directory path that will be mounted in sandbox with read-write
+    // priveleges. Runtime-related paths will be mounted as read-only, and other
+    // directories may be inaccessible depending on the platform. Make sure to
+    // download all game-related content under this path.
+    path: string;
+};
+
 type GameLaunchInfo = {
     // Optional game launching status.
     status?: 'normal' | 'warning' | 'danger';
@@ -406,6 +414,14 @@ type GameIntegration = {
         // Get list of available game editions for the provided platform.
         get_editions?: (platform: string): GameEdition[];
 
+        // Set information about the sandbox in which the game should be
+        // downloaded and will be running. This information should be provided
+        // by the application when integration loads and every time sandbox
+        // settings are changed. If this info was not provided, integration
+        // should return placeholder values until sandbox info becomes
+        // available.
+        set_sandbox_info?: (variant: GameVariant, sandbox: SandboxInfo);
+
         // Get game launching info if it's available. Return `null` if game
         // cannot be launched.
         get_launch_info: (variant: GameVariant): GameLaunchInfo | null;
@@ -456,7 +472,7 @@ type GameIntegration = {
         ): void;
     };
 
-    tools: {
+    tools?: {
         // Get list of extra UI buttons.
         get_buttons?: (variant: GameVariant): ToolButton[];
     };

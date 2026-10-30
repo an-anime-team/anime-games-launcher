@@ -20,6 +20,7 @@ use mlua::prelude::*;
 
 mod game_edition;
 mod game_variant;
+mod game_sandbox_info;
 mod game_launch_info;
 mod actions_pipeline;
 mod pipeline_action;
@@ -30,6 +31,7 @@ mod game_settings;
 
 pub use game_edition::*;
 pub use game_variant::*;
+pub use game_sandbox_info::*;
 pub use game_launch_info::*;
 pub use actions_pipeline::*;
 pub use pipeline_action::*;
@@ -50,6 +52,7 @@ pub struct GameIntegration {
     lua: Lua,
 
     game_get_editions: Option<LuaFunction>,
+    game_set_sandbox_info: Option<LuaFunction>,
     game_get_launch_info: LuaFunction,
     game_get_actions_pipeline: LuaFunction,
 
@@ -102,6 +105,7 @@ impl GameIntegration {
             lua,
 
             game_get_editions: game.get("get_editions").ok(),
+            game_set_sandbox_info: game.get("set_sandbox_info").ok(),
 
             game_get_launch_info: game.get("get_launch_info")
                 .context("game.get_launch_info API function must be specified")?,
@@ -185,6 +189,22 @@ impl GameIntegration {
                         .collect::<Result<Box<[_]>, LuaError>>()
                 }).transpose()
             })
+    }
+
+    /// Try to set game sandbox info.
+    pub fn set_sandbox_info(
+        &self,
+        variant: impl AsRef<GameVariant>,
+        sandbox: &GameSandboxInfo
+    ) -> Result<(), LuaError> {
+        let Some(set_sandbox_info) = &self.game_set_sandbox_info else {
+            return Ok(());
+        };
+
+        set_sandbox_info.call::<()>((
+            variant.as_ref().to_lua(&self.lua)?,
+            sandbox.to_lua(&self.lua)?
+        ))
     }
 
     /// Try to get params used to launch the game.
