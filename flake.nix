@@ -13,27 +13,42 @@
 
     outputs = { self, nixpkgs, flake-utils, rust-overlay }:
         let
-            buildLauncher = {
-                pkgs,
-                api ? {
-                    sqlite = true;
-                    protobuf = true;
-                    torrent = true;
-                    portal = true;
-                    secrets = true;
-                }
+            launcher = {
+                lib,
+                rustPlatform,
+                gcc,
+                cmake,
+                glib,
+                pkg-config,
+                gtk4,
+                gobject-introspection,
+                wrapGAppsHook4,
+                libnotify,
+                dbus,
+                makeWrapper,
+                libadwaita,
+                gdk-pixbuf,
+
+                unzip,
+                p7zip,
+
+                sqliteSupport ? true,
+                protobufSupport ? true,
+                torrentSupport ? true,
+                portalSupport ? true,
+                secretsSupport ? true,
             }:
                 let
-                    config = pkgs.lib.importTOML ./crates/anime-games-launcher/Cargo.toml;
+                    config = lib.importTOML ./crates/anime-games-launcher/Cargo.toml;
 
-                    apiFeatures = pkgs.lib.concatLists [
-                        (pkgs.lib.optionals api.sqlite [ "--features" "anime-games-launcher/sqlite-api" ])
-                        (pkgs.lib.optionals api.protobuf [ "--features" "anime-games-launcher/protobuf-api" ])
-                        (pkgs.lib.optionals api.torrent [ "--features" "anime-games-launcher/torrent-api" ])
-                        (pkgs.lib.optionals api.portal [ "--features" "anime-games-launcher/portal-api" ])
-                        (pkgs.lib.optionals api.secrets [ "--features" "anime-games-launcher/secrets-api" ])
+                    apiFeatures = lib.concatLists [
+                        (lib.optionals sqliteSupport [ "--features" "anime-games-launcher/sqlite-api" ])
+                        (lib.optionals protobufSupport [ "--features" "anime-games-launcher/protobuf-api" ])
+                        (lib.optionals torrentSupport [ "--features" "anime-games-launcher/torrent-api" ])
+                        (lib.optionals portalSupport [ "--features" "anime-games-launcher/portal-api" ])
+                        (lib.optionals secretsSupport [ "--features" "anime-games-launcher/secrets-api" ])
                     ];
-                in pkgs.rustPlatform.buildRustPackage {
+                in rustPlatform.buildRustPackage {
                     pname = config.package.name;
                     version = config.package.version;
 
@@ -48,10 +63,10 @@
 
                     doCheck = false;
 
-                    meta = with pkgs.lib; {
+                    meta = {
                         description = config.package.description;
                         homepage = config.package.homepage;
-                        license = licenses.gpl3Plus;
+                        license = lib.licenses.gpl3Plus;
 
                         maintainers = [
                             {
@@ -63,7 +78,7 @@
                         ];
                     };
 
-                    nativeBuildInputs = with pkgs; [
+                    nativeBuildInputs = [
                         gcc
                         cmake
                         glib
@@ -77,7 +92,7 @@
                         makeWrapper
                     ];
 
-                    buildInputs = with pkgs; [
+                    buildInputs = [
                         libadwaita
                         gdk-pixbuf
                     ];
@@ -92,32 +107,42 @@
 
                     preFixup = ''
                         gappsWrapperArgs+=(
-                            --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.unzip pkgs.p7zip ]}"
+                            --prefix PATH : "${lib.makeBinPath [ unzip p7zip ]}"
                         )
                     '';
                 };
 
-            buildAnirun = {
-                pkgs,
-                api ? {
-                    sqlite = true;
-                    protobuf = true;
-                    torrent = true;
-                    portal = true;
-                    secrets = true;
-                }
+            anirun = {
+                lib,
+                rustPlatform,
+                gcc,
+                cmake,
+                glib,
+                pkg-config,
+                libnotify,
+                dbus,
+                makeWrapper,
+                wayland,
+                unzip,
+                p7zip,
+
+                sqliteSupport ? true,
+                protobufSupport ? true,
+                torrentSupport ? true,
+                portalSupport ? true,
+                secretsSupport ? true,
             }:
                 let
-                    config = pkgs.lib.importTOML ./crates/anirun/Cargo.toml;
+                    config = lib.importTOML ./crates/anirun/Cargo.toml;
 
-                    apiFeatures = pkgs.lib.concatLists [
-                        (pkgs.lib.optionals api.sqlite [ "--features" "anirun/sqlite-api" ])
-                        (pkgs.lib.optionals api.protobuf [ "--features" "anirun/protobuf-api" ])
-                        (pkgs.lib.optionals api.torrent [ "--features" "anirun/torrent-api" ])
-                        (pkgs.lib.optionals api.portal [ "--features" "anirun/portal-api" ])
-                        (pkgs.lib.optionals api.secrets [ "--features" "anirun/secrets-api" ])
+                    apiFeatures = lib.concatLists [
+                        (lib.optionals sqliteSupport [ "--features" "anirun/sqlite-api" ])
+                        (lib.optionals protobufSupport [ "--features" "anirun/protobuf-api" ])
+                        (lib.optionals torrentSupport [ "--features" "anirun/torrent-api" ])
+                        (lib.optionals portalSupport [ "--features" "anirun/portal-api" ])
+                        (lib.optionals secretsSupport [ "--features" "anirun/secrets-api" ])
                     ];
-                in pkgs.rustPlatform.buildRustPackage {
+                in rustPlatform.buildRustPackage {
                     pname = config.package.name;
                     version = config.package.version;
 
@@ -132,10 +157,10 @@
 
                     doCheck = false;
 
-                    meta = with pkgs.lib; {
+                    meta = {
                         description = config.package.description;
                         homepage = config.package.homepage;
-                        license = licenses.gpl3Plus;
+                        license = lib.licenses.gpl3Plus;
 
                         maintainers = [
                             {
@@ -147,7 +172,7 @@
                         ];
                     };
 
-                    nativeBuildInputs = with pkgs; [
+                    nativeBuildInputs = [
                         gcc
                         cmake
                         glib
@@ -157,13 +182,13 @@
                         makeWrapper
                     ];
 
-                    buildInputs = pkgs.lib.optionals api.portal [ pkgs.wayland ];
+                    buildInputs = lib.optionals portalSupport [ wayland ];
 
                     preFixup = ''
                         wrapProgram $out/bin/anirun \
-                            --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.unzip pkgs.p7zip ]}" \
-                            ${pkgs.lib.optionalString api.portal ''
-                                --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [ pkgs.wayland ]}"
+                            --prefix PATH : "${lib.makeBinPath [ unzip p7zip ]}" \
+                            ${lib.optionalString portalSupport ''
+                                --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ wayland ]}"
                             ''}
                     '';
                 };
@@ -176,11 +201,11 @@
                         overlays = [ rust-overlay.overlays.default ];
                     };
                 in {
-                    packages = rec {
-                        default = anime-games-launcher;
+                    packages = {
+                        default = self.packages.${system}.anime-games-launcher;
 
-                        anime-games-launcher = buildLauncher { inherit pkgs; };
-                        anirun = buildAnirun { inherit pkgs; };
+                        anime-games-launcher = pkgs.callPackage launcher { };
+                        anirun = pkgs.callPackage anirun { };
                     };
 
                     devShells.default = pkgs.mkShell {
@@ -226,16 +251,12 @@
                         package = lib.mkOption {
                             type = lib.types.package;
 
-                            default = buildLauncher {
-                                inherit pkgs;
-
-                                api = {
-                                    sqlite = cfg.api.sqlite;
-                                    protobuf = cfg.api.protobuf;
-                                    torrent = cfg.api.torrent;
-                                    portal = cfg.api.portal;
-                                    secrets = cfg.api.secrets;
-                                };
+                            default = self.packages.${pkgs.stdenv.hostPlatform}.anime-games-launcher.override {
+                                sqliteSupport = cfg.api.sqlite;
+                                protobufSupport = cfg.api.protobuf;
+                                torrentSupport = cfg.api.torrent;
+                                portalSupport = cfg.api.portal;
+                                secretsSupport = cfg.api.secrets;
                             };
 
                             description = "The anime-games-launcher package to use";
@@ -279,16 +300,12 @@
                             package = lib.mkOption {
                                 type = lib.types.package;
 
-                                default = buildAnirun {
-                                    inherit pkgs;
-
-                                    api = {
-                                        sqlite = cfg.anirun.api.sqlite;
-                                        protobuf = cfg.anirun.api.protobuf;
-                                        torrent = cfg.anirun.api.torrent;
-                                        portal = cfg.anirun.api.portal;
-                                        secrets = cfg.anirun.api.secrets;
-                                    };
+                                default = self.packages.${pkgs.stdenv.hostPlatform}.anirun.override {
+                                    sqliteSuport = cfg.anirun.api.sqlite;
+                                    protobufSuport = cfg.anirun.api.protobuf;
+                                    torrentSuport = cfg.anirun.api.torrent;
+                                    portalSuport = cfg.anirun.api.portal;
+                                    secretsSuport = cfg.anirun.api.secrets;
                                 };
 
                                 description = "The anirun package to use";
