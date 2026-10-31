@@ -251,7 +251,7 @@
                         package = lib.mkOption {
                             type = lib.types.package;
 
-                            default = self.packages.${pkgs.stdenv.hostPlatform}.anime-games-launcher.override {
+                            default = self.packages.${pkgs.stdenv.hostPlatform.system}.anime-games-launcher.override {
                                 sqliteSupport = cfg.api.sqlite;
                                 protobufSupport = cfg.api.protobuf;
                                 torrentSupport = cfg.api.torrent;
@@ -300,7 +300,7 @@
                             package = lib.mkOption {
                                 type = lib.types.package;
 
-                                default = self.packages.${pkgs.stdenv.hostPlatform}.anirun.override {
+                                default = self.packages.${pkgs.stdenv.hostPlatform.system}.anirun.override {
                                     sqliteSuport = cfg.anirun.api.sqlite;
                                     protobufSuport = cfg.anirun.api.protobuf;
                                     torrentSuport = cfg.anirun.api.torrent;
