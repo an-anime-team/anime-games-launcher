@@ -301,11 +301,11 @@
                                 type = lib.types.package;
 
                                 default = self.packages.${pkgs.stdenv.hostPlatform.system}.anirun.override {
-                                    sqliteSuport = cfg.anirun.api.sqlite;
-                                    protobufSuport = cfg.anirun.api.protobuf;
-                                    torrentSuport = cfg.anirun.api.torrent;
-                                    portalSuport = cfg.anirun.api.portal;
-                                    secretsSuport = cfg.anirun.api.secrets;
+                                    sqliteSupport = cfg.anirun.api.sqlite;
+                                    protobufSupport = cfg.anirun.api.protobuf;
+                                    torrentSupport = cfg.anirun.api.torrent;
+                                    portalSupport = cfg.anirun.api.portal;
+                                    secretsSupport = cfg.anirun.api.secrets;
                                 };
 
                                 description = "The anirun package to use";
