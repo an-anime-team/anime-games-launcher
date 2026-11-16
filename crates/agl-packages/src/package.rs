@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // agl-packages
-// Copyright (C) 2025  Nikita Podvirnyi <krypt0nn@dawn.wine>
+// Copyright (C) 2025 - 2026  Nikita Podvirnyi <krypt0nn@dawn.wine>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -90,8 +90,9 @@ impl PackageManifest {
 /// package.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ResourceInfoManifest {
-    /// URI of the resource.
-    pub uri: String,
+    /// URI of the resource. If multiple provided, they will be fetched in
+    /// sequential order until one responds with valid content.
+    pub uri: Vec<String>,
 
     /// Format of the resource.
     pub format: Option<ResourceFormat>,
@@ -102,48 +103,75 @@ pub struct ResourceInfoManifest {
 
 impl ResourceInfoManifest {
     pub fn to_json(&self) -> Json {
+        let uri = match self.uri.len() {
+            0 => json!([]),
+            1 => json!(&self.uri[0]),
+            _ => json!(&self.uri)
+        };
+
         match (self.format.as_ref(), self.hash.as_ref()) {
             (Some(format), Some(hash)) => json!({
-                "uri": self.uri,
+                "uri": uri,
                 "format": format.to_string(),
                 "hash": hash.to_base32()
             }),
 
             (Some(format), None) => json!({
-                "uri": self.uri,
+                "uri": uri,
                 "format": format.to_string()
             }),
 
             (None, Some(hash)) => json!({
-                "uri": self.uri,
+                "uri": uri,
                 "hash": hash.to_base32()
             }),
 
-            (None, None) => json!(self.uri)
+            (None, None) => uri
         }
     }
 
     pub fn from_json(value: &Json) -> Option<Self> {
-        if let Some(uri) = value.as_str() {
-            return Some(Self {
-                uri: uri.to_string(),
+        match value {
+            Json::String(uri) => Some(Self {
+                uri: vec![uri.clone()],
                 format: None,
                 hash: None
-            });
+            }),
+
+            Json::Array(uris) => Some(Self {
+                uri: uris.iter()
+                    .flat_map(|uri| uri.as_str())
+                    .map(String::from)
+                    .collect(),
+                format: None,
+                hash: None
+            }),
+
+            Json::Object(package) => {
+                Some(Self {
+                    uri: package.get("uri")
+                        .and_then(|uri| {
+                            match uri {
+                                Json::String(uri) => Some(vec![uri.clone()]),
+                                Json::Array(uris) => Some(uris.iter()
+                                    .flat_map(|uri| uri.as_str())
+                                    .map(String::from)
+                                    .collect()),
+                                _ => None
+                            }
+                        })?,
+
+                    format: package.get("format")
+                        .and_then(Json::as_str)
+                        .and_then(|format| ResourceFormat::from_str(format).ok()),
+
+                    hash: package.get("hash")
+                        .and_then(Json::as_str)
+                        .and_then(Hash::from_base32)
+                })
+            }
+
+            _ => None
         }
-
-        Some(Self {
-            uri: value.get("uri")
-                .and_then(Json::as_str)
-                .map(String::from)?,
-
-            format: value.get("format")
-                .and_then(Json::as_str)
-                .and_then(|format| ResourceFormat::from_str(format).ok()),
-
-            hash: value.get("hash")
-                .and_then(Json::as_str)
-                .and_then(Hash::from_base32)
-        })
     }
 }

@@ -22,7 +22,7 @@ type Manifest = {
 };
 
 type Resource = string | {
-    uri: string;
+    uri: string | string[];
     format?: 'package' | 'file' | 'archive';
     hash?: string;
 };

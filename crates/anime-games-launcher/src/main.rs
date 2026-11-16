@@ -155,6 +155,11 @@ fn main() -> anyhow::Result<()> {
         tracing::warn!("WINE_CANONICAL_HOLE={value} is not supported, please contact <https://github.com/NelloKudo> to fix it");
     }
 
+    // Check that the user is running Linux.
+    if consts::CURRENT_PLATFORM.system != agl_games::platform::System::Linux {
+        tracing::warn!("you're running non-linux system which is not supported");
+    }
+
     adw::init().expect("failed to initializa libadwaita");
 
     // Register and include resources.

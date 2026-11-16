@@ -80,6 +80,16 @@ pub enum InstallPackagesError {
         package_url: String,
         package_hash: Hash,
         resource_name: String
+    },
+
+    #[error(
+        "package '{package_url}' with hash '{}' declared resource '{resource_name}' without any download URLs",
+        package_hash.to_base32()
+    )]
+    ResourceWithoutUrls {
+        package_url: String,
+        package_hash: Hash,
+        resource_name: String
     }
 }
 
@@ -273,6 +283,10 @@ impl Storage {
         // Create [url] => [hash] table.
         let mut resource_hashes = HashMap::new();
 
+        // Create [hash] => [url] table of the URLs from which the content was
+        // actually fetched and verified.
+        let mut resolved_urls = HashMap::new();
+
         // Create packages and resources downloading queues.
         //
         // We will loop through the packages, order their processing, then
@@ -299,14 +313,20 @@ impl Storage {
             .collect::<HashSet<String>>();
 
         // Push root packages to the processing queue.
-        packages_queue.extend(root_packages.clone());
+        packages_queue.extend(
+            root_packages.iter()
+                .map(|url| vec![url.clone()])
+        );
 
         // Loop while there are packages to process.
         while !packages_queue.is_empty() {
             // Iterate over the packages URLs.
             let mut tasks = Vec::new();
 
-            for package_url in packages_queue.drain(..) {
+            for package_urls in packages_queue.drain(..) {
+                // The first mirror URL is used as the package's primary URL.
+                let package_url = package_urls[0].clone();
+
                 // Skip already downloaded packages.
                 if processed_resources.contains(
                     &(package_url.clone(), ResourceFormat::Package)
@@ -317,28 +337,51 @@ impl Storage {
                 // Prepare a temp path for the package's manifest file.
                 let temp_path = self.resource_path(&Hash::rand());
 
-                // Start downloading the package's manifest.
-                let task = downloader.download_with_options(
-                    &package_url,
-                    &temp_path,
-                    DownloadOptions {
-                        continue_download: false,
-                        on_update: None,
-                        on_finish: None
-                    }
-                );
+                // Start downloading the package's manifest, trying each
+                // mirror sequentially until one of them responds.
+                let task = {
+                    let downloader = downloader.clone();
+                    let package_urls = package_urls.clone();
+                    let temp_path = temp_path.clone();
+
+                    tasks::spawn(async move {
+                        let mut last_error: Option<InstallPackagesError> = None;
+
+                        for url in package_urls {
+                            match downloader.download_with_options(
+                                &url,
+                                &temp_path,
+                                DownloadOptions {
+                                    continue_download: false,
+                                    on_update: None,
+                                    on_finish: None
+                                }
+                            ).wait().await {
+                                Ok(_) => return Ok(url),
+                                Err(error) => last_error = Some(error.into())
+                            }
+                        }
+
+                        // Remove the partially downloaded file.
+                        let _ = tasks::fs::remove_file(&temp_path).await;
+
+                        Err(last_error.expect("tried to download a package manifest from an empty list of mirrors"))
+                    })
+                };
 
                 tasks.push((
                     task,
                     package_url,
+                    package_urls,
                     temp_path
                 ));
             }
 
             // Await the manifests downloading tasks.
-            for (task, package_url, temp_path) in tasks.drain(..) {
-                // Wait until downloading is done.
-                task.wait().await?;
+            for (task, package_url, package_urls, temp_path) in tasks.drain(..) {
+                // Wait until downloading is done. The task returns the URL of
+                // the mirror from which the manifest was downloaded.
+                let fetched_url = task.await.map_err(DownloaderError::from)??;
 
                 // Read the manifest file and calculate its hash.
                 let manifest = tasks::fs::read(&temp_path).await?;
@@ -362,16 +405,24 @@ impl Storage {
                 let _ = tasks::fs::remove_file(&temp_path).await;
 
                 // List this package as processed.
-                processed_resources.insert(
-                    (package_url.clone(), ResourceFormat::Package)
-                );
+                for url in &package_urls {
+                    processed_resources.insert(
+                        (url.clone(), ResourceFormat::Package)
+                    );
+                }
 
-                // Link requested URL with its output hash.
-                resource_hashes.insert(package_url.clone(), manifest_hash);
+                // Link requested URLs with their output hash.
+                for url in &package_urls {
+                    resource_hashes.insert(url.clone(), manifest_hash);
+                }
 
-                // Obtain the parent "folder" from the package manifest URL.
-                let (parent_url, _) = package_url.rsplit_once('/')
-                    .unwrap_or((package_url.as_str(), ""));
+                // Store the URL from which the manifest was actually fetched.
+                resolved_urls.insert(manifest_hash, fetched_url.clone());
+
+                // Obtain the parent "folder" from the URL from which the
+                // manifest was actually fetched.
+                let (parent_url, _) = fetched_url.rsplit_once('/')
+                    .unwrap_or((fetched_url.as_str(), ""));
 
                 // Update the package's info in the lock table.
                 let (_, mut inputs, mut outputs) = packages_lock_info.remove(&manifest_hash)
@@ -389,31 +440,46 @@ impl Storage {
                         });
                     }
 
-                    // Prepare resource URL.
-                    let mut resource_url = if resource_info.uri.starts_with("http") {
-                        resource_info.uri.clone()
-                    } else {
-                        format!("{parent_url}/{}", resource_info.uri)
-                    };
+                    // Prepare resource URLs.
+                    let mut resource_urls = Vec::with_capacity(resource_info.uri.len());
 
-                    // Normalize it.
-                    resource_url = normalize_url(resource_url);
+                    for resource_url in &resource_info.uri {
+                        let mut resource_url = if resource_url.starts_with("http") {
+                            resource_url.clone()
+                        } else {
+                            format!("{parent_url}/{resource_url}")
+                        };
+
+                        // Normalize it.
+                        resource_url = normalize_url(resource_url);
+
+                        resource_urls.push(resource_url);
+                    }
+
+                    // Reject resources without any download URL.
+                    if resource_urls.is_empty() {
+                        return Err(InstallPackagesError::ResourceWithoutUrls {
+                            package_url,
+                            package_hash: manifest_hash,
+                            resource_name: name.clone()
+                        });
+                    }
 
                     // Obtain the resource format.
                     let resource_format = resource_info.format
                         .unwrap_or_else(|| {
-                            ResourceFormat::from_filename(&resource_url)
+                            ResourceFormat::from_filename(&resource_urls[0])
                         });
 
                     // Store the resource info.
                     inputs.insert(name.clone(), (
-                        resource_url.clone(),
+                        resource_urls.clone(),
                         resource_format
                     ));
 
                     // And order its processing.
                     resources_queue.push((
-                        resource_url.clone(),
+                        resource_urls,
                         resource_format,
                         resource_info.clone()
                     ));
@@ -429,31 +495,46 @@ impl Storage {
                         });
                     }
 
-                    // Prepare resource URL.
-                    let mut resource_url = if resource_info.uri.starts_with("http") {
-                        resource_info.uri.clone()
-                    } else {
-                        format!("{parent_url}/{}", resource_info.uri)
-                    };
+                    // Prepare resource URLs.
+                    let mut resource_urls = Vec::with_capacity(resource_info.uri.len());
 
-                    // Normalize it.
-                    resource_url = normalize_url(resource_url);
+                    for resource_url in &resource_info.uri {
+                        let mut resource_url = if resource_url.starts_with("http") {
+                            resource_url.clone()
+                        } else {
+                            format!("{parent_url}/{resource_url}")
+                        };
+
+                        // Normalize it.
+                        resource_url = normalize_url(resource_url);
+
+                        resource_urls.push(resource_url);
+                    }
+
+                    // Reject resources without any download URL.
+                    if resource_urls.is_empty() {
+                        return Err(InstallPackagesError::ResourceWithoutUrls {
+                            package_url,
+                            package_hash: manifest_hash,
+                            resource_name: name.clone()
+                        });
+                    }
 
                     // Obtain the resource format.
                     let resource_format = resource_info.format
                         .unwrap_or_else(|| {
-                            ResourceFormat::from_filename(&resource_url)
+                            ResourceFormat::from_filename(&resource_urls[0])
                         });
 
-                    // Store the resource URL.
+                    // Store the resource info.
                     outputs.insert(name.clone(), (
-                        resource_url.clone(),
+                        resource_urls.clone(),
                         resource_format
                     ));
 
                     // And order its processing.
                     resources_queue.push((
-                        resource_url.clone(),
+                        resource_urls,
                         resource_format,
                         resource_info.clone()
                     ));
@@ -470,7 +551,10 @@ impl Storage {
             // Iterate over the ordered resources.
             let mut tasks = Vec::new();
 
-            for (resource_url, resource_format, resource_info) in resources_queue.drain(..) {
+            for (resource_urls, resource_format, resource_info) in resources_queue.drain(..) {
+                // The first mirror URL is used as the resource's primary URL.
+                let resource_url = resource_urls[0].clone();
+
                 // Skip already downloaded resources.
                 if processed_resources.contains(
                     &(resource_url.clone(), resource_format)
@@ -482,7 +566,7 @@ impl Storage {
                 // in the packages queue.
                 if resource_format == ResourceFormat::Package {
                     // TODO: handle the expected resource_info.hash !!!!!
-                    packages_queue.push(resource_url);
+                    packages_queue.push(resource_urls);
 
                     continue;
                 }
@@ -490,20 +574,71 @@ impl Storage {
                 // Prepare a temp path for the resource.
                 let temp_path = self.resource_path(&Hash::rand());
 
-                // Start downloading the resource.
-                let task = downloader.download_with_options(
-                    &resource_url,
-                    &temp_path,
-                    DownloadOptions {
-                        continue_download: false,
-                        on_update: None,
-                        on_finish: None
-                    }
-                );
+                // Archives' hashes are calculated over their extracted
+                // content, so they can't be verified before extraction.
+                let expected_hash = if resource_format == ResourceFormat::File {
+                    resource_info.hash
+                } else {
+                    None
+                };
+
+                // Start downloading the resource, trying each mirror
+                // sequentially until one of them provides valid content.
+                let task = {
+                    let downloader = downloader.clone();
+                    let resource_urls = resource_urls.clone();
+                    let temp_path = temp_path.clone();
+
+                    tasks::spawn(async move {
+                        let mut last_error: Option<InstallPackagesError> = None;
+
+                        for url in resource_urls {
+                            match downloader.download_with_options(
+                                &url,
+                                &temp_path,
+                                DownloadOptions {
+                                    continue_download: false,
+                                    on_update: None,
+                                    on_finish: None
+                                }
+                            ).wait().await {
+                                Ok(_) => {
+                                    // Compare the actual content hash with
+                                    // the expected one and skip this mirror
+                                    // if they don't match.
+                                    if let Some(expected_hash) = expected_hash {
+                                        let actual_hash = Hash::digitize_path(&temp_path)?;
+
+                                        if actual_hash != expected_hash {
+                                            last_error = Some(
+                                                InstallPackagesError::ResourceHashMismatch {
+                                                    actual: actual_hash,
+                                                    expected: expected_hash,
+                                                    url: url.clone()
+                                                }
+                                            );
+
+                                            continue;
+                                        }
+                                    }
+
+                                    return Ok(url);
+                                }
+
+                                Err(error) => last_error = Some(error.into())
+                            }
+                        }
+
+                        // Remove the partially downloaded file.
+                        let _ = tasks::fs::remove_file(&temp_path).await;
+
+                        Err(last_error.expect("tried to download a resource from an empty list of mirrors"))
+                    })
+                };
 
                 tasks.push((
                     task,
-                    resource_url,
+                    resource_urls,
                     resource_format,
                     resource_info,
                     temp_path
@@ -511,9 +646,10 @@ impl Storage {
             }
 
             // Await the resources downloading tasks.
-            for (task, resource_url, resource_format, resource_info, temp_path) in tasks.drain(..) {
-                // Wait until downloading is done.
-                task.wait().await?;
+            for (task, resource_urls, resource_format, resource_info, temp_path) in tasks.drain(..) {
+                // Wait until downloading is done. The task returns the URL of
+                // the mirror from which the content was downloaded.
+                let resource_url = task.await.map_err(DownloaderError::from)??;
 
                 // Process the downloaded resource file according to its format.
                 match resource_format {
@@ -543,10 +679,16 @@ impl Storage {
                         let _ = tasks::fs::remove_file(&temp_path).await;
 
                         // List this resource as processed.
-                        processed_resources.insert((resource_url.clone(), resource_format));
+                        for url in &resource_urls {
+                            processed_resources.insert((url.clone(), resource_format));
 
-                        // Link file URL with its hash.
-                        resource_hashes.insert(resource_url.clone(), resource_hash);
+                            // Link file URL with its hash.
+                            resource_hashes.insert(url.clone(), resource_hash);
+                        }
+
+                        // Store the URL from which the resource was actually
+                        // fetched and verified.
+                        resolved_urls.insert(resource_hash, resource_url.clone());
 
                         // Reference this resource in the lock info table.
                         resources_lock_info.insert(resource_hash, resource_url);
@@ -559,9 +701,9 @@ impl Storage {
                         tasks::fs::create_dir_all(&temp_extract_path).await?;
 
                         // Try to predict the format of the archive from its
-                        // download URL. It's needed because `temp_path` doesn't
-                        // have any extension.
-                        let Some(archive_format) = ArchiveFormat::from_filename(&resource_url) else {
+                        // primary download URL. It's needed because `temp_path`
+                        // doesn't have any extension.
+                        let Some(archive_format) = ArchiveFormat::from_filename(&resource_urls[0]) else {
                             return Err(InstallPackagesError::ArchiveFormatUnsupported {
                                 url: resource_url
                             });
@@ -609,10 +751,16 @@ impl Storage {
                         ).await?;
 
                         // List this resource as processed.
-                        processed_resources.insert((resource_url.clone(), resource_format));
+                        for url in &resource_urls {
+                            processed_resources.insert((url.clone(), resource_format));
 
-                        // Link file URL with its hash.
-                        resource_hashes.insert(resource_url.clone(), resource_hash);
+                            // Link file URL with its hash.
+                            resource_hashes.insert(url.clone(), resource_hash);
+                        }
+
+                        // Store the URL from which the resource was actually
+                        // fetched and verified.
+                        resolved_urls.insert(resource_hash, resource_url.clone());
 
                         // Reference this resource in the lock info table.
                         resources_lock_info.insert(resource_hash, resource_url);
@@ -634,15 +782,24 @@ impl Storage {
             packages: packages_lock_info.into_iter()
                 .map(|(package_hash, (url, inputs, outputs))| {
                     let package_info = LockedPackageInfo {
-                        url,
+                        // URL from which the package manifest was actually
+                        // fetched and verified.
+                        url: resolved_urls.get(&package_hash)
+                            .cloned()
+                            .unwrap_or(url),
 
                         inputs: inputs.into_iter()
-                            .flat_map(|(resource_name, (resource_url, resource_format))| {
-                                let hash = resource_hashes.get(&resource_url)
+                            .flat_map(|(resource_name, (resource_urls, resource_format))| {
+                                let hash = resource_hashes.get(&resource_urls[0])
                                     .copied()?;
 
                                 let info = LockedResourceInfo {
-                                    url: resource_url,
+                                    // URL from which the resource was actually
+                                    // fetched and verified.
+                                    url: resolved_urls.get(&hash)
+                                        .cloned()
+                                        .unwrap_or_else(|| resource_urls[0].clone()),
+
                                     format: resource_format,
                                     hash
                                 };
@@ -652,12 +809,17 @@ impl Storage {
                             .collect(),
 
                         outputs: outputs.into_iter()
-                            .flat_map(|(resource_name, (resource_url, resource_format))| {
-                                let hash = resource_hashes.get(&resource_url)
+                            .flat_map(|(resource_name, (resource_urls, resource_format))| {
+                                let hash = resource_hashes.get(&resource_urls[0])
                                     .copied()?;
 
                                 let info = LockedResourceInfo {
-                                    url: resource_url,
+                                    // URL from which the resource was actually
+                                    // fetched and verified.
+                                    url: resolved_urls.get(&hash)
+                                        .cloned()
+                                        .unwrap_or_else(|| resource_urls[0].clone()),
+
                                     format: resource_format,
                                     hash
                                 };
